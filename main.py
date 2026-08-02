@@ -5,7 +5,7 @@ from datetime import datetime, time as dtime
 import telebot
 from telebot import types
 
-TOKEN = "8962696714:AAFI0OhvJma4TigeE24Z6TRbe8R84ic-FTA"
+TOKEN = "8916669266:AAFo5DV8d3Jjnz2UqXFmTYW9EXEz_SijiUI"
 bot = telebot.TeleBot(TOKEN)
 
 user_states, user_data, active_ads, pending_posts = {}, {}, {}, {}
@@ -335,3 +335,4 @@ if __name__ == '__main__':
     bot.remove_webhook()
     print("🚀 Бот по ТЗ Arizona RP запущен!")
     bot.infinity_polling(skip_pending=True)
+

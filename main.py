@@ -7,8 +7,8 @@ TOKEN = "8962696714:AAH5dYsLqlAqoLdVr5-sJH35OJnw1ttgpJ0"
 bot = telebot.TeleBot(TOKEN)
 
 # Данные пользователей и настройки
-user_states = {}        # Хранит выбранный сервер или состояние FSM
-user_data = {}          # Временное хранилище данных пользователей
+user_states = {}        # Хранит состояние FSM пользователя
+user_data = {}          # Временное хранилище данных (для создания объявлений и т.д.)
 
 # Главный владелец и модераторы
 OWNER_USERNAME = "bounqy"
@@ -43,6 +43,11 @@ SERVERS = [
 
 def is_owner(user):
     return user.username and user.username.lower() == OWNER_USERNAME.lower()
+
+def is_admin_or_owner(user):
+    if not user:
+        return False
+    return is_owner(user) or (user.username and user.username.lower() in [adm.lower() for adm in ADMIN_USERNAMES])
 
 def is_server_admin(user_id, server_key):
     return user_id in admins.get(server_key, set())
@@ -119,6 +124,27 @@ def get_cancel_keyboard():
     markup.add(types.KeyboardButton("🚫 Отмена"))
     return markup
 
+def get_admin_item_types_keyboard():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(
+        types.KeyboardButton("🚗 Продажа машины"),
+        types.KeyboardButton("💍 Продажа акса")
+    )
+    markup.add(
+        types.KeyboardButton("🥼 Продажа скина"),
+        types.KeyboardButton("🏡 Продажа недвижимости")
+    )
+    markup.add(types.KeyboardButton("🚫 Отмена"))
+    return markup
+
+def get_admin_servers_keyboard():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    for i in range(0, len(SERVERS), 2):
+        pair = SERVERS[i:i+2]
+        markup.add(*[types.KeyboardButton(s) for s in pair])
+    markup.add(types.KeyboardButton("🚫 Отмена"))
+    return markup
+
 
 # ----------------- ОБРАБОТЧИКИ КОМАНД И МЕНЮ -----------------
 
@@ -138,7 +164,7 @@ def start_command(message):
 
 @bot.message_handler(commands=['admin'])
 def admin_command(message):
-    if message.from_user.username in ADMIN_USERNAMES or is_owner(message.from_user):
+    if is_admin_or_owner(message.from_user):
         bot.send_message(message.chat.id, "👑 **Панель администратора:**\nТы успешно авторизован как модератор бота.", parse_mode="Markdown")
     else:
         bot.send_message(message.chat.id, "⛔ У тебя нет доступа к этой команде.")
@@ -180,6 +206,7 @@ def sub_categories(message):
 @bot.message_handler(func=lambda msg: msg.text == "🚫 Отмена")
 def cancel_action(message):
     user_states.pop(message.from_user.id, None)
+    user_data.pop(message.from_user.id, None)
     bot.send_message(message.chat.id, "Главное меню категорий:", reply_markup=get_categories_keyboard())
 
 @bot.message_handler(func=lambda msg: msg.text in ["⬅ Назад", "🔝 Главное Меню"])
@@ -187,7 +214,7 @@ def back_navigation(message):
     bot.send_message(message.chat.id, "Главное меню категорий:", reply_markup=get_categories_keyboard())
 
 
-# --- ПОДАЧА ОБЪЯВЛЕНИЙ О ПРОДАЖЕ И ПАНЕЛЬ АДМИНИСТРАТОРА ---
+# --- ПОДАЧА ОБЪЯВЛЕНИЙ И АДМИН-СОЗДАНИЕ ПОСТОВ ---
 
 @bot.message_handler(func=lambda message: message.text == "🛒 Подать объявление о продаже")
 def ask_for_submission(message):
@@ -203,7 +230,7 @@ def ask_for_submission(message):
 @bot.message_handler(func=lambda message: message.text == "⚙️ Панель администратора")
 def open_admin_panel(message):
     user = message.from_user
-    user_is_adm = is_owner(user) or any(is_server_admin(user.id, s) for s in admins) or user.username in ADMIN_USERNAMES
+    user_is_adm = is_admin_or_owner(user) or any(is_server_admin(user.id, s) for s in admins)
     
     if not user_is_adm:
         bot.send_message(message.chat.id, "У вас нет доступа к панели администратора.")
@@ -215,7 +242,10 @@ def open_admin_panel(message):
             types.InlineKeyboardButton("➕ Назначить админа", callback_data="owner_add_adm"),
             types.InlineKeyboardButton("➖ Снять админа", callback_data="owner_rem_adm")
         )
-    markup.add(types.InlineKeyboardButton("📋 Ожидающие заявки", callback_data="show_pending_list"))
+    markup.add(
+        types.InlineKeyboardButton("📝 Создать пост (Админ)", callback_data="admin_create_post"),
+        types.InlineKeyboardButton("📋 Ожидающие заявки", callback_data="show_pending_list")
+    )
     
     bot.send_message(
         message.chat.id, 
@@ -255,10 +285,6 @@ def process_item_submission(message):
         "text": text_content or "Без описания"
     }
     
-    # Требуемые 3 кнопки под фотографией/заявкой:
-    # 1. Заявки на администратора (или в нашем случае список/управление заявками)
-    # 2. Редакция (доступна после принятия / взятия в работу)
-    # 3. Принятие заявки (только для владельца бота) + Кнопка отклонения
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("1️⃣ Заявки на администратора", callback_data=f"admin_apps_{current_id}"),
@@ -276,7 +302,6 @@ def process_item_submission(message):
         f"📦 **Содержание:**\n{text_content or ''}"
     )
     
-    # Отправка заявки в чат модерации, если чат задан правильно, иначе в ЛС отправителю для теста
     target_chat = MODERATION_CHAT_ID if MODERATION_CHAT_ID != -1001234567890 else message.chat.id
     
     try:
@@ -286,7 +311,6 @@ def process_item_submission(message):
             bot.send_message(target_chat, forward_text, parse_mode="Markdown", reply_markup=markup)
     except Exception as e:
         print(f"Ошибка отправки в чат модерации: {e}")
-        # Запасной вариант на случай неверного ID чата модерации
         if target_chat != message.chat.id:
             if photo_id:
                 bot.send_photo(message.chat.id, photo_id, caption=forward_text, parse_mode="Markdown", reply_markup=markup)
@@ -304,29 +328,48 @@ def handle_callbacks(call):
     data = call.data
     user = call.from_user
     
+    if data == "admin_create_post":
+        if not is_admin_or_owner(user):
+            bot.answer_callback_query(call.id, "Недостаточно прав.", show_alert=True)
+            return
+        user_states[user.id] = "admin_choosing_type"
+        user_data[user.id] = {}
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, "Выберите тип товара для публикации:", reply_markup=get_admin_item_types_keyboard())
+        return
+
     if data.startswith("admin_apps_"):
         post_id = int(data.split('_')[2])
         bot.answer_callback_query(call.id, text=f"Раздел заявок на администратора (Заявка #{post_id})", show_alert=True)
 
     elif data.startswith("edit_"):
         post_id = int(data.split('_')[1])
+        
+        # Проверка прав: редактировать заявку может только администратор или владелец
+        if not is_admin_or_owner(user):
+            bot.answer_callback_query(call.id, "⛔ Ошибка: Редактировать заявки могут только администраторы!", show_alert=True)
+            return
+            
         bot.answer_callback_query(call.id, text=f"Редакция заявки #{post_id}")
         
         try:
-            new_text = call.message.text + "\n\n✏️ *Статус: Взято на редакцию*" if call.message.text else (call.message.caption or "") + "\n\n✏️ *Статус: Взято на редакцию*"
+            current_text = call.message.text or call.message.caption or ""
+            new_text = current_text + f"\n\n✏️ *Статус: Взято на редакцию администратором @{user.username or user.id}*"
             if call.message.caption:
                 bot.edit_message_caption(
                     chat_id=call.message.chat.id,
                     message_id=call.message.message_id,
                     caption=new_text,
-                    parse_mode="Markdown"
+                    parse_mode="Markdown",
+                    reply_markup=call.message.reply_markup
                 )
             else:
                 bot.edit_message_text(
                     chat_id=call.message.chat.id,
                     message_id=call.message.message_id,
                     text=new_text,
-                    parse_mode="Markdown"
+                    parse_mode="Markdown",
+                    reply_markup=call.message.reply_markup
                 )
         except Exception as e:
             print(f"Ошибка редактирования сообщения: {e}")
@@ -334,7 +377,7 @@ def handle_callbacks(call):
     elif data.startswith("owner_approve_"):
         post_id = int(data.split('_')[2])
         
-        # Строгая проверка: принятие заявки доступно ТОЛЬКО владельцу бота
+        # Строгая проверка: принятие заявки доступно ТОЛЬКО владельцу бота (проблема 3 решена)
         if not is_owner(user):
             bot.answer_callback_query(call.id, "⛔ Ошибка: Принятие заявки доступно ТОЛЬКО для владельца бота (@bounqy)!", show_alert=True)
             return
@@ -373,7 +416,6 @@ def handle_callbacks(call):
                         reply_markup=None
                     )
                 
-                # Уведомляем пользователя об успешном одобрении
                 try:
                     bot.send_message(post["user_id"], "🎉 Ваша заявка была одобрена владельцем и опубликована в канале!")
                 except:
@@ -387,7 +429,7 @@ def handle_callbacks(call):
 
     elif data.startswith("reject_"):
         post_id = int(data.split("_")[1])
-        if not is_owner(user) and user.username not in ADMIN_USERNAMES:
+        if not is_admin_or_owner(user):
             bot.answer_callback_query(call.id, "Недостаточно прав.", show_alert=True)
             return
             
@@ -474,11 +516,104 @@ def process_remove_admin(message):
         bot.send_message(message.chat.id, f"❌ Ошибка формата: {e}")
 
 
-# --- ОБРАБОТЧИК КАТЕГОРИЙ И РАЗДЕЛОВ ---
+# --- ОБРАБОТЧИК ПОШАГОВОГО СОЗДАНИЯ ПОСТА АДМИНИСТРАТОРОМ (ПРОБЛЕМА 2) ---
+
+@bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id) == "admin_choosing_type")
+def admin_choose_type_step(message):
+    if message.text == "🚫 Отмена":
+        user_states.pop(message.from_user.id, None)
+        user_data.pop(message.from_user.id, None)
+        bot.send_message(message.chat.id, "Отменено.", reply_markup=get_categories_keyboard())
+        return
+
+    item_types_map = {
+        "🚗 Продажа машины": "Продажа машины",
+        "💍 Продажа акса": "Продажа аксессуара",
+        "🥼 Продажа скина": "Продажа скина",
+        "🏡 Продажа недвижимости": "Продажа недвижимости"
+    }
+
+    if message.text not in item_types_map:
+        bot.send_message(message.chat.id, "❌ Пожалуйста, выберите тип с помощью кнопок ниже.")
+        return
+
+    user_data[message.from_user.id] = {"item_type": item_types_map[message.text]}
+    user_states[message.from_user.id] = "admin_choosing_server"
+    
+    bot.send_message(
+        message.chat.id, 
+        f"Вы выбрали: **{item_types_map[message.text]}**.\nТеперь выберите сервер для этого объявления:", 
+        parse_mode="Markdown", 
+        reply_markup=get_admin_servers_keyboard()
+    )
+
+@bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id) == "admin_choosing_server")
+def admin_choose_server_step(message):
+    if message.text == "🚫 Отмена":
+        user_states.pop(message.from_user.id, None)
+        user_data.pop(message.from_user.id, None)
+        bot.send_message(message.chat.id, "Отменено.", reply_markup=get_categories_keyboard())
+        return
+
+    if message.text not in SERVERS:
+        bot.send_message(message.chat.id, "❌ Пожалуйста, выберите сервер из предложенных кнопками.")
+        return
+
+    user_data[message.from_user.id]["server"] = message.text
+    user_states[message.from_user.id] = "admin_entering_price_and_desc"
+
+    bot.send_message(
+        message.chat.id, 
+        "Отлично! Теперь введите описание и сумму товара (текстом или прикрепите фото с текстом):", 
+        reply_markup=get_cancel_keyboard()
+    )
+
+@bot.message_handler(content_types=['text', 'photo'], func=lambda msg: user_states.get(msg.from_user.id) == "admin_entering_price_and_desc")
+def admin_finish_post_step(message):
+    if message.text == "🚫 Отмена":
+        user_states.pop(message.from_user.id, None)
+        user_data.pop(message.from_user.id, None)
+        bot.send_message(message.chat.id, "Отменено.", reply_markup=get_categories_keyboard())
+        return
+
+    data = user_data.get(message.from_user.id, {})
+    item_type = data.get("item_type", "Товар")
+    server = data.get("server", "Не указан")
+
+    photo_id = None
+    if message.photo:
+        photo_id = message.photo[-1].file_id
+    
+    text_content = message.caption or message.text or "Без описания"
+
+    # Формируем итоговый пост для канала
+    final_post_text = (
+        f"🛒 **{item_type}**\n"
+        f"🌐 Сервер: **{server}**\n\n"
+        f"{text_content}\n\n"
+        f"👑 Опубликовано администратором"
+    )
+
+    target_channel = "@Bounty_Squad31"
+    try:
+        if photo_id:
+            bot.send_photo(target_channel, photo_id, caption=final_post_text, parse_mode="Markdown")
+        else:
+            bot.send_message(target_channel, final_post_text, parse_mode="Markdown")
+        
+        bot.send_message(message.chat.id, "✅ Объявление успешно опубликовано в канал!", reply_markup=get_categories_keyboard())
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка публикации в канал: {e}", reply_markup=get_categories_keyboard())
+
+    user_states.pop(message.from_user.id, None)
+    user_data.pop(message.from_user.id, None)
+
+
+# --- ОБЩИЙ ОБРАБОТЧИК ТЕКСТА ---
 
 @bot.message_handler(content_types=['text'])
 def handle_incoming_content(message):
-    if user_states.get(message.from_user.id) == "waiting_for_submission":
+    if user_states.get(message.from_user.id) in ["waiting_for_submission", "admin_choosing_type", "admin_choosing_server", "admin_entering_price_and_desc"]:
         return
         
     srv = user_states.get(message.chat.id, "Не выбран")

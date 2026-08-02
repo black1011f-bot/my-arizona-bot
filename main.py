@@ -5,7 +5,7 @@ from datetime import datetime, time as dtime
 import telebot
 from telebot import types
 
-TOKEN = "8962696714:AAHG1tkvXYs-nSvykKEOK1kASUWb3iMspDk"
+TOKEN = "8962696714:AAFI0OhvJma4TigeE24Z6TRbe8R84ic-FTA"
 bot = telebot.TeleBot(TOKEN)
 
 user_states, user_data, active_ads, pending_posts = {}, {}, {}, {}
@@ -26,35 +26,52 @@ SERVERS = [
     "📱 Mobile I", "📱 Mobile II", "📱 Mobile III"
 ]
 
-# --- ФОНОВЫЙ ПОТОК ОЧИСТКИ ---
+# --- ФОНОВЫЙ ПОТОК ОЧИСТКИ (по ТЗ: с 08:00:00 до 08:05:22 МСК и ночное после 22:00:22) ---
 def background_cleanup_ads():
     while True:
         time.sleep(30)
-        now_time = datetime.now().time()
-        is_outside_hours = not (dtime(8, 0) <= now_time <= dtime(22, 0))
-        curr_t = time.time()
+        now = datetime.now()
+        now_time = now.time()
         
+        # Проверка ночного ограничения (после 22:00:22) и утренней очистки (08:00:00 - 08:05:22)
+        is_night = now_time >= dtime(22, 0, 22) or now_time < dtime(8, 0, 0)
+        is_morning_clean = dtime(8, 0, 0) <= now_time <= dtime(8, 5, 22)
+        
+        curr_t = time.time()
         with ads_lock:
-            expired = [aid for aid, d in active_ads.items() if (curr_t - d["last_updated"] > 600) or is_outside_hours]
+            expired = []
+            for aid, d in active_ads.items():
+                if (curr_t - d["last_updated"] > 600) or is_night or is_morning_clean:
+                    expired.append(aid)
+            
             for aid in expired:
                 for target_id, msg_id in list(active_ads[aid].get("message_ids_map", {}).items()):
-                    try: bot.delete_message(target_id, msg_id)
-                    except: pass
+                    try:
+                        bot.delete_message(target_id, msg_id)
+                    except:
+                        pass
                 del active_ads[aid]
 
 threading.Thread(target=background_cleanup_ads, daemon=True).start()
 
-# --- ПРОВЕРКИ ПРАВ ---
+# --- ПРОВЕРКИ ПРАВ И ВРЕМЕНИ ---
 def is_owner(u): return u.username and u.username.lower() == OWNER_USERNAME.lower()
 def is_admin_or_owner(u): return u and (is_owner(u) or (u.username and u.username.lower() in [a.lower() for a in ADMIN_USERNAMES]))
 def is_server_admin(uid, s_key): return uid in admins.get(s_key, set())
-def check_working_hours(): return dtime(8, 0) <= datetime.now().time() <= dtime(22, 0)
+
+def check_working_hours():
+    now_time = datetime.now().time()
+    # Согласно ТЗ: работаем с 08:00 до 22:00:22
+    if now_time < dtime(8, 0, 0) or now_time > dtime(22, 0, 22):
+        return False
+    return True
 
 # --- КЛАВИАТУРЫ ---
-def kb_servers(admin_mode=False):
+def kb_servers():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    for i in range(0, len(SERVERS), 2): m.add(*[types.KeyboardButton(s) for s in SERVERS[i:i+2]])
-    m.add(types.KeyboardButton("🚫 Отмена" if admin_mode else "🛒 Подать объявление о продаже"), types.KeyboardButton("⚙️ Панель администратора" if not admin_mode else "нет"))
+    for i in range(0, len(SERVERS), 2): 
+        m.add(*[types.KeyboardButton(s) for s in SERVERS[i:i+2]])
+    m.add(types.KeyboardButton("🛒 Подать объявление о продаже"), types.KeyboardButton("👑 Админ"))
     return m
 
 def kb_categories():
@@ -62,17 +79,12 @@ def kb_categories():
     m.add("💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг")
     m.add("🥼 Скины и Охранники", "🏡 Дом и Бизнес")
     m.add("📦 Ресурсы и Оружие")
-    m.add("🛒 Подать объявление о продаже", "⚙️ Панель администратора")
+    m.add("🛒 Подать объявление о продаже", "👑 Админ")
     m.add("🔄 Сменить сервер")
     return m
 
 def kb_cancel():
     return types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("🚫 Отмена"))
-
-def kb_admin_types():
-    return types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add(
-        "🚗 Продажа машины", "💍 Продажа акса", "🥼 Продажа скина", "🏡 Продажа недвижимости", "🚫 Отмена"
-    )
 
 def get_category_key(text):
     t = text.lower()
@@ -81,29 +93,32 @@ def get_category_key(text):
     if "скин" in t or "охранник" in t: return "🥼 Скины и Охранники"
     if "дом" in t or "бизнес" in t or "недвиж" in t: return "🏡 Дом и Бизнес"
     if "ресурс" in t or "оружие" in t: return "📦 Ресурсы и Оружие"
-    return None
+    return "💍 Аксы"
 
 # --- ОБРАБОТЧИКИ КОМАНД ---
 @bot.message_handler(commands=['start'])
 def cmd_start(m):
-    bot.send_message(m.chat.id, "👇 НАЖМИ И ВЫБЕРИ СВОЙ СЕРВЕР 👇\n\n👋 Привет! Неофициальный бот с ценами Arizona RP!\n📢 Канал: @Bounty_Squad31", reply_markup=kb_servers())
+    bot.send_message(
+        m.chat.id, 
+        "👇 НАЖМИ И ВЫБЕРИ СВОЙ СЕРВЕР 👇\n\n👋 Привет! Неофициальный бот с ценами Arizona RP[span_0](start_span)[span_0](end_span)!\n📢 Канал: @Bounty_Squad31", 
+        reply_markup=kb_servers()
+    )
 
 @bot.message_handler(commands=['admin'])
 def cmd_admin(m):
-    bot.send_message(m.chat.id, "👑 **Панель администратора:** Авторизован." if is_admin_or_owner(m.from_user) else "⛔ Нет доступа.", parse_mode="Markdown")
+    if is_admin_or_owner(m.from_user):
+        bot.send_message(m.chat.id, "👑 **Панель администратора:** Авторизован.", parse_mode="Markdown")
+    else:
+        bot.send_message(m.chat.id, "⛔ Нет доступа.")
 
 @bot.message_handler(func=lambda msg: msg.text in SERVERS)
 def select_srv(m):
-    if user_states.get(m.from_user.id) == "admin_choosing_server":
-        user_data[m.from_user.id]["server"] = m.text
-        user_states[m.from_user.id] = "admin_entering_price_and_desc"
-        bot.send_message(m.chat.id, "Введите описание и сумму товара (текстом или с фото):", reply_markup=kb_cancel())
-    else:
-        user_states[m.chat.id] = m.text
-        bot.send_message(m.chat.id, f"Сервер **{m.text}** выбран! Выберите категорию:", parse_mode="Markdown", reply_markup=kb_categories())
+    user_states[m.from_user.id] = {"server": m.text}
+    bot.send_message(m.chat.id, f"Сервер **{m.text}** выбран[span_1](start_span)[span_1](end_span)! Выберите категорию:", parse_mode="Markdown", reply_markup=kb_categories())
 
 @bot.message_handler(func=lambda msg: msg.text == "🔄 Сменить сервер")
-def ch_srv(m): bot.send_message(m.chat.id, "Выберите ваш сервер:", reply_markup=kb_servers())
+def ch_srv(m): 
+    bot.send_message(m.chat.id, "Выберите ваш сервер:", reply_markup=kb_servers())
 
 @bot.message_handler(func=lambda msg: msg.text == "🚫 Отмена")
 def cancel_all(m):
@@ -114,67 +129,109 @@ def cancel_all(m):
 @bot.message_handler(func=lambda msg: msg.text == "🛒 Подать объявление о продаже")
 def ask_sub(m):
     if not check_working_hours():
-        return bot.send_message(m.chat.id, "❌ Подача объявлений разрешена только с 08:00 до 22:00!")
-    user_states[m.from_user.id] = "waiting_for_submission"
-    bot.send_message(m.chat.id, "Отправьте **одним сообщением** фото и описание:", parse_mode="Markdown", reply_markup=kb_cancel())
+        return bot.send_message(m.chat.id, "❌ После 22:00:22 МСК подача объявлений заблокирована до утреннего возобновления[span_2](start_span)[span_2](end_span)!")
+    
+    # Проверка кулдауна 10 минут (по ТЗ пункт 5)
+    uid = m.from_user.id
+    if uid in user_data and "last_ad_time" in user_data[uid]:
+        if time.time() - user_data[uid]["last_ad_time"] < 600:
+            remaining = int(600 - (time.time() - user_data[uid]["last_ad_time"]))
+            return bot.send_message(m.chat.id, f"❌ Кулдаун! Подождите еще {remaining // 60} мин. {remaining % 60} сек. перед отправкой нового объявления[span_3](start_span)[span_3](end_span).")
+
+    if uid not in user_states or "server" not in user_states[uid]:
+        return bot.send_message(m.chat.id, "⚠️ Сначала выберите сервер из главного меню[span_4](start_span)[span_4](end_span)!", reply_markup=kb_servers())
+
+    user_states[uid]["step"] = "waiting_for_submission"
+    bot.send_message(m.chat.id, "Отправьте **одним сообщением** фото, текст описания и цену[span_5](start_span)[span_5](end_span):", parse_mode="Markdown", reply_markup=kb_cancel())
     bot.register_next_step_handler(m, process_sub)
 
 def process_sub(m):
     global moderation_counter
-    user_states.pop(m.from_user.id, None)
-    if m.text == "🚫 Отмена": return bot.send_message(m.chat.id, "Отменено.", reply_markup=kb_categories())
+    uid = m.from_user.id
+    if m.text == "🚫 Отмена":
+        if uid in user_states: user_states[uid].pop("step", None)
+        return bot.send_message(m.chat.id, "Отменено.", reply_markup=kb_categories())
     
     photo = m.photo[-1].file_id if m.photo else None
     text = m.caption or m.text
-    if not photo and not text: return bot.send_message(m.chat.id, "❌ Пустое сообщение. Попробуйте снова.")
+    if not photo and not text:
+        return bot.send_message(m.chat.id, "❌ Пустое сообщение. Попробуйте снова.")
+
+    if uid not in user_states:
+        user_states[uid] = {"server": "Phoenix"}
+    
+    server_name = user_states[uid].get("server", "Phoenix")
+    user_states[uid].pop("step", None)
+
+    # Фиксация времени отправки для кулдауна (10 минут)
+    if uid not in user_data: user_data[uid] = {}
+    user_data[uid]["last_ad_time"] = time.time()
 
     moderation_counter += 1
     uname = m.from_user.username or "Без юзернейма"
-    cat = get_category_key(text) or "💍 Аксы"
-    pending_posts[moderation_counter] = {"user_id": m.from_user.id, "username": uname, "photo": photo, "text": text or "Без описания", "category": cat}
+    cat = get_category_key(text)
+    
+    pending_posts[moderation_counter] = {
+        "user_id": uid, 
+        "username": uname, 
+        "photo": photo, 
+        "text": text or "Без описания", 
+        "category": cat,
+        "server": server_name
+    }
 
     markup = types.InlineKeyboardMarkup(row_width=1).add(
-        types.InlineKeyboardButton("1️⃣ Заявки на админа", callback_data=f"admin_apps_{moderation_counter}"),
-        types.InlineKeyboardButton("2️⃣ Редакция", callback_data=f"edit_{moderation_counter}"),
+        types.InlineKeyboardButton("📝 Редакция", callback_data=f"edit_{moderation_counter}"),
         types.InlineKeyboardButton("3️⃣ Принять (Только для владельца)", callback_data=f"owner_approve_{moderation_counter}"),
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{moderation_counter}")
     )
     
-    f_text = f"🚨 **Новая заявка #{moderation_counter}**\n📂 Категория: `{cat}`\n👤 От: `{m.from_user.id}` (@{uname})\n\n📦:\n{text or ''}"
+    f_text = f"🚨 **Новая заявка #{moderation_counter}**\n🌐 Сервер: `{server_name}`\n📂 Категория: `{cat}`\n👤 От: `{uid}` (@{uname})\n\n📦:\n{text or ''}"
     target = MODERATION_CHAT_ID if MODERATION_CHAT_ID != -1001234567890 else m.chat.id
     
     try:
-        bot.send_photo(target, photo, caption=f_text, parse_mode="Markdown", reply_markup=markup) if photo else bot.send_message(target, f_text, parse_mode="Markdown", reply_markup=markup)
+        if photo:
+            bot.send_photo(target, photo, caption=f_text, parse_mode="Markdown", reply_markup=markup)
+        else:
+            bot.send_message(target, f_text, parse_mode="Markdown", reply_markup=markup)
     except:
         bot.send_message(m.chat.id, f_text, parse_mode="Markdown", reply_markup=markup)
         
-    bot.send_message(m.chat.id, "✅ Заявка отправлена на модерацию!", reply_markup=kb_categories())
+    bot.send_message(m.chat.id, "✅ Заявка отправлена на модерацию[span_6](start_span)[span_6](end_span)!", reply_markup=kb_categories())
 
-@bot.message_handler(func=lambda msg: msg.text == "⚙️ Панель администратора")
+@bot.message_handler(func=lambda msg: msg.text == "👑 Админ")
 def admin_panel(m):
     u = m.from_user
-    if not (is_admin_or_owner(u) or any(is_server_admin(u.id, s) for s in admins)):
-        return bot.send_message(m.chat.id, "У вас нет доступа.")
+    if not is_admin_or_owner(u):
+        return bot.send_message(m.chat.id, "⛔ У вас нет доступа к админ-панели[span_7](start_span)[span_7](end_span).")
     
     markup = types.InlineKeyboardMarkup()
-    if is_owner(u):
-        markup.add(types.InlineKeyboardButton("➕ Назначить админа", callback_data="owner_add_adm"), types.InlineKeyboardButton("➖ Снять админа", callback_data="owner_rem_adm"))
-    markup.add(types.InlineKeyboardButton("📝 Создать пост (Админ)", callback_data="admin_create_post"), types.InlineKeyboardButton("📋 Ожидающие заявки", callback_data="show_pending_list"))
+    markup.add(types.InlineKeyboardButton("📋 Ожидающие заявки", callback_data="show_pending_list"))
     bot.send_message(m.chat.id, f"⚙️ **Панель управления**\nСтатус: {'Владелец' if is_owner(u) else 'Админ'}", parse_mode="Markdown", reply_markup=markup)
 
 @bot.message_handler(func=lambda msg: msg.text in ["💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг", "🥼 Скины и Охранники", "🏡 Дом и Бизнес", "📦 Ресурсы и Оружие"])
 def show_ads(m):
-    srv = user_states.get(m.chat.id, "Не выбран")
+    uid = m.from_user.id
+    srv = user_states.get(uid, {}).get("server", "Не выбран")
     cat_name = m.text
-    with ads_lock: 
-        ads_list = [ad for ad in active_ads.values() if ad.get("category") == cat_name]
     
-    bot.send_message(m.chat.id, f"📊 Раздел: **{cat_name}**\n🌐 Сервер: **{srv}**\n\n" + ("🛒 **Актуальные предложения:**" if ads_list else "В разделе пока нет объявлений."), parse_mode="Markdown")
-    for ad in ads_list:
-        card = f"📢 **Товар**\n\n{ad['text']}\n\n👤 Админ: {ad['editor']}"
-        sent = bot.send_photo(m.chat.id, ad["photo"], caption=card, parse_mode="Markdown") if ad.get("photo") else bot.send_message(m.chat.id, card, parse_mode="Markdown")
-        ad["subscribers"].add(m.chat.id)
-        ad["message_ids_map"][m.chat.id] = sent.message_id
+    with ads_lock: 
+        # Фильтрация по категории И по выбранному сервером игрока (строгая привязка по ТЗ)
+        ads_list = [ad for ad in active_ads.values() if ad.get("category") == cat_name and ad.get("server") == srv]
+    
+    bot.send_message(m.chat.id, f"📊 Раздел: **{cat_name}**\n🌐 Сервер: **{srv}**\n\n" + ("🛒 **Актуальные предложения:**" if ads_list else "В разделе пока нет объявлений для этого сервера."), parse_mode="Markdown")
+    for aid, ad in active_ads.items():
+        if ad.get("category") == cat_name and ad.get("server") == srv:
+            card = f"📢 **Товар**\n\n{ad['text']}\n\n👤 Публикация"
+            try:
+                if ad.get("photo"):
+                    sent = bot.send_photo(m.chat.id, ad["photo"], caption=card, parse_mode="Markdown")
+                else:
+                    sent = bot.send_message(m.chat.id, card, parse_mode="Markdown")
+                ad["subscribers"].add(m.chat.id)
+                ad["message_ids_map"][m.chat.id] = sent.message_id
+            except:
+                pass
 
 # --- ОБРАБОТКА CALLBACK КНОПОК ---
 @bot.callback_query_handler(func=lambda call: True)
@@ -182,37 +239,37 @@ def callbacks(call):
     global pending_posts
     data, u = call.data, call.from_user
 
-    if data == "admin_create_post":
-        if not is_admin_or_owner(u): return bot.answer_callback_query(call.id, "Недостаточно прав.", show_alert=True)
-        user_states[u.id], user_data[u.id] = "admin_choosing_type", {}
-        bot.answer_callback_query(call.id)
-        return bot.send_message(call.message.chat.id, "Выберите тип товара:", reply_markup=kb_admin_types())
-
-    if data.startswith("admin_apps_"):
-        return bot.answer_callback_query(call.id, text=f"Заявка #{data.split('_')[2]}", show_alert=True)
-
     if data.startswith("edit_"):
         pid = int(data.split('_')[1])
-        if not is_admin_or_owner(u): return bot.answer_callback_query(call.id, "⛔ Редактировать могут только админы!", show_alert=True)
-        user_states[u.id] = f"editing_post_{pid}"
+        if not is_admin_or_owner(u): 
+            return bot.answer_callback_query(call.id, "⛔ Редактировать могут только админы[span_8](start_span)[span_8](end_span)!", show_alert=True)
+        user_states[u.id] = {"editing": pid}
         bot.answer_callback_query(call.id)
         return bot.send_message(call.message.chat.id, f"✏️ Введите новый текст для заявки #{pid}:", reply_markup=kb_cancel())
 
     if data.startswith("owner_approve_"):
         pid = int(data.split('_')[2])
-        if not is_owner(u): return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-        if pid not in pending_posts: return bot.answer_callback_query(call.id, "Заявка не найдена.")
-        if not check_working_hours(): return bot.answer_callback_query(call.id, "❌ Публикация с 08:00 до 22:00!", show_alert=True)
+        if not is_owner(u): 
+            return bot.answer_callback_query(call.id, "⛔ Только для владельца[span_9](start_span)[span_9](end_span)!", show_alert=True)
+        if pid not in pending_posts: 
+            return bot.answer_callback_query(call.id, "Заявка не найдена.")
+        if not check_working_hours(): 
+            return bot.answer_callback_query(call.id, "❌ Публикация после 22:00:22 запрещена[span_10](start_span)[span_10](end_span)!", show_alert=True)
 
         post = pending_posts.pop(pid)
         chan = "@Bounty_Squad31"
-        p_text = f"🛒 **Новое объявление!**\n\n{post['text']}\n\n👤 Продавец: @{post['username']}"
+        p_text = f"🛒 **Новое объявление!**\n🌐 Сервер: **{post['server']}**\n\n{post['text']}\n\n👤 Продавец: @{post['username']}"
         try:
-            sent = bot.send_photo(chan, post["photo"], caption=p_text, parse_mode="Markdown") if post["photo"] else bot.send_message(chan, p_text, parse_mode="Markdown")
+            if post["photo"]:
+                sent = bot.send_photo(chan, post["photo"], caption=p_text, parse_mode="Markdown")
+            else:
+                sent = bot.send_message(chan, p_text, parse_mode="Markdown")
+                
             with ads_lock:
                 active_ads[pid] = {
                     "text": p_text, 
                     "photo": post["photo"], 
+                    "server": post["server"],
                     "editor": f"@{u.username}" if u.username else u.first_name, 
                     "last_updated": time.time(), 
                     "category": post["category"],
@@ -220,101 +277,56 @@ def callbacks(call):
                     "message_ids_map": {chan: sent.message_id}
                 }
             bot.answer_callback_query(call.id, "Опубликовано!")
-            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="✅ Одобрено владельцем", reply_markup=None) if call.message.caption else bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="✅ Одобрено", reply_markup=None)
-            try: bot.send_message(post["user_id"], "🎉 Ваша заявка одобрена и опубликована!")
-            except: pass
+            if call.message.caption:
+                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="✅ Одобрено владельцем", reply_markup=None)
+            else:
+                bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="✅ Одобрено", reply_markup=None)
+            
+            try: 
+                bot.send_message(post["user_id"], "🎉 Ваша заявка одобрена и опубликована[span_11](start_span)[span_11](end_span)!")
+            except: 
+                pass
         except Exception as e:
             bot.answer_callback_query(call.id, f"Ошибка: {e}", show_alert=True)
 
     elif data.startswith("reject_"):
         pid = int(data.split('_')[1])
-        if not is_admin_or_owner(u): return bot.answer_callback_query(call.id, "Нет прав.", show_alert=True)
+        if not is_admin_or_owner(u): 
+            return bot.answer_callback_query(call.id, "Нет прав.", show_alert=True)
         if pid in pending_posts:
             p_info = pending_posts.pop(pid)
             bot.answer_callback_query(call.id, "Отклонено.")
             try:
-                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="❌ Отклонено", reply_markup=None) if call.message.caption else bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="❌ Отклонено", reply_markup=None)
+                if call.message.caption:
+                    bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="❌ Отклонено", reply_markup=None)
+                else:
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="❌ Отклонено", reply_markup=None)
                 bot.send_message(p_info["user_id"], "❌ Ваша заявка была отклонена.")
-            except: pass
+            except: 
+                pass
 
-    elif data == "owner_add_adm":
-        if is_owner(u):
-            msg = bot.send_message(call.message.chat.id, "Отправьте ID и сервер (`12345 server_1`):", parse_mode="Markdown")
-            bot.register_next_step_handler(msg, lambda m: admins.get(m.text.split()[1], set()).add(int(m.text.split()[0])) if is_owner(m.from_user) else None)
     elif data == "show_pending_list":
         bot.answer_callback_query(call.id, f"Ожидающих заявок: {len(pending_posts)}", show_alert=True)
 
-# --- ШАГИ СОЗДАНИЯ ПОСТА АДМИНОМ И РЕДАКТИРОВАНИЯ ---
-@bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id, "").startswith("editing_post_") or user_states.get(msg.from_user.id) in ["admin_choosing_type", "admin_entering_price_and_desc"])
-def multi_steps(m):
+# --- ОБРАБОТКА ИЗМЕНЕНИЯ ТЕКСТА РЕДАКЦИЕЙ ---
+@bot.message_handler(func=lambda msg: msg.from_user.id in user_states and "editing" in user_states[msg.from_user.id])
+def process_editing(m):
     uid = m.from_user.id
-    state = user_states.get(uid, "")
+    pid = user_states[uid].get("editing")
+    user_states[uid].pop("editing", None)
     
     if m.text == "🚫 Отмена":
-        user_states.pop(uid, None); user_data.pop(uid, None)
         return bot.send_message(m.chat.id, "Отменено.", reply_markup=kb_categories())
 
-    if state.startswith("editing_post_"):
-        pid = int(state.split("_")[2])
-        user_states.pop(uid, None)
-        adm_name = f"@{m.from_user.username}" if m.from_user.username else m.from_user.first_name
-        with ads_lock:
-            if pid in active_ads:
-                ad = active_ads[pid]
-                ad["text"], ad["editor"], ad["last_updated"] = m.text, adm_name, time.time()
-                upd_card = f"📢 **Объявление (Отредактировано)**\n\n{m.text}\n\n👤 Админ: {adm_name}"
-                for sub_id, msg_id in list(ad["message_ids_map"].items()):
-                    try:
-                        bot.edit_message_caption(chat_id=sub_id, message_id=msg_id, caption=upd_card, parse_mode="Markdown") if ad.get("photo") else bot.edit_message_text(chat_id=sub_id, message_id=msg_id, text=upd_card, parse_mode="Markdown")
-                    except: pass
-        return bot.send_message(m.chat.id, "✅ Успешно отредактировано!", reply_markup=kb_categories())
-
-    if state == "admin_choosing_type":
-        t_map = {
-            "🚗 Продажа машины": ("Продажа машины", "🏎 Все авто,воздушные,водные,тюнинг"),
-            "💍 Продажа акса": ("Продажа аксессуара", "💍 Аксы"),
-            "🥼 Продажа скина": ("Продажа скина", "🥼 Скины и Охранники"),
-            "🏡 Продажа недвижимости": ("Продажа недвижимости", "🏡 Дом и Бизнес")
-        }
-        if m.text not in t_map: return bot.send_message(m.chat.id, "❌ Выберите тип кнопкой.")
-        item_title, cat_name = t_map[m.text]
-        user_data[uid] = {"item_type": item_title, "category": cat_name}
-        user_states[uid] = "admin_choosing_server"
-        return bot.send_message(m.chat.id, "Теперь выберите сервер:", reply_markup=kb_servers(admin_mode=True))
-
-    if state == "admin_entering_price_and_desc":
-        if not check_working_hours():
-            user_states.pop(uid, None); user_data.pop(uid, None)
-            return bot.send_message(m.chat.id, "❌ Публикация разрешена только с 08:00 до 22:00!", reply_markup=kb_categories())
-        
-        d = user_data.pop(uid, {})
-        user_states.pop(uid, None)
-        global moderation_counter
-        moderation_counter += 1
-        
-        photo = m.photo[-1].file_id if m.photo else None
-        text = m.caption or m.text or "Без описания"
-        f_text = f"🛒 **{d.get('item_type', 'Товар')}**\n🌐 Сервер: **{d.get('server', 'Не указан')}**\n\n{text}\n\n👑 Опубликовано администратором"
-        chan = "@Bounty_Squad31"
-        
-        try:
-            sent = bot.send_photo(chan, photo, caption=f_text, parse_mode="Markdown") if photo else bot.send_message(chan, f_text, parse_mode="Markdown")
-            with ads_lock:
-                active_ads[moderation_counter] = {
-                    "text": f_text, 
-                    "photo": photo, 
-                    "editor": f"@{m.from_user.username}" if m.from_user.username else m.from_user.first_name, 
-                    "last_updated": time.time(), 
-                    "category": d.get("category", "💍 Аксы"),
-                    "subscribers": {chan[1:]}, 
-                    "message_ids_map": {chan: sent.message_id}
-                }
-            bot.send_message(m.chat.id, "✅ Опубликовано в канал!", reply_markup=kb_categories())
-        except Exception as e:
-            bot.send_message(m.chat.id, f"❌ Ошибка: {e}", reply_markup=kb_categories())
+    adm_name = f"@{m.from_user.username}" if m.from_user.username else m.from_user.first_name
+    if pid in pending_posts:
+        pending_posts[pid]["text"] = m.text
+        bot.send_message(m.chat.id, f"✅ Текст заявки #{pid} успешно изменен редакцией[span_12](start_span)[span_12](end_span)!", reply_markup=kb_categories())
+    else:
+        bot.send_message(m.chat.id, "❌ Заявка уже обработана или не найдена.", reply_markup=kb_categories())
 
 # Запуск
 if __name__ == '__main__':
     bot.remove_webhook()
-    print("🚀 Бот полностью пересобран и успешно запущен с новым токеном!")
+    print("🚀 Бот по ТЗ Arizona RP запущен!")
     bot.infinity_polling(skip_pending=True)

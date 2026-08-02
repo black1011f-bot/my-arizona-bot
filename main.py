@@ -8,11 +8,13 @@ bot = telebot.TeleBot(TOKEN)
 
 # Данные пользователей и настройки
 user_states = {}        # Хранит выбранный сервер
-waiting_for_price = []  # Список пользователей, которые отправляют предложенную цену
 
 # Главный владелец и модераторы
 OWNER_USERNAME = "bounqy"
 ADMIN_USERNAMES = ["bounqy31", "bounqy"] 
+
+# ID чата модерации (куда летят заявки)
+MODERATION_CHAT_ID = "-100hapSeMGekQ1jYjg6"  # или числовой ID чата, если доступен (например, -100...)
 
 # База данных админов по серверам в памяти
 admins = {
@@ -24,16 +26,16 @@ admins = {
 pending_posts = {}
 moderation_counter = 0
 
-# Список всех 33 серверов Arizona RP
+# Список всех 33 серверов Arizona RP со своими иконками
 SERVERS = [
-    "🔥 Phoenix", "🔥 Tucson", "🔥 Scottdale", "🔥 Chandler",
-    "🔥 Brainburg", "🔥 Yuma", "🔥 Saint-Rose", "🔥 Mesa",
-    "🔥 Red-Rock", "🔥 Surprise", "🔥 Prescott", "🔥 Glendale",
-    "🔥 Kingman", "🔥 Winslow", "🔥 Payson", "🔥 Gilbert",
-    "🔥 Show-Low", "🔥 Casa-Grande", "🔥 Page", "🔥 Sun-City",
-    "🔥 Queen-Creek", "🔥 Sedona", "🔥 Holiday", "🔥 Wednesday",
-    "🔥 Yava", "🔥 Faraway", "🔥 Christmas", "🔥 Bumble Bee",
-    "🔥 Mirage", "🔥 Love", "🔥 Mobile I", "🔥 Mobile II", "🔥 Mobile III"
+    "🔥 Phoenix", "🌴 Tucson", "🌵 Scottdale", "⚜️ Chandler",
+    "❄️ Brainburg", "🌊 Yuma", "✨ Saint-Rose", "🏛 Mesa",
+    "❤️ Red-Rock", "🍀 Surprise", "⚡️ Prescott", "🌲 Glendale",
+    "👑 Kingman", "⚓️ Winslow", "🌴 Payson", "💎 Gilbert",
+    "🔥 Show-Low", "🌴 Casa-Grande", "📜 Page", "☀️ Sun-City",
+    "👑 Queen-Creek", "🌵 Sedona", "🎄 Holiday", "🍀 Wednesday",
+    "⚡️ Yava", "🌌 Faraway", "🎁 Christmas", "🐝 Bumble Bee",
+    "🪞 Mirage", "💖 Love", "📱 Mobile I", "📱 Mobile II", "📱 Mobile III"
 ]
 
 # ----------------- ВСПОМОГАТЕЛЬНЫЕ ПРОВЕРКИ -----------------
@@ -65,8 +67,7 @@ def get_categories_keyboard():
         types.KeyboardButton("🏡 Дома и Бизнесы")
     )
     markup.add(
-        types.KeyboardButton("📦 Ресурсы и Оружие"),
-        types.KeyboardButton("📩 Предложить цену")
+        types.KeyboardButton("📦 Ресурсы и Оружие")
     )
     markup.add(types.KeyboardButton("🛒 Подать объявление о продаже"), types.KeyboardButton("⚙️ Панель администратора"))
     markup.add(types.KeyboardButton("🔄 Сменить сервер"))
@@ -175,23 +176,8 @@ def sub_categories(message):
     srv = user_states.get(message.chat.id, "Не выбран")
     bot.send_message(message.chat.id, f"📊 Раздел: **{message.text}**\n🌐 Сервер: **{srv}**\n\nДанные подгружаются из базы...", parse_mode="Markdown")
 
-@bot.message_handler(func=lambda msg: msg.text == "📩 Предложить цену")
-def suggest_price(message):
-    waiting_for_price.append(message.chat.id)
-    text = (
-        "📸 **Запостил лавку — помог серверу!**\n\n"
-        "Наткнулся на сочные цены на ЦР или АБ? Не держи в себе! 💰\n\n"
-        "💬 **Отправляй сюда:**\n"
-        "1. Скриншот лавки/рынка (обязательно с `/time` ⏰).\n"
-        "2. Название предмета и точную цену.\n\n"
-        "🔒 *Твой юзернейм останется скрытым, сообщение улетит напрямую модераторам!*"
-    )
-    bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=get_cancel_keyboard())
-
 @bot.message_handler(func=lambda msg: msg.text == "🚫 Отмена")
 def cancel_action(message):
-    if message.chat.id in waiting_for_price:
-        waiting_for_price.remove(message.chat.id)
     bot.send_message(message.chat.id, "Главное меню категорий:", reply_markup=get_categories_keyboard())
 
 @bot.message_handler(func=lambda msg: msg.text in ["⬅ Назад", "🔝 Главное Меню"])
@@ -275,15 +261,14 @@ def process_item_submission(message):
         f"{text_content or ''}"
     )
     
-    # Рассылаем уведомление о продаже всем модераторам из ADMIN_USERNAMES
-    for admin in ADMIN_USERNAMES:
-        try:
-            if photo_id:
-                bot.send_photo(f"@{admin}", photo_id, caption=forward_text, parse_mode="Markdown", reply_markup=markup)
-            else:
-                bot.send_message(f"@{admin}", forward_text, parse_mode="Markdown", reply_markup=markup)
-        except Exception:
-            pass
+    # Отправка заявки в чат модераторов
+    try:
+        if photo_id:
+            bot.send_photo(MODERATION_CHAT_ID, photo_id, caption=forward_text, parse_mode="Markdown", reply_markup=markup)
+        else:
+            bot.send_message(MODERATION_CHAT_ID, forward_text, parse_mode="Markdown", reply_markup=markup)
+    except Exception as e:
+        print(f"Ошибка отправки в чат модерации: {e}")
 
     bot.send_message(message.chat.id, "✅ Ваша заявка успешно отправлена на модерацию администраторам!", reply_markup=get_categories_keyboard())
 
@@ -412,41 +397,10 @@ def process_remove_admin(message):
         bot.send_message(message.chat.id, f"❌ Ошибка формата: {e}")
 
 
-# --- УНИВЕРСАЛЬНЫЙ ОБРАБОТЧИК ВХОДЯЩИХ КОНТЕНТОВ (ЦЕНЫ / ПРОЧЕЕ) ---
+# --- ОБРАБОТЧИК КАТЕГОРИЙ И РАЗДЕЛОВ ---
 
-@bot.message_handler(content_types=['photo', 'text'])
+@bot.message_handler(content_types=['text'])
 def handle_incoming_content(message):
-    # Если пользователь находится в режиме отправки цены
-    if message.chat.id in waiting_for_price:
-        if message.text == "🚫 Отмена":
-            waiting_for_price.remove(message.chat.id)
-            bot.send_message(message.chat.id, "Отменено.", reply_markup=get_categories_keyboard())
-            return
-
-        user_tag = f"@{message.from_user.username}" if message.from_user.username else f"ID: {message.from_user.id}"
-        srv = user_states.get(message.chat.id, "Не выбран сервак")
-        
-        admin_notification = (
-            f"📥 **Новая предложенная цена!**\n"
-            f"🌐 Сервер: {srv}\n"
-            f"👤 От кого: {user_tag} (ID: `{message.from_user.id}`)\n"
-            f"💬 Текст/Описание: {message.caption or message.text or 'Без текста'}"
-        )
-
-        for admin in ADMIN_USERNAMES:
-            try:
-                if message.content_type == 'photo':
-                    bot.send_photo(f"@{admin}", message.photo[-1].file_id, caption=admin_notification, parse_mode="Markdown")
-                else:
-                    bot.send_message(f"@{admin}", admin_notification, parse_mode="Markdown")
-            except Exception:
-                pass
-
-        waiting_for_price.remove(message.chat.id)
-        bot.send_message(message.chat.id, "✅ **Спасибо!** Твоя информация отправлена модераторам на проверку.", parse_mode="Markdown", reply_markup=get_categories_keyboard())
-        return
-
-    # Обработка прочих текстовых нажатий меню категорий
     srv = user_states.get(message.chat.id, "Не выбран")
     bot.send_message(
         message.chat.id,

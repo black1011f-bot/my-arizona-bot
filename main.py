@@ -26,14 +26,13 @@ SERVERS = [
     "📱 Mobile I", "📱 Mobile II", "📱 Mobile III"
 ]
 
-# --- ФОНОВЫЙ ПОТОК ОЧИСТКИ (по ТЗ: с 08:00:00 до 08:05:22 МСК и ночное после 22:00:22) ---
+# --- ФОНОВЫЙ ПОТОК ОЧИСТКИ ---
 def background_cleanup_ads():
     while True:
         time.sleep(30)
         now = datetime.now()
         now_time = now.time()
         
-        # Проверка ночного ограничения (после 22:00:22) и утренней очистки (08:00:00 - 08:05:22)
         is_night = now_time >= dtime(22, 0, 22) or now_time < dtime(8, 0, 0)
         is_morning_clean = dtime(8, 0, 0) <= now_time <= dtime(8, 5, 22)
         
@@ -61,7 +60,6 @@ def is_server_admin(uid, s_key): return uid in admins.get(s_key, set())
 
 def check_working_hours():
     now_time = datetime.now().time()
-    # Согласно ТЗ: работаем с 08:00 до 22:00:22
     if now_time < dtime(8, 0, 0) or now_time > dtime(22, 0, 22):
         return False
     return True
@@ -98,9 +96,20 @@ def get_category_key(text):
 # --- ОБРАБОТЧИКИ КОМАНД ---
 @bot.message_handler(commands=['start'])
 def cmd_start(m):
+    text = (
+        "🛡 **Безопасность:**\n\n"
+        "👇 **НАЖМИ И ВЫБЕРИ СВОЙ СЕРВЕР** 👇\n\n"
+        "👋 Привет! Это неофициальный бот с ценами для Arizona RP!\n"
+        "📈 Выбирай сервер из списка и узнавай актуальные цены с ЦР и АБ.\n\n"
+        "🔒 **МЫ НИКОГДА** не просим пароли, пин-коды или данные от аккаунта!\n"
+        "🎁 Бот абсолютно бесплатный — мы **НЕ** просим деньги за работу.\n\n"
+        "📢 Наш Telegram-канал: @Bounty_Squad31\n\n"
+        "🤝 Спасибо, что используешь нашего бота! Удачных сделок! 🍀"
+    )
     bot.send_message(
         m.chat.id, 
-        "👇 НАЖМИ И ВЫБЕРИ СВОЙ СЕРВЕР 👇\n\n👋 Привет! Неофициальный бот с ценами Arizona RP[span_0](start_span)[span_0](end_span)!\n📢 Канал: @Bounty_Squad31", 
+        text, 
+        parse_mode="Markdown",
         reply_markup=kb_servers()
     )
 
@@ -114,7 +123,7 @@ def cmd_admin(m):
 @bot.message_handler(func=lambda msg: msg.text in SERVERS)
 def select_srv(m):
     user_states[m.from_user.id] = {"server": m.text}
-    bot.send_message(m.chat.id, f"Сервер **{m.text}** выбран[span_1](start_span)[span_1](end_span)! Выберите категорию:", parse_mode="Markdown", reply_markup=kb_categories())
+    bot.send_message(m.chat.id, f"Сервер **{m.text}** выбран! Выберите категорию:", parse_mode="Markdown", reply_markup=kb_categories())
 
 @bot.message_handler(func=lambda msg: msg.text == "🔄 Сменить сервер")
 def ch_srv(m): 
@@ -129,20 +138,19 @@ def cancel_all(m):
 @bot.message_handler(func=lambda msg: msg.text == "🛒 Подать объявление о продаже")
 def ask_sub(m):
     if not check_working_hours():
-        return bot.send_message(m.chat.id, "❌ После 22:00:22 МСК подача объявлений заблокирована до утреннего возобновления[span_2](start_span)[span_2](end_span)!")
+        return bot.send_message(m.chat.id, "❌ После 22:00:22 МСК подача объявлений заблокирована до утреннего возобновления!")
     
-    # Проверка кулдауна 10 минут (по ТЗ пункт 5)
     uid = m.from_user.id
     if uid in user_data and "last_ad_time" in user_data[uid]:
         if time.time() - user_data[uid]["last_ad_time"] < 600:
             remaining = int(600 - (time.time() - user_data[uid]["last_ad_time"]))
-            return bot.send_message(m.chat.id, f"❌ Кулдаун! Подождите еще {remaining // 60} мин. {remaining % 60} сек. перед отправкой нового объявления[span_3](start_span)[span_3](end_span).")
+            return bot.send_message(m.chat.id, f"❌ Кулдаун! Подождите еще {remaining // 60} мин. {remaining % 60} сек. перед отправкой нового объявления.")
 
     if uid not in user_states or "server" not in user_states[uid]:
-        return bot.send_message(m.chat.id, "⚠️ Сначала выберите сервер из главного меню[span_4](start_span)[span_4](end_span)!", reply_markup=kb_servers())
+        return bot.send_message(m.chat.id, "⚠️ Сначала выберите сервер из главного меню!", reply_markup=kb_servers())
 
     user_states[uid]["step"] = "waiting_for_submission"
-    bot.send_message(m.chat.id, "Отправьте **одним сообщением** фото, текст описания и цену[span_5](start_span)[span_5](end_span):", parse_mode="Markdown", reply_markup=kb_cancel())
+    bot.send_message(m.chat.id, "Отправьте **одним сообщением** фото, текст описания и цену:", parse_mode="Markdown", reply_markup=kb_cancel())
     bot.register_next_step_handler(m, process_sub)
 
 def process_sub(m):
@@ -163,7 +171,6 @@ def process_sub(m):
     server_name = user_states[uid].get("server", "Phoenix")
     user_states[uid].pop("step", None)
 
-    # Фиксация времени отправки для кулдауна (10 минут)
     if uid not in user_data: user_data[uid] = {}
     user_data[uid]["last_ad_time"] = time.time()
 
@@ -182,7 +189,7 @@ def process_sub(m):
 
     markup = types.InlineKeyboardMarkup(row_width=1).add(
         types.InlineKeyboardButton("📝 Редакция", callback_data=f"edit_{moderation_counter}"),
-        types.InlineKeyboardButton("3️⃣ Принять (Только для владельца)", callback_data=f"owner_approve_{moderation_counter}"),
+        types.InlineKeyboardButton("✅ Принять", callback_data=f"owner_approve_{moderation_counter}"),
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{moderation_counter}")
     )
     
@@ -197,13 +204,13 @@ def process_sub(m):
     except:
         bot.send_message(m.chat.id, f_text, parse_mode="Markdown", reply_markup=markup)
         
-    bot.send_message(m.chat.id, "✅ Заявка отправлена на модерацию[span_6](start_span)[span_6](end_span)!", reply_markup=kb_categories())
+    bot.send_message(m.chat.id, "✅ Заявка отправлена на модерацию!", reply_markup=kb_categories())
 
 @bot.message_handler(func=lambda msg: msg.text == "👑 Админ")
 def admin_panel(m):
     u = m.from_user
     if not is_admin_or_owner(u):
-        return bot.send_message(m.chat.id, "⛔ У вас нет доступа к админ-панели[span_7](start_span)[span_7](end_span).")
+        return bot.send_message(m.chat.id, "⛔ У вас нет доступа к админ-панели.")
     
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("📋 Ожидающие заявки", callback_data="show_pending_list"))
@@ -216,7 +223,6 @@ def show_ads(m):
     cat_name = m.text
     
     with ads_lock: 
-        # Фильтрация по категории И по выбранному сервером игрока (строгая привязка по ТЗ)
         ads_list = [ad for ad in active_ads.values() if ad.get("category") == cat_name and ad.get("server") == srv]
     
     bot.send_message(m.chat.id, f"📊 Раздел: **{cat_name}**\n🌐 Сервер: **{srv}**\n\n" + ("🛒 **Актуальные предложения:**" if ads_list else "В разделе пока нет объявлений для этого сервера."), parse_mode="Markdown")
@@ -242,7 +248,7 @@ def callbacks(call):
     if data.startswith("edit_"):
         pid = int(data.split('_')[1])
         if not is_admin_or_owner(u): 
-            return bot.answer_callback_query(call.id, "⛔ Редактировать могут только админы[span_8](start_span)[span_8](end_span)!", show_alert=True)
+            return bot.answer_callback_query(call.id, "⛔ Редактировать могут только админы!", show_alert=True)
         user_states[u.id] = {"editing": pid}
         bot.answer_callback_query(call.id)
         return bot.send_message(call.message.chat.id, f"✏️ Введите новый текст для заявки #{pid}:", reply_markup=kb_cancel())
@@ -250,11 +256,11 @@ def callbacks(call):
     if data.startswith("owner_approve_"):
         pid = int(data.split('_')[2])
         if not is_owner(u): 
-            return bot.answer_callback_query(call.id, "⛔ Только для владельца[span_9](start_span)[span_9](end_span)!", show_alert=True)
+            return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
         if pid not in pending_posts: 
             return bot.answer_callback_query(call.id, "Заявка не найдена.")
         if not check_working_hours(): 
-            return bot.answer_callback_query(call.id, "❌ Публикация после 22:00:22 запрещена[span_10](start_span)[span_10](end_span)!", show_alert=True)
+            return bot.answer_callback_query(call.id, "❌ Публикация после 22:00:22 запрещена!", show_alert=True)
 
         post = pending_posts.pop(pid)
         chan = "@Bounty_Squad31"
@@ -283,7 +289,7 @@ def callbacks(call):
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="✅ Одобрено", reply_markup=None)
             
             try: 
-                bot.send_message(post["user_id"], "🎉 Ваша заявка одобрена и опубликована[span_11](start_span)[span_11](end_span)!")
+                bot.send_message(post["user_id"], "🎉 Ваша заявка одобрена и опубликована!")
             except: 
                 pass
         except Exception as e:
@@ -318,10 +324,9 @@ def process_editing(m):
     if m.text == "🚫 Отмена":
         return bot.send_message(m.chat.id, "Отменено.", reply_markup=kb_categories())
 
-    adm_name = f"@{m.from_user.username}" if m.from_user.username else m.from_user.first_name
     if pid in pending_posts:
         pending_posts[pid]["text"] = m.text
-        bot.send_message(m.chat.id, f"✅ Текст заявки #{pid} успешно изменен редакцией[span_12](start_span)[span_12](end_span)!", reply_markup=kb_categories())
+        bot.send_message(m.chat.id, f"✅ Текст заявки #{pid} успешно изменен редакцией!", reply_markup=kb_categories())
     else:
         bot.send_message(m.chat.id, "❌ Заявка уже обработана или не найдена.", reply_markup=kb_categories())
 

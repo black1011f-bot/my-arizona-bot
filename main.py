@@ -5,7 +5,7 @@ from datetime import datetime, time as dtime
 import telebot
 from telebot import types
 
-TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAFo5DV8d3Jjnz2UqXFmTYW9EXEz_SijiUI")
+TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAF-gqA4uoSSGe9-D43OR2ypKqnyXlXXReQ")
 bot = telebot.TeleBot(TOKEN)
 
 user_states, user_data, active_ads, pending_posts = {}, {}, {}, {}
@@ -111,10 +111,10 @@ def cmd_start(m):
 @bot.message_handler(func=lambda msg: msg.text == "ℹ️ Как это работает")
 def how_it_works(m):
     text = (
-        "### Как работает система подачи объявлений:\n\n"
+        "Система подачи объявлений:\n\n"
         "1. **Выбор сервера и категории**\n"
-        "   * Вы заходите на нужный сервер (например, **Phoenix**).\n"
-        "   * В меню выбираете категорию товара: **машины**, **аксессуары** и т. д.\n"
+        "   * Вы заходите на нужный сервер (например, Phoenix).\n"
+        "   * В меню выбираете категорию товара: машины, аксессуары и т. д.\n"
         "   * В разделе можно посмотреть уже существующие объявления или нажать кнопку **«Продать»**.\n\n"
         "2. **Создание объявления**\n"
         "   * **Шаг 1:** Выбираете сервер.\n"

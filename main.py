@@ -179,7 +179,6 @@ def sub_categories(message):
 
 @bot.message_handler(func=lambda msg: msg.text == "🚫 Отмена")
 def cancel_action(message):
-    # Сбрасываем возможные FSM состояния
     user_states.pop(message.from_user.id, None)
     bot.send_message(message.chat.id, "Главное меню категорий:", reply_markup=get_categories_keyboard())
 
@@ -256,15 +255,16 @@ def process_item_submission(message):
         "text": text_content or "Без описания"
     }
     
-    # Кнопки для модераторов: редакция, одобрение для серверов и отклонение
-    markup = types.InlineKeyboardMarkup()
+    # Требуемые 3 кнопки под фотографией/заявкой:
+    # 1. Заявки на администратора (или в нашем случае список/управление заявками)
+    # 2. Редакция (доступна после принятия / взятия в работу)
+    # 3. Принятие заявки (только для владельца бота) + Кнопка отклонения
+    markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton("✏️ Редакция", callback_data=f"edit_{current_id}"),
+        types.InlineKeyboardButton("1️⃣ Заявки на администратора", callback_data=f"admin_apps_{current_id}"),
+        types.InlineKeyboardButton("2️⃣ Редакция", callback_data=f"edit_{current_id}"),
+        types.InlineKeyboardButton("3️⃣ Принять (Только для владельца)", callback_data=f"owner_approve_{current_id}"),
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{current_id}")
-    )
-    markup.add(
-        types.InlineKeyboardButton("🟢 Сервер 1 (Одобрить)", callback_data=f"approve_s1_{current_id}"),
-        types.InlineKeyboardButton("🟢 Сервер 2 (Одобрить)", callback_data=f"approve_s2_{current_id}")
     )
     
     username_str = f"@{username_val}" if username_val != "Без юзернейма" else "Отсутствует"
@@ -276,14 +276,22 @@ def process_item_submission(message):
         f"📦 **Содержание:**\n{text_content or ''}"
     )
     
-    # Отправка заявки в чат модераторов
+    # Отправка заявки в чат модерации, если чат задан правильно, иначе в ЛС отправителю для теста
+    target_chat = MODERATION_CHAT_ID if MODERATION_CHAT_ID != -1001234567890 else message.chat.id
+    
     try:
         if photo_id:
-            bot.send_photo(MODERATION_CHAT_ID, photo_id, caption=forward_text, parse_mode="Markdown", reply_markup=markup)
+            bot.send_photo(target_chat, photo_id, caption=forward_text, parse_mode="Markdown", reply_markup=markup)
         else:
-            bot.send_message(MODERATION_CHAT_ID, forward_text, parse_mode="Markdown", reply_markup=markup)
+            bot.send_message(target_chat, forward_text, parse_mode="Markdown", reply_markup=markup)
     except Exception as e:
         print(f"Ошибка отправки в чат модерации: {e}")
+        # Запасной вариант на случай неверного ID чата модерации
+        if target_chat != message.chat.id:
+            if photo_id:
+                bot.send_photo(message.chat.id, photo_id, caption=forward_text, parse_mode="Markdown", reply_markup=markup)
+            else:
+                bot.send_message(message.chat.id, forward_text, parse_mode="Markdown", reply_markup=markup)
 
     bot.send_message(message.chat.id, "✅ Ваша заявка успешно отправлена на модерацию администраторам!", reply_markup=get_categories_keyboard())
 
@@ -296,38 +304,39 @@ def handle_callbacks(call):
     data = call.data
     user = call.from_user
     
-    if data.startswith("edit_"):
+    if data.startswith("admin_apps_"):
+        post_id = int(data.split('_')[2])
+        bot.answer_callback_query(call.id, text=f"Раздел заявок на администратора (Заявка #{post_id})", show_alert=True)
+
+    elif data.startswith("edit_"):
         post_id = int(data.split('_')[1])
         bot.answer_callback_query(call.id, text=f"Редакция заявки #{post_id}")
         
         try:
-            new_text = call.message.text + "\n\n⚠️ *Статус: Взято на редакцию администратором*"
+            new_text = call.message.text + "\n\n✏️ *Статус: Взято на редакцию*" if call.message.text else (call.message.caption or "") + "\n\n✏️ *Статус: Взято на редакцию*"
             if call.message.caption:
                 bot.edit_message_caption(
                     chat_id=call.message.chat.id,
                     message_id=call.message.message_id,
                     caption=new_text,
-                    parse_mode="Markdown",
-                    reply_markup=None
+                    parse_mode="Markdown"
                 )
             else:
                 bot.edit_message_text(
                     chat_id=call.message.chat.id,
                     message_id=call.message.message_id,
                     text=new_text,
-                    parse_mode="Markdown",
-                    reply_markup=None
+                    parse_mode="Markdown"
                 )
         except Exception as e:
             print(f"Ошибка редактирования сообщения: {e}")
 
-    elif data.startswith("approve_s1_") or data.startswith("approve_s2_"):
-        parts = data.split("_")
-        server_key = "server_1" if parts[1] == "s1" else "server_2"
-        post_id = int(parts[2])
+    elif data.startswith("owner_approve_"):
+        post_id = int(data.split('_')[2])
         
-        if not is_owner(user) and not is_server_admin(user.id, server_key) and user.username not in ADMIN_USERNAMES:
-            bot.answer_callback_query(call.id, "⚠️ У вас нет прав администратора для этого сервера!", show_alert=True)
+        # Строгая проверка: принятие заявки доступно ТОЛЬКО владельцу бота
+        if not is_owner(user):
+            bot.answer_callback_query(call.id, "⛔ Ошибка: Принятие заявки доступно ТОЛЬКО для владельца бота (@bounqy)!", show_alert=True)
             return
             
         if post_id in pending_posts:
@@ -346,8 +355,8 @@ def handle_callbacks(call):
                 else:
                     bot.send_message(target_channel, publication_text, parse_mode="Markdown")
                 
-                bot.answer_callback_query(call.id, "Успешно опубликовано в канал!")
-                success_msg = f"✅ Одобрено и опубликовано администратором (@{user.username or user.id})"
+                bot.answer_callback_query(call.id, "Успешно опубликовано в канал владельцем!")
+                success_msg = f"✅ Одобрено и опубликовано владельцем (@{user.username})"
                 
                 if call.message.caption:
                     bot.edit_message_caption(
@@ -366,7 +375,7 @@ def handle_callbacks(call):
                 
                 # Уведомляем пользователя об успешном одобрении
                 try:
-                    bot.send_message(post["user_id"], "🎉 Ваша заявка была одобрена и опубликована в канале!")
+                    bot.send_message(post["user_id"], "🎉 Ваша заявка была одобрена владельцем и опубликована в канале!")
                 except:
                     pass
             except Exception as e:
@@ -378,7 +387,7 @@ def handle_callbacks(call):
 
     elif data.startswith("reject_"):
         post_id = int(data.split("_")[1])
-        if not is_owner(user) and not any(is_server_admin(user.id, s) for s in admins) and user.username not in ADMIN_USERNAMES:
+        if not is_owner(user) and user.username not in ADMIN_USERNAMES:
             bot.answer_callback_query(call.id, "Недостаточно прав.", show_alert=True)
             return
             
@@ -469,7 +478,6 @@ def process_remove_admin(message):
 
 @bot.message_handler(content_types=['text'])
 def handle_incoming_content(message):
-    # Если пользователь находится в процессе подачи заявки, пропускаем этот хендлер (его ловит register_next_step_handler)
     if user_states.get(message.from_user.id) == "waiting_for_submission":
         return
         
@@ -484,11 +492,5 @@ def handle_incoming_content(message):
 
 if __name__ == '__main__':
     bot.remove_webhook()
-    print("🚀 Бот успешно запущен со всеми разделами аксов и объединенной системой модерации!")
+    print("🚀 Бот успешно запущен со всеми разделами аксов и системой модерации!")
     bot.infinity_polling(skip_pending=True)
-
-    
-
-
-
-

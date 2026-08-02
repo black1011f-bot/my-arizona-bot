@@ -5,7 +5,7 @@ from datetime import datetime, time as dtime
 import telebot
 from telebot import types
 
-TOKEN = "8916669266:AAFo5DV8d3Jjnz2UqXFmTYW9EXEz_SijiUI"
+TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAFo5DV8d3Jjnz2UqXFmTYW9EXEz_SijiUI")
 bot = telebot.TeleBot(TOKEN)
 
 user_states, user_data, active_ads, pending_posts = {}, {}, {}, {}
@@ -69,7 +69,7 @@ def kb_servers():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     for i in range(0, len(SERVERS), 2): 
         m.add(*[types.KeyboardButton(s) for s in SERVERS[i:i+2]])
-    m.add(types.KeyboardButton("🛒 Подать объявление о продаже"), types.KeyboardButton("👑 Админ"))
+    m.add(types.KeyboardButton("🛒 Подать объявление о продаже"), types.KeyboardButton("ℹ️ Как это работает"), types.KeyboardButton("👑 Админ"))
     return m
 
 def kb_categories():
@@ -77,8 +77,8 @@ def kb_categories():
     m.add("💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг")
     m.add("🥼 Скины и Охранники", "🏡 Дом и Бизнес")
     m.add("📦 Ресурсы и Оружие")
-    m.add("🛒 Подать объявление о продаже", "👑 Админ")
-    m.add("🔄 Сменить сервер")
+    m.add("🛒 Подать объявление о продаже", "ℹ️ Как это работает")
+    m.add("🔄 Сменить сервер", "👑 Админ")
     return m
 
 def kb_cancel():
@@ -97,7 +97,7 @@ def get_category_key(text):
 @bot.message_handler(commands=['start'])
 def cmd_start(m):
     text = (
-        "🛡 Безопасность:\n\n"
+        "🛡 **Безопасность:**\n\n"
         "👇 НАЖМИ И ВЫБЕРИ СВОЙ СЕРВЕР 👇\n\n"
         "👋 Привет! Это неофициальный бот с ценами для Arizona RP!\n"
         "📈 Выбирай сервер из списка и узнавай актуальные цены с ЦР и АБ.\n\n"
@@ -106,11 +106,26 @@ def cmd_start(m):
         "📢 Наш Telegram-канал: @Bounty_Squad31\n\n"
         "🤝 Спасибо, что используешь нашего бота! Удачных сделок! 🍀"
     )
-    bot.send_message(
-        m.chat.id, 
-        text, 
-        reply_markup=kb_servers()
+    bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=kb_servers())
+
+@bot.message_handler(func=lambda msg: msg.text == "ℹ️ Как это работает")
+def how_it_works(m):
+    text = (
+        "### Как работает система подачи объявлений:\n\n"
+        "1. **Выбор сервера и категории**\n"
+        "   * Вы заходите на нужный сервер (например, **Phoenix**).\n"
+        "   * В меню выбираете категорию товара: **машины**, **аксессуары** и т. д.\n"
+        "   * В разделе можно посмотреть уже существующие объявления или нажать кнопку **«Продать»**.\n\n"
+        "2. **Создание объявления**\n"
+        "   * **Шаг 1:** Выбираете сервер.\n"
+        "   * **Шаг 2:** Выбираете категорию (транспорт или аксессуары).\n"
+        "   * **Шаг 3:** Загружаете фото и указываете цену.\n"
+        "   * **Шаг 4:** Отправляете объявление на проверку.\n\n"
+        "3. **Модерация и публикация**\n"
+        "   * Модератор проверяет вашу заявку и одобряет её.\n"
+        "   * После одобрения объявление автоматически публикуется в том разделе, который вы выбрали при создании."
     )
+    bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=kb_categories())
 
 @bot.message_handler(commands=['admin'])
 def cmd_admin(m):
@@ -178,12 +193,8 @@ def process_sub(m):
     cat = get_category_key(text)
     
     pending_posts[moderation_counter] = {
-        "user_id": uid, 
-        "username": uname, 
-        "photo": photo, 
-        "text": text or "Без описания", 
-        "category": cat,
-        "server": server_name
+        "user_id": uid, "username": uname, "photo": photo, 
+        "text": text or "Без описания", "category": cat, "server": server_name
     }
 
     markup = types.InlineKeyboardMarkup(row_width=1).add(
@@ -196,10 +207,8 @@ def process_sub(m):
     target = MODERATION_CHAT_ID if MODERATION_CHAT_ID != -1001234567890 else m.chat.id
     
     try:
-        if photo:
-            bot.send_photo(target, photo, caption=f_text, reply_markup=markup)
-        else:
-            bot.send_message(target, f_text, reply_markup=markup)
+        if photo: bot.send_photo(target, photo, caption=f_text, reply_markup=markup)
+        else: bot.send_message(target, f_text, reply_markup=markup)
     except:
         bot.send_message(m.chat.id, f_text, reply_markup=markup)
         
@@ -229,10 +238,8 @@ def show_ads(m):
         if ad.get("category") == cat_name and ad.get("server") == srv:
             card = f"📢 Товар\n\n{ad['text']}\n\n👤 Публикация"
             try:
-                if ad.get("photo"):
-                    sent = bot.send_photo(m.chat.id, ad["photo"], caption=card)
-                else:
-                    sent = bot.send_message(m.chat.id, card)
+                if ad.get("photo"): sent = bot.send_photo(m.chat.id, ad["photo"], caption=card)
+                else: sent = bot.send_message(m.chat.id, card)
                 ad["subscribers"].add(m.chat.id)
                 ad["message_ids_map"][m.chat.id] = sent.message_id
             except:
@@ -265,21 +272,15 @@ def callbacks(call):
         chan = "@Bounty_Squad31"
         p_text = f"🛒 Новое объявление!\n🌐 Сервер: {post['server']}\n\n{post['text']}\n\n👤 Продавец: @{post['username']}"
         try:
-            if post["photo"]:
-                sent = bot.send_photo(chan, post["photo"], caption=p_text)
-            else:
-                sent = bot.send_message(chan, p_text)
+            if post["photo"]: sent = bot.send_photo(chan, post["photo"], caption=p_text)
+            else: sent = bot.send_message(chan, p_text)
                 
             with ads_lock:
                 active_ads[pid] = {
-                    "text": p_text, 
-                    "photo": post["photo"], 
-                    "server": post["server"],
+                    "text": p_text, "photo": post["photo"], "server": post["server"],
                     "editor": f"@{u.username}" if u.username else u.first_name, 
-                    "last_updated": time.time(), 
-                    "category": post["category"],
-                    "subscribers": {chan[1:]}, 
-                    "message_ids_map": {chan: sent.message_id}
+                    "last_updated": time.time(), "category": post["category"],
+                    "subscribers": {chan[1:]}, "message_ids_map": {chan: sent.message_id}
                 }
             bot.answer_callback_query(call.id, "Опубликовано!")
             if call.message.caption:
@@ -287,10 +288,8 @@ def callbacks(call):
             else:
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="✅ Одобрено", reply_markup=None)
             
-            try: 
-                bot.send_message(post["user_id"], "🎉 Ваша заявка одобрена и опубликована!")
-            except: 
-                pass
+            try: bot.send_message(post["user_id"], "🎉 Ваша заявка одобрена и опубликована!")
+            except: pass
         except Exception as e:
             bot.answer_callback_query(call.id, f"Ошибка: {e}", show_alert=True)
 
@@ -307,13 +306,11 @@ def callbacks(call):
                 else:
                     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="❌ Отклонено", reply_markup=None)
                 bot.send_message(p_info["user_id"], "❌ Ваша заявка была отклонена.")
-            except: 
-                pass
+            except: pass
 
     elif data == "show_pending_list":
         bot.answer_callback_query(call.id, f"Ожидающих заявок: {len(pending_posts)}", show_alert=True)
 
-# --- ОБРАБОТКА ИЗМЕНЕНИЯ ТЕКСТА РЕДАКЦИЕЙ ---
 @bot.message_handler(func=lambda msg: msg.from_user.id in user_states and "editing" in user_states[msg.from_user.id])
 def process_editing(m):
     uid = m.from_user.id
@@ -329,7 +326,6 @@ def process_editing(m):
     else:
         bot.send_message(m.chat.id, "❌ Заявка уже обработана или не найдена.", reply_markup=kb_categories())
 
-# Запуск
 if __name__ == '__main__':
     bot.remove_webhook()
     print("🚀 Бот по ТЗ Arizona RP запущен!")

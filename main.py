@@ -1,4 +1,6 @@
-import os, time, threading
+import os
+import time
+import threading
 from datetime import datetime, time as dtime
 import telebot
 from telebot import types

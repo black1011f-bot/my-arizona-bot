@@ -97,33 +97,32 @@ def get_category_key(text):
 @bot.message_handler(commands=['start'])
 def cmd_start(m):
     text = (
-        "🛡 **Безопасность:**\n\n"
-        "👇 **НАЖМИ И ВЫБЕРИ СВОЙ СЕРВЕР** 👇\n\n"
+        "🛡 Безопасность:\n\n"
+        "👇 НАЖМИ И ВЫБЕРИ СВОЙ СЕРВЕР 👇\n\n"
         "👋 Привет! Это неофициальный бот с ценами для Arizona RP!\n"
         "📈 Выбирай сервер из списка и узнавай актуальные цены с ЦР и АБ.\n\n"
-        "🔒 **МЫ НИКОГДА** не просим пароли, пин-коды или данные от аккаунта!\n"
-        "🎁 Бот абсолютно бесплатный — мы **НЕ** просим деньги за работу.\n\n"
+        "🔒 МЫ НИКОГДА не просим пароли, пин-коды или данные от аккаунта!\n"
+        "🎁 Бот абсолютно бесплатный — мы НЕ просим деньги за работу.\n\n"
         "📢 Наш Telegram-канал: @Bounty_Squad31\n\n"
         "🤝 Спасибо, что используешь нашего бота! Удачных сделок! 🍀"
     )
     bot.send_message(
         m.chat.id, 
         text, 
-        parse_mode="Markdown",
         reply_markup=kb_servers()
     )
 
 @bot.message_handler(commands=['admin'])
 def cmd_admin(m):
     if is_admin_or_owner(m.from_user):
-        bot.send_message(m.chat.id, "👑 **Панель администратора:** Авторизован.", parse_mode="Markdown")
+        bot.send_message(m.chat.id, "👑 Панель администратора: Авторизован.")
     else:
         bot.send_message(m.chat.id, "⛔ Нет доступа.")
 
 @bot.message_handler(func=lambda msg: msg.text in SERVERS)
 def select_srv(m):
     user_states[m.from_user.id] = {"server": m.text}
-    bot.send_message(m.chat.id, f"Сервер **{m.text}** выбран! Выберите категорию:", parse_mode="Markdown", reply_markup=kb_categories())
+    bot.send_message(m.chat.id, f"Сервер {m.text} выбран! Выберите категорию:", reply_markup=kb_categories())
 
 @bot.message_handler(func=lambda msg: msg.text == "🔄 Сменить сервер")
 def ch_srv(m): 
@@ -150,7 +149,7 @@ def ask_sub(m):
         return bot.send_message(m.chat.id, "⚠️ Сначала выберите сервер из главного меню!", reply_markup=kb_servers())
 
     user_states[uid]["step"] = "waiting_for_submission"
-    bot.send_message(m.chat.id, "Отправьте **одним сообщением** фото, текст описания и цену:", parse_mode="Markdown", reply_markup=kb_cancel())
+    bot.send_message(m.chat.id, "Отправьте одним сообщением фото, текст описания и цену:", reply_markup=kb_cancel())
     bot.register_next_step_handler(m, process_sub)
 
 def process_sub(m):
@@ -193,16 +192,16 @@ def process_sub(m):
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{moderation_counter}")
     )
     
-    f_text = f"🚨 **Новая заявка #{moderation_counter}**\n🌐 Сервер: `{server_name}`\n📂 Категория: `{cat}`\n👤 От: `{uid}` (@{uname})\n\n📦:\n{text or ''}"
+    f_text = f"🚨 Новая заявка #{moderation_counter}\n🌐 Сервер: {server_name}\n📂 Категория: {cat}\n👤 От: {uid} (@{uname})\n\n📦:\n{text or ''}"
     target = MODERATION_CHAT_ID if MODERATION_CHAT_ID != -1001234567890 else m.chat.id
     
     try:
         if photo:
-            bot.send_photo(target, photo, caption=f_text, parse_mode="Markdown", reply_markup=markup)
+            bot.send_photo(target, photo, caption=f_text, reply_markup=markup)
         else:
-            bot.send_message(target, f_text, parse_mode="Markdown", reply_markup=markup)
+            bot.send_message(target, f_text, reply_markup=markup)
     except:
-        bot.send_message(m.chat.id, f_text, parse_mode="Markdown", reply_markup=markup)
+        bot.send_message(m.chat.id, f_text, reply_markup=markup)
         
     bot.send_message(m.chat.id, "✅ Заявка отправлена на модерацию!", reply_markup=kb_categories())
 
@@ -214,7 +213,7 @@ def admin_panel(m):
     
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("📋 Ожидающие заявки", callback_data="show_pending_list"))
-    bot.send_message(m.chat.id, f"⚙️ **Панель управления**\nСтатус: {'Владелец' if is_owner(u) else 'Админ'}", parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(m.chat.id, f"⚙️ Панель управления\nСтатус: {'Владелец' if is_owner(u) else 'Админ'}", reply_markup=markup)
 
 @bot.message_handler(func=lambda msg: msg.text in ["💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг", "🥼 Скины и Охранники", "🏡 Дом и Бизнес", "📦 Ресурсы и Оружие"])
 def show_ads(m):
@@ -225,15 +224,15 @@ def show_ads(m):
     with ads_lock: 
         ads_list = [ad for ad in active_ads.values() if ad.get("category") == cat_name and ad.get("server") == srv]
     
-    bot.send_message(m.chat.id, f"📊 Раздел: **{cat_name}**\n🌐 Сервер: **{srv}**\n\n" + ("🛒 **Актуальные предложения:**" if ads_list else "В разделе пока нет объявлений для этого сервера."), parse_mode="Markdown")
+    bot.send_message(m.chat.id, f"📊 Раздел: {cat_name}\n🌐 Сервер: {srv}\n\n" + ("🛒 Актуальные предложения:" if ads_list else "В разделе пока нет объявлений для этого сервера."))
     for aid, ad in active_ads.items():
         if ad.get("category") == cat_name and ad.get("server") == srv:
-            card = f"📢 **Товар**\n\n{ad['text']}\n\n👤 Публикация"
+            card = f"📢 Товар\n\n{ad['text']}\n\n👤 Публикация"
             try:
                 if ad.get("photo"):
-                    sent = bot.send_photo(m.chat.id, ad["photo"], caption=card, parse_mode="Markdown")
+                    sent = bot.send_photo(m.chat.id, ad["photo"], caption=card)
                 else:
-                    sent = bot.send_message(m.chat.id, card, parse_mode="Markdown")
+                    sent = bot.send_message(m.chat.id, card)
                 ad["subscribers"].add(m.chat.id)
                 ad["message_ids_map"][m.chat.id] = sent.message_id
             except:
@@ -264,12 +263,12 @@ def callbacks(call):
 
         post = pending_posts.pop(pid)
         chan = "@Bounty_Squad31"
-        p_text = f"🛒 **Новое объявление!**\n🌐 Сервер: **{post['server']}**\n\n{post['text']}\n\n👤 Продавец: @{post['username']}"
+        p_text = f"🛒 Новое объявление!\n🌐 Сервер: {post['server']}\n\n{post['text']}\n\n👤 Продавец: @{post['username']}"
         try:
             if post["photo"]:
-                sent = bot.send_photo(chan, post["photo"], caption=p_text, parse_mode="Markdown")
+                sent = bot.send_photo(chan, post["photo"], caption=p_text)
             else:
-                sent = bot.send_message(chan, p_text, parse_mode="Markdown")
+                sent = bot.send_message(chan, p_text)
                 
             with ads_lock:
                 active_ads[pid] = {
@@ -335,4 +334,3 @@ if __name__ == '__main__':
     bot.remove_webhook()
     print("🚀 Бот по ТЗ Arizona RP запущен!")
     bot.infinity_polling(skip_pending=True)
-

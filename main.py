@@ -5,7 +5,7 @@ from datetime import datetime, time as dtime
 import telebot
 from telebot import types
 
-TOKEN = "8962696714:AAH5dYsLqlAqoLdVr5-sJH35OJnw1ttgpJ0"
+TOKEN = "8962696714:AAHG1tkvXYs-nSvykKEOK1kASUWb3iMspDk"
 bot = telebot.TeleBot(TOKEN)
 
 user_states, user_data, active_ads, pending_posts = {}, {}, {}, {}
@@ -37,8 +37,8 @@ def background_cleanup_ads():
         with ads_lock:
             expired = [aid for aid, d in active_ads.items() if (curr_t - d["last_updated"] > 600) or is_outside_hours]
             for aid in expired:
-                for sub_id, msg_id in list(active_ads[aid].get("message_ids_map", {}).items()):
-                    try: bot.delete_message(sub_id, msg_id)
+                for target_id, msg_id in list(active_ads[aid].get("message_ids_map", {}).items()):
+                    try: bot.delete_message(target_id, msg_id)
                     except: pass
                 del active_ads[aid]
 
@@ -60,7 +60,7 @@ def kb_servers(admin_mode=False):
 def kb_categories():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     m.add("💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг")
-    m.add("🥼 Скины и Охранники", "🏡 Дома и Бизнесы")
+    m.add("🥼 Скины и Охранники", "🏡 Дом и Бизнес")
     m.add("📦 Ресурсы и Оружие")
     m.add("🛒 Подать объявление о продаже", "⚙️ Панель администратора")
     m.add("🔄 Сменить сервер")
@@ -73,6 +73,15 @@ def kb_admin_types():
     return types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add(
         "🚗 Продажа машины", "💍 Продажа акса", "🥼 Продажа скина", "🏡 Продажа недвижимости", "🚫 Отмена"
     )
+
+def get_category_key(text):
+    t = text.lower()
+    if "акс" in t: return "💍 Аксы"
+    if "авто" in t or "тюнинг" in t: return "🏎 Все авто,воздушные,водные,тюнинг"
+    if "скин" in t or "охранник" in t: return "🥼 Скины и Охранники"
+    if "дом" in t or "бизнес" in t or "недвиж" in t: return "🏡 Дом и Бизнес"
+    if "ресурс" in t or "оружие" in t: return "📦 Ресурсы и Оружие"
+    return None
 
 # --- ОБРАБОТЧИКИ КОМАНД ---
 @bot.message_handler(commands=['start'])
@@ -121,7 +130,8 @@ def process_sub(m):
 
     moderation_counter += 1
     uname = m.from_user.username or "Без юзернейма"
-    pending_posts[moderation_counter] = {"user_id": m.from_user.id, "username": uname, "photo": photo, "text": text or "Без описания"}
+    cat = get_category_key(text) or "💍 Аксы"
+    pending_posts[moderation_counter] = {"user_id": m.from_user.id, "username": uname, "photo": photo, "text": text or "Без описания", "category": cat}
 
     markup = types.InlineKeyboardMarkup(row_width=1).add(
         types.InlineKeyboardButton("1️⃣ Заявки на админа", callback_data=f"admin_apps_{moderation_counter}"),
@@ -130,7 +140,7 @@ def process_sub(m):
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{moderation_counter}")
     )
     
-    f_text = f"🚨 **Новая заявка #{moderation_counter}**\n👤 От: `{m.from_user.id}` (@{uname})\n\n📦:\n{text or ''}"
+    f_text = f"🚨 **Новая заявка #{moderation_counter}**\n📂 Категория: `{cat}`\n👤 От: `{m.from_user.id}` (@{uname})\n\n📦:\n{text or ''}"
     target = MODERATION_CHAT_ID if MODERATION_CHAT_ID != -1001234567890 else m.chat.id
     
     try:
@@ -152,13 +162,15 @@ def admin_panel(m):
     markup.add(types.InlineKeyboardButton("📝 Создать пост (Админ)", callback_data="admin_create_post"), types.InlineKeyboardButton("📋 Ожидающие заявки", callback_data="show_pending_list"))
     bot.send_message(m.chat.id, f"⚙️ **Панель управления**\nСтатус: {'Владелец' if is_owner(u) else 'Админ'}", parse_mode="Markdown", reply_markup=markup)
 
-@bot.message_handler(func=lambda msg: msg.text in ["💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг", "🥼 Скины и Охранники", "🏡 Дома и Бизнесы", "📦 Ресурсы и Оружие"])
+@bot.message_handler(func=lambda msg: msg.text in ["💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг", "🥼 Скины и Охранники", "🏡 Дом и Бизнес", "📦 Ресурсы и Оружие"])
 def show_ads(m):
     srv = user_states.get(m.chat.id, "Не выбран")
-    with ads_lock: ads_list = list(active_ads.values())
+    cat_name = m.text
+    with ads_lock: 
+        ads_list = [ad for ad in active_ads.values() if ad.get("category") == cat_name]
     
-    bot.send_message(m.chat.id, f"📊 Раздел: **{m.text}**\n🌐 Сервер: **{srv}**\n\n" + ("🛒 **Актуальные предложения:**" if ads_list else "В разделе пока нет объявлений."), parse_mode="Markdown")
-    for ad_id, ad in active_ads.items():
+    bot.send_message(m.chat.id, f"📊 Раздел: **{cat_name}**\n🌐 Сервер: **{srv}**\n\n" + ("🛒 **Актуальные предложения:**" if ads_list else "В разделе пока нет объявлений."), parse_mode="Markdown")
+    for ad in ads_list:
         card = f"📢 **Товар**\n\n{ad['text']}\n\n👤 Админ: {ad['editor']}"
         sent = bot.send_photo(m.chat.id, ad["photo"], caption=card, parse_mode="Markdown") if ad.get("photo") else bot.send_message(m.chat.id, card, parse_mode="Markdown")
         ad["subscribers"].add(m.chat.id)
@@ -198,7 +210,15 @@ def callbacks(call):
         try:
             sent = bot.send_photo(chan, post["photo"], caption=p_text, parse_mode="Markdown") if post["photo"] else bot.send_message(chan, p_text, parse_mode="Markdown")
             with ads_lock:
-                active_ads[pid] = {"text": p_text, "photo": post["photo"], "editor": f"@{u.username}" if u.username else u.first_name, "last_updated": time.time(), "subscribers": {chan[1:]}, "message_ids_map": {chan: sent.message_id}}
+                active_ads[pid] = {
+                    "text": p_text, 
+                    "photo": post["photo"], 
+                    "editor": f"@{u.username}" if u.username else u.first_name, 
+                    "last_updated": time.time(), 
+                    "category": post["category"],
+                    "subscribers": {chan[1:]}, 
+                    "message_ids_map": {chan: sent.message_id}
+                }
             bot.answer_callback_query(call.id, "Опубликовано!")
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="✅ Одобрено владельцем", reply_markup=None) if call.message.caption else bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="✅ Одобрено", reply_markup=None)
             try: bot.send_message(post["user_id"], "🎉 Ваша заявка одобрена и опубликована!")
@@ -250,9 +270,15 @@ def multi_steps(m):
         return bot.send_message(m.chat.id, "✅ Успешно отредактировано!", reply_markup=kb_categories())
 
     if state == "admin_choosing_type":
-        t_map = {"🚗 Продажа машины": "Продажа машины", "💍 Продажа акса": "Продажа аксессуара", "🥼 Продажа скина": "Продажа скина", "🏡 Продажа недвижимости": "Продажа недвижимости"}
+        t_map = {
+            "🚗 Продажа машины": ("Продажа машины", "🏎 Все авто,воздушные,водные,тюнинг"),
+            "💍 Продажа акса": ("Продажа аксессуара", "💍 Аксы"),
+            "🥼 Продажа скина": ("Продажа скина", "🥼 Скины и Охранники"),
+            "🏡 Продажа недвижимости": ("Продажа недвижимости", "🏡 Дом и Бизнес")
+        }
         if m.text not in t_map: return bot.send_message(m.chat.id, "❌ Выберите тип кнопкой.")
-        user_data[uid] = {"item_type": t_map[m.text]}
+        item_title, cat_name = t_map[m.text]
+        user_data[uid] = {"item_type": item_title, "category": cat_name}
         user_states[uid] = "admin_choosing_server"
         return bot.send_message(m.chat.id, "Теперь выберите сервер:", reply_markup=kb_servers(admin_mode=True))
 
@@ -274,7 +300,15 @@ def multi_steps(m):
         try:
             sent = bot.send_photo(chan, photo, caption=f_text, parse_mode="Markdown") if photo else bot.send_message(chan, f_text, parse_mode="Markdown")
             with ads_lock:
-                active_ads[moderation_counter] = {"text": f_text, "photo": photo, "editor": f"@{m.from_user.username}" if m.from_user.username else m.from_user.first_name, "last_updated": time.time(), "subscribers": {chan[1:]}, "message_ids_map": {chan: sent.message_id}}
+                active_ads[moderation_counter] = {
+                    "text": f_text, 
+                    "photo": photo, 
+                    "editor": f"@{m.from_user.username}" if m.from_user.username else m.from_user.first_name, 
+                    "last_updated": time.time(), 
+                    "category": d.get("category", "💍 Аксы"),
+                    "subscribers": {chan[1:]}, 
+                    "message_ids_map": {chan: sent.message_id}
+                }
             bot.send_message(m.chat.id, "✅ Опубликовано в канал!", reply_markup=kb_categories())
         except Exception as e:
             bot.send_message(m.chat.id, f"❌ Ошибка: {e}", reply_markup=kb_categories())
@@ -282,5 +316,5 @@ def multi_steps(m):
 # Запуск
 if __name__ == '__main__':
     bot.remove_webhook()
-    print("🚀 Бот успешно запущен (оптимизированная версия)!")
+    print("🚀 Бот успешно запущен с новым токеном и исправленной фильтрацией по категориям!")
     bot.infinity_polling(skip_pending=True)

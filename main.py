@@ -1,11 +1,11 @@
 import os
 import time
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, time as dtime
 import telebot
 from telebot import types
 
-# Инициализация бота строго с указанным токеном
+# Инициализация бота с обновленным токеном
 TOKEN = "8962696714:AAH5dYsLqlAqoLdVr5-sJH35OJnw1ttgpJ0"
 bot = telebot.TeleBot(TOKEN)
 
@@ -14,7 +14,7 @@ user_states = {}        # Хранит состояние FSM пользоват
 user_data = {}          # Временное хранилище данных (для создания объявлений и т.д.)
 
 # Временное хранилище активных объявлений для таймера (10 минут) и рассылки
-# Структура: ad_id: { "text": str, "chat_id": int, "message_id": int, "editor": str, "last_updated": float, "photo": str, "subscribers": set }
+# Структура: ad_id: { "text": str, "chat_id": int, "message_id": int, "editor": str, "last_updated": float, "photo": str, "subscribers": set, "message_ids_map": dict }
 active_ads = {}
 ads_lock = threading.Lock()
 
@@ -22,7 +22,7 @@ ads_lock = threading.Lock()
 OWNER_USERNAME = "bounqy"
 ADMIN_USERNAMES = ["bounqy31", "bounqy"] 
 
-# ID чата модерации (замените на ваш числовой ID группы модерации, например, -100xxxxxxxxxx)
+# ID чата модерации
 MODERATION_CHAT_ID = -1001234567890
 
 # База данных админов по серверам в памяти
@@ -35,7 +35,7 @@ admins = {
 pending_posts = {}
 moderation_counter = 0
 
-# Список всех 33 серверов Arizona RP со своими иконками
+# Список всех серверов Arizona RP
 SERVERS = [
     "🔥 Phoenix", "🌴 Tucson", "🌵 Scottdale", "⚜️ Chandler",
     "❄️ Brainburg", "🌊 Yuma", "✨ Saint-Rose", "🏛 Mesa",
@@ -47,31 +47,42 @@ SERVERS = [
     "🪞 Mirage", "💖 Love", "📱 Mobile I", "📱 Mobile II", "📱 Mobile III"
 ]
 
-# ----------------- ФОНОВЫЙ ПОТОК ОЧИСТКИ (10 МИНУТ) -----------------
+# ----------------- ФОНОВЫЙ ПОТОК ОЧИСТКИ И ПРОВЕРКИ ВРЕМЕНИ (08:00 - 22:00) -----------------
 
 def background_cleanup_ads():
-    """Фоновый поток для автоматического удаления объявлений, если их не редактировали более 10 минут."""
+    """Фоновый поток: удаляет объявления при неактивности (10 минут) либо если наступило время вне лимита (вне интервала 08:00 - 22:00)."""
     while True:
         time.sleep(30)  # Проверка каждые 30 секунд
         current_time = time.time()
+        now = datetime.now()
+        current_time_obj = now.time()
+        
+        # Разрешенный интервал с 08:00 до 22:00
+        start_allowed = dtime(8, 0)
+        end_allowed = dtime(22, 0)
+        
+        # Проверяем, находимся ли мы вне разрешенного времени (ночью с 22:00 до 08:00)
+        is_outside_working_hours = not (start_allowed <= current_time_obj <= end_allowed)
+
         with ads_lock:
             expired_ads = []
             for ad_id, data in active_ads.items():
-                # 10 минут = 600 секунд
-                if current_time - data["last_updated"] > 600:
+                # Условие 1: Прошло более 10 минут с последнего обновления
+                # Условие 2: Наступило время после 22:00 или до 08:00 (ночное удаление)
+                if (current_time - data["last_updated"] > 600) or is_outside_working_hours:
                     expired_ads.append(ad_id)
 
             for ad_id in expired_ads:
                 data = active_ads[ad_id]
-                # Удаляем у всех пользователей, кому рассылалось уведомление
-                for sub_chat_id in data.get("subscribers", set()):
+                # Удаляем у всех пользователей и из канала, куда рассылалось объявление
+                for sub_chat_id, msg_id in list(data.get("message_ids_map", {}).items()):
                     try:
-                        bot.delete_message(sub_chat_id, data["message_ids_map"].get(sub_chat_id))
+                        bot.delete_message(sub_chat_id, msg_id)
                     except Exception as e:
-                        print(f"Ошибка при удалении старого объявления у юзера {sub_chat_id}: {e}")
+                        print(f"Ошибка при удалении объявления #{ad_id} у чата {sub_chat_id}: {e}")
                 
                 del active_ads[ad_id]
-                print(f"Объявление #{ad_id} удалено из-за неактивности (прошло более 10 минут).")
+                print(f"Объявление #{ad_id} удалено (причина: истекли 10 минут неактивности либо наступило время вне лимита 08:00-22:00).")
 
 # Запуск фонового потока
 cleanup_thread = threading.Thread(target=background_cleanup_ads, daemon=True)
@@ -115,46 +126,6 @@ def get_categories_keyboard():
     )
     markup.add(types.KeyboardButton("🛒 Подать объявление о продаже"), types.KeyboardButton("⚙️ Панель администратора"))
     markup.add(types.KeyboardButton("🔄 Сменить сервер"))
-    return markup
-
-def get_accessories_keyboard():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(
-        types.KeyboardButton("🕶 На лицо"),
-        types.KeyboardButton("🪖 На голову")
-    )
-    markup.add(
-        types.KeyboardButton("🥊 На руки"),
-        types.KeyboardButton("👕 На грудь")
-    )
-    markup.add(
-        types.KeyboardButton("🛢 На спину"),
-        types.KeyboardButton("🔮 Плечо и Спутники")
-    )
-    markup.add(
-        types.KeyboardButton("⬅ Назад"),
-        types.KeyboardButton("🔝 Главное Меню")
-    )
-    return markup
-
-def get_auto_keyboard():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add(
-        types.KeyboardButton("🚜 Фуры и Грузовики"),
-        types.KeyboardButton("🏎 Легковые и Суперкары")
-    )
-    markup.add(
-        types.KeyboardButton("🚐 Трейлеры"),
-        types.KeyboardButton("🚁 Самолеты и Вертолеты")
-    )
-    markup.add(
-        types.KeyboardButton("⚙ Тюнинг"),
-        types.KeyboardButton("🛥 Яхты и Лодки")
-    )
-    markup.add(
-        types.KeyboardButton("⬅ Назад"),
-        types.KeyboardButton("🔝 Главное Меню")
-    )
     return markup
 
 def get_cancel_keyboard():
@@ -227,7 +198,6 @@ def change_server(message):
 def sub_categories(message):
     srv = user_states.get(message.chat.id, "Не выбран")
     
-    # Показываем пользователю выбранный раздел и актуальные объявления о продаже из памяти
     with ads_lock:
         matching_ads = [ad for ad in active_ads.values()]
 
@@ -236,14 +206,13 @@ def sub_categories(message):
         response_text += "🛒 **Актуальные предложения о продаже:**\n"
         bot.send_message(message.chat.id, response_text, parse_mode="Markdown")
         
-        for ad in matching_ads:
+        for ad_id, ad in active_ads.items():
             card_text = f"📢 **Товар на продажу**\n\n{ad['text']}\n\n👤 Отредактировал (админ): {ad['editor']}"
             if ad.get("photo"):
                 sent = bot.send_photo(message.chat.id, ad["photo"], caption=card_text, parse_mode="Markdown")
             else:
                 sent = bot.send_message(message.chat.id, card_text, parse_mode="Markdown")
             
-            # Регистрируем подписчика для рассылки при изменении и удаления
             ad["subscribers"].add(message.chat.id)
             ad["message_ids_map"][message.chat.id] = sent.message_id
     else:
@@ -265,6 +234,12 @@ def back_navigation(message):
 
 @bot.message_handler(func=lambda message: message.text == "🛒 Подать объявление о продаже")
 def ask_for_submission(message):
+    # Проверка лимита времени (08:00 - 22:00) при попытке подачи объявления
+    now_time = datetime.now().time()
+    if not (dtime(8, 0) <= now_time <= dtime(22, 0)):
+        bot.send_message(message.chat.id, "❌ Подача объявлений разрешена только с 08:00 до 22:00!")
+        return
+
     user_states[message.from_user.id] = "waiting_for_submission"
     msg = bot.send_message(
         message.chat.id, 
@@ -398,7 +373,7 @@ def handle_callbacks(call):
             
         bot.answer_callback_query(call.id, text=f"Введите текст редактирования для заявки #{post_id}")
         user_states[user.id] = f"editing_post_{post_id}"
-        bot.send_message(call.message.chat.id, f"✏️ Введите новый текст для объявления/заявки #{post_id} (он будет разослан всем и обновит таймер на 10 минут):", reply_markup=get_cancel_keyboard())
+        bot.send_message(call.message.chat.id, f"✏️ Введите новый текст для объявления/заявки #{post_id}:", reply_markup=get_cancel_keyboard())
 
     elif data.startswith("owner_approve_"):
         post_id = int(data.split('_')[2])
@@ -408,6 +383,12 @@ def handle_callbacks(call):
             return
             
         if post_id in pending_posts:
+            # Проверяем время при публикации владельцем
+            now_time = datetime.now().time()
+            if not (dtime(8, 0) <= now_time <= dtime(22, 0)):
+                bot.answer_callback_query(call.id, "❌ Публикация разрешена только с 08:00 до 22:00!", show_alert=True)
+                return
+
             post = pending_posts[post_id]
             target_channel = "@Bounty_Squad31"
             
@@ -423,7 +404,6 @@ def handle_callbacks(call):
                 else:
                     sent_channel_msg = bot.send_message(target_channel, publication_text, parse_mode="Markdown")
                 
-                # Добавляем в активные объявления для отслеживания таймера удаления (10 минут) и рассылки
                 admin_name = f"@{user.username}" if user.username else user.first_name
                 with ads_lock:
                     active_ads[post_id] = {
@@ -431,7 +411,7 @@ def handle_callbacks(call):
                         "photo": post["photo"],
                         "editor": admin_name,
                         "last_updated": time.time(),
-                        "subscribers": {target_channel[1:]}, # можно занести канал или id
+                        "subscribers": {target_channel[1:]},
                         "message_ids_map": {target_channel: sent_channel_msg.message_id}
                     }
 
@@ -553,9 +533,8 @@ def save_edited_post_step(message):
             ad = active_ads[post_id]
             ad["text"] = new_text
             ad["editor"] = admin_name
-            ad["last_updated"] = time.time() # Сброс таймера на 10 минут
+            ad["last_updated"] = time.time()
 
-            # Рассылаем обновление всем пользователям, которые просматривали это объявление
             updated_card_text = f"📢 **Объявление о продаже (Отредактировано)**\n\n{new_text}\n\n👤 Отредактировал (админ): {admin_name}"
             for sub_chat_id, msg_id in list(ad["message_ids_map"].items()):
                 try:
@@ -566,7 +545,7 @@ def save_edited_post_step(message):
                 except Exception as e:
                     print(f"Не удалось обновить сообщение у пользователя {sub_chat_id}: {e}")
 
-    bot.send_message(message.chat.id, "✅ Объявление успешно отредактировано, разослано пользователям, таймер продлен на 10 минут!", reply_markup=get_categories_keyboard())
+    bot.send_message(message.chat.id, "✅ Объявление успешно отредактировано, разослано пользователям!", reply_markup=get_categories_keyboard())
 
 
 # --- ОБРАБОТЧИК ПОШАГОВОГО СОЗДАНИЯ ПОСТА АДМИНИСТРАТОРОМ ---
@@ -630,6 +609,14 @@ def admin_finish_post_step(message):
         bot.send_message(message.chat.id, "Отменено.", reply_markup=get_categories_keyboard())
         return
 
+    # Проверка времени публикации администратором
+    now_time = datetime.now().time()
+    if not (dtime(8, 0) <= now_time <= dtime(22, 0)):
+        bot.send_message(message.chat.id, "❌ Публикация объявлений разрешена только с 08:00 до 22:00!", reply_markup=get_categories_keyboard())
+        user_states.pop(message.from_user.id, None)
+        user_data.pop(message.from_user.id, None)
+        return
+
     data = user_data.get(message.from_user.id, {})
     item_type = data.get("item_type", "Товар")
     server = data.get("server", "Не указан")
@@ -654,7 +641,6 @@ def admin_finish_post_step(message):
         else:
             sent_msg = bot.send_message(target_channel, final_post_text, parse_mode="Markdown")
         
-        # Регистрируем в активных для таймера и рассылки
         moderation_counter += 1
         admin_name = f"@{message.from_user.username}" if message.from_user.username else message.from_user.first_name
         with ads_lock:
@@ -669,7 +655,7 @@ def admin_finish_post_step(message):
 
         bot.send_message(message.chat.id, "✅ Объявление успешно опубликовано в канал и добавлено в систему ротации!", reply_markup=get_categories_keyboard())
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка публикации в канал: {e}", reply_markup=get_categories_keyboard())
+        bot.send_message(message.chat.id, "❌ Ошибка публикации в канал: {e}", reply_markup=get_categories_keyboard())
 
     user_states.pop(message.from_user.id, None)
     user_data.pop(message.from_user.id, None)
@@ -693,5 +679,5 @@ def handle_incoming_content(message):
 
 if __name__ == '__main__':
     bot.remove_webhook()
-    print("🚀 Бот успешно запущен со всеми разделами аксов, системой модерации и автоочисткой объявлений!")
+    print("🚀 Бот успешно запущен! Добавлена проверка и автоматическое удаление объявлений вне интервала 08:00 - 22:00.")
     bot.infinity_polling(skip_pending=True)

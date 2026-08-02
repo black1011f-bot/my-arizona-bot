@@ -1,332 +1,156 @@
 import os
-import time
-import threading
-from datetime import datetime, time as dtime
 import telebot
 from telebot import types
 
-TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAF-gqA4uoSSGe9-D43OR2ypKqnyXlXXReQ")
+# Инициализация бота
+TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ТОКЕН_БОТА")
 bot = telebot.TeleBot(TOKEN)
 
-user_states, user_data, active_ads, pending_posts = {}, {}, {}, {}
-ads_lock = threading.Lock()
-moderation_counter = 0
+# Временное хранилище данных пользователей (в продакшене лучше использовать БД)
+user_data = {}
 
-OWNER_USERNAME = "bounqy"
-ADMIN_USERNAMES = ["bounqy31", "bounqy"]
-MODERATION_CHAT_ID = -1001234567890
-admins = {"server_1": set(), "server_2": set()}
+# Этапы создания объявления
+SERVER, CATEGORY, PHOTO, PRICE, CONFIRM = range(5)
 
-SERVERS = [
-    "🔥 Phoenix", "🌴 Tucson", "🌵 Scottdale", "⚜️ Chandler", "❄️ Brainburg", "🌊 Yuma",
-    "✨ Saint-Rose", "🏛 Mesa", "❤️ Red-Rock", "🍀 Surprise", "⚡️ Prescott", "🌲 Glendale",
-    "👑 Kingman", "⚓️ Winslow", "🌴 Payson", "💎 Gilbert", "🔥 Show-Low", "🌴 Casa-Grande",
-    "📜 Page", "☀️ Sun-City", "👑 Queen-Creek", "🌵 Sedona", "🎄 Holiday", "🍀 Wednesday",
-    "⚡️ Yava", "🌌 Faraway", "🎁 Christmas", "🐝 Bumble Bee", "🪞 Mirage", "💖 Love",
-    "📱 Mobile I", "📱 Mobile II", "📱 Mobile III"
-]
 
-# --- ФОНОВЫЙ ПОТОК ОЧИСТКИ ---
-def background_cleanup_ads():
-    while True:
-        time.sleep(30)
-        now = datetime.now()
-        now_time = now.time()
-        
-        is_night = now_time >= dtime(22, 0, 22) or now_time < dtime(8, 0, 0)
-        is_morning_clean = dtime(8, 0, 0) <= now_time <= dtime(8, 5, 22)
-        
-        curr_t = time.time()
-        with ads_lock:
-            expired = []
-            for aid, d in active_ads.items():
-                if (curr_t - d["last_updated"] > 600) or is_night or is_morning_clean:
-                    expired.append(aid)
-            
-            for aid in expired:
-                for target_id, msg_id in list(active_ads[aid].get("message_ids_map", {}).items()):
-                    try:
-                        bot.delete_message(target_id, msg_id)
-                    except:
-                        pass
-                del active_ads[aid]
-
-threading.Thread(target=background_cleanup_ads, daemon=True).start()
-
-# --- ПРОВЕРКИ ПРАВ И ВРЕМЕНИ ---
-def is_owner(u): return u.username and u.username.lower() == OWNER_USERNAME.lower()
-def is_admin_or_owner(u): return u and (is_owner(u) or (u.username and u.username.lower() in [a.lower() for a in ADMIN_USERNAMES]))
-def is_server_admin(uid, s_key): return uid in admins.get(s_key, set())
-
-def check_working_hours():
-    now_time = datetime.now().time()
-    if now_time < dtime(8, 0, 0) or now_time > dtime(22, 0, 22):
-        return False
-    return True
-
-# --- КЛАВИАТУРЫ ---
-def kb_servers():
-    m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    for i in range(0, len(SERVERS), 2): 
-        m.add(*[types.KeyboardButton(s) for s in SERVERS[i:i+2]])
-    m.add(types.KeyboardButton("🛒 Подать объявление о продаже"), types.KeyboardButton("ℹ️ Как это работает"), types.KeyboardButton("👑 Админ"))
-    return m
-
-def kb_categories():
-    m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    m.add("💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг")
-    m.add("🥼 Скины и Охранники", "🏡 Дом и Бизнес")
-    m.add("📦 Ресурсы и Оружие")
-    m.add("🛒 Подать объявление о продаже", "ℹ️ Как это работает")
-    m.add("🔄 Сменить сервер", "👑 Админ")
-    return m
-
-def kb_cancel():
-    return types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("🚫 Отмена"))
-
-def get_category_key(text):
-    t = text.lower()
-    if "акс" in t: return "💍 Аксы"
-    if "авто" in t or "тюнинг" in t: return "🏎 Все авто,воздушные,водные,тюнинг"
-    if "скин" in t or "охранник" in t: return "🥼 Скины и Охранники"
-    if "дом" in t or "бизнес" in t or "недвиж" in t: return "🏡 Дом и Бизнес"
-    if "ресурс" in t or "оружие" in t: return "📦 Ресурсы и Оружие"
-    return "💍 Аксы"
-
-# --- ОБРАБОТЧИКИ КОМАНД ---
 @bot.message_handler(commands=['start'])
-def cmd_start(m):
-    text = (
-        "🛡 **Безопасность:**\n\n"
-        "👇 НАЖМИ И ВЫБЕРИ СВОЙ СЕРВЕР 👇\n\n"
-        "👋 Привет! Это неофициальный бот с ценами для Arizona RP!\n"
-        "📈 Выбирай сервер из списка и узнавай актуальные цены с ЦР и АБ.\n\n"
-        "🔒 МЫ НИКОГДА не просим пароли, пин-коды или данные от аккаунта!\n"
-        "🎁 Бот абсолютно бесплатный — мы НЕ просим деньги за работу.\n\n"
-        "📢 Наш Telegram-канал: @Bounty_Squad31\n\n"
-        "🤝 Спасибо, что используешь нашего бота! Удачных сделок! 🍀"
+def send_welcome(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn_sell = types.KeyboardButton("📢 Продать товар")
+    btn_catalog = types.KeyboardButton("📦 Каталог объявлений")
+    markup.add(btn_sell, btn_catalog)
+
+    bot.send_message(
+        message.chat.id,
+        "Привет! Это неофициальный бот-помощник для игроков Arizona RP.\n"
+        "Здесь вы можете безопасно подать объявление о продаже транспорта или аксессуаров.",
+        reply_markup=markup
     )
-    bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=kb_servers())
 
-@bot.message_handler(func=lambda msg: msg.text == "ℹ️ Как это работает")
-def how_it_works(m):
-    text = (
-        "Система подачи объявлений:\n\n"
-        "1. **Выбор сервера и категории**\n"
-        "   * Вы заходите на нужный сервер (например, Phoenix).\n"
-        "   * В меню выбираете категорию товара: машины, аксессуары и т. д.\n"
-        "   * В разделе можно посмотреть уже существующие объявления или нажать кнопку **«Продать»**.\n\n"
-        "2. **Создание объявления**\n"
-        "   * **Шаг 1:** Выбираете сервер.\n"
-        "   * **Шаг 2:** Выбираете категорию (транспорт или аксессуары).\n"
-        "   * **Шаг 3:** Загружаете фото и указываете цену.\n"
-        "   * **Шаг 4:** Отправляете объявление на проверку.\n\n"
-        "3. **Модерация и публикация**\n"
-        "   * Модератор проверяет вашу заявку и одобряет её.\n"
-        "   * После одобрения объявление автоматически публикуется в том разделе, который вы выбрали при создании."
+
+@bot.message_handler(func=lambda message: message.text == "📢 Продать товар")
+def start_selling(message):
+    user_data[message.chat.id] = {}
+    
+    # Шаг 1: Выбор сервера
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add("Phoenix", "Scottdale", "Casa-Grande", "Yuma") # Примеры серверов
+    markup.add("❌ Отмена")
+    
+    bot.send_message(
+        message.chat.id,
+        "**Шаг 1 из 4:** Выберите игровой сервер, на котором продается товар:",
+        reply_markup=markup,
+        parse_mode="Markdown"
     )
-    bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=kb_categories())
+    bot.register_next_step_handler(message, process_server)
 
-@bot.message_handler(commands=['admin'])
-def cmd_admin(m):
-    if is_admin_or_owner(m.from_user):
-        bot.send_message(m.chat.id, "👑 Панель администратора: Авторизован.")
-    else:
-        bot.send_message(m.chat.id, "⛔ Нет доступа.")
 
-@bot.message_handler(func=lambda msg: msg.text in SERVERS)
-def select_srv(m):
-    user_states[m.from_user.id] = {"server": m.text}
-    bot.send_message(m.chat.id, f"Сервер {m.text} выбран! Выберите категорию:", reply_markup=kb_categories())
-
-@bot.message_handler(func=lambda msg: msg.text == "🔄 Сменить сервер")
-def ch_srv(m): 
-    bot.send_message(m.chat.id, "Выберите ваш сервер:", reply_markup=kb_servers())
-
-@bot.message_handler(func=lambda msg: msg.text == "🚫 Отмена")
-def cancel_all(m):
-    user_states.pop(m.from_user.id, None)
-    user_data.pop(m.from_user.id, None)
-    bot.send_message(m.chat.id, "Главное меню:", reply_markup=kb_categories())
-
-@bot.message_handler(func=lambda msg: msg.text == "🛒 Подать объявление о продаже")
-def ask_sub(m):
-    if not check_working_hours():
-        return bot.send_message(m.chat.id, "❌ После 22:00:22 МСК подача объявлений заблокирована до утреннего возобновления!")
-    
-    uid = m.from_user.id
-    if uid in user_data and "last_ad_time" in user_data[uid]:
-        if time.time() - user_data[uid]["last_ad_time"] < 600:
-            remaining = int(600 - (time.time() - user_data[uid]["last_ad_time"]))
-            return bot.send_message(m.chat.id, f"❌ Кулдаун! Подождите еще {remaining // 60} мин. {remaining % 60} сек. перед отправкой нового объявления.")
-
-    if uid not in user_states or "server" not in user_states[uid]:
-        return bot.send_message(m.chat.id, "⚠️ Сначала выберите сервер из главного меню!", reply_markup=kb_servers())
-
-    user_states[uid]["step"] = "waiting_for_submission"
-    bot.send_message(m.chat.id, "Отправьте одним сообщением фото, текст описания и цену:", reply_markup=kb_cancel())
-    bot.register_next_step_handler(m, process_sub)
-
-def process_sub(m):
-    global moderation_counter
-    uid = m.from_user.id
-    if m.text == "🚫 Отмена":
-        if uid in user_states: user_states[uid].pop("step", None)
-        return bot.send_message(m.chat.id, "Отменено.", reply_markup=kb_categories())
-    
-    photo = m.photo[-1].file_id if m.photo else None
-    text = m.caption or m.text
-    if not photo and not text:
-        return bot.send_message(m.chat.id, "❌ Пустое сообщение. Попробуйте снова.")
-
-    if uid not in user_states:
-        user_states[uid] = {"server": "Phoenix"}
-    
-    server_name = user_states[uid].get("server", "Phoenix")
-    user_states[uid].pop("step", None)
-
-    if uid not in user_data: user_data[uid] = {}
-    user_data[uid]["last_ad_time"] = time.time()
-
-    moderation_counter += 1
-    uname = m.from_user.username or "Без юзернейма"
-    cat = get_category_key(text)
-    
-    pending_posts[moderation_counter] = {
-        "user_id": uid, "username": uname, "photo": photo, 
-        "text": text or "Без описания", "category": cat, "server": server_name
-    }
-
-    markup = types.InlineKeyboardMarkup(row_width=1).add(
-        types.InlineKeyboardButton("📝 Редакция", callback_data=f"edit_{moderation_counter}"),
-        types.InlineKeyboardButton("✅ Принять", callback_data=f"owner_approve_{moderation_counter}"),
-        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{moderation_counter}")
-    )
-    
-    f_text = f"🚨 Новая заявка #{moderation_counter}\n🌐 Сервер: {server_name}\n📂 Категория: {cat}\n👤 От: {uid} (@{uname})\n\n📦:\n{text or ''}"
-    target = MODERATION_CHAT_ID if MODERATION_CHAT_ID != -1001234567890 else m.chat.id
-    
-    try:
-        if photo: bot.send_photo(target, photo, caption=f_text, reply_markup=markup)
-        else: bot.send_message(target, f_text, reply_markup=markup)
-    except:
-        bot.send_message(m.chat.id, f_text, reply_markup=markup)
+def process_server(message):
+    if message.text == "❌ Отмена":
+        return cancel_process(message)
         
-    bot.send_message(m.chat.id, "✅ Заявка отправлена на модерацию!", reply_markup=kb_categories())
-
-@bot.message_handler(func=lambda msg: msg.text == "👑 Админ")
-def admin_panel(m):
-    u = m.from_user
-    if not is_admin_or_owner(u):
-        return bot.send_message(m.chat.id, "⛔ У вас нет доступа к админ-панели.")
+    user_data[message.chat.id]['server'] = message.text
     
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("📋 Ожидающие заявки", callback_data="show_pending_list"))
-    bot.send_message(m.chat.id, f"⚙️ Панель управления\nСтатус: {'Владелец' if is_owner(u) else 'Админ'}", reply_markup=markup)
-
-@bot.message_handler(func=lambda msg: msg.text in ["💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг", "🥼 Скины и Охранники", "🏡 Дом и Бизнес", "📦 Ресурсы и Оружие"])
-def show_ads(m):
-    uid = m.from_user.id
-    srv = user_states.get(uid, {}).get("server", "Не выбран")
-    cat_name = m.text
+    # Шаг 2: Выбор категории
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add("🚗 Транспорт", "💎 Аксессуары")
+    markup.add("❌ Отмена")
     
-    with ads_lock: 
-        ads_list = [ad for ad in active_ads.values() if ad.get("category") == cat_name and ad.get("server") == srv]
+    bot.send_message(
+        message.chat.id,
+        f"Сервер: **{message.text}**\n\n"
+        "**Шаг 2 из 4:** Выберите категорию товара:",
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
+    bot.register_next_step_handler(message, process_category)
+
+
+def process_category(message):
+    if message.text == "❌ Отмена":
+        return cancel_process(message)
+        
+    user_data[message.chat.id]['category'] = message.text
     
-    bot.send_message(m.chat.id, f"📊 Раздел: {cat_name}\n🌐 Сервер: {srv}\n\n" + ("🛒 Актуальные предложения:" if ads_list else "В разделе пока нет объявлений для этого сервера."))
-    for aid, ad in active_ads.items():
-        if ad.get("category") == cat_name and ad.get("server") == srv:
-            card = f"📢 Товар\n\n{ad['text']}\n\n👤 Публикация"
-            try:
-                if ad.get("photo"): sent = bot.send_photo(m.chat.id, ad["photo"], caption=card)
-                else: sent = bot.send_message(m.chat.id, card)
-                ad["subscribers"].add(m.chat.id)
-                ad["message_ids_map"][m.chat.id] = sent.message_id
-            except:
-                pass
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add("❌ Отмена")
 
-# --- ОБРАБОТКА CALLBACK КНОПОК ---
-@bot.callback_query_handler(func=lambda call: True)
-def callbacks(call):
-    global pending_posts
-    data, u = call.data, call.from_user
+    bot.send_message(
+        message.chat.id,
+        "**Шаг 3 из 4:** Загрузите скриншот или фотографию товара, а также укажите его цену в описании.\n"
+        "Отправьте фото с подписью:",
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
+    bot.register_next_step_handler(message, process_photo_and_price)
 
-    if data.startswith("edit_"):
-        pid = int(data.split('_')[1])
-        if not is_admin_or_owner(u): 
-            return bot.answer_callback_query(call.id, "⛔ Редактировать могут только админы!", show_alert=True)
-        user_states[u.id] = {"editing": pid}
-        bot.answer_callback_query(call.id)
-        return bot.send_message(call.message.chat.id, f"✏️ Введите новый текст для заявки #{pid}:", reply_markup=kb_cancel())
 
-    if data.startswith("owner_approve_"):
-        pid = int(data.split('_')[2])
-        if not is_owner(u): 
-            return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-        if pid not in pending_posts: 
-            return bot.answer_callback_query(call.id, "Заявка не найдена.")
-        if not check_working_hours(): 
-            return bot.answer_callback_query(call.id, "❌ Публикация после 22:00:22 запрещена!", show_alert=True)
+def process_photo_and_price(message):
+    if message.text == "❌ Отмена":
+        return cancel_process(message)
+        
+    if not message.photo:
+        bot.send_message(message.chat.id, "Пожалуйста, отправьте именно **фотографию** товара с ценой. Попробуйте еще раз:")
+        return bot.register_next_step_handler(message, process_photo_and_price)
 
-        post = pending_posts.pop(pid)
-        chan = "@Bounty_Squad31"
-        p_text = f"🛒 Новое объявление!\n🌐 Сервер: {post['server']}\n\n{post['text']}\n\n👤 Продавец: @{post['username']}"
-        try:
-            if post["photo"]: sent = bot.send_photo(chan, post["photo"], caption=p_text)
-            else: sent = bot.send_message(chan, p_text)
-                
-            with ads_lock:
-                active_ads[pid] = {
-                    "text": p_text, "photo": post["photo"], "server": post["server"],
-                    "editor": f"@{u.username}" if u.username else u.first_name, 
-                    "last_updated": time.time(), "category": post["category"],
-                    "subscribers": {chan[1:]}, "message_ids_map": {chan: sent.message_id}
-                }
-            bot.answer_callback_query(call.id, "Опубликовано!")
-            if call.message.caption:
-                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="✅ Одобрено владельцем", reply_markup=None)
-            else:
-                bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="✅ Одобрено", reply_markup=None)
-            
-            try: bot.send_message(post["user_id"], "🎉 Ваша заявка одобрена и опубликована!")
-            except: pass
-        except Exception as e:
-            bot.answer_callback_query(call.id, f"Ошибка: {e}", show_alert=True)
+    # Сохраняем ID фото и текст (цену/описание)
+    user_data[message.chat.id]['photo'] = message.photo[-1].file_id
+    user_data[message.chat.id]['details'] = message.caption if message.caption else "Цена не указана"
 
-    elif data.startswith("reject_"):
-        pid = int(data.split('_')[1])
-        if not is_admin_or_owner(u): 
-            return bot.answer_callback_query(call.id, "Нет прав.", show_alert=True)
-        if pid in pending_posts:
-            p_info = pending_posts.pop(pid)
-            bot.answer_callback_query(call.id, "Отклонено.")
-            try:
-                if call.message.caption:
-                    bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption="❌ Отклонено", reply_markup=None)
-                else:
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text="❌ Отклонено", reply_markup=None)
-                bot.send_message(p_info["user_id"], "❌ Ваша заявка была отклонена.")
-            except: pass
+    data = user_data[message.chat.id]
 
-    elif data == "show_pending_list":
-        bot.answer_callback_query(call.id, f"Ожидающих заявок: {len(pending_posts)}", show_alert=True)
+    # Шаг 4: Подтверждение и отправка на модерацию
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add("✅ Отправить на модерацию", "❌ Отмена")
 
-@bot.message_handler(func=lambda msg: msg.from_user.id in user_states and "editing" in user_states[msg.from_user.id])
-def process_editing(m):
-    uid = m.from_user.id
-    pid = user_states[uid].get("editing")
-    user_states[uid].pop("editing", None)
-    
-    if m.text == "🚫 Отмена":
-        return bot.send_message(m.chat.id, "Отменено.", reply_markup=kb_categories())
+    preview_text = (
+        "**Шаг 4 из 4:** Проверьте ваше объявление перед отправкой:\n\n"
+        f"• **Сервер:** {data['server']}\n"
+        f"• **Категория:** {data['category']}\n"
+        f"• **Описание/Цена:** {data['details']}\n\n"
+        "Всё верно?"
+    )
 
-    if pid in pending_posts:
-        pending_posts[pid]["text"] = m.text
-        bot.send_message(m.chat.id, f"✅ Текст заявки #{pid} успешно изменен редакцией!", reply_markup=kb_categories())
+    bot.send_photo(message.chat.id, data['photo'], caption=preview_text, reply_markup=markup, parse_mode="Markdown")
+    bot.register_next_step_handler(message, process_final_submit)
+
+
+def process_final_submit(message):
+    if message.text == "✅ Отправить на модерацию":
+        # Здесь объявление уходит модераторам
+        bot.send_message(
+            message.chat.id,
+            "🎉 Ваше объявление успешно отправлено на проверку модератору!\n"
+            "После одобрения оно автоматически опубликуется в соответствующем разделе.",
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+        # Возвращаем главное меню
+        send_welcome(message)
     else:
-        bot.send_message(m.chat.id, "❌ Заявка уже обработана или не найдена.", reply_markup=kb_categories())
+        cancel_process(message)
 
-if __name__ == '__main__':
-    bot.remove_webhook()
-    print("🚀 Бот по ТЗ Arizona RP запущен!")
-    bot.infinity_polling(skip_pending=True)
+
+def cancel_process(message):
+    bot.send_message(message.chat.id, "Создание объявления отменено.", reply_markup=types.ReplyKeyboardRemove())
+    send_welcome(message)
+
+
+@bot.message_handler(func=lambda message: message.text == "📦 Каталог объявлений")
+def show_catalog(message):
+    bot.send_message(
+        message.chat.id,
+        "📦 **Каталог товаров**\n\n"
+        "Здесь игроки могут просматривать уже одобренные модерацией объявления по серверам и категориям. "
+        "(Раздел находится в разработке)",
+        parse_mode="Markdown"
+    )
+
+
+if __name__ == "__main__":
+    try:
+        bot.remove_webhook()
+        print("🚀 Бот запущен и готов к работе по сценарию подачи объявлений!")
+        bot.infinity_polling(skip_pending=True)
+    except Exception as e:
+        print(f"Ошибка: {e}")

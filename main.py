@@ -1,4 +1,7 @@
 import os
+import time
+import threading
+from datetime import datetime, timedelta
 import telebot
 from telebot import types
 
@@ -9,6 +12,11 @@ bot = telebot.TeleBot(TOKEN)
 # Данные пользователей и настройки
 user_states = {}        # Хранит состояние FSM пользователя
 user_data = {}          # Временное хранилище данных (для создания объявлений и т.д.)
+
+# Временное хранилище активных объявлений для таймера (10 минут) и рассылки
+# Структура: ad_id: { "text": str, "chat_id": int, "message_id": int, "editor": str, "last_updated": float, "photo": str, "subscribers": set }
+active_ads = {}
+ads_lock = threading.Lock()
 
 # Главный владелец и модераторы
 OWNER_USERNAME = "bounqy"
@@ -38,6 +46,36 @@ SERVERS = [
     "⚡️ Yava", "🌌 Faraway", "🎁 Christmas", "🐝 Bumble Bee",
     "🪞 Mirage", "💖 Love", "📱 Mobile I", "📱 Mobile II", "📱 Mobile III"
 ]
+
+# ----------------- ФОНОВЫЙ ПОТОК ОЧИСТКИ (10 МИНУТ) -----------------
+
+def background_cleanup_ads():
+    """Фоновый поток для автоматического удаления объявлений, если их не редактировали более 10 минут."""
+    while True:
+        time.sleep(30)  # Проверка каждые 30 секунд
+        current_time = time.time()
+        with ads_lock:
+            expired_ads = []
+            for ad_id, data in active_ads.items():
+                # 10 минут = 600 секунд
+                if current_time - data["last_updated"] > 600:
+                    expired_ads.append(ad_id)
+
+            for ad_id in expired_ads:
+                data = active_ads[ad_id]
+                # Удаляем у всех пользователей, кому рассылалось уведомление
+                for sub_chat_id in data.get("subscribers", set()):
+                    try:
+                        bot.delete_message(sub_chat_id, data["message_ids_map"].get(sub_chat_id))
+                    except Exception as e:
+                        print(f"Ошибка при удалении старого объявления у юзера {sub_chat_id}: {e}")
+                
+                del active_ads[ad_id]
+                print(f"Объявление #{ad_id} удалено из-за неактивности (прошло более 10 минут).")
+
+# Запуск фонового потока
+cleanup_thread = threading.Thread(target=background_cleanup_ads, daemon=True)
+cleanup_thread.start()
 
 # ----------------- ВСПОМОГАТЕЛЬНЫЕ ПРОВЕРКИ -----------------
 
@@ -183,25 +221,34 @@ def select_server(message):
 def change_server(message):
     bot.send_message(message.chat.id, "Выберите ваш сервер из списка:", reply_markup=get_servers_keyboard())
 
-# --- Обработка разделов цен ---
+# --- Обработка разделов цен и показа объявлений о продаже ---
 
-@bot.message_handler(func=lambda msg: msg.text == "💍 Аксы")
-def category_accessories(message):
-    bot.send_message(message.chat.id, "💍 **Категория: Аксессуары**\nВыберите категорию слота:", parse_mode="Markdown", reply_markup=get_accessories_keyboard())
-
-@bot.message_handler(func=lambda msg: msg.text in ["🕶 На лицо", "🪖 На голову", "🥊 На руки", "👕 На грудь", "🛢 На спину", "🔮 Плечо и Спутники"])
-def sub_accessories(message):
-    srv = user_states.get(message.chat.id, "Не выбран")
-    bot.send_message(message.chat.id, f"📊 Раздел: **{message.text}**\n🌐 Сервер: **{srv}**\n\nЦены подгружаются из базы...", parse_mode="Markdown")
-
-@bot.message_handler(func=lambda msg: msg.text == "🏎 Все авто,воздушные,водные,тюнинг")
-def category_auto(message):
-    bot.send_message(message.chat.id, message.text, reply_markup=get_auto_keyboard())
-
-@bot.message_handler(func=lambda msg: msg.text in ["🚜 Фуры и Грузовики", "🏎 Легковые и Суперкары", "🚐 Трейлеры", "🚁 Самолеты и Вертолеты", "⚙ Тюнинг", "🛥 Яхты и Лодки", "🥼 Скины и Охранники", "🏡 Дома и Бизнесы", "📦 Ресурсы и Оружие"])
+@bot.message_handler(func=lambda msg: msg.text in ["💍 Аксы", "🏎 Все авто,воздушные,водные,тюнинг", "🥼 Скины и Охранники", "🏡 Дома и Бизнесы", "📦 Ресурсы и Оружие"] or msg.text in ["🕶 На лицо", "🪖 На голову", "🥊 На руки", "👕 На грудь", "🛢 На спину", "🔮 Плечо и Спутники", "🚜 Фуры и Грузовики", "🏎 Легковые и Суперкары", "🚐 Трейлеры", "🚁 Самолеты и Вертолеты", "⚙ Тюнинг", "🛥 Яхты и Лодки"])
 def sub_categories(message):
     srv = user_states.get(message.chat.id, "Не выбран")
-    bot.send_message(message.chat.id, f"📊 Раздел: **{message.text}**\n🌐 Сервер: **{srv}**\n\nДанные подгружаются из базы...", parse_mode="Markdown")
+    
+    # Показываем пользователю выбранный раздел и актуальные объявления о продаже из памяти
+    with ads_lock:
+        matching_ads = [ad for ad in active_ads.values()]
+
+    response_text = f"📊 Раздел: **{message.text}**\n🌐 Сервер: **{srv}**\n\n"
+    if matching_ads:
+        response_text += "🛒 **Актуальные предложения о продаже:**\n"
+        bot.send_message(message.chat.id, response_text, parse_mode="Markdown")
+        
+        for ad in matching_ads:
+            card_text = f"📢 **Товар на продажу**\n\n{ad['text']}\n\n👤 Отредактировал (админ): {ad['editor']}"
+            if ad.get("photo"):
+                sent = bot.send_photo(message.chat.id, ad["photo"], caption=card_text, parse_mode="Markdown")
+            else:
+                sent = bot.send_message(message.chat.id, card_text, parse_mode="Markdown")
+            
+            # Регистрируем подписчика для рассылки при изменении и удаления
+            ad["subscribers"].add(message.chat.id)
+            ad["message_ids_map"][message.chat.id] = sent.message_id
+    else:
+        response_text += "В данном разделе пока нет активных объявлений о продаже."
+        bot.send_message(message.chat.id, response_text, parse_mode="Markdown")
 
 @bot.message_handler(func=lambda msg: msg.text == "🚫 Отмена")
 def cancel_action(message):
@@ -345,39 +392,17 @@ def handle_callbacks(call):
     elif data.startswith("edit_"):
         post_id = int(data.split('_')[1])
         
-        # Проверка прав: редактировать заявку может только администратор или владелец
         if not is_admin_or_owner(user):
             bot.answer_callback_query(call.id, "⛔ Ошибка: Редактировать заявки могут только администраторы!", show_alert=True)
             return
             
-        bot.answer_callback_query(call.id, text=f"Редакция заявки #{post_id}")
-        
-        try:
-            current_text = call.message.text or call.message.caption or ""
-            new_text = current_text + f"\n\n✏️ *Статус: Взято на редакцию администратором @{user.username or user.id}*"
-            if call.message.caption:
-                bot.edit_message_caption(
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id,
-                    caption=new_text,
-                    parse_mode="Markdown",
-                    reply_markup=call.message.reply_markup
-                )
-            else:
-                bot.edit_message_text(
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id,
-                    text=new_text,
-                    parse_mode="Markdown",
-                    reply_markup=call.message.reply_markup
-                )
-        except Exception as e:
-            print(f"Ошибка редактирования сообщения: {e}")
+        bot.answer_callback_query(call.id, text=f"Введите текст редактирования для заявки #{post_id}")
+        user_states[user.id] = f"editing_post_{post_id}"
+        bot.send_message(call.message.chat.id, f"✏️ Введите новый текст для объявления/заявки #{post_id} (он будет разослан всем и обновит таймер на 10 минут):", reply_markup=get_cancel_keyboard())
 
     elif data.startswith("owner_approve_"):
         post_id = int(data.split('_')[2])
         
-        # Строгая проверка: принятие заявки доступно ТОЛЬКО владельцу бота (проблема 3 решена)
         if not is_owner(user):
             bot.answer_callback_query(call.id, "⛔ Ошибка: Принятие заявки доступно ТОЛЬКО для владельца бота (@bounqy)!", show_alert=True)
             return
@@ -394,27 +419,29 @@ def handle_callbacks(call):
             
             try:
                 if post["photo"]:
-                    bot.send_photo(target_channel, post["photo"], caption=publication_text, parse_mode="Markdown")
+                    sent_channel_msg = bot.send_photo(target_channel, post["photo"], caption=publication_text, parse_mode="Markdown")
                 else:
-                    bot.send_message(target_channel, publication_text, parse_mode="Markdown")
+                    sent_channel_msg = bot.send_message(target_channel, publication_text, parse_mode="Markdown")
                 
+                # Добавляем в активные объявления для отслеживания таймера удаления (10 минут) и рассылки
+                admin_name = f"@{user.username}" if user.username else user.first_name
+                with ads_lock:
+                    active_ads[post_id] = {
+                        "text": publication_text,
+                        "photo": post["photo"],
+                        "editor": admin_name,
+                        "last_updated": time.time(),
+                        "subscribers": {target_channel[1:]}, # можно занести канал или id
+                        "message_ids_map": {target_channel: sent_channel_msg.message_id}
+                    }
+
                 bot.answer_callback_query(call.id, "Успешно опубликовано в канал владельцем!")
                 success_msg = f"✅ Одобрено и опубликовано владельцем (@{user.username})"
                 
                 if call.message.caption:
-                    bot.edit_message_caption(
-                        chat_id=call.message.chat.id, 
-                        message_id=call.message.message_id, 
-                        caption=success_msg, 
-                        reply_markup=None
-                    )
+                    bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=success_msg, reply_markup=None)
                 else:
-                    bot.edit_message_text(
-                        chat_id=call.message.chat.id, 
-                        message_id=call.message.message_id, 
-                        text=success_msg, 
-                        reply_markup=None
-                    )
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=success_msg, reply_markup=None)
                 
                 try:
                     bot.send_message(post["user_id"], "🎉 Ваша заявка была одобрена владельцем и опубликована в канале!")
@@ -440,19 +467,9 @@ def handle_callbacks(call):
             reject_msg = "❌ Заявка отклонена администратором."
             try:
                 if call.message.caption:
-                    bot.edit_message_caption(
-                        chat_id=call.message.chat.id, 
-                        message_id=call.message.message_id, 
-                        caption=reject_msg, 
-                        reply_markup=None
-                    )
+                    bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=reject_msg, reply_markup=None)
                 else:
-                    bot.edit_message_text(
-                        chat_id=call.message.chat.id, 
-                        message_id=call.message.message_id, 
-                        text=reject_msg, 
-                        reply_markup=None
-                    )
+                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=reject_msg, reply_markup=None)
             except Exception as e:
                 print(f"Ошибка изменения сообщения при отклонении: {e}")
                 
@@ -516,7 +533,43 @@ def process_remove_admin(message):
         bot.send_message(message.chat.id, f"❌ Ошибка формата: {e}")
 
 
-# --- ОБРАБОТЧИК ПОШАГОВОГО СОЗДАНИЯ ПОСТА АДМИНИСТРАТОРОМ (ПРОБЛЕМА 2) ---
+# --- ОБРАБОТЧИК РЕДАКТИРОВАНИЯ ОБЪЯВЛЕНИЙ АДМИНАМИ ---
+
+@bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id, "").startswith("editing_post_"))
+def save_edited_post_step(message):
+    if message.text == "🚫 Отмена":
+        user_states.pop(message.from_user.id, None)
+        bot.send_message(message.chat.id, "Отменено.", reply_markup=get_categories_keyboard())
+        return
+
+    state = user_states.pop(message.from_user.id)
+    post_id = int(state.split("_")[2])
+
+    admin_name = f"@{message.from_user.username}" if message.from_user.username else message.from_user.first_name
+    new_text = message.text
+
+    with ads_lock:
+        if post_id in active_ads:
+            ad = active_ads[post_id]
+            ad["text"] = new_text
+            ad["editor"] = admin_name
+            ad["last_updated"] = time.time() # Сброс таймера на 10 минут
+
+            # Рассылаем обновление всем пользователям, которые просматривали это объявление
+            updated_card_text = f"📢 **Объявление о продаже (Отредактировано)**\n\n{new_text}\n\n👤 Отредактировал (админ): {admin_name}"
+            for sub_chat_id, msg_id in list(ad["message_ids_map"].items()):
+                try:
+                    if ad.get("photo"):
+                        bot.edit_message_caption(chat_id=sub_chat_id, message_id=msg_id, caption=updated_card_text, parse_mode="Markdown")
+                    else:
+                        bot.edit_message_text(chat_id=sub_chat_id, message_id=msg_id, text=updated_card_text, parse_mode="Markdown")
+                except Exception as e:
+                    print(f"Не удалось обновить сообщение у пользователя {sub_chat_id}: {e}")
+
+    bot.send_message(message.chat.id, "✅ Объявление успешно отредактировано, разослано пользователям, таймер продлен на 10 минут!", reply_markup=get_categories_keyboard())
+
+
+# --- ОБРАБОТЧИК ПОШАГОВОГО СОЗДАНИЯ ПОСТА АДМИНИСТРАТОРОМ ---
 
 @bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id) == "admin_choosing_type")
 def admin_choose_type_step(message):
@@ -570,6 +623,7 @@ def admin_choose_server_step(message):
 
 @bot.message_handler(content_types=['text', 'photo'], func=lambda msg: user_states.get(msg.from_user.id) == "admin_entering_price_and_desc")
 def admin_finish_post_step(message):
+    global moderation_counter
     if message.text == "🚫 Отмена":
         user_states.pop(message.from_user.id, None)
         user_data.pop(message.from_user.id, None)
@@ -586,7 +640,6 @@ def admin_finish_post_step(message):
     
     text_content = message.caption or message.text or "Без описания"
 
-    # Формируем итоговый пост для канала
     final_post_text = (
         f"🛒 **{item_type}**\n"
         f"🌐 Сервер: **{server}**\n\n"
@@ -597,11 +650,24 @@ def admin_finish_post_step(message):
     target_channel = "@Bounty_Squad31"
     try:
         if photo_id:
-            bot.send_photo(target_channel, photo_id, caption=final_post_text, parse_mode="Markdown")
+            sent_msg = bot.send_photo(target_channel, photo_id, caption=final_post_text, parse_mode="Markdown")
         else:
-            bot.send_message(target_channel, final_post_text, parse_mode="Markdown")
+            sent_msg = bot.send_message(target_channel, final_post_text, parse_mode="Markdown")
         
-        bot.send_message(message.chat.id, "✅ Объявление успешно опубликовано в канал!", reply_markup=get_categories_keyboard())
+        # Регистрируем в активных для таймера и рассылки
+        moderation_counter += 1
+        admin_name = f"@{message.from_user.username}" if message.from_user.username else message.from_user.first_name
+        with ads_lock:
+            active_ads[moderation_counter] = {
+                "text": final_post_text,
+                "photo": photo_id,
+                "editor": admin_name,
+                "last_updated": time.time(),
+                "subscribers": {target_channel[1:]},
+                "message_ids_map": {target_channel: sent_msg.message_id}
+            }
+
+        bot.send_message(message.chat.id, "✅ Объявление успешно опубликовано в канал и добавлено в систему ротации!", reply_markup=get_categories_keyboard())
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Ошибка публикации в канал: {e}", reply_markup=get_categories_keyboard())
 
@@ -613,7 +679,7 @@ def admin_finish_post_step(message):
 
 @bot.message_handler(content_types=['text'])
 def handle_incoming_content(message):
-    if user_states.get(message.from_user.id) in ["waiting_for_submission", "admin_choosing_type", "admin_choosing_server", "admin_entering_price_and_desc"]:
+    if user_states.get(message.from_user.id) in ["waiting_for_submission", "admin_choosing_type", "admin_choosing_server", "admin_entering_price_and_desc"] or user_states.get(message.from_user.id, "").startswith("editing_post_"):
         return
         
     srv = user_states.get(message.chat.id, "Не выбран")
@@ -627,5 +693,5 @@ def handle_incoming_content(message):
 
 if __name__ == '__main__':
     bot.remove_webhook()
-    print("🚀 Бот успешно запущен со всеми разделами аксов и системой модерации!")
+    print("🚀 Бот успешно запущен со всеми разделами аксов, системой модерации и автоочисткой объявлений!")
     bot.infinity_polling(skip_pending=True)

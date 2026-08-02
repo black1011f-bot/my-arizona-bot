@@ -316,5 +316,5 @@ def multi_steps(m):
 # Запуск
 if __name__ == '__main__':
     bot.remove_webhook()
-    print("🚀 Бот успешно запущен с новым токеном и исправленной фильтрацией по категориям!")
+    print("🚀 Бот полностью пересобран и успешно запущен с новым токеном!")
     bot.infinity_polling(skip_pending=True)

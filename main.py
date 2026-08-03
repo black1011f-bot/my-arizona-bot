@@ -14,9 +14,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# ТОКЕН БОТА
+# ТОКЕН БОТА (Обновлен)
 # ==========================================
-TOKEN = "8916669266:AAFd664lKfk_Wz0qeJ7JTGt_a8gn-K1x5so"
+TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAGMsyFa-_OZBs8beZ7vIEi8bKX6uvRUrM8")
 
 bot = telebot.TeleBot(TOKEN)
 

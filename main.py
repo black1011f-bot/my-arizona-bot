@@ -30,6 +30,9 @@ user_states = {}
 user_data = {}
 active_ads = {}
 pending_posts = {}
+banned_users = set()
+editor_stats = {} # { "username": approved_count }
+
 ads_lock = threading.Lock()
 moderation_counter = 0
 
@@ -118,13 +121,20 @@ def check_working_hours():
         return False
     return True
 
-def format_smi_post(server, category, text, player_username, editor_username):
+def format_smi_post(server, category, text, player_username, editor_username, is_vip=False):
     clean_server = server.replace('🔥 ', '').replace('🌴 ', '').replace('🌵 ', '').replace('⚜️ ', '').replace('❄️ ', '').replace('🌊 ', '').replace('✨ ', '').replace('🏛 ', '').replace('❤️ ', '').replace('🍀 ', '').replace('⚡️ ', '').replace('🌲 ', '').replace('👑 ', '').replace('⚓️ ', '').replace('💎 ', '').replace('📜 ', '').replace('☀️ ', '').replace('🎄 ', '').replace('🌌 ', '').replace('🎁 ', '').replace('🐝 ', '').replace('🪞 ', '').replace('💖 ', '').replace('📱 ', '')
     
-    player_contact = f"@{player_username}" if player_username and player_username != "Без юзернейма" else "Не указан"
+    if is_vip:
+        player_contact = "🛡️ [Контакт скрыт по желанию VIP]"
+        vip_header = "👑 **[VIP ОБЪЯВЛЕНИЕ]**\n"
+    else:
+        player_contact = f"@{player_username}" if player_username and player_username != "Без юзернейма" else "Не указан"
+        vip_header = ""
+
     editor_contact = f"@{editor_username}" if editor_username else "СМИ"
 
     return (
+        f"{vip_header}"
         f"📰 | **[СМИ {clean_server}] Объявление:**\n"
         f"📞 **Контакт игрока:** {player_contact}\n\n"
         f"{text}\n\n"
@@ -160,6 +170,7 @@ def kb_main_menu():
     m.add("💍 Аксессуары", "🏎 Транспорт и Тюнинг")
     m.add("🥼 Скины и Охранники", "🏡 Недвижимость и Бизнес")
     m.add("📦 Ресурсы и Оружие")
+    m.add("🔍 Поиск по товарам", "📋 Мои объявления")
     m.add("📊 Откуда цены?", "🛒 Подать объявление о продаже")
     m.add("🔄 Сменить сервер", "👑 Админ")
     return m
@@ -173,6 +184,12 @@ def ikb_user_categories():
         markup.add(types.InlineKeyboardButton(cat, callback_data=f"user_select_cat_{idx}"))
     return markup
 
+def ikb_vip_choice():
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(types.InlineKeyboardButton("⭐ Подать как VIP (1 ⭐️ Telegram Star)", callback_data="type_ad_vip"))
+    markup.add(types.InlineKeyboardButton("📝 Обычное объявление (Бесплатно)", callback_data="type_ad_std"))
+    return markup
+
 def ikb_moderation(pid):
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -182,6 +199,9 @@ def ikb_moderation(pid):
     markup.add(
         types.InlineKeyboardButton("✅ Одобрить и Опубликовать", callback_data=f"owner_approve_{pid}"),
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_{pid}")
+    )
+    markup.add(
+        types.InlineKeyboardButton("🔨 Заблокировать автора", callback_data=f"ban_author_{pid}")
     )
     return markup
 
@@ -193,19 +213,15 @@ def ikb_manage_active_ad(aid):
     )
     return markup
 
-def ikb_admin_change_cat(pid):
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    for idx, cat in enumerate(CATEGORIES):
-        markup.add(types.InlineKeyboardButton(cat, callback_data=f"set_cat_{pid}_{idx}"))
-    markup.add(types.InlineKeyboardButton("⬅️ Назад", callback_data=f"back_to_mod_{pid}"))
-    return markup
-
 # ==========================================
 # ОБРАБОТКА КОМАНД
 # ==========================================
 
 @bot.message_handler(commands=['start'])
 def cmd_start(m):
+    if m.from_user.id in banned_users:
+        return bot.send_message(m.chat.id, "⛔ Вы заблокированы в системе модерации.")
+        
     register_admin(m.from_user, m.chat.id)
     text = (
         "👋 **Добро пожаловать в Торговый Помощник Arizona RP!** 🛒✨\n\n"
@@ -229,6 +245,7 @@ def cmd_help(m):
         "2️⃣ **Просмотр рынка:** Нажимайте на категории (*«💍 Аксессуары»*, *«🏎 Транспорт»* и т.д.), чтобы посмотреть свежие объявления от других игроков.\n"
         "3️⃣ **Подача объявления:**\n"
         "   • Нажмите **«🛒 Подать объявление о продаже»**.\n"
+        "   • Выберите формат (Обычный или VIP ⭐).\n"
         "   • Выберите раздел товара.\n"
         "   • Напишите текст объявления (и прикрепите фото по желанию).\n"
         "   • Редакторы СМИ проверят его по правилам ПРО и опубликуют!\n\n"
@@ -247,6 +264,10 @@ def show_prices_info(m):
     )
     bot.send_message(m.chat.id, text, parse_mode="Markdown")
 
+# ==========================================
+# 👑 АДМИН-ПАНЕЛЬ, СТАТИСТИКА И БАНЫ
+# ==========================================
+
 @bot.message_handler(commands=['admin'])
 @bot.message_handler(func=lambda msg: msg.text == "👑 Админ")
 def cmd_admin(m):
@@ -256,7 +277,9 @@ def cmd_admin(m):
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
             types.InlineKeyboardButton("📝 Редакция объяв (Заявки игроков)", callback_data="show_pending_list"),
-            types.InlineKeyboardButton("🗑 Активные объявления", callback_data="show_active_list")
+            types.InlineKeyboardButton("🗑 Активные объявления", callback_data="show_active_list"),
+            types.InlineKeyboardButton("📊 Статистика редакторов", callback_data="show_editor_stats"),
+            types.InlineKeyboardButton("🔨 Управление Банами", callback_data="manage_bans")
         )
         bot.send_message(
             m.chat.id, 
@@ -291,29 +314,126 @@ def cancel_all(m):
     bot.send_message(m.chat.id, "Действие отменено. Главное меню:", reply_markup=kb_main_menu())
 
 # ==========================================
-# ПОДАЧА ОБЪЯВЛЕНИЯ ИГРОКОМ
+# 🔍 ПОИСК ПО КЛЮЧЕВЫМ СЛОВАМ
+# ==========================================
+
+@bot.message_handler(func=lambda msg: msg.text == "🔍 Поиск по товарам")
+def start_search(m):
+    uid = m.from_user.id
+    srv = user_states.get(uid, {}).get("server")
+    if not srv:
+        return bot.send_message(m.chat.id, "⚠️ Сначала выберите сервер!", reply_markup=kb_servers())
+
+    bot.send_message(m.chat.id, f"🔍 **Поиск по серверу [{srv}]**\n\nВведите название предмета или ключевое слово (например: *Нимб*, *+12*, *бизнес*):", parse_mode="Markdown", reply_markup=kb_cancel())
+    bot.register_next_step_handler(m, process_search_query)
+
+def process_search_query(m):
+    if m.text == "🚫 Отмена":
+        return bot.send_message(m.chat.id, "Поиск отменен.", reply_markup=kb_main_menu())
+
+    query = m.text.lower().strip()
+    uid = m.from_user.id
+    srv = user_states.get(uid, {}).get("server", "Phoenix")
+
+    results = []
+    with ads_lock:
+        for aid, ad in active_ads.items():
+            if ad.get("server") == srv and query in ad.get("text", "").lower():
+                results.append(ad)
+
+    if not results:
+        return bot.send_message(m.chat.id, f"🔍 По запросу «**{query}**» объявлений не найдено.", parse_mode="Markdown", reply_markup=kb_main_menu())
+
+    bot.send_message(m.chat.id, f"🔍 Найдено объявлений: **{len(results)} шт.**", parse_mode="Markdown")
+    for ad in results:
+        if ad.get("photo"):
+            bot.send_photo(m.chat.id, ad["photo"], caption=ad["text"], parse_mode="Markdown")
+        else:
+            bot.send_message(m.chat.id, ad["text"], parse_mode="Markdown")
+
+# ==========================================
+# 📋 УПРАВЛЕНИЕ СВОИМИ ОБЪЯВЛЕНИЯМИ
+# ==========================================
+
+@bot.message_handler(func=lambda msg: msg.text == "📋 Мои объявления")
+def show_my_ads(m):
+    uid = m.from_user.id
+    user_ads = []
+
+    with ads_lock:
+        for aid, ad in active_ads.items():
+            if ad.get("user_id") == uid:
+                user_ads.append((aid, ad))
+
+    if not user_ads:
+        return bot.send_message(m.chat.id, "📋 У вас пока нет активных опубликованных объявлений.", reply_markup=kb_main_menu())
+
+    bot.send_message(m.chat.id, f"📋 **Ваши активные объявления ({len(user_ads)} шт.):**", parse_mode="Markdown")
+    for aid, ad in user_ads:
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("✅ Продано (Удалить)", callback_data=f"user_delete_self_{aid}"))
+        
+        info = f"🌐 Сервер: {ad['server']}\n📂 Раздел: {ad['category']}\n\n{ad['text']}"
+        if ad.get("photo"):
+            bot.send_photo(m.chat.id, ad["photo"], caption=info, parse_mode="Markdown", reply_markup=markup)
+        else:
+            bot.send_message(m.chat.id, info, parse_mode="Markdown", reply_markup=markup)
+
+# ==========================================
+# ПОДАЧА ОБЪЯВЛЕНИЯ ИГРОКОМ (ОБЫЧНОЕ / VIP)
 # ==========================================
 
 @bot.message_handler(func=lambda msg: msg.text == "🛒 Подать объявление о продаже")
 def start_ad_creation(m):
+    uid = m.from_user.id
+    if uid in banned_users:
+        return bot.send_message(m.chat.id, "⛔ Вы заблокированы в системе модерации.")
+
     if not check_working_hours():
         return bot.send_message(m.chat.id, "❌ Радиоцентр закрыт! Подача объявлений с 22:00 до 08:00 МСК заблокирована.")
-    
-    uid = m.from_user.id
-    if uid in user_data and "last_ad_time" in user_data[uid]:
-        if time.time() - user_data[uid]["last_ad_time"] < 600:
-            remaining = int(600 - (time.time() - user_data[uid]["last_ad_time"]))
-            return bot.send_message(
-                m.chat.id, 
-                f"❌ Кулдаун! Подождите {remaining // 60} мин. {remaining % 60} сек. перед отправкой следующего объявления."
-            )
 
     if uid not in user_states or "server" not in user_states[uid]:
         return bot.send_message(m.chat.id, "⚠️ Сначала выберите сервер из главного меню!", reply_markup=kb_servers())
 
     bot.send_message(
         m.chat.id,
-        f"🌐 **Сервер:** {user_states[uid].get('server')}\n\n👇 **Шаг 1 из 2:** Выберите раздел товара:",
+        "⭐ **Выберите формат подачи объявления:**\n\n"
+        "• **Обычное:** Бесплатно, отправляется в общую ленту.\n"
+        "• **VIP (1 ⭐️ Stars):** Закрепляется **в самом верху** категории + Контакт автоматически скрыт!\n"
+        "*(На VIP-объявления кулдаун не распространяется)*",
+        reply_markup=ikb_vip_choice()
+    )
+
+@bot.callback_query_handler(func=lambda call: call.data in ["type_ad_vip", "type_ad_std"])
+def select_ad_type(call):
+    uid = call.from_user.id
+    if uid not in user_states:
+        user_states[uid] = {"server": "Phoenix"}
+
+    is_vip = (call.data == "type_ad_vip")
+
+    # Кулдаун проверяется ТОЛЬКО для обычных объявлений!
+    if not is_vip:
+        if uid in user_data and "last_ad_time" in user_data[uid]:
+            elapsed = time.time() - user_data[uid]["last_ad_time"]
+            if elapsed < 600:
+                remaining = int(600 - elapsed)
+                bot.answer_callback_query(
+                    call.id, 
+                    f"❌ Кулдаун! Подождите {remaining // 60} мин. {remaining % 60} сек. перед обычным объявлением.", 
+                    show_alert=True
+                )
+                return
+
+    user_states[uid]["is_vip"] = is_vip
+
+    bot.answer_callback_query(call.id)
+    bot.edit_message_text(
+        f"🌐 **Сервер:** {user_states[uid].get('server')}\n"
+        f"Тип: {'⭐ VIP (1 Star)' if is_vip else '📝 Обычное'}\n\n"
+        f"👇 Выберите раздел товара:",
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
         parse_mode="Markdown",
         reply_markup=ikb_user_categories()
     )
@@ -332,7 +452,7 @@ def process_user_cat_choice(call):
     bot.answer_callback_query(call.id)
     bot.edit_message_text(
         f"✅ Выбран раздел: **{selected_cat}**\n\n"
-        "👇 **Шаг 2 из 2:** Отправьте описание предмета (и при желании фото).\n"
+        "👇 Отправьте описание предмета (и при желании фото).\n"
         "💡 *Пример: Продам машинку на ПУ (+12). Цена: 25кк*",
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -360,25 +480,66 @@ def process_sub(m):
 
     server_name = user_states[uid].get("server", "Phoenix")
     category = user_states[uid].get("selected_category", CATEGORIES[0])
+    is_vip = user_states[uid].get("is_vip", False)
 
-    if uid not in user_data: 
-        user_data[uid] = {}
-    user_data[uid]["last_ad_time"] = time.time()
+    # Если выбрана VIP публикация — отправляем счет на 1 Telegram Star
+    if is_vip:
+        try:
+            prices = [types.LabeledPrice(label="VIP Объявление", amount=1)]
+            bot.send_invoice(
+                m.chat.id,
+                title="👑 VIP-Объявление в СМИ",
+                description="Поднятие в топ категории + Скрытие контакта",
+                invoice_payload=f"vip_ad_payload_{uid}_{int(time.time())}",
+                provider_token="",
+                currency="XTR",
+                prices=prices
+            )
+            # Сохраняем временные данные до оплаты
+            user_states[uid]["pending_vip_data"] = {
+                "photo": photo, "text": text, "category": category, "server": server_name
+            }
+            return
+        except Exception as e:
+            logger.error(f"Ошибка вызова счета Stars: {e}")
+            bot.send_message(m.chat.id, "⚠️ Ошибка вызова оплаты Stars. Подаем как обычное объявление.")
+
+    finalize_ad_submission(m, uid, photo, text, category, server_name, is_vip=False)
+
+def finalize_ad_submission(m_or_chat_id, uid, photo, text, category, server_name, is_vip=False):
+    global moderation_counter
+
+    # Кулдаун обновляем ТОЛЬКО для обычных объявлений
+    if not is_vip:
+        if uid not in user_data: 
+            user_data[uid] = {}
+        user_data[uid]["last_ad_time"] = time.time()
 
     moderation_counter += 1
-    uname = m.from_user.username or "Без юзернейма"
     
+    if isinstance(m_or_chat_id, types.Message):
+        uname = m_or_chat_id.from_user.username or "Без юзернейма"
+        chat_id = m_or_chat_id.chat.id
+    else:
+        chat_id = m_or_chat_id
+        try:
+            chat_obj = bot.get_chat(uid)
+            uname = chat_obj.username or "Без юзернейма"
+        except Exception:
+            uname = "Без юзернейма"
+
     pending_posts[moderation_counter] = {
         "user_id": uid, 
         "username": uname, 
         "photo": photo, 
         "text": text or "Без описания", 
         "category": category, 
-        "server": server_name
+        "server": server_name,
+        "is_vip": is_vip
     }
 
     f_text = (
-        f"🚨 **НОВОЕ ОБЪЯВЛЕНИЕ НА МОДЕРАЦИЮ #{moderation_counter}!**\n\n"
+        f"🚨 **НОВОЕ {'👑 VIP' if is_vip else ''} ОБЪЯВЛЕНИЕ #{moderation_counter}!**\n\n"
         f"🌐 **Сервер:** {server_name}\n"
         f"📂 **Категория:** {category}\n"
         f"👤 **От игрока:** @{uname} (ID: `{uid}`)\n\n"
@@ -390,7 +551,7 @@ def process_sub(m):
         recipients.add(MODERATION_CHAT_ID)
 
     if not recipients:
-        recipients.add(m.chat.id)
+        recipients.add(chat_id)
 
     threading.Thread(
         target=send_admins_notification_async, 
@@ -398,7 +559,37 @@ def process_sub(m):
         daemon=True
     ).start()
 
-    bot.send_message(m.chat.id, "✅ **Ваше объявление отправлено редакторам СМИ!**\nОжидайте модерации.", reply_markup=kb_main_menu())
+    bot.send_message(chat_id, "✅ **Ваше объявление отправлено редакторам СМИ!**\nОжидайте модерации.", reply_markup=kb_main_menu())
+
+# ==========================================
+# ⭐️ ОПЛАТА TELEGRAM STARS (VIP)
+# ==========================================
+
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def process_pre_checkout(query):
+    bot.answer_pre_checkout_query(query.id, ok=True)
+
+@bot.message_handler(content_types=['successful_payment'])
+def process_successful_payment(m):
+    uid = m.from_user.id
+    vip_data = user_states.get(uid, {}).get("pending_vip_data")
+    
+    try:
+        bot.send_message(
+            m.chat.id,
+            f"🎉 **Оплата 1 ⭐️ прошла успешно!** Ваше VIP-объявление передано редакторам."
+        )
+        logger.info(f"Игрок @{m.from_user.username} ({uid}) оплатил 1 ⭐️ Telegram Star для VIP.")
+    except Exception as e:
+        logger.warning(f"Ошибка отправки сообщения об оплате: {e}")
+
+    if vip_data:
+        finalize_ad_submission(
+            m.chat.id, uid, 
+            vip_data["photo"], vip_data["text"], 
+            vip_data["category"], vip_data["server"], 
+            is_vip=True
+        )
 
 # ==========================================
 # ОБРАБОТКА ИНЛАЙН-КНОПОК И МОДЕРАЦИИ
@@ -406,7 +597,7 @@ def process_sub(m):
 
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
-    global pending_posts
+    global pending_posts, banned_users
     data = call.data
     u = call.from_user
     register_admin(u, call.message.chat.id)
@@ -423,7 +614,7 @@ def callbacks(call):
         
         for pid, post in list(pending_posts.items()):
             f_text = (
-                f"🚨 **Заявка от игрока #{pid}**\n"
+                f"🚨 **Заявка #{pid} {'👑 [VIP]' if post.get('is_vip') else ''}**\n"
                 f"🌐 **Сервер:** {post['server']}\n"
                 f"📂 **Категория:** {post['category']}\n"
                 f"👤 **От игрока:** @{post['username']} (ID: `{post['user_id']}`)\n\n"
@@ -451,6 +642,61 @@ def callbacks(call):
                 else:
                     bot.send_message(call.message.chat.id, info, parse_mode="Markdown", reply_markup=ikb_manage_active_ad(aid))
 
+    elif data == "show_editor_stats":
+        if not is_admin_or_owner(u):
+            return bot.answer_callback_query(call.id, "⛔ Нет доступа!", show_alert=True)
+
+        bot.answer_callback_query(call.id)
+        stats_text = "📊 **Статистика Редакторов СМИ:**\n\n"
+        if not editor_stats:
+            stats_text += "Пока ни один редактор не проверил объявления."
+        else:
+            sorted_stats = sorted(editor_stats.items(), key=lambda x: x[1], reverse=True)
+            for idx, (ed_name, count) in enumerate(sorted_stats, 1):
+                stats_text += f"{idx}. @{ed_name} — **{count} шт.** проверено\n"
+
+        stats_text += f"\n📂 Всего активных объявлений в боте: **{len(active_ads)}**"
+        bot.send_message(call.message.chat.id, stats_text, parse_mode="Markdown")
+
+    elif data == "manage_bans":
+        if not is_admin_or_owner(u):
+            return bot.answer_callback_query(call.id, "⛔ Нет доступа!", show_alert=True)
+
+        bot.answer_callback_query(call.id)
+        ban_text = f"🔨 **Список заблокированных пользователей ({len(banned_users)}):**\n"
+        for b_id in banned_users:
+            ban_text += f"• ID: `{b_id}`\n"
+        ban_text += "\nЧтобы забанить автора, используйте кнопку в карточке заявки."
+        bot.send_message(call.message.chat.id, ban_text, parse_mode="Markdown")
+
+    elif data.startswith("ban_author_"):
+        pid = int(data.split('_')[2])
+        if not is_admin_or_owner(u):
+            return bot.answer_callback_query(call.id, "⛔ Нет прав!", show_alert=True)
+
+        if pid in pending_posts:
+            target_uid = pending_posts[pid]["user_id"]
+            banned_users.add(target_uid)
+            pending_posts.pop(pid, None)
+            bot.answer_callback_query(call.id, f"Пользователь {target_uid} заблокирован!", show_alert=True)
+            try:
+                bot.edit_message_caption("🔨 Автор заблокирован, заявка удалена.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+            except Exception:
+                pass
+
+    elif data.startswith("user_delete_self_"):
+        aid = int(data.split('_')[3])
+        with ads_lock:
+            if aid in active_ads and active_ads[aid].get("user_id") == call.from_user.id:
+                del active_ads[aid]
+                bot.answer_callback_query(call.id, "✅ Объявление удалено!")
+                try:
+                    bot.delete_message(call.message.chat.id, call.message.message_id)
+                except Exception:
+                    pass
+            else:
+                bot.answer_callback_query(call.id, "Объявление не найдено.", show_alert=True)
+
     elif data.startswith("del_active_"):
         aid = int(data.split('_')[2])
         if not is_admin_or_owner(u):
@@ -466,12 +712,11 @@ def callbacks(call):
                     try:
                         bot.send_message(
                             player_id, 
-                            f"🗑️ **Ваше объявление (#{aid}) было удалено редактором СМИ.**\n"
-                            f"Если у вас есть вопросы или нужно подать новое — вы можете оформить заявку снова.", 
+                            f"🗑️ **Ваше объявление (#{aid}) было удалено редактором СМИ.**", 
                             parse_mode="Markdown"
                         )
                     except Exception as e:
-                        logger.warning(f"Не удалось отправить сообщение об удалении пользователю {player_id}: {e}")
+                        logger.warning(f"Не удалось отправить сообщение {player_id}: {e}")
 
                 try:
                     bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -479,14 +724,6 @@ def callbacks(call):
                     pass
             else:
                 bot.answer_callback_query(call.id, "Объявление уже не существует.", show_alert=True)
-
-    elif data.startswith("reedit_active_"):
-        aid = int(data.split('_')[2])
-        if not is_admin_or_owner(u):
-            return bot.answer_callback_query(call.id, "⛔ Доступ только для СМИ!", show_alert=True)
-
-        bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, f"💡 Чтобы переписать опубликованное объявление #{aid}, удалите его и отредактируйте заново.")
 
     elif data.startswith("edit_text_"):
         pid = int(data.split('_')[2])
@@ -510,60 +747,6 @@ def callbacks(call):
         )
         return bot.send_message(call.message.chat.id, instructions, parse_mode="Markdown", reply_markup=kb_cancel())
 
-    elif data.startswith("edit_cat_"):
-        pid = int(data.split('_')[2])
-        if not is_admin_or_owner(u): 
-            return bot.answer_callback_query(call.id, "⛔ Доступ только для СМИ!", show_alert=True)
-        
-        bot.answer_callback_query(call.id)
-        if call.message.caption:
-            bot.edit_message_caption("Выберите новый раздел:", chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=ikb_admin_change_cat(pid))
-        else:
-            bot.edit_message_text("Выберите новый раздел:", chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=ikb_admin_change_cat(pid))
-
-    elif data.startswith("back_to_mod_"):
-        pid = int(data.split('_')[3])
-        bot.answer_callback_query(call.id)
-        post = pending_posts.get(pid)
-        if not post:
-            return bot.send_message(call.message.chat.id, "❌ Заявка не найдена.")
-
-        f_text = (
-            f"🚨 **Заявка от игрока #{pid}**\n"
-            f"🌐 **Сервер:** {post['server']}\n"
-            f"📂 **Категория:** {post['category']}\n"
-            f"👤 **От игрока:** @{post['username']}\n\n"
-            f"📥 **Текст игрока:**\n`{post['text']}`"
-        )
-        if call.message.caption:
-            bot.edit_message_caption(f_text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=ikb_moderation(pid))
-        else:
-            bot.edit_message_text(f_text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=ikb_moderation(pid))
-
-    elif data.startswith("set_cat_"):
-        parts = data.split('_')
-        pid, cat_idx = int(parts[2]), int(parts[3])
-        new_category = CATEGORIES[cat_idx]
-
-        if pid in pending_posts:
-            pending_posts[pid]["category"] = new_category
-
-        bot.answer_callback_query(call.id, f"Категория изменена на: {new_category}")
-        
-        if pid in pending_posts:
-            post = pending_posts[pid]
-            f_text = (
-                f"🚨 **Заявка от игрока #{pid}**\n"
-                f"🌐 **Сервер:** {post['server']}\n"
-                f"📂 **Категория:** {post['category']} (Изменено)\n"
-                f"👤 **От игрока:** @{post['username']}\n\n"
-                f"📥 **Текст игрока:**\n`{post['text']}`"
-            )
-            if call.message.caption:
-                bot.edit_message_caption(f_text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=ikb_moderation(pid))
-            else:
-                bot.edit_message_text(f_text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=ikb_moderation(pid))
-
     elif data.startswith("owner_approve_"):
         pid = int(data.split('_')[2])
         if not is_admin_or_owner(u): 
@@ -575,7 +758,13 @@ def callbacks(call):
 
         post = pending_posts.pop(pid)
         editor_uname = u.username or u.first_name
-        p_text = format_smi_post(post['server'], post['category'], post['text'], post['username'], editor_uname)
+        
+        editor_stats[editor_uname] = editor_stats.get(editor_uname, 0) + 1
+
+        p_text = format_smi_post(
+            post['server'], post['category'], post['text'], 
+            post['username'], editor_uname, is_vip=post.get("is_vip", False)
+        )
         
         with ads_lock:
             active_ads[pid] = {
@@ -584,6 +773,7 @@ def callbacks(call):
                 "photo": post["photo"], 
                 "server": post["server"],
                 "category": post["category"],
+                "is_vip": post.get("is_vip", False),
                 "editor": f"@{editor_uname}", 
                 "last_updated": time.time(), 
                 "subscribers": set(), 
@@ -643,7 +833,7 @@ def process_editing(m):
         bot.send_message(m.chat.id, "❌ Заявка не найдена.", reply_markup=kb_main_menu())
 
 # ==========================================
-# ПРОСМОТР ОБЪЯВЛЕНИЙ ПО КАТЕГОРИЯМ
+# 💍 ПРОСМОТР ОБЪЯВЛЕНИЙ (С VIP ВВЕРХУ)
 # ==========================================
 
 @bot.message_handler(func=lambda msg: msg.text in CATEGORIES)
@@ -653,7 +843,10 @@ def show_ads(m):
     cat_name = m.text
     
     with ads_lock: 
-        ads_list = [ad for ad in active_ads.values() if ad.get("category") == cat_name and ad.get("server") == srv]
+        vip_ads = [ad for ad in active_ads.values() if ad.get("category") == cat_name and ad.get("server") == srv and ad.get("is_vip")]
+        std_ads = [ad for ad in active_ads.values() if ad.get("category") == cat_name and ad.get("server") == srv and not ad.get("is_vip")]
+        
+        ads_list = vip_ads + std_ads
     
     if not ads_list:
         return bot.send_message(m.chat.id, f"📊 **Раздел:** {cat_name}\n🌐 **Сервер:** {srv}\n\nВ этом разделе пока нет объявлений.", parse_mode="Markdown", reply_markup=kb_main_menu())
@@ -677,7 +870,6 @@ if __name__ == '__main__':
     except Exception:
         pass
 
-    # Регистрируем меню команд в Telegram UI (как на скриншоте)
     try:
         bot.set_my_commands([
             types.BotCommand("start", "Начать"),

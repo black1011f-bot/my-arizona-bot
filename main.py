@@ -204,7 +204,6 @@ def ikb_admin_change_cat(pid):
 # ОБРАБОТКА КОМАНД
 # ==========================================
 
-# 2. ОБНОВЛЕННЫЙ /start С ПРИВЕТСТВИЕМ И БЕЗОПАСНОСТЬЮ
 @bot.message_handler(commands=['start'])
 def cmd_start(m):
     register_admin(m.from_user, m.chat.id)
@@ -231,7 +230,6 @@ def show_prices_info(m):
     )
     bot.send_message(m.chat.id, text, parse_mode="Markdown")
 
-# 1. ОБНОВЛЕННАЯ АДМИН-ПАНЕЛЬ
 @bot.message_handler(commands=['admin'])
 @bot.message_handler(func=lambda msg: msg.text == "👑 Админ")
 def cmd_admin(m):
@@ -396,7 +394,6 @@ def callbacks(call):
     u = call.from_user
     register_admin(u, call.message.chat.id)
 
-    # 1. ПОКАЗАТЬ ВСЕ ОБЪЯВЛЕНИЯ ИГРОКОВ В АДМИНКЕ
     if data == "show_pending_list":
         if not is_admin_or_owner(u):
             return bot.answer_callback_query(call.id, "⛔ Нет доступа!", show_alert=True)
@@ -437,6 +434,7 @@ def callbacks(call):
                 else:
                     bot.send_message(call.message.chat.id, info, parse_mode="Markdown", reply_markup=ikb_manage_active_ad(aid))
 
+    # УДАЛЕНИЕ ОБЪЯВЛЕНИЯ + УВЕДОМЛЕНИЕ ИГРОКУ
     elif data.startswith("del_active_"):
         aid = int(data.split('_')[2])
         if not is_admin_or_owner(u):
@@ -444,8 +442,22 @@ def callbacks(call):
 
         with ads_lock:
             if aid in active_ads:
+                player_id = active_ads[aid].get("user_id")  # Извлекаем Telegram ID автора
                 del active_ads[aid]
                 bot.answer_callback_query(call.id, f"Объявление #{aid} удалено!")
+                
+                # Отправка СМС/уведомления автору
+                if player_id:
+                    try:
+                        bot.send_message(
+                            player_id, 
+                            f"🗑️ **Ваше объявление (#{aid}) было удалено редактором СМИ.**\n"
+                            f"Если у вас есть вопросы или нужно подать новое — вы можете оформить заявку снова.", 
+                            parse_mode="Markdown"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Не удалось отправить сообщение об удалении пользователю {player_id}: {e}")
+
                 try:
                     bot.delete_message(call.message.chat.id, call.message.message_id)
                 except Exception:
@@ -552,6 +564,7 @@ def callbacks(call):
         
         with ads_lock:
             active_ads[pid] = {
+                "user_id": post["user_id"],  # Сохраняем ID автора объявления!
                 "text": p_text, 
                 "photo": post["photo"], 
                 "server": post["server"],

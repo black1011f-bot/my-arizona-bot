@@ -1401,8 +1401,70 @@ def process_admin_edit_text(m):
 
 
 # ==========================================
-# ПРОСМОТР СКУПКИ (КУПЛЮ)
+# ПРОСМОТР ПРОДАЖ И СКУПКИ
 # ==========================================
+def show_ads_category(m):
+    update_state(m.from_user.id, viewing_buy_categories=False)
+    cat_idx = CATEGORIES.index(m.text)
+    render_category_page(m.chat.id, m.from_user.id, cat_idx, page=0)
+
+def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0):
+    cat_name = CATEGORIES[cat_idx]
+    srv = get_state(user_id).get("server", "Phoenix")
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, user_id, text, photo FROM active_ads WHERE category = ? AND server = ? ORDER BY is_vip DESC, id DESC", (cat_name, srv))
+        all_ads = cur.fetchall()
+
+    if not all_ads:
+        return safe_send_message(chat_id, f"📤 Продажа | Раздел: <b>{html.escape(cat_name)}</b> [{html.escape(srv)}]\nОбъявлений о продаже пока нет.", reply_markup=kb_main_menu())
+
+    total_ads = len(all_ads)
+    start_idx = page * ADS_PER_PAGE
+    end_idx = start_idx + ADS_PER_PAGE
+    page_ads = all_ads[start_idx:end_idx]
+
+    if not page_ads:
+        return safe_send_message(chat_id, "📄 На этой странице больше нет объявлений.", reply_markup=kb_main_menu())
+
+    safe_send_message(chat_id, f"📤 <b>Продажа | Раздел:</b> {html.escape(cat_name)} [{html.escape(srv)}] (Страница {page + 1}):")
+
+    for aid, seller_uid, text, photo in page_ads:
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (user_id, aid))
+            is_fav = bool(cur.fetchone())
+
+        markup = ikb_ad_actions(aid, is_fav=is_fav)
+        fmt_text = html.escape(text)
+        if photo:
+            safe_send_photo(chat_id, photo, caption=fmt_text, reply_markup=markup)
+        else:
+            safe_send_message(chat_id, fmt_text, reply_markup=markup)
+
+    nav_markup = types.InlineKeyboardMarkup(row_width=2)
+    nav_btns = []
+    if page > 0:
+        nav_btns.append(types.InlineKeyboardButton("⏮ Назад", callback_data=f"sale_page_{cat_idx}_{page - 1}"))
+    if end_idx < total_ads:
+        nav_btns.append(types.InlineKeyboardButton("Вперед ⏭", callback_data=f"sale_page_{cat_idx}_{page + 1}"))
+    
+    if nav_btns:
+        nav_markup.add(*nav_btns)
+        safe_send_message(chat_id, f"📑 Страница {page + 1} из {(total_ads + ADS_PER_PAGE - 1) // ADS_PER_PAGE}:", reply_markup=nav_markup)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("sale_page_"))
+def cb_sale_category_page(call):
+    parts = call.data.split("_")
+    cat_idx = int(parts[2])
+    page = int(parts[3])
+    try:
+        bot.answer_callback_query(call.id)
+    except Exception:
+        pass
+    render_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
+
 def show_buy_categories_menu(m):
     update_state(m.from_user.id, viewing_buy_categories=True)
     safe_send_message(m.chat.id, "📥 <b>Лента Скупки товаров:</b>\nВыберите интересующую категорию:", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add(*CATEGORIES, "🚫 Отмена"))
@@ -2147,15 +2209,12 @@ def process_admin_edit_active(m):
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute(f"UPDATE {table_name} SET text = ?, last_updated = ? WHERE id = ?", (new_text, time.time(), aid))
+        cur.execute(f"UPDATE {table_name} SET text = ? WHERE id = ?", (new_text, aid))
         conn.commit()
 
     safe_send_message(m.chat.id, f"✅ Активное объявление #{aid} успешно обновлено!", reply_markup=kb_main_menu())
 
 
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
 if __name__ == "__main__":
-    logger.info("Бот успешно запущен и ожидает сообщения...")
+    logger.info("Бот запущен и готов к работе...")
     bot.infinity_polling(skip_pending=True)

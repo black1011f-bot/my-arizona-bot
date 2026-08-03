@@ -19,8 +19,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Укажите ваш действующий токен от @BotFather
-TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ДЕЙСТВУЮЩИЙ_ТОКЕН")
+# Ваш обновленный токен
+TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAGHkb0zjiNrvFSDypbAWLrzdk-yPFX11MY")
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
 OWNER_USERNAME = "bounqy"
@@ -217,7 +217,7 @@ def init_db():
 init_db()
 
 # ==========================================
-# ВСПАМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ==========================================
 def register_admin_chat(chat_id: int):
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
@@ -267,6 +267,13 @@ def set_user_last_ad_time(user_id, t):
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute("INSERT OR REPLACE INTO user_data (user_id, last_ad_time) VALUES (?, ?)", (user_id, t))
+        conn.commit()
+
+def register_user(user_id):
+    """Регистрирует пользователя в БД, если его там еще нет."""
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO user_data (user_id, last_ad_time) VALUES (?, 0)", (user_id,))
         conn.commit()
 
 def is_banned(user) -> bool:
@@ -396,7 +403,7 @@ def ikb_ad_actions(aid: int, is_fav: bool = False):
 # ==========================================
 # МИДДЛВЕЙР НАВИГАЦИИ
 # ==========================================
-@bot.message_handler(func=lambda msg: msg.text in SYSTEM_NAV_BUTTONS or msg.text.startswith('/'), priority=10)
+@bot.message_handler(func=lambda msg: msg.text in SYSTEM_NAV_BUTTONS or msg.text.startswith('/'))
 def handle_navigation_override(m):
     clear_state(m.from_user.id)
     
@@ -435,6 +442,8 @@ def handle_navigation_override(m):
 # ОСНОВНЫЕ КОМАНДЫ
 # ==========================================
 def cmd_start(m):
+    register_user(m.from_user.id)
+    
     if is_banned(m.from_user):
         return safe_send_message(m.chat.id, "⛔ Вы заблокированы в системе модерации.")
         
@@ -800,7 +809,6 @@ def callback_moderation(call):
     if not verify_admin_callback(call):
         return
 
-    # Извлекаем действие и pid безопасно через rsplit
     raw_action = call.data.replace("mod_", "")
     try:
         action, pid_str = raw_action.rsplit("_", 1)

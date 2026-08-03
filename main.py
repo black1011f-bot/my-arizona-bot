@@ -14,12 +14,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# 👇 ВСТАВЬТЕ СВОЙ ТОКЕН БОТА МЕЖДУ КАВЫЧКАМИ 👇
+# Токен успешно обновлен
 # ==========================================
 TOKEN = '8916669266:AAEL2qZQajHu_ccWo-91XFmlLZRcUGl1klg'
 
-if not TOKEN or TOKEN == '8916669266:AAEL2qZQajHu_ccWo-91XFmlLZRcUGl1klg':
-    logger.error("8916669266:AAEL2qZQajHu_ccWo-91XFmlLZRcUGl1klg")
+if not TOKEN or TOKEN == 'ВСТАВЬТЕ_ТОКЕН_СЮДА':
+    logger.error("❌ TOKEN не указан! Вставьте реальный токен бота.")
     exit(1)
 
 bot = telebot.TeleBot(TOKEN)
@@ -277,7 +277,7 @@ def show_ads(m):
 @bot.callback_query_handler(func=lambda call: True)
 def callbacks(call):
     global pending_posts
-    data, u = call.data, call.from_user
+    data, u = call.data, call.fromuser
 
     if data.startswith("edit_"):
         pid = int(data.split('_')[1])

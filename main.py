@@ -25,7 +25,6 @@ ADMIN_USERNAMES = {"bounqy31", "bounqy"}
 ADMIN_CHAT_IDS = set() 
 MODERATION_CHAT_ID = int(os.getenv("MODERATION_CHAT_ID", "0"))
 
-# Вставьте сюда ваш полученный file_id видео (или оставьте пустым, пока не отправите боту видео)
 WELCOME_VIDEO_ID = "YOUR_VIDEO_FILE_ID_HERE" 
 
 DB_NAME = "smi_bot.db"
@@ -322,7 +321,6 @@ def cmd_start(m):
         "👇 **Для начала работы выберите ваш игровой сервер:**"
     )
 
-    # Проверка: если вы указали реальный file_id видео, бот отправит его. Если нет — отправит текст.
     if WELCOME_VIDEO_ID and WELCOME_VIDEO_ID != "YOUR_VIDEO_FILE_ID_HERE":
         try:
             bot.send_video(
@@ -336,7 +334,6 @@ def cmd_start(m):
         except Exception as e:
             logger.warning(f"Не удалось отправить видео по ID, отправляем текст: {e}")
 
-    # Запасной вариант (если видео еще не настроено)
     bot.send_message(m.chat.id, caption_text, parse_mode="Markdown", reply_markup=kb_servers())
 
 @bot.message_handler(commands=['help'])
@@ -352,11 +349,13 @@ def cmd_help(m):
 
 @bot.message_handler(func=lambda msg: msg.text == "📊 Откуда цены?")
 def show_prices_info(m):
-    bot.send_message(
-        m.chat.id, 
-        "📊 **Откуда мы берем цены?**\n\nВсе цены формируются на основе реальных сделок и проходят проверку СМИ.", 
-        parse_mode="Markdown"
+    text = (
+        "📊 **Откуда берутся цены в нашем боте?**\n\n"
+        "👥 **Помощь игроков:** Все цены и актуальная информация формируются благодаря вам! Игроки активно отправляют свои продажи, фиксируют изменения рынка и помогают находить выгодные лавки на сервере.\n\n"
+        "📰 **Работа СМИ:** Редакторы радиоцентра проверяют поступающие данные, отсеивают фейки и поддерживают актуальность каталога, чтобы вы всегда знали реальную стоимость имущества.\n\n"
+        "💡 Хотите помочь проекту? Просто подавайте свои объявления о продаже — так цены всегда будут максимально точными!"
     )
+    bot.send_message(m.chat.id, text, parse_mode="Markdown")
 
 @bot.message_handler(commands=['admin'])
 @bot.message_handler(func=lambda msg: msg.text == "👑 Админ")
@@ -424,19 +423,22 @@ def process_search_query(m):
     with db_lock:
         conn = sqlite3.connect(DB_NAME)
         cur = conn.cursor()
-        cur.execute("SELECT text, photo FROM active_ads WHERE server = ? AND LOWER(text) LIKE ?", (srv, f"%{query}%"))
+        cur.execute("SELECT id, text, photo FROM active_ads WHERE server = ? AND LOWER(text) LIKE ?", (srv, f"%{query}%"))
         results = cur.fetchall()
         conn.close()
 
     if not results:
         return bot.send_message(m.chat.id, f"🔍 По запросу «**{query}**» объявлений не найдено.", parse_mode="Markdown", reply_markup=kb_main_menu())
 
-    bot.send_message(m.chat.id, f"🔍 Найдено объявлений: **{len(results)} шт.** (Показ первых 10)", parse_mode="Markdown")
-    for text, photo in results[:10]:
+    bot.send_message(m.chat.id, f"🔍 Найдено объявлений: **{len(results)} шт.**", parse_mode="Markdown")
+    for aid, text, photo in results[:10]:
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("✉️ Написать продавцу", callback_data=f"contact_seller_{aid}"))
+
         if photo:
-            bot.send_photo(m.chat.id, photo, caption=text, parse_mode="Markdown")
+            bot.send_photo(m.chat.id, photo, caption=text, parse_mode="Markdown", reply_markup=markup)
         else:
-            bot.send_message(m.chat.id, text, parse_mode="Markdown")
+            bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=markup)
 
 @bot.message_handler(func=lambda msg: msg.text == "📋 Мои объявления")
 def show_my_ads(m):
@@ -462,6 +464,80 @@ def show_my_ads(m):
             bot.send_photo(m.chat.id, photo, caption=info, parse_mode="Markdown", reply_markup=markup)
         else:
             bot.send_message(m.chat.id, info, parse_mode="Markdown", reply_markup=markup)
+
+# ==========================================
+# СВЯЗЬ С ПРОДАВЦОМ ЧЕРЕЗ БОТА (ДЛЯ VIP И ОБЫЧНЫХ)
+# ==========================================
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
+def cb_contact_seller(call):
+    aid = int(call.data.split("_")[2])
+    
+    with db_lock:
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+        cur.execute("SELECT user_id, server, category, text FROM active_ads WHERE id = ?", (aid,))
+        ad = cur.fetchone()
+        conn.close()
+
+    if not ad:
+        return bot.answer_callback_query(call.id, "❌ Это объявление уже неактивно или удалено.", show_alert=True)
+
+    seller_id, server, category, ad_text = ad
+    buyer_id = call.from_user.id
+
+    if seller_id == buyer_id:
+        return bot.answer_callback_query(call.id, "⚠️ Вы не можете написать самому себе!", show_alert=True)
+
+    bot.answer_callback_query(call.id)
+    
+    # Сохраняем состояние, что пользователь пишет конкретному продавцу по конкретному объявлению
+    user_states[buyer_id] = {
+        "messaging_seller": True,
+        "seller_id": seller_id,
+        "ad_info": f"[{server}] {category}: {ad_text[:50]}..."
+    }
+
+    bot.send_message(
+        call.message.chat.id,
+        "✍️ **Связь с продавцом через бота**\n\n"
+        "Отправьте ваше сообщение или вопрос одним или несколькими сообщениями. Продавец получит его вместе с ссылкой на это объявление.\n\n"
+        "ℹ️ *Учтите: отправленные сообщения удалить нельзя.*\n"
+        "Для отмены нажмите кнопку ниже.",
+        parse_mode="Markdown",
+        reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("🚫 Отмена связи"))
+    )
+
+@bot.message_handler(func=lambda msg: msg.from_user.id in user_states and user_states[msg.from_user.id].get("messaging_seller"))
+def process_message_to_seller(m):
+    uid = m.from_user.id
+    state_data = user_states[uid]
+
+    if m.text == "🚫 Отмена связи":
+        user_states.pop(uid, None)
+        return bot.send_message(m.chat.id, "❌ Переписка с продавцом отменена.", reply_markup=kb_main_menu())
+
+    seller_id = state_data.get("seller_id")
+    ad_info = state_data.get("ad_info")
+    buyer_username = f"@{m.from_user.username}" if m.from_user.username else f"ID: `{m.from_user.id}`"
+
+    forward_text = (
+        f"📩 **Вам сообщение по объявлению!**\n\n"
+        f"📌 **Товар:** {ad_info}\n"
+        f"👤 **Покупатель:** {buyer_username}\n\n"
+        f"💬 **Текст сообщения:**\n{m.text}"
+    )
+
+    try:
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("✉️ Ответить покупателю", callback_data=f"contact_seller_{uid}")) # можно будет ответить в ответ
+        
+        bot.send_message(seller_id, forward_text, parse_mode="Markdown")
+        bot.send_message(m.chat.id, "✅ **Ваше сообщение успешно отправлено продавцу!** Вы можете отправить еще текст или нажать «🚫 Отмена связи», чтобы выйти.", parse_mode="Markdown")
+    except Exception as e:
+        logger.error(f"Не удалось отправить сообщение продавцу {seller_id}: {e}")
+        bot.send_message(m.chat.id, "❌ Не удалось доставить сообщение продавцу (возможно, он заблокировал бота).", reply_markup=kb_main_menu())
+        user_states.pop(uid, None)
 
 # ==========================================
 # СОЗДАНИЕ И ПУБЛИКАЦИЯ ОБЪЯВЛЕНИЙ
@@ -1064,9 +1140,6 @@ def cb_approve_post(call):
     except Exception:
         pass
 
-# ==========================================
-# АВТО-ПОЛУЧЕНИЕ FILE_ID ВИДЕО
-# ==========================================
 @bot.message_handler(content_types=['video'])
 def get_video_id(m):
     bot.reply_to(m, f"📋 **Скопируйте этот file_id и вставьте в переменную WELCOME_VIDEO_ID в коде:**\n\n`{m.video.file_id}`", parse_mode="Markdown")
@@ -1093,7 +1166,7 @@ def render_category_page(message, user_id: int, cat_idx: int, page: int = 0):
     with db_lock:
         conn = sqlite3.connect(DB_NAME)
         cur = conn.cursor()
-        cur.execute("SELECT text, photo FROM active_ads WHERE category = ? AND server = ? ORDER BY is_vip DESC, id DESC", (cat_name, srv))
+        cur.execute("SELECT id, text, photo FROM active_ads WHERE category = ? AND server = ? ORDER BY is_vip DESC, id DESC", (cat_name, srv))
         all_ads = cur.fetchall()
         conn.close()
 
@@ -1106,12 +1179,15 @@ def render_category_page(message, user_id: int, cat_idx: int, page: int = 0):
 
     bot.send_message(message.chat.id, f"📻 **Газета [{srv}] — {cat_name}** (Стр. {page + 1}/{total_pages}):", parse_mode="Markdown")
 
-    for text, photo in page_ads:
+    for aid, text, photo in page_ads:
         try:
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("✉️ Написать продавцу", callback_data=f"contact_seller_{aid}"))
+
             if photo:
-                bot.send_photo(message.chat.id, photo, caption=text, parse_mode="Markdown")
+                bot.send_photo(message.chat.id, photo, caption=text, parse_mode="Markdown", reply_markup=markup)
             else:
-                bot.send_message(message.chat.id, text, parse_mode="Markdown")
+                bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
         except Exception:
             pass
 

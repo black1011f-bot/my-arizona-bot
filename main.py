@@ -1343,7 +1343,6 @@ def process_admin_application_text(m):
 
     safe_send_message(m.chat.id, "✅ Ваша заявка на администратора успешно отправлена владельцу (@bounqy) на рассмотрение!", reply_markup=kb_main_menu())
 
-    # Рассылка уведомления владельцу и в админ-чаты с кнопками Принять/Отклонить
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
         types.InlineKeyboardButton("✅ Принять заявку", callback_data=f"app_accept_{uid}"),
@@ -1362,7 +1361,6 @@ def process_admin_application_text(m):
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("app_accept_") or c.data.startswith("app_reject_"))
 def callback_admin_app_decision(call):
-    # Строгое требование: принимать или отклонять заявку может только владелец (@bounqy)
     if not is_owner(call.from_user):
         try:
             return bot.answer_callback_query(call.id, "⛔ Принимать или отклонять заявки на администратора может исключительно владелец бота (@bounqy)!", show_alert=True)
@@ -1370,7 +1368,7 @@ def callback_admin_app_decision(call):
             return
 
     parts = call.data.split("_")
-    action = parts[1] # accept или reject
+    action = parts[1] 
     target_uid = int(parts[2])
 
     try:
@@ -1430,12 +1428,15 @@ def admin_panel(m):
         types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"),
         types.InlineKeyboardButton("🛠 Управление объявлениями", callback_data="admin_manage_ad")
     )
-    # Только владелец (@bounqy) имеет полный доступ к управлению статусами блокировок/админки
+    
+    # Кнопки управления для владельца (@bounqy)
     if is_owner(m.from_user):
         markup.add(
-            types.InlineKeyboardButton("🚫 Забанить / Убрать админа", callback_data="admin_ban"),
-            types.InlineKeyboardButton("🟢 Разбанить / Назначить", callback_data="admin_unban")
+            types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
+            types.InlineKeyboardButton("🟢 Назначить", callback_data="admin_unban"),
+            types.InlineKeyboardButton("❌ Снять с админа", callback_data="admin_demote")
         )
+        
     safe_send_message(m.chat.id, "👑 <b>Панель управления администратора:</b>", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_stats")
@@ -1459,17 +1460,27 @@ def cb_admin_ban(call):
     update_state(call.from_user.id, admin_action="ban")
     try: bot.answer_callback_query(call.id)
     except: pass
-    safe_send_message(call.message.chat.id, "🚫 Введите username (без @) или ID пользователя для блокировки / снятия прав:", reply_markup=kb_cancel())
+    safe_send_message(call.message.chat.id, "🚫 Введите username (без @) или ID пользователя для блокировки:", reply_markup=kb_cancel())
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_unban")
 def cb_admin_unban(call):
     if not is_owner(call.from_user):
-        try: return bot.answer_callback_query(call.id, "⛔ Принимать на админку и разблокировать может исключительно владелец бота (@bounqy)!", show_alert=True)
+        try: return bot.answer_callback_query(call.id, "⛔ Назначать на админку и разблокировать может исключительно владелец бота (@bounqy)!", show_alert=True)
         except: return
     update_state(call.from_user.id, admin_action="unban")
     try: bot.answer_callback_query(call.id)
     except: pass
     safe_send_message(call.message.chat.id, "🟢 Введите username (без @) или ID для разблокировки / приема на админку:", reply_markup=kb_cancel())
+
+@bot.callback_query_handler(func=lambda c: c.data == "admin_demote")
+def cb_admin_demote(call):
+    if not is_owner(call.from_user):
+        try: return bot.answer_callback_query(call.id, "⛔ Снимать с админки может исключительно владелец бота (@bounqy)!", show_alert=True)
+        except: return
+    update_state(call.from_user.id, admin_action="demote_admin")
+    try: bot.answer_callback_query(call.id)
+    except: pass
+    safe_send_message(call.message.chat.id, "❌ Введите username (без @) или ID администратора, которого нужно снять с должности:", reply_markup=kb_cancel())
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_broadcast")
 def cb_admin_broadcast(call):
@@ -1516,11 +1527,11 @@ def process_admin_input(m):
     clear_state(uid)
     val = m.text.strip()
 
-    if action in ["ban", "unban"]:
+    if action in ["ban", "unban", "demote_admin"]:
         if not is_owner(m.from_user):
-            return safe_send_message(m.chat.id, "⛔ Ошибка доступа! Принимать на админку и управлять блокировками может исключительно владелец (@bounqy).")
-        target = val.lstrip('@').lower()
+            return safe_send_message(m.chat.id, "⛔ Ошибка доступа! Управлять правами и блокировками может исключительно владелец (@bounqy).")
         
+        target = val.lstrip('@').lower()
         target_uid = None
         if target.isdigit():
             target_uid = int(target)
@@ -1553,7 +1564,7 @@ def process_admin_input(m):
                         )
                     except Exception as e:
                         logger.error(f"Не удалось отправить уведомление о бане пользователю {target_uid}: {e}")
-            else:
+            elif action == "unban":
                 cur.execute("DELETE FROM bans WHERE target = ?", (target,))
                 if target_uid:
                     cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (target_uid, target))
@@ -1567,7 +1578,20 @@ def process_admin_input(m):
                         )
                     except Exception as e:
                         logger.error(f"Не удалось отправить уведомление пользователю {target_uid}: {e}")
+            elif action == "demote_admin":
+                cur.execute("DELETE FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (target_uid or 0, target))
+                msg_txt = f"❌ Администратор <code>{html.escape(target)}</code> успешно снят с должности владельцем (@bounqy)."
+                if target_uid:
+                    try:
+                        safe_send_message(
+                            target_uid, 
+                            "❌ <b>Вы были сняты с поста администратора владельцем бота (@bounqy).</b> Ваши права аннулированы.", 
+                            reply_markup=kb_main_menu()
+                        )
+                    except Exception as e:
+                        logger.error(f"Не удалось отправить уведомление о снятии с админки пользователю {target_uid}: {e}")
             conn.commit()
+            
         safe_send_message(m.chat.id, msg_txt, reply_markup=kb_main_menu())
 
     elif action == "broadcast":

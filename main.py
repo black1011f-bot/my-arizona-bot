@@ -19,8 +19,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Установка токена бота
-TOKEN = "8916669266:AAE6lby6tObJLHyuGrHgeCaCLKFMQsTAKdI"
+# Установка нового токена бота
+TOKEN = "8916669266:AAHjJmiPnoqyQCy59r3OxO2DtyoI2qND5Z4"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
@@ -385,7 +385,7 @@ def verify_admin_callback(call) -> bool:
 
 def check_working_hours() -> bool:
     now_time = datetime.now().time()
-    return dtime(8, 0, 0) <= now_time <= dtime(22, 0, 0)
+    return dtime(8, 0, 1) <= now_time <= dtime(22, 0, 1)
 
 def clean_server_name(server: str) -> str:
     return server.split(' ', 1)[-1] if ' ' in server else server
@@ -576,6 +576,7 @@ def handle_navigation_override(m):
 # ==========================================
 # ОСНОВНЫЕ КОМАНДЫ
 # ==========================================
+@bot.message_handler(commands=['start'])
 def cmd_start(m):
     register_user(m.from_user.id, m.from_user.username)
     
@@ -590,11 +591,12 @@ def cmd_start(m):
         "Здесь ты сможешь быстро и безопасно подать объявление о покупке или продаже транспорта, "
         "аксессуаров, недвижимости, скинов и других ценных вещей, а также рассчитывать курсы Vice City.\n\n"
         "⚠️ <b>Безопасность:</b> Бот и редакция <b>никогда</b> не запрашивают пароли от игровых аккаунтов!\n\n"
-        "⏱ <b>Режим работы радиоцентра:</b> ежедневно с <b>08:00 до 22:00 МСК</b>.\n\n"
+        "⏱ <b>Режим работы радиоцентра:</b> ежедневно с <b>08:00:01 до 22:00:01 МСК</b>.\n\n"
         "👇 <b>Для начала работы выбери свой игровой сервер ниже:</b>"
     )
     safe_send_message(m.chat.id, caption_text, reply_markup=kb_servers())
 
+@bot.message_handler(commands=['help'])
 def cmd_help(m):
     help_text = (
         "🛠 <b>Помощь и часто задаваемые вопросы (FAQ)</b>\n\n"
@@ -619,7 +621,7 @@ def how_bot_works(m):
     text = (
         "📖 <b>Справочник: Как работает бот и радиоцентр</b>\n\n"
         "1. <b>Подача объявления:</b> Выбирается тип (продажа/скупка), сервер, категория и текст.\n"
-        "2. <b>Проверка редакторами:</b> Редакторы проверяют материалы с 08:00 до 22:00 МСК.\n"
+        "2. <b>Проверка редакторами:</b> Редакторы проверяют материалы с 08:00:01 до 22:00:01 МСК.\n"
         "3. <b>Публикация:</b> Одобренное объявление уходит в ленту.\n"
         "4. <b>Инструменты VC:</b> Полноценный курс, конвертер и калькулятор прибыли для перекупщиков."
     )
@@ -945,13 +947,16 @@ def _start_posting_flow(m, is_buy: bool):
         return safe_send_message(m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove())
     
     if not check_working_hours():
-        return safe_send_message(m.chat.id, "⏱ Радиоцентр закрыт! Режим работы: с 08:00 до 22:00 МСК.")
+        return safe_send_message(m.chat.id, "⏱ Радиоцентр закрыт! Режим работы: с 08:00:01 до 22:00:01 МСК.")
 
     uid = m.from_user.id
     last_t = get_user_last_ad_time(uid)
-    if time.time() - last_t < 120 and not is_admin_or_owner(m.from_user):
-        left = int(120 - (time.time() - last_t))
-        return safe_send_message(m.chat.id, f"⏳ Подождите еще {left} сек. перед подачей нового объявления.")
+    
+    # КД 2 минуты для обычных игроков без вип / без вип объявлений; для админов (@bounqy, @bounqy31) КД убран.
+    if not is_admin_or_owner(m.from_user) and not is_user_premium(uid):
+        if time.time() - last_t < 120:
+            left = int(120 - (time.time() - last_t))
+            return safe_send_message(m.chat.id, f"⏳ КД 2 минуты! Подождите еще {left} сек. перед подачей нового объявления.")
 
     state_key = "posting_buy_ad" if is_buy else "posting_ad"
     update_state(uid, **{state_key: {"step": "server", "is_buy": is_buy}})
@@ -2167,19 +2172,19 @@ def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0
     nav_markup = types.InlineKeyboardMarkup(row_width=2)
     nav_btns = []
     if page > 0:
-        nav_btns.append(types.InlineKeyboardButton("⏮ Назад", callback_data=f"cat_page_{cat_idx}_{page - 1}"))
+        nav_btns.append(types.InlineKeyboardButton("⏮ Назад", callback_data=f"page_{cat_idx}_{page - 1}"))
     if end_idx < total_ads:
-        nav_btns.append(types.InlineKeyboardButton("Вперед ⏭", callback_data=f"cat_page_{cat_idx}_{page + 1}"))
+        nav_btns.append(types.InlineKeyboardButton("Вперед ⏭", callback_data=f"page_{cat_idx}_{page + 1}"))
     
     if nav_btns:
         nav_markup.add(*nav_btns)
         safe_send_message(chat_id, f"📑 Страница {page + 1} из {(total_ads + ADS_PER_PAGE - 1) // ADS_PER_PAGE}:", reply_markup=nav_markup)
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("cat_page_"))
+@bot.callback_query_handler(func=lambda c: c.data.startswith("page_"))
 def cb_category_page(call):
     parts = call.data.split("_")
-    cat_idx = int(parts[2])
-    page = int(parts[3])
+    cat_idx = int(parts[1])
+    page = int(parts[2])
     try:
         bot.answer_callback_query(call.id)
     except Exception:
@@ -2187,9 +2192,7 @@ def cb_category_page(call):
     render_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
 
 
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
 if __name__ == '__main__':
-    logger.info("Бот успешно запущен и готов к работе...")
+    logger.info("Бот запущен...")
     bot.infinity_polling(skip_pending=True)
+

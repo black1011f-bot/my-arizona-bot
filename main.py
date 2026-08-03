@@ -958,7 +958,6 @@ def process_set_vc_rate(m):
     except Exception:
         safe_send_message(m.chat.id, "⚠️ Ошибка. Введите положительное число (например, 95000).", reply_markup=kb_main_menu())
 
-
 # ==========================================
 # ПОДАЧА И МОДЕРАЦИЯ ОБЪЯВЛЕНИЙ
 # ==========================================
@@ -1399,7 +1398,6 @@ def process_admin_edit_text(m):
     else:
         safe_send_message(m.chat.id, f"✏️ <b>Отредактированное объявление (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
 
-
 # ==========================================
 # ПРОСМОТР ПРОДАЖ И СКУПКИ
 # ==========================================
@@ -1530,7 +1528,6 @@ def cb_buy_category_page(call):
     except Exception:
         pass
     render_buy_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
-
 
 # ==========================================
 # МОИ ОБЪЯВЛЕНИЯ
@@ -1985,7 +1982,6 @@ def callback_admin_app_decision(call):
     except Exception:
         pass
 
-
 # ==========================================
 # АДМИН-ПАНЕЛЬ
 # ==========================================
@@ -2142,24 +2138,18 @@ def cb_admin_manage_ad(call):
         cur.execute("SELECT id, server, category, text, photo FROM active_buy_ads ORDER BY id DESC LIMIT 5")
         buy_ads = cur.fetchall()
 
-    text = "🛠 <b>Управление активными объявлениями (последние 5):</b>\n\n"
+    text_msg = "🛠 <b>Управление активными объявлениями (последние 5):</b>\n\n"
     markup = types.InlineKeyboardMarkup(row_width=1)
     
-    text += "📤 <b>Продажа:</b>\n"
-    if not ads:
-        text += "• Нет объявлений\n"
-    for aid, srv, cat, ad_text, photo in ads:
-        text += f"• [ID {aid}] [{srv}] {cat}: {ad_text[:20]}...\n"
-        markup.add(types.InlineKeyboardButton(f"🗑 Удалить продажу ID {aid}", callback_data=f"admin_del_sale_{aid}"))
-
-    text += "\n📥 <b>Скупка:</b>\n"
-    if not buy_ads:
-        text += "• Нет объявлений\n"
-    for aid, srv, cat, ad_text, photo in buy_ads:
-        text += f"• [ID {aid}] [{srv}] {cat}: {ad_text[:20]}...\n"
-        markup.add(types.InlineKeyboardButton(f"🗑 Удалить скупку ID {aid}", callback_data=f"admin_del_buy_{aid}"))
-
-    safe_send_message(call.message.chat.id, text, reply_markup=markup)
+    for aid, srv, cat, txt, photo in ads:
+        markup.add(types.InlineKeyboardButton(f"🗑 Удалить продажу #{aid} [{srv}]", callback_data=f"admin_del_sale_{aid}"))
+    for aid, srv, cat, txt, photo in buy_ads:
+        markup.add(types.InlineKeyboardButton(f"🗑 Удалить скупку #{aid} [{srv}]", callback_data=f"admin_del_buy_{aid}"))
+        
+    if not ads and not buy_ads:
+        text_msg += "Нет активных объявлений."
+        
+    safe_send_message(call.message.chat.id, text_msg, reply_markup=markup if (ads or buy_ads) else None)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("admin_del_sale_") or c.data.startswith("admin_del_buy_"))
 def cb_admin_delete_ad(call):
@@ -2168,19 +2158,22 @@ def cb_admin_delete_ad(call):
     is_buy = "admin_del_buy_" in call.data
     prefix = "admin_del_buy_" if is_buy else "admin_del_sale_"
     aid = int(call.data.replace(prefix, ""))
-    table_name = "active_buy_ads" if is_buy else "active_ads"
-
+    table = "active_buy_ads" if is_buy else "active_ads"
+    
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute(f"DELETE FROM {table_name} WHERE id = ?", (aid,))
+        cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
         conn.commit()
-
+        
     try:
-        bot.answer_callback_query(call.id, f"✅ Объявление ID {aid} удалено!")
+        bot.answer_callback_query(call.id, "✅ Объявление удалено!")
         bot.delete_message(call.message.chat.id, call.message.message_id)
     except Exception:
         pass
 
+# ==========================================
+# ЗАПУСК БОТА
+# ==========================================
 if __name__ == "__main__":
-    logger.info("Бот запущен и готов к работе...")
+    logger.info("Бот СМИ запущен и работает...")
     bot.infinity_polling(skip_pending=True)

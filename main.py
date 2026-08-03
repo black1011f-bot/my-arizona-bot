@@ -615,13 +615,24 @@ def cmd_start(m):
 @bot.message_handler(commands=['help'])
 def cmd_help(m):
     help_text = (
-        "🛠 <b>Помощь и часто задаваемые вопросы (FAQ)</b>\n\n"
+        "🛠 <b>Помощь, правила и расширенный FAQ</b>\n\n"
         "❓ <b>1. Как подать объявление о продаже или скупке?</b>\n"
-        "💡 <i>Выберите сервер -> Нажмите «🛒 Подать объявление о продаже» или «Скупке» -> Выберите категорию -> Введите текст и цену -> Отправьте редакторам.</i>\n\n"
-        "❓ <b>2. Как работает калькулятор Vice City?</b>\n"
-        "💡 <i>В разделе «💱 Курс и калькулятор VC» вы можете конвертировать вирты в VC-баксы и рассчитать выгодность перелетов с учетом комиссий.</i>\n\n"
-        "❓ <b>3. Как связаться с продавцом/скупщиком?</b>\n"
-        "💡 <i>Под карточкой каждого объявления нажмите кнопку «✉️ Написать автору» для прямого диалога в боте.</i>"
+        "💡 <i>Выберите нужный игровой сервер в главном меню -> Нажмите «🛒 Подать объявление о продаже» или «скупке» -> Выберите категорию -> Введите товар, цену и условия -> Отправьте на модерацию редакторам.</i>\n\n"
+        "❓ <b>2. Сколько времени модераторы проверяют заявки?</b>\n"
+        "💡 <i>Обычно проверка занимает от силы пару минут, если редактора находятся в сети. Вы получите уведомление в чат сразу после публикации или отклонения объявления.</i>\n\n"
+        "❓ <b>3. Как изменить или удалить уже опубликованное объявление?</b>\n"
+        "💡 <i>В личном кабинете или разделе управления объявлениями вы можете в любой момент снять товар с публикации, изменить цену или обновить описание.</i>\n\n"
+        "❓ <b>4. Как работает калькулятор Vice City и конвертер валют?</b>\n"
+        "💡 <i>В разделе «💱 Курс и калькулятор VC» можно мгновенно переводить вирты в VC-баксы по актуальному курсу, а также рассчитывать выгоду перелетов и чистую прибыль с учетом комиссий.</i>\n\n"
+        "❓ <b>5. Как безопасно связаться с продавцом или покупателем?</b>\n"
+        "💡 <i>Под карточкой каждого активного объявления есть кнопка «✉️ Написать автору». Она открывает защищенный внутренний чат для обсуждения всех деталей сделки.</i>\n\n"
+        "❓ <b>6. Каковы главные правила подачи объявлений и модерации?</b>\n"
+        "💡 <i>Запрещено указывать нереалистичные цены, использовать нецензурную лексику, рекламировать сторонние ресурсы или нарушать правила проекта. Нарушители могут получить бан в боте.</i>\n\n"
+        "❓ <b>7. Что делать, если мое объявление отклонили?</b>\n"
+        "💡 <i>В системном уведомлении об отклонении всегда указана причина. Чаще всего это опечатки, отсутствие конкретики или нарушение правил. Просто исправьте текст и отправьте его повторно.</i>\n\n"
+        "❓ <b>8. Куда обращаться при обнаружении багов или технических неполадок?</b>\n"
+        "💡 <i>Если бот завис, работает некорректно или вы нашли ошибку, обязательно напишите об этом в наше официальное сообщество ВКонтакте: <b>@bountyarz</b>. Наша команда оперативно всё проверит!</i>\n\n"
+        "⏱ <b>Дополнительная информация:</b> Радиоцентр и редакция работают ежедневно с <b>08:00:01 до 22:00:01 МСК</b>."
     )
     safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu())
 
@@ -2124,92 +2135,27 @@ def process_admin_edit_active(m):
     if not is_admin_or_owner(m.from_user): 
         clear_state(m.from_user.id)
         return safe_send_message(m.chat.id, "⛔ У вас нет прав.")
-        
+    
     uid = m.from_user.id
     st = get_state(uid)
     is_buy = "admin_editing_active_buy_aid" in st
     aid = st.get("admin_editing_active_buy_aid") if is_buy else st.get("admin_editing_active_aid")
+    new_text = m.text.strip()
     clear_state(uid)
-    
+
     table_name = "active_buy_ads" if is_buy else "active_ads"
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute(f"UPDATE {table_name} SET text = ? WHERE id = ?", (m.text, aid))
+        cur.execute(f"UPDATE {table_name} SET text = ?, last_updated = ? WHERE id = ?", (new_text, time.time(), aid))
         conn.commit()
-        
-    safe_send_message(m.chat.id, f"✅ Текст объявления #{aid} успешно изменен!", reply_markup=kb_main_menu())
 
-
-# ==========================================
-# ПРОСМОТР КАТЕГОРИЙ ПРОДАЖ С ПАГИНАЦИЕЙ
-# ==========================================
-def show_ads_category(m):
-    update_state(m.from_user.id, viewing_buy_categories=False)
-    cat_idx = CATEGORIES.index(m.text)
-    render_category_page(m.chat.id, m.from_user.id, cat_idx, page=0)
-
-def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0):
-    cat_name = CATEGORIES[cat_idx]
-    srv = get_state(user_id).get("server", "Phoenix")
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT id, user_id, text, photo FROM active_ads WHERE category = ? AND server = ? ORDER BY is_vip DESC, id DESC", (cat_name, srv))
-        all_ads = cur.fetchall()
-
-    if not all_ads:
-        return safe_send_message(chat_id, f"📊 Раздел: <b>{html.escape(cat_name)}</b> [{html.escape(srv)}]\nОбъявлений пока нет.", reply_markup=kb_main_menu())
-
-    total_ads = len(all_ads)
-    start_idx = page * ADS_PER_PAGE
-    end_idx = start_idx + ADS_PER_PAGE
-    page_ads = all_ads[start_idx:end_idx]
-
-    if not page_ads:
-        return safe_send_message(chat_id, "📄 На этой странице больше нет объявлений.", reply_markup=kb_main_menu())
-
-    safe_send_message(chat_id, f"📂 <b>Раздел:</b> {html.escape(cat_name)} [{html.escape(srv)}] (Страница {page + 1}):")
-
-    for aid, seller_uid, text, photo in page_ads:
-        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (user_id, aid))
-            is_fav = bool(cur.fetchone())
-
-        markup = ikb_ad_actions(aid, is_fav=is_fav)
-        fmt_text = html.escape(text)
-        if photo:
-            safe_send_photo(chat_id, photo, caption=fmt_text, reply_markup=markup)
-        else:
-            safe_send_message(chat_id, fmt_text, reply_markup=markup)
-
-    nav_markup = types.InlineKeyboardMarkup(row_width=2)
-    nav_btns = []
-    if page > 0:
-        nav_btns.append(types.InlineKeyboardButton("⏮ Назад", callback_data=f"cat_page_{cat_idx}_{page - 1}"))
-    if end_idx < total_ads:
-        nav_btns.append(types.InlineKeyboardButton("Вперед ⏭", callback_data=f"cat_page_{cat_idx}_{page + 1}"))
-    
-    if nav_btns:
-        nav_markup.add(*nav_btns)
-        safe_send_message(chat_id, f"📑 Страница {page + 1} из {(total_ads + ADS_PER_PAGE - 1) // ADS_PER_PAGE}:", reply_markup=nav_markup)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("cat_page_"))
-def cb_category_page(call):
-    parts = call.data.split("_")
-    cat_idx = int(parts[2])
-    page = int(parts[3])
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
-    render_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
+    safe_send_message(m.chat.id, f"✅ Активное объявление #{aid} успешно обновлено!", reply_markup=kb_main_menu())
 
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-    logger.info("Бот СМИ запущен и готов к работе...")
+    logger.info("Бот успешно запущен и ожидает сообщения...")
     bot.infinity_polling(skip_pending=True)

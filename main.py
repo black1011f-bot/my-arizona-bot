@@ -17,15 +17,13 @@ logger = logging.getLogger(__name__)
 # КОНФИГУРАЦИЯ И ТОКЕН
 # ==========================================
 TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAGMsyFa-_OZBs8beZ7vIEi8bKX6uvRUrM8")
-bot = telebot.TeleBot(TOKEN)
+# Включена многопоточность для ускорения работы
+bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=15)
 
 OWNER_USERNAME = "bounqy"
 ADMIN_USERNAMES = ["bounqy31", "bounqy"]
 
-# Сюда можно вписать известные ID админов,
-# а также бот сам сюда добавляет тех админов, кто написал /start или /admin
 ADMIN_CHAT_IDS = set() 
-
 MODERATION_CHAT_ID = int(os.getenv("MODERATION_CHAT_ID", "0"))
 
 # Хранилища данных
@@ -66,7 +64,7 @@ PRO_TAGS = {
 # ==========================================
 
 def background_cleanup_ads():
-    """Фоновая очистка старых объявлений по таймеру и в ночное время."""
+    """Безопасная фоновая очистка старых объявлений без блокировки основного потока."""
     while True:
         time.sleep(30)
         now = datetime.now()
@@ -76,6 +74,9 @@ def background_cleanup_ads():
         is_night = now_time >= dtime(22, 0, 22) or now_time < dtime(8, 0, 0)
         is_morning_clean = dtime(8, 0, 0) <= now_time <= dtime(8, 5, 22)
 
+        messages_to_delete = []
+
+        # Блокировка используется ТОЛЬКО для быстрого сбора данных в памяти
         with ads_lock:
             expired_ids = []
             for aid, data in list(active_ads.items()):
@@ -85,11 +86,16 @@ def background_cleanup_ads():
             for aid in expired_ids:
                 msg_map = active_ads[aid].get("message_ids_map", {})
                 for target_id, msg_id in list(msg_map.items()):
-                    try:
-                        bot.delete_message(target_id, msg_id)
-                    except Exception as e:
-                        logger.warning(f"Не удалось удалить сообщение {msg_id}: {e}")
+                    messages_to_delete.append((target_id, msg_id))
                 del active_ads[aid]
+
+        # Удаление происходит за пределами блокировки
+        for target_id, msg_id in messages_to_delete:
+            try:
+                bot.delete_message(target_id, msg_id)
+                time.sleep(0.04) # Микропауза от лимитов Telegram
+            except Exception as e:
+                logger.warning(f"Не удалось удалить сообщение {msg_id}: {e}")
 
 threading.Thread(target=background_cleanup_ads, daemon=True).start()
 
@@ -131,6 +137,18 @@ def format_smi_post(server, category, text, player_username, editor_username):
         f"👨‍💻 **Отредактировал:** {editor_contact}"
     )
 
+def send_admins_notification_async(recipients, photo, f_text, counter):
+    """Асинхронная отправка модерации админам в отдельном потоке."""
+    for target_id in recipients:
+        try:
+            if photo: 
+                bot.send_photo(target_id, photo, caption=f_text, parse_mode="Markdown", reply_markup=ikb_moderation(counter))
+            else: 
+                bot.send_message(target_id, f_text, parse_mode="Markdown", reply_markup=ikb_moderation(counter))
+            time.sleep(0.04)
+        except Exception as e:
+            logger.warning(f"Не удалось доставить уведомление админу {target_id}: {e}")
+
 # ==========================================
 # КЛАВИАТУРЫ
 # ==========================================
@@ -159,12 +177,6 @@ def ikb_user_categories():
     markup = types.InlineKeyboardMarkup(row_width=1)
     for idx, cat in enumerate(CATEGORIES):
         markup.add(types.InlineKeyboardButton(cat, callback_data=f"user_select_cat_{idx}"))
-    return markup
-
-def ikb_admin_select_cat():
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    for idx, cat in enumerate(CATEGORIES):
-        markup.add(types.InlineKeyboardButton(cat, callback_data=f"admin_select_cat_{idx}"))
     return markup
 
 def ikb_moderation(pid):
@@ -228,7 +240,6 @@ def cmd_admin(m):
         markup = types.InlineKeyboardMarkup(row_width=1)
         markup.add(
             types.InlineKeyboardButton("📋 Ожидающие заявки СМИ", callback_data="show_pending_list"),
-            types.InlineKeyboardButton("📰 Объявление СМИ (Прямой эфир)", callback_data="admin_smi_ad"),
             types.InlineKeyboardButton("🗑 Активные объявления (Удалить/Изменить)", callback_data="show_active_list")
         )
         bot.send_message(
@@ -358,25 +369,19 @@ def process_sub(m):
         f"📥 **Текст игрока:**\n`{text or 'Без описания'}`"
     )
 
-    # -------------------------------------------------------------
-    # РАССЫЛКА УВЕДОМЛЕНИЯ ВСЕМ АДМИНАМ В ЛС
-    # -------------------------------------------------------------
     recipients = set(ADMIN_CHAT_IDS)
     if MODERATION_CHAT_ID != 0:
         recipients.add(MODERATION_CHAT_ID)
 
-    # Если ни один админ ещё не писал боту, отправляем автору для теста
     if not recipients:
         recipients.add(m.chat.id)
 
-    for target_id in recipients:
-        try:
-            if photo: 
-                bot.send_photo(target_id, photo, caption=f_text, parse_mode="Markdown", reply_markup=ikb_moderation(moderation_counter))
-            else: 
-                bot.send_message(target_id, f_text, parse_mode="Markdown", reply_markup=ikb_moderation(moderation_counter))
-        except Exception as e:
-            logger.warning(f"Не удалось доставить уведомление админу {target_id}: {e}")
+    # Запуск рассылки администраторам в отдельном потоке (без задержек для пользователя)
+    threading.Thread(
+        target=send_admins_notification_async, 
+        args=(recipients, photo, f_text, moderation_counter), 
+        daemon=True
+    ).start()
 
     bot.send_message(m.chat.id, "✅ **Ваше объявление отправлено редакторам СМИ!**\nОжидайте модерации.", reply_markup=kb_main_menu())
 
@@ -424,6 +429,14 @@ def callbacks(call):
             else:
                 bot.answer_callback_query(call.id, "Объявление уже не существует.", show_alert=True)
 
+    elif data.startswith("reedit_active_"):
+        aid = int(data.split('_')[2])
+        if not is_admin_or_owner(u):
+            return bot.answer_callback_query(call.id, "⛔ Доступ только для СМИ!", show_alert=True)
+
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, f"💡 Чтобы переписать активное объявление #{aid}, удалите его и оформите заново через модерацию.")
+
     elif data.startswith("edit_text_"):
         pid = int(data.split('_')[2])
         if not is_admin_or_owner(u): 
@@ -456,6 +469,25 @@ def callbacks(call):
             bot.edit_message_caption("Выберите новый раздел:", chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=ikb_admin_change_cat(pid))
         else:
             bot.edit_message_text("Выберите новый раздел:", chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=ikb_admin_change_cat(pid))
+
+    elif data.startswith("back_to_mod_"):
+        pid = int(data.split('_')[3])
+        bot.answer_callback_query(call.id)
+        post = pending_posts.get(pid)
+        if not post:
+            return bot.send_message(call.message.chat.id, "❌ Заявка не найдена.")
+
+        f_text = (
+            f"🚨 **Заявка на редактирование #{pid}**\n"
+            f"🌐 **Сервер:** {post['server']}\n"
+            f"📂 **Категория:** {post['category']}\n"
+            f"👤 **От игрока:** @{post['username']}\n\n"
+            f"📥 **Текст:**\n{post['text']}"
+        )
+        if call.message.caption:
+            bot.edit_message_caption(f_text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=ikb_moderation(pid))
+        else:
+            bot.edit_message_text(f_text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=ikb_moderation(pid))
 
     elif data.startswith("set_cat_"):
         parts = data.split('_')

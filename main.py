@@ -4,6 +4,7 @@ import threading
 import logging
 import sqlite3
 import re
+import html
 from datetime import datetime, time as dtime
 import telebot
 from telebot import types
@@ -18,7 +19,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAEKhCxOrvEsz1RgwNdOZinC7X7vKbJ_CLg")
+# Укажите ваш действующий токен от @BotFather
+TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ДЕЙСТВУЮЩИЙ_ТОКЕН")
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
 OWNER_USERNAME = "bounqy"
@@ -70,7 +72,10 @@ def get_state(uid: int) -> dict:
 
 def set_state(uid: int, data: dict):
     with state_lock:
+        srv = user_states.get(uid, {}).get("server")
         user_states[uid] = data
+        if srv and "server" not in user_states[uid]:
+            user_states[uid]["server"] = srv
 
 def update_state(uid: int, **kwargs):
     with state_lock:
@@ -80,21 +85,25 @@ def update_state(uid: int, **kwargs):
 
 def clear_state(uid: int):
     with state_lock:
-        user_states.pop(uid, None)
+        if uid in user_states:
+            srv = user_states[uid].get("server")
+            user_states[uid] = {"server": srv} if srv else {}
 
 # ==========================================
-# БЕЗОПАСНАЯ ОТПРАВКА СООБЩЕНИЙ
+# БЕЗОПАСНАЯ ОТПРАВКА СООБЩЕНИЙ (HTML)
 # ==========================================
-def safe_send_message(chat_id, text, parse_mode="Markdown", reply_markup=None):
+def safe_send_message(chat_id, text, parse_mode="HTML", reply_markup=None):
     try:
         return bot.send_message(chat_id, text, parse_mode=parse_mode, reply_markup=reply_markup)
-    except ApiTelegramException:
+    except ApiTelegramException as e:
+        logger.error(f"Ошибка отправки сообщения: {e}")
         return bot.send_message(chat_id, text, parse_mode=None, reply_markup=reply_markup)
 
-def safe_send_photo(chat_id, photo, caption, parse_mode="Markdown", reply_markup=None):
+def safe_send_photo(chat_id, photo, caption, parse_mode="HTML", reply_markup=None):
     try:
         return bot.send_photo(chat_id, photo, caption=caption, parse_mode=parse_mode, reply_markup=reply_markup)
-    except ApiTelegramException:
+    except ApiTelegramException as e:
+        logger.error(f"Ошибка отправки фото: {e}")
         return bot.send_photo(chat_id, photo, caption=caption, parse_mode=None, reply_markup=reply_markup)
 
 # ==========================================
@@ -298,45 +307,43 @@ def clean_server_name(server: str) -> str:
     return server.split(' ', 1)[-1] if ' ' in server else server
 
 def format_smi_post(server: str, category: str, text: str, player_username: str, editor_username: str, is_vip: bool = False, user_id: int = 0) -> str:
-    clean_srv = clean_server_name(server)
+    clean_srv = html.escape(clean_server_name(server))
+    cat_esc = html.escape(category)
+    text_esc = html.escape(text)
+    
     is_prem = is_user_premium(user_id) if user_id else False
     
     if is_vip:
-        player_contact = "🛡️ [Контакт скрыт по желанию VIP]"
-        vip_header = "👑 **[VIP ОБЪЯВЛЕНИЕ]**\n"
+        player_contact = "🛡️ <i>[Контакт скрыт по желанию VIP]</i>"
+        vip_header = "👑 <b>[VIP ОБЪЯВЛЕНИЕ]</b>\n"
     else:
-        player_contact = f"@{player_username}" if player_username and player_username != "Без юзернейма" else "Не указан"
+        p_uname = html.escape(player_username) if player_username and player_username != "Без юзернейма" else ""
+        player_contact = f"@{p_uname}" if p_uname else "Не указан"
         vip_header = ""
 
-    editor_contact = f"@{editor_username}" if editor_username else "СМИ"
+    ed_uname = html.escape(editor_username) if editor_username else "СМИ"
+    editor_contact = f"@{ed_uname}"
     prem_icon = "💎 " if is_prem else ""
     rating_str = get_seller_rating_info(user_id) if user_id else ""
 
     return (
         f"{vip_header}"
-        f"📰 | **[СМИ {clean_srv}] Объявление:** {prem_icon}\n"
-        f"📞 **Контакт игрока:** {player_contact} | {rating_str}\n\n"
-        f"{text}\n\n"
-        f"📂 **Раздел:** {category}\n"
-        f"👨‍💻 **Отредактировал:** {editor_contact}"
+        f"📰 | <b>[СМИ {clean_srv}] Объявление:</b> {prem_icon}\n"
+        f"📞 <b>Контакт игрока:</b> {player_contact} | {rating_str}\n\n"
+        f"{text_esc}\n\n"
+        f"📂 <b>Раздел:</b> {cat_esc}\n"
+        f"👨‍💻 <b>Отредактировал:</b> {editor_contact}"
     )
 
 def background_cleanup_ads():
     while True:
         time.sleep(300)
-        now_time = datetime.now().time()
         curr_t = time.time()
-
-        is_morning_clean = dtime(8, 0, 0) <= now_time <= dtime(8, 5, 0)
-
         try:
             with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
                 cur = conn.cursor()
-                if is_morning_clean:
-                    cur.execute("DELETE FROM active_ads")
-                else:
-                    expired_limit = curr_t - 600
-                    cur.execute("DELETE FROM active_ads WHERE last_updated < ?", (expired_limit,))
+                expired_limit = curr_t - 86400  # Удаление объявлений старше 24 часов
+                cur.execute("DELETE FROM active_ads WHERE last_updated < ?", (expired_limit,))
                 conn.commit()
         except Exception as e:
             logger.error(f"Ошибка фоновой очистки: {e}")
@@ -387,13 +394,12 @@ def ikb_ad_actions(aid: int, is_fav: bool = False):
     return markup
 
 # ==========================================
-# МИДДЛВЕЙР СБРОСА СОСТОЯНИЙ ПРИ НАЖАТИИ СИСТЕМНЫХ КНОПОК
+# МИДДЛВЕЙР НАВИГАЦИИ
 # ==========================================
 @bot.message_handler(func=lambda msg: msg.text in SYSTEM_NAV_BUTTONS or msg.text.startswith('/'), priority=10)
 def handle_navigation_override(m):
     clear_state(m.from_user.id)
     
-    # Редирект на нужные функции
     if m.text == '/start':
         cmd_start(m)
     elif m.text == '/help':
@@ -426,7 +432,7 @@ def handle_navigation_override(m):
         select_srv(m)
 
 # ==========================================
-# ОСНОВНЫЕ КОМАНДЫ И НАВИГАЦИЯ
+# ОСНОВНЫЕ КОМАНДЫ
 # ==========================================
 def cmd_start(m):
     if is_banned(m.from_user):
@@ -436,29 +442,24 @@ def cmd_start(m):
         register_admin_chat(m.chat.id)
     
     caption_text = (
-        "👋 **Добро пожаловать в неофициальный бот СМИ Arizona RP!**\n\n"
-        "⚠️ **Важная информация:** Мы являемся фанатским неофициальным проектом, созданным обычным игроком. "
-        "**Мы никогда не просим у вас пароль от аккаунта, пин-коды, рег. данные и другие секретные сведения!** Никогда и никому не сообщайте их.\n\n"
-        "⏱ **Режим работы радиоцентра:** ежедневно с **08:00 до 22:00 МСК**.\n\n"
-        "👇 **Для начала работы выберите ваш игровой сервер:**"
+        "👋 <b>Добро пожаловать в неофициальный бот СМИ Arizona RP!</b>\n\n"
+        "⚠️ <b>Важная информация:</b> Мы являемся фанатским неофициальным проектом. "
+        "<b>Мы никогда не просим у вас пароль от аккаунта, пин-коды и секретные данные!</b>\n\n"
+        "⏱ <b>Режим работы радиоцентра:</b> ежедневно с <b>08:00 до 22:00 МСК</b>.\n\n"
+        "👇 <b>Для начала работы выберите ваш игровой сервер:</b>"
     )
     safe_send_message(m.chat.id, caption_text, reply_markup=kb_servers())
 
 def cmd_help(m):
     help_text = (
-        "🛠 **Помощь и часто задаваемые вопросы (FAQ)**\n\n"
-        "❓ **1. Как подать объявление?**\n"
+        "🛠 <b>Помощь и часто задаваемые вопросы (FAQ)</b>\n\n"
+        "❓ <b>1. Как подать объявление?</b>\n"
         "• Выберите свой сервер в главном меню.\n"
         "• Нажмите кнопку «🛒 Подать объявление о продаже».\n"
-        "• Выберите категорию, введите текст товара/цену и прикрепите фото (или пропустите его).\n"
-        "• Выберите формат (обычное или VIP) — после этого объявление отправится на проверку редакторам.\n\n"
-        "❓ **2. Сколько времени проверяется объявление?**\n"
-        "• Модерация объявлений редакторами происходит в рабочие часы радиоцентра: с **08:00 до 22:00 МСК**.\n\n"
-        "❓ **3. Что делать, если не работает какая-то кнопка или бот завис?**\n"
-        "• Попробуйте перезапустить бот командой /start.\n"
-        "• Если проблема сохраняется, обратитесь в наше сообщество ВК: **@bountyarz**.\n\n"
-        "❓ **4. Безопасно ли использовать бот?**\n"
-        "• Да. Бот создан игроками для игроков. Мы **никогда** не запрашиваем личные данные от аккаунтов."
+        "• Выберите категорию, введите текст товара/цену и прикрепите фото.\n"
+        "• Выберите формат (обычное или VIP).\n\n"
+        "❓ <b>2. Сколько времени проверяется объявление?</b>\n"
+        "• Модерация происходит в рабочие часы: с <b>08:00 до 22:00 МСК</b>."
     )
     safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu())
 
@@ -467,30 +468,28 @@ def change_server(m):
 
 def how_bot_works(m):
     text = (
-        "📖 **Справочник: Как работает бот и радиоцентр**\n\n"
-        "1. **Подача объявления:** Вы выбираете свой сервер, категорию, вводите текст товара и цену. Объявление отправляется на модерацию редакторам.\n"
-        "2. **Проверка редакторами:** Редакторы СМИ проверяют текст на ошибки и соответствие правилам (в рабочие часы с 08:00 до 22:00 МСК).\n"
-        "3. **Публикация:** После одобрения объявление появляется в ленте выбранного сервера.\n"
-        "4. **Связь с продавцом:** Нажав на кнопку под товаром, покупатель может безопасно написать продавцу прямо через бота.\n"
-        "5. **Избранное и Подписки:** Вы можете добавлять товары в избранное или настраивать ключевые слова для уведомлений."
+        "📖 <b>Справочник: Как работает бот и радиоцентр</b>\n\n"
+        "1. <b>Подача объявления:</b> Вы выбираете сервер, категорию, вводите текст товара и цену.\n"
+        "2. <b>Проверка редакторами:</b> Редакторы СМИ проверяют текст в рабочие часы (08:00 - 22:00 МСК).\n"
+        "3. <b>Публикация:</b> После одобрения объявление появляется в ленте сервера.\n"
+        "4. <b>Связь:</b> Покупатель может безопасно написать продавцу через бота."
     )
     safe_send_message(m.chat.id, text)
 
 def info_premium(m):
     is_prem = is_user_premium(m.from_user.id)
-    status_text = "✅ **Ваш VIP-статус активен!**" if is_prem else "❌ **У вас нет активного VIP-статуса.**"
+    status_text = "✅ <b>Ваш VIP-статус активен!</b>" if is_prem else "❌ <b>У вас нет активного VIP-статуса.</b>"
     
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("💳 Купить VIP (10 Звезд / 30 дней)", pay=True, callback_data="buy_vip_stars"))
 
     text = (
-        f"💎 **Премиум-статус (VIP) в боте**\n\n"
+        f"💎 <b>Премиум-статус (VIP) в боте</b>\n\n"
         f"{status_text}\n\n"
         "Преимущества VIP статуса:\n"
         "• Значок премиум-аккаунта в ваших объявлениях\n"
-        "• Приоритетное размещение товаров\n"
-        "• Увеличенные лимиты и расширенные возможности поиска\n\n"
-        "Стоимость: **10 Telegram Stars** на 30 дней."
+        "• Приоритетное размещение товаров\n\n"
+        "Стоимость: <b>10 Telegram Stars</b> на 30 дней."
     )
     safe_send_message(m.chat.id, text, reply_markup=markup)
 
@@ -537,7 +536,7 @@ def got_payment(message):
         p_data = st.get("posting_ad")
         if p_data:
             p_data["is_vip"] = 1
-            finish_posting(message, p_data.get("photo_id"))
+            finish_posting(message.chat.id, uid, message.from_user.username, p_data.get("photo_id"))
         else:
             safe_send_message(message.chat.id, "✅ Оплата прошла, но данные сессии сбросились. Начните подачу заново.", reply_markup=kb_main_menu())
 
@@ -556,7 +555,7 @@ def show_average_prices(m):
     if not ads:
         return safe_send_message(
             m.chat.id, 
-            f"📊 На сервере **{srv}** пока недостаточно данных для расчета средних цен.", 
+            f"📊 На сервере <b>{html.escape(srv)}</b> пока недостаточно данных для расчета средних цен.", 
             reply_markup=kb_main_menu()
         )
 
@@ -570,7 +569,7 @@ def show_average_prices(m):
                 if 100 <= val <= 1000000000:
                     category_prices[cat].append(val)
 
-    report = f"📊 **Динамические средние цены на сервере {srv}:**\n\n"
+    report = f"📊 <b>Динамические средние цены на сервере {html.escape(srv)}:</b>\n\n"
     
     for cat in CATEGORIES:
         prices = category_prices[cat]
@@ -579,12 +578,12 @@ def show_average_prices(m):
             min_val = min(prices)
             max_val = max(prices)
             
-            report += f"📂 **{cat}**:\n"
-            report += f"• Средняя цена: **{format_price(avg_val)}**\n"
+            report += f"📂 <b>{cat}</b>:\n"
+            report += f"• Средняя цена: <b>{format_price(avg_val)}</b>\n"
             report += f"• Диапазон: от {format_price(min_val)} до {format_price(max_val)}\n"
             report += f"• Учтено объявлений: {len(prices)}\n\n"
         else:
-            report += f"📂 **{cat}**:\n• *Нет данных о ценах*\n\n"
+            report += f"📂 <b>{cat}</b>:\n• <i>Нет данных о ценах</i>\n\n"
 
     safe_send_message(m.chat.id, report, reply_markup=kb_main_menu())
 
@@ -613,7 +612,7 @@ def start_add_ad(m):
         left = int(120 - (time.time() - last_t))
         return safe_send_message(m.chat.id, f"⏳ Подождите еще {left} сек. перед подачей нового объявления.")
 
-    set_state(uid, {"posting_ad": {"step": "server"}})
+    update_state(uid, posting_ad={"step": "server"})
     
     m_kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     for s in SERVERS:
@@ -667,7 +666,7 @@ def process_post_category(m):
     p_data = st.get("posting_ad", {})
     p_data["category"] = cat
     p_data["step"] = "text"
-    set_state(uid, {"posting_ad": p_data})
+    update_state(uid, posting_ad=p_data)
 
     safe_send_message(m.chat.id, "✍️ Введите текст объявления (описание товара, цену и условия):", reply_markup=kb_cancel())
 
@@ -682,7 +681,7 @@ def process_post_text(m):
     p_data = st.get("posting_ad", {})
     p_data["text"] = text
     p_data["step"] = "photo"
-    set_state(uid, {"posting_ad": p_data})
+    update_state(uid, posting_ad=p_data)
 
     safe_send_message(m.chat.id, "🖼 Отправьте фотографию товара или нажмите «Пропустить»:", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add("Пропустить", "🚫 Отмена"))
 
@@ -700,7 +699,7 @@ def ask_vip_choice(m, photo_id):
     st = get_state(uid)
     p_data = st.get("posting_ad", {})
     p_data["photo_id"] = photo_id
-    set_state(uid, {"posting_ad": p_data})
+    update_state(uid, posting_ad=p_data)
 
     markup = types.InlineKeyboardMarkup(row_width=1)
     if is_user_premium(uid):
@@ -709,7 +708,7 @@ def ask_vip_choice(m, photo_id):
         markup.add(types.InlineKeyboardButton("💎 Подать как VIP-объявление (1 Звезда)", pay=True, callback_data="buy_single_vip_star"))
     markup.add(types.InlineKeyboardButton("📄 Опубликовать как обычное (бесплатно)", callback_data="post_as_regular"))
 
-    safe_send_message(m.chat.id, "💎 **Выберите формат публикации вашего объявления:**", reply_markup=markup)
+    safe_send_message(m.chat.id, "💎 <b>Выберите формат публикации вашего объявления:</b>", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data in ["post_as_vip_free", "post_as_regular"])
 def callback_publish_choice(call):
@@ -726,7 +725,7 @@ def callback_publish_choice(call):
 
     is_vip = 1 if call.data == "post_as_vip_free" else 0
     p_data["is_vip"] = is_vip
-    finish_posting(call.message, p_data.get("photo_id"))
+    finish_posting(call.message.chat.id, uid, call.from_user.username, p_data.get("photo_id"))
 
 @bot.callback_query_handler(func=lambda c: c.data == "buy_single_vip_star")
 def callback_buy_single_vip(call):
@@ -748,11 +747,8 @@ def callback_buy_single_vip(call):
         except Exception:
             pass
 
-def finish_posting(m, photo_id):
-    uid = m.from_user.id if hasattr(m, "from_user") and m.from_user else m.chat.id
-    chat_id = m.chat.id if hasattr(m, "chat") else uid
-    
-    st = get_state(uid)
+def finish_posting(chat_id: int, user_id: int, username: str, photo_id: str):
+    st = get_state(user_id)
     p_data = st.get("posting_ad")
     if not p_data:
         return
@@ -762,19 +758,19 @@ def finish_posting(m, photo_id):
     text = p_data["text"]
     is_vip = p_data.get("is_vip", 0)
 
-    uname = m.from_user.username if (hasattr(m, "from_user") and m.from_user and m.from_user.username) else "Без юзернейма"
+    uname = username if username else "Без юзернейма"
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute('''
             INSERT INTO pending_posts (user_id, username, server, category, text, photo, is_vip, editing_by, editing_since)
             VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)
-        ''', (uid, uname, srv, cat, text, photo_id, is_vip))
+        ''', (user_id, uname, srv, cat, text, photo_id, is_vip))
         pid = cur.lastrowid
         conn.commit()
 
-    clear_state(uid)
-    set_user_last_ad_time(uid, time.time())
+    clear_state(user_id)
+    set_user_last_ad_time(user_id, time.time())
 
     safe_send_message(chat_id, "✅ Объявление отправлено на модерацию редакторам!", reply_markup=kb_main_menu())
 
@@ -785,14 +781,14 @@ def finish_posting(m, photo_id):
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_reject_{pid}")
     )
 
-    preview = format_smi_post(srv, cat, text, uname, uname if uname != "Без юзернейма" else "", is_vip, uid)
+    preview = format_smi_post(srv, cat, text, uname, uname if uname != "Без юзернейма" else "", is_vip, user_id)
     
     admin_chats = get_admin_chat_ids()
     for admin_chat_id in admin_chats:
         if photo_id:
-            safe_send_photo(admin_chat_id, photo_id, caption=f"📥 **Новое объявление на модерацию (ID: {pid}):**\n\n{preview}", reply_markup=markup)
+            safe_send_photo(admin_chat_id, photo_id, caption=f"📥 <b>Новое объявление на модерацию (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
         else:
-            safe_send_message(admin_chat_id, f"📥 **Новое объявление на модерацию (ID: {pid}):**\n\n{preview}", reply_markup=markup)
+            safe_send_message(admin_chat_id, f"📥 <b>Новое объявление на модерацию (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_"))
 def callback_moderation(call):
@@ -804,9 +800,14 @@ def callback_moderation(call):
     if not verify_admin_callback(call):
         return
 
-    parts = call.data.split("_")
-    action = parts[1]
-    pid = int(parts[2])
+    # Извлекаем действие и pid безопасно через rsplit
+    raw_action = call.data.replace("mod_", "")
+    try:
+        action, pid_str = raw_action.rsplit("_", 1)
+        pid = int(pid_str)
+    except ValueError:
+        return safe_send_message(call.message.chat.id, "⚠️ Ошибка в формате данных модерации.")
+
     admin_id = call.from_user.id
     curr_time = time.time()
 
@@ -836,7 +837,7 @@ def callback_moderation(call):
             cur.execute("UPDATE pending_posts SET editing_by = ?, editing_since = ? WHERE id = ?", (admin_id, curr_time, pid))
             conn.commit()
 
-        set_state(admin_id, {"admin_editing_pid": pid, "edit_start_time": curr_time})
+        update_state(admin_id, admin_editing_pid=pid, edit_start_time=curr_time)
         safe_send_message(call.message.chat.id, f"✏️ Введите новый текст и цену для объявления (ID: {pid}). У вас есть 12 минут:", reply_markup=kb_cancel())
         return
 
@@ -920,9 +921,9 @@ def process_admin_edit_text(m):
     )
 
     if photo_id:
-        safe_send_photo(m.chat.id, photo_id, caption=f"✏️ **Отредактированное объявление (ID: {pid}):**\n\n{preview}", reply_markup=markup)
+        safe_send_photo(m.chat.id, photo_id, caption=f"✏️ <b>Отредактированное объявление (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
     else:
-        safe_send_message(m.chat.id, f"✏️ **Отредактированное объявление (ID: {pid}):**\n\n{preview}", reply_markup=markup)
+        safe_send_message(m.chat.id, f"✏️ <b>Отредактированное объявление (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
 
 # ==========================================
 # МОИ ОБЪЯВЛЕНИЯ
@@ -936,11 +937,11 @@ def show_my_ads(m):
         cur.execute("SELECT id, server, category, text, photo FROM active_ads WHERE user_id = ?", (uid,))
         active = cur.fetchall()
 
-    text_msg = "📋 **Ваши объявления:**\n\n⏳ **1. В очереди модерации:**\n"
-    text_msg += "• Нет объявлений.\n\n" if not pending else "".join([f"• [{srv}] {cat}: {text[:30]}...\n" for aid, srv, cat, text, photo in pending]) + "\n"
+    text_msg = "📋 <b>Ваши объявления:</b>\n\n⏳ <b>1. В очереди модерации:</b>\n"
+    text_msg += "• Нет объявлений.\n\n" if not pending else "".join([f"• [{html.escape(srv)}] {html.escape(cat)}: {html.escape(text[:30])}...\n" for aid, srv, cat, text, photo in pending]) + "\n"
     
-    text_msg += "✅ **2. Опубликованные:**\n"
-    text_msg += "• Нет активных объявлений." if not active else "".join([f"• [{srv}] {cat}: {text[:30]}...\n" for aid, srv, cat, text, photo in active])
+    text_msg += "✅ <b>2. Опубликованные:</b>\n"
+    text_msg += "• Нет активных объявлений." if not active else "".join([f"• [{html.escape(srv)}] {html.escape(cat)}: {html.escape(text[:30])}...\n" for aid, srv, cat, text, photo in active])
 
     markup = types.InlineKeyboardMarkup(row_width=1)
     for aid, srv, cat, text, photo in pending:
@@ -995,13 +996,14 @@ def show_favorites(m):
     if not favs:
         return safe_send_message(m.chat.id, "❤️ Ваш список избранного пуст.", reply_markup=kb_main_menu())
 
-    safe_send_message(m.chat.id, "❤️ **Ваши сохраненные объявления:**")
+    safe_send_message(m.chat.id, "❤️ <b>Ваши сохраненные объявления:</b>")
     for aid, srv, cat, text, photo in favs:
         markup = ikb_ad_actions(aid, is_fav=True)
+        fmt_text = html.escape(text)
         if photo:
-            safe_send_photo(m.chat.id, photo, caption=text, reply_markup=markup)
+            safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
         else:
-            safe_send_message(m.chat.id, text, reply_markup=markup)
+            safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("fav_toggle_"))
 def cb_fav_toggle(call):
@@ -1030,7 +1032,7 @@ def cb_fav_toggle(call):
         pass
 
 def start_search(m):
-    set_state(m.from_user.id, {"searching": True})
+    update_state(m.from_user.id, searching=True)
     safe_send_message(m.chat.id, "🔍 Введите ключевое слово для поиска:", reply_markup=kb_cancel())
 
 @bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("searching"))
@@ -1046,15 +1048,16 @@ def process_search_query(m):
         results = cur.fetchall()
 
     if not results:
-        return safe_send_message(m.chat.id, f"🔍 По запросу «{query}» ничего не найдено.", reply_markup=kb_main_menu())
+        return safe_send_message(m.chat.id, f"🔍 По запросу «{html.escape(query)}» ничего не найдено.", reply_markup=kb_main_menu())
 
-    safe_send_message(m.chat.id, f"🔍 Результаты поиска по запросу «{query}» [{srv}]:")
+    safe_send_message(m.chat.id, f"🔍 Результаты поиска по запросу «{html.escape(query)}» [{html.escape(srv)}]:")
     for aid, srv_name, cat, text, photo in results:
         markup = ikb_ad_actions(aid, is_fav=False)
+        fmt_text = html.escape(text)
         if photo:
-            safe_send_photo(m.chat.id, photo, caption=text, reply_markup=markup)
+            safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
         else:
-            safe_send_message(m.chat.id, text, reply_markup=markup)
+            safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
 
 def manage_subscriptions(m):
     uid = m.from_user.id
@@ -1068,11 +1071,11 @@ def manage_subscriptions(m):
         markup.add(types.InlineKeyboardButton(f"❌ Удалить: [{srv}] {kw}", callback_data=f"del_sub_{sub_id}"))
     markup.add(types.InlineKeyboardButton("➕ Добавить новую подписку", callback_data="add_sub_start"))
 
-    safe_send_message(m.chat.id, "🔔 **Ваши подписки на ключевые слова:**", reply_markup=markup)
+    safe_send_message(m.chat.id, "🔔 <b>Ваши подписки на ключевые слова:</b>", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data == "add_sub_start")
 def cb_add_sub_start(call):
-    set_state(call.from_user.id, {"adding_sub": True})
+    update_state(call.from_user.id, adding_sub=True)
     try:
         bot.answer_callback_query(call.id)
     except Exception:
@@ -1091,7 +1094,7 @@ def process_add_subscription(m):
         cur.execute("INSERT INTO keyword_subscriptions (user_id, server, keyword) VALUES (?, ?, ?)", (uid, srv, kw))
         conn.commit()
 
-    safe_send_message(m.chat.id, f"✅ Подписка на слово «{kw}» создана!", reply_markup=kb_main_menu())
+    safe_send_message(m.chat.id, f"✅ Подписка на слово «{html.escape(kw)}» создана!", reply_markup=kb_main_menu())
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("del_sub_"))
 def cb_del_sub(call):
@@ -1115,7 +1118,7 @@ def check_keyword_subscriptions(server: str, text: str):
 
     for uid, kw in subs:
         if kw.lower() in lower_text:
-            safe_send_message(uid, f"🔔 **Найдено по вашей подписке «{kw}»!**\n\n{text}")
+            safe_send_message(uid, f"🔔 <b>Найдено по вашей подписке «{html.escape(kw)}»!</b>\n\n{html.escape(text)}")
 
 # ==========================================
 # ЧАТ МЕЖДУ ПОКУПАТЕЛЕМ И ПРОДАВЦОМ
@@ -1147,8 +1150,8 @@ def cb_contact_seller(call):
     except Exception:
         pass
     
-    set_state(buyer_id, {"active_chat_with": seller_id, "ad_id": aid})
-    safe_send_message(buyer_id, "✍️ **Связь с продавцом установлена.** Напишите ваше сообщение (можно прикрепить фото):", reply_markup=ikb_chat_controls(aid))
+    update_state(buyer_id, active_chat_with=seller_id, ad_id=aid)
+    safe_send_message(buyer_id, "✍️ <b>Связь с продавцом установлена.</b> Напишите ваше сообщение (можно прикрепить фото):", reply_markup=ikb_chat_controls(aid))
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("reply_buyer_"))
 def cb_reply_buyer(call):
@@ -1157,12 +1160,12 @@ def cb_reply_buyer(call):
     aid = int(parts[3])
     seller_id = call.from_user.id
 
-    set_state(seller_id, {"active_chat_with": buyer_id, "ad_id": aid})
+    update_state(seller_id, active_chat_with=buyer_id, ad_id=aid)
     try:
         bot.answer_callback_query(call.id)
     except Exception:
         pass
-    safe_send_message(seller_id, "✍️ **Режим ответа покупателю включен.** Введите ваше сообщение:", reply_markup=ikb_chat_controls(aid))
+    safe_send_message(seller_id, "✍️ <b>Режим ответа покупателю включен.</b> Введите ваше сообщение:", reply_markup=ikb_chat_controls(aid))
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("stop_chat_"))
 def cb_stop_chat(call):
@@ -1207,14 +1210,14 @@ def process_dialog_message(m):
         types.InlineKeyboardButton("🛑 Завершить", callback_data=f"stop_chat_{aid}")
     )
 
-    header = f"📩 **Новое сообщение по объявлению #{aid}:**\n\n"
+    header = f"📩 <b>Новое сообщение по объявлению #{aid}:</b>\n\n"
     try:
         if m.content_type == 'photo':
             photo_id = m.photo[-1].file_id
-            caption = header + (m.caption if m.caption else "")
+            caption = header + html.escape(m.caption if m.caption else "")
             safe_send_photo(target_id, photo_id, caption=caption, reply_markup=reply_markup)
         else:
-            safe_send_message(target_id, header + m.text, reply_markup=reply_markup)
+            safe_send_message(target_id, header + html.escape(m.text), reply_markup=reply_markup)
             
         safe_send_message(uid, "✅ Сообщение успешно отправлено!")
     except Exception as e:
@@ -1237,7 +1240,7 @@ def admin_panel(m):
         types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
         types.InlineKeyboardButton("🟢 Разбанить", callback_data="admin_unban")
     )
-    safe_send_message(m.chat.id, "👑 **Панель управления администратора:**", reply_markup=markup)
+    safe_send_message(m.chat.id, "👑 <b>Панель управления администратора:</b>", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_stats")
 def cb_admin_stats(call):
@@ -1249,7 +1252,7 @@ def cb_admin_stats(call):
         cur.execute("SELECT username, count FROM editor_stats ORDER BY count DESC LIMIT 10")
         stats = cur.fetchall()
 
-    text = "📊 **Статистика работы редакторов:**\n\n" + ("Пока нет данных." if not stats else "\n".join([f"• @{uname}: отредактировано постов — **{cnt}**" for uname, cnt in stats]))
+    text = "📊 <b>Статистика работы редакторов:</b>\n\n" + ("Пока нет данных." if not stats else "\n".join([f"• @{html.escape(uname)}: отредактировано постов — <b>{cnt}</b>" for uname, cnt in stats]))
     try:
         bot.answer_callback_query(call.id)
     except Exception:
@@ -1264,7 +1267,7 @@ def cb_admin_ban(call):
         except Exception:
             return
     
-    set_state(call.from_user.id, {"admin_action": "ban"})
+    update_state(call.from_user.id, admin_action="ban")
     try:
         bot.answer_callback_query(call.id)
     except Exception:
@@ -1279,7 +1282,7 @@ def cb_admin_unban(call):
         except Exception:
             return
     
-    set_state(call.from_user.id, {"admin_action": "unban"})
+    update_state(call.from_user.id, admin_action="unban")
     try:
         bot.answer_callback_query(call.id)
     except Exception:
@@ -1290,7 +1293,7 @@ def cb_admin_unban(call):
 def cb_admin_broadcast(call):
     if not verify_admin_callback(call):
         return
-    set_state(call.from_user.id, {"admin_action": "broadcast"})
+    update_state(call.from_user.id, admin_action="broadcast")
     try:
         bot.answer_callback_query(call.id)
     except Exception:
@@ -1317,10 +1320,10 @@ def process_admin_input(m):
             if action == "ban":
                 is_id = 1 if val.isdigit() else 0
                 cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (target, is_id))
-                msg_txt = f"✅ Пользователь `{target}` заблокирован."
+                msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> заблокирован."
             else:
                 cur.execute("DELETE FROM bans WHERE target = ?", (target,))
-                msg_txt = f"✅ Пользователь `{target}` разблокирован."
+                msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> разблокирован."
             conn.commit()
         safe_send_message(m.chat.id, msg_txt, reply_markup=kb_main_menu())
 
@@ -1333,7 +1336,7 @@ def process_admin_input(m):
         success = 0
         for (u_id,) in users:
             try:
-                safe_send_message(u_id, f"📢 **Сообщение от администрации:**\n\n{val}")
+                safe_send_message(u_id, f"📢 <b>Сообщение от администрации:</b>\n\n{html.escape(val)}")
                 success += 1
             except Exception:
                 pass
@@ -1356,7 +1359,7 @@ def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0
         all_ads = cur.fetchall()
 
     if not all_ads:
-        return safe_send_message(chat_id, f"📊 Раздел: **{cat_name}** [{srv}]\nОбъявлений пока нет.", reply_markup=kb_main_menu())
+        return safe_send_message(chat_id, f"📊 Раздел: <b>{html.escape(cat_name)}</b> [{html.escape(srv)}]\nОбъявлений пока нет.", reply_markup=kb_main_menu())
 
     total_ads = len(all_ads)
     start_idx = page * ADS_PER_PAGE
@@ -1366,7 +1369,7 @@ def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0
     if not page_ads:
         return safe_send_message(chat_id, "📄 На этой странице больше нет объявлений.", reply_markup=kb_main_menu())
 
-    safe_send_message(chat_id, f"📂 **Раздел:** {cat_name} [{srv}] (Страница {page + 1}):")
+    safe_send_message(chat_id, f"📂 <b>Раздел:</b> {html.escape(cat_name)} [{html.escape(srv)}] (Страница {page + 1}):")
 
     for aid, seller_uid, text, photo in page_ads:
         with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
@@ -1375,10 +1378,11 @@ def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0
             is_fav = bool(cur.fetchone())
 
         markup = ikb_ad_actions(aid, is_fav=is_fav)
+        fmt_text = html.escape(text)
         if photo:
-            safe_send_photo(chat_id, photo, caption=text, reply_markup=markup)
+            safe_send_photo(chat_id, photo, caption=fmt_text, reply_markup=markup)
         else:
-            safe_send_message(chat_id, text, reply_markup=markup)
+            safe_send_message(chat_id, fmt_text, reply_markup=markup)
 
     nav_markup = types.InlineKeyboardMarkup(row_width=2)
     nav_btns = []
@@ -1404,7 +1408,7 @@ def cb_category_page(call):
 
 def select_srv(m):
     update_state(m.from_user.id, server=m.text)
-    safe_send_message(m.chat.id, f"Сервер **{m.text}** выбран!", reply_markup=kb_main_menu())
+    safe_send_message(m.chat.id, f"Сервер <b>{html.escape(m.text)}</b> выбран!", reply_markup=kb_main_menu())
 
 # ==========================================
 # ЗАПУСК БОТА
@@ -1415,5 +1419,5 @@ if __name__ == '__main__':
     except Exception:
         pass
 
-    logger.info("🚀 Бот обновлен и запущен с исправленной системой кнопок!")
+    logger.info("🚀 Бот полностью обновлен и запущен!")
     bot.infinity_polling(skip_pending=True)

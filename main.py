@@ -2142,25 +2142,31 @@ def cb_admin_manage_ad(call):
         cur.execute("SELECT id, server, category, text, photo FROM active_buy_ads ORDER BY id DESC LIMIT 5")
         buy_ads = cur.fetchall()
 
-    text = "🛠 <b>Управление последними активными объявлениями:</b>"
-    safe_send_message(call.message.chat.id, text)
+    text = "🛠 <b>Управление активными объявлениями (последние 5):</b>\n\n"
+    markup = types.InlineKeyboardMarkup(row_width=1)
     
-    for aid, srv, cat, txt, photo in ads:
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton(f"🗑 Удалить продажу #{aid}", callback_data=f"admin_del_ad_{aid}"))
-        safe_send_message(call.message.chat.id, f"📤 <b>[Продажа #{aid}]</b> [{html.escape(srv)}] {html.escape(cat)}:\n{html.escape(txt[:100])}", reply_markup=markup)
+    text += "📤 <b>Продажа:</b>\n"
+    if not ads:
+        text += "• Нет объявлений\n"
+    for aid, srv, cat, ad_text, photo in ads:
+        text += f"• [ID {aid}] [{srv}] {cat}: {ad_text[:20]}...\n"
+        markup.add(types.InlineKeyboardButton(f"🗑 Удалить продажу ID {aid}", callback_data=f"admin_del_sale_{aid}"))
 
-    for aid, srv, cat, txt, photo in buy_ads:
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton(f"🗑 Удалить скупку #{aid}", callback_data=f"admin_del_buy_ad_{aid}"))
-        safe_send_message(call.message.chat.id, f"📥 <b>[Скупка #{aid}]</b> [{html.escape(srv)}] {html.escape(cat)}:\n{html.escape(txt[:100])}", reply_markup=markup)
+    text += "\n📥 <b>Скупка:</b>\n"
+    if not buy_ads:
+        text += "• Нет объявлений\n"
+    for aid, srv, cat, ad_text, photo in buy_ads:
+        text += f"• [ID {aid}] [{srv}] {cat}: {ad_text[:20]}...\n"
+        markup.add(types.InlineKeyboardButton(f"🗑 Удалить скупку ID {aid}", callback_data=f"admin_del_buy_{aid}"))
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("admin_del_ad_") or c.data.startswith("admin_del_buy_ad_"))
-def cb_admin_delete_active_ad(call):
-    if not verify_admin_callback(call): 
+    safe_send_message(call.message.chat.id, text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("admin_del_sale_") or c.data.startswith("admin_del_buy_"))
+def cb_admin_delete_ad(call):
+    if not verify_admin_callback(call):
         return
-    is_buy = "admin_del_buy_ad_" in call.data
-    prefix = "admin_del_buy_ad_" if is_buy else "admin_del_ad_"
+    is_buy = "admin_del_buy_" in call.data
+    prefix = "admin_del_buy_" if is_buy else "admin_del_sale_"
     aid = int(call.data.replace(prefix, ""))
     table_name = "active_buy_ads" if is_buy else "active_ads"
 
@@ -2170,15 +2176,11 @@ def cb_admin_delete_active_ad(call):
         conn.commit()
 
     try:
-        bot.answer_callback_query(call.id, "✅ Объявление удалено администратором!")
+        bot.answer_callback_query(call.id, f"✅ Объявление ID {aid} удалено!")
         bot.delete_message(call.message.chat.id, call.message.message_id)
     except Exception:
         pass
 
-
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
 if __name__ == "__main__":
-    logger.info("Бот запущен и готов к работе.")
-    bot.infinity_polling(none_stop=True)
+    logger.info("Бот запущен и готов к работе...")
+    bot.infinity_polling(skip_pending=True)

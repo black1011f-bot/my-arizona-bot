@@ -113,6 +113,27 @@ def init_db():
             )
         ''')
 
+        # Таблица для лимита сообщений пользователям в день (максимум 300)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS daily_message_limits (
+                user_id INTEGER PRIMARY KEY,
+                msg_count INTEGER,
+                last_reset_date TEXT
+            )
+        ''')
+
+        # Таблица для логов чатов
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS chat_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                sender_id INTEGER,
+                sender_username TEXT,
+                recipient_id INTEGER,
+                message_text TEXT
+            )
+        ''')
+
         conn.commit()
         conn.close()
 
@@ -215,6 +236,30 @@ def background_cleanup_ads():
             conn.close()
 
 threading.Thread(target=background_cleanup_ads, daemon=True).start()
+
+# Фоновый поток для ежедневного сброса лимитов в 22:00:22
+def background_reset_limits_task():
+    while True:
+        now = datetime.now()
+        target_time = now.replace(hour=22, minute=0, second=22, microsecond=0)
+        if now >= target_time:
+            # Если сегодня 22:00:22 уже прошло, ждем завтрашнего дня
+            from datetime import timedelta
+            target_time += timedelta(days=1)
+        
+        sleep_seconds = (target_time - datetime.now()).total_seconds()
+        time.sleep(max(1, sleep_seconds))
+        
+        # Сброс счетчика сообщений в базе
+        with db_lock:
+            conn = sqlite3.connect(DB_NAME)
+            cur = conn.cursor()
+            cur.execute("DELETE FROM daily_message_limits")
+            conn.commit()
+            conn.close()
+        logger.info("🔄 Лимиты сообщений успешно обновлены (сброшены) в 22:00:22!")
+
+threading.Thread(target=background_reset_limits_task, daemon=True).start()
 
 def send_admins_notification_async(recipients: set, photo, f_text: str, counter: int):
     for target_id in recipients:
@@ -347,6 +392,28 @@ def cmd_help(m):
     )
     bot.send_message(m.chat.id, text, parse_mode="Markdown")
 
+@bot.message_handler(commands=['chatlogs'])
+def cmd_chatlogs(m):
+    if not is_owner(m.from_user):
+        return bot.send_message(m.chat.id, "⛔ Эта команда доступна только владельцу бота.")
+
+    log_file_path = "chat_history_logs.txt"
+    with db_lock:
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+        cur.execute("SELECT timestamp, sender_id, sender_username, recipient_id, message_text FROM chat_logs ORDER BY id DESC LIMIT 1000")
+        rows = cur.fetchall()
+        conn.close()
+
+    with open(log_file_path, "w", encoding="utf-8") as f:
+        f.write("=== ЛОГИ ЧАТОВ СВЯЗИ С ПРОДАВЦАМИ ===\n\n")
+        for row in rows:
+            ts, s_id, s_uname, r_id, text = row
+            f.write(f"[{ts}] От: @{s_uname} (ID: {s_id}) -> Получателю (ID: {r_id})\nТекст: {text}\n{'-'*40}\n")
+
+    with open(log_file_path, "rb") as f:
+        bot.send_document(m.chat.id, f, caption="📂 **Логи последних сообщений в чатах:**", parse_mode="Markdown")
+
 @bot.message_handler(func=lambda msg: msg.text == "📊 Откуда цены?")
 def show_prices_info(m):
     text = (
@@ -377,6 +444,9 @@ def cmd_admin(m):
             types.InlineKeyboardButton("📊 Статистика редакторов", callback_data="show_editor_stats"),
             types.InlineKeyboardButton("🔨 Управление Банами", callback_data="manage_bans")
         )
+        if is_owner(u):
+            markup.add(types.InlineKeyboardButton("📂 Выгрузить логи чатов", callback_data="owner_get_logs"))
+
         bot.send_message(
             m.chat.id, 
             f"⚙️ **Панель Редактора СМИ**\n📥 Заявок на проверку: **{pending_count} шт.**", 
@@ -385,6 +455,29 @@ def cmd_admin(m):
         )
     else:
         bot.send_message(m.chat.id, "⛔ У вас нет доступа к радиоцентру.")
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_get_logs")
+def cb_owner_get_logs(call):
+    if not is_owner(call.from_user):
+        return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
+    bot.answer_callback_query(call.id)
+    
+    log_file_path = "chat_history_logs.txt"
+    with db_lock:
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+        cur.execute("SELECT timestamp, sender_id, sender_username, recipient_id, message_text FROM chat_logs ORDER BY id DESC LIMIT 1000")
+        rows = cur.fetchall()
+        conn.close()
+
+    with open(log_file_path, "w", encoding="utf-8") as f:
+        f.write("=== ЛОГИ ЧАТОВ СВЯЗИ С ПРОДАВЦАМИ ===\n\n")
+        for row in rows:
+            ts, s_id, s_uname, r_id, text = row
+            f.write(f"[{ts}] От: @{s_uname} (ID: {s_id}) -> Получателю (ID: {r_id})\nТекст: {text}\n{'-'*40}\n")
+
+    with open(log_file_path, "rb") as f:
+        bot.send_document(call.message.chat.id, f, caption="📂 **Логи последних сообщений в чатах:**", parse_mode="Markdown")
 
 @bot.message_handler(func=lambda msg: msg.text in SERVERS)
 def select_srv(m):
@@ -466,7 +559,7 @@ def show_my_ads(m):
             bot.send_message(m.chat.id, info, parse_mode="Markdown", reply_markup=markup)
 
 # ==========================================
-# СВЯЗЬ С ПРОДАВЦОМ ЧЕРЕЗ БОТА (ДЛЯ VIP И ОБЫЧНЫХ)
+# СВЯЗЬ С ПРОДАВЦОМ (С ЛИМИТАМИ И ЛОГАМИ)
 # ==========================================
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
@@ -491,7 +584,6 @@ def cb_contact_seller(call):
 
     bot.answer_callback_query(call.id)
     
-    # Сохраняем состояние, что пользователь пишет конкретному продавцу по конкретному объявлению
     user_states[buyer_id] = {
         "messaging_seller": True,
         "seller_id": seller_id,
@@ -501,9 +593,10 @@ def cb_contact_seller(call):
     bot.send_message(
         call.message.chat.id,
         "✍️ **Связь с продавцом через бота**\n\n"
-        "Отправьте ваше сообщение или вопрос одним или несколькими сообщениями. Продавец получит его вместе с ссылкой на это объявление.\n\n"
-        "ℹ️ *Учтите: отправленные сообщения удалить нельзя.*\n"
-        "Для отмены нажмите кнопку ниже.",
+        "Отправьте ваше сообщение или вопрос. Ограничение: **не более 300 слов** на одно сообщение. "
+        "Лимит сообщений — **300 штук в день** (обновляется ежедневно в **22:00:22**).\n\n"
+        "ℹ️ *Сообщения удалять нельзя.*\n"
+        "Для выхода нажмите кнопку ниже.",
         parse_mode="Markdown",
         reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("🚫 Отмена связи"))
     )
@@ -517,6 +610,44 @@ def process_message_to_seller(m):
         user_states.pop(uid, None)
         return bot.send_message(m.chat.id, "❌ Переписка с продавцом отменена.", reply_markup=kb_main_menu())
 
+    # Проверка на количество слов (максимум 300)
+    words = m.text.split()
+    if len(words) > 300:
+        return bot.send_message(
+            m.chat.id, 
+            f"⚠️ Ваше сообщение слишком длинное ({len(words)} слов). Максимальная длина — **300 слов**. Сократите текст и отправьте снова.", 
+            parse_mode="Markdown"
+        )
+
+    # Проверка суточного лимита сообщений (максимум 300 в день, сброс в 22:00:22)
+    with db_lock:
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+        cur.execute("SELECT msg_count FROM daily_message_limits WHERE user_id = ?", (uid,))
+        row = cur.fetchone()
+        current_count = row[0] if row else 0
+
+        if current_count >= 300:
+            conn.close()
+            return bot.send_message(
+                m.chat.id, 
+                "❌ Вы исчерпали лимит из **300 сообщений** на сегодня. Лимит обновится сегодня в **22:00:22**.", 
+                parse_mode="Markdown"
+            )
+
+        cur.execute("INSERT OR REPLACE INTO daily_message_limits (user_id, msg_count) VALUES (?, ?)", (uid, current_count + 1))
+        
+        # Сохранение лога чата в базу данных
+        timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        sender_uname = m.from_user.username or m.from_user.first_name
+        cur.execute("""
+            INSERT INTO chat_logs (timestamp, sender_id, sender_username, recipient_id, message_text)
+            VALUES (?, ?, ?, ?, ?)
+        """, (timestamp_str, uid, sender_uname, state_data.get("seller_id"), m.text))
+        
+        conn.commit()
+        conn.close()
+
     seller_id = state_data.get("seller_id")
     ad_info = state_data.get("ad_info")
     buyer_username = f"@{m.from_user.username}" if m.from_user.username else f"ID: `{m.from_user.id}`"
@@ -529,11 +660,21 @@ def process_message_to_seller(m):
     )
 
     try:
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("✉️ Ответить покупателю", callback_data=f"contact_seller_{uid}")) # можно будет ответить в ответ
-        
         bot.send_message(seller_id, forward_text, parse_mode="Markdown")
-        bot.send_message(m.chat.id, "✅ **Ваше сообщение успешно отправлено продавцу!** Вы можете отправить еще текст или нажать «🚫 Отмена связи», чтобы выйти.", parse_mode="Markdown")
+        
+        # Дублирование логов владельцу (если владелец настроен в ADMIN_CHAT_IDS или через OWNER)
+        for adm_chat in ADMIN_CHAT_IDS:
+            try:
+                bot.send_message(adm_chat, f"🕵️‍♂️ **[ЛОГ ЧАТА]** От @{sender_uname} к `{seller_id}`:\n{m.text}", parse_mode="Markdown")
+            except Exception:
+                pass
+
+        remaining_msgs = 300 - (current_count + 1)
+        bot.send_message(
+            m.chat.id, 
+            f"✅ **Сообщение отправлено!** (Осталось лимита на сегодня: {remaining_msgs}/300)", 
+            parse_mode="Markdown"
+        )
     except Exception as e:
         logger.error(f"Не удалось отправить сообщение продавцу {seller_id}: {e}")
         bot.send_message(m.chat.id, "❌ Не удалось доставить сообщение продавцу (возможно, он заблокировал бота).", reply_markup=kb_main_menu())

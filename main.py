@@ -143,7 +143,6 @@ def init_db():
             )
         ''')
 
-        # Таблицы для скупки (Buy Ads)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS active_buy_ads (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,7 +171,6 @@ def init_db():
             )
         ''')
 
-        # Настройки бота (курс VC и др.)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS bot_settings (
                 key TEXT PRIMARY KEY,
@@ -429,7 +427,7 @@ def background_cleanup_ads():
         try:
             with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
                 cur = conn.cursor()
-                expired_limit = curr_t - 86400  # Удаление объявлений старше 24 часов
+                expired_limit = curr_t - 86400  
                 cur.execute("DELETE FROM active_ads WHERE last_updated < ?", (expired_limit,))
                 cur.execute("DELETE FROM active_buy_ads WHERE last_updated < ?", (expired_limit,))
                 conn.commit()
@@ -568,7 +566,6 @@ def handle_navigation_override(m):
     elif m.text == "📝 Подать заявку на админа":
         start_admin_application(m)
     elif m.text in CATEGORIES:
-        # Если находимся в разделе скупки
         if get_state(m.from_user.id).get("viewing_buy_categories"):
             show_buy_ads_category(m)
         else:
@@ -788,7 +785,6 @@ def process_vc_conversion(m):
 
     try:
         if "vc" in text:
-            # VC -> Вирты
             val_str = re.sub(r'[^0-9.]', '', text)
             vc_val = float(val_str)
             reg_val = vc_val * rate
@@ -798,7 +794,6 @@ def process_vc_conversion(m):
                 f"<i>(Курс: 1 VC = {format_price(rate)} вирт)</i>"
             )
         else:
-            # Вирты -> VC (поддержка суффиксов кк, к, или чистого числа)
             multiplier = 1
             clean_text = text.replace(',', '.')
             if "ккк" in clean_text or "млрд" in clean_text:
@@ -824,7 +819,6 @@ def process_vc_conversion(m):
     except Exception as e:
         safe_send_message(m.chat.id, "⚠️ Неверный формат числа. Попробуйте снова через меню конвертера.", reply_markup=kb_main_menu())
 
-# Калькулятор перекупа
 @bot.callback_query_handler(func=lambda c: c.data == "vc_calc_start")
 def cb_vc_calc_start(call):
     uid = call.from_user.id
@@ -881,11 +875,9 @@ def process_calc_vc_price(m):
         vc_price = float(re.sub(r'[^0-9.]', '', m.text.replace(',', '.')))
         rate = get_vc_rate()
 
-        # Расчет
         vc_price_in_reg = vc_price * rate
         profit_reg = vc_price_in_reg - server_price
         
-        # Примерные расходы на перелет и комиссию (билет ~500к + комиссия банка/сделки ~2%)
         flight_cost = 500_000
         net_profit = profit_reg - flight_cost
 
@@ -903,7 +895,6 @@ def process_calc_vc_price(m):
     except Exception:
         safe_send_message(m.chat.id, "⚠️ Ошибка ввода цены на VC. Попробуйте заново через меню калькулятора.", reply_markup=kb_main_menu())
 
-# Изменение курса VC админом
 @bot.callback_query_handler(func=lambda c: c.data == "vc_set_rate_start")
 def cb_vc_set_rate_start(call):
     if not verify_admin_callback(call):
@@ -935,7 +926,7 @@ def process_set_vc_rate(m):
 
 
 # ==========================================
-# ПОДАЧА И МОДЕРАЦИЯ ОБЪЯВЛЕНИЙ (ПРОДАЖА И СКУПКА)
+# ПОДАЧА И МОДЕРАЦИЯ ОБЪЯВЛЕНИЙ
 # ==========================================
 def start_add_ad(m):
     _start_posting_flow(m, is_buy=False)
@@ -1142,7 +1133,6 @@ def finish_posting(chat_id: int, user_id: int, username: str, photo_id: str, is_
         else:
             safe_send_message(admin_chat_id, f"📥 <b>Новая заявка на скупку (ID: {pid}):</b>\n\n{preview}" if is_buy else f"📥 <b>Новая заявка на продажу (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
 
-# Модерация объявлений о скупке
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_buy_"))
 def callback_buy_moderation(call):
     try:
@@ -1233,7 +1223,6 @@ def callback_buy_moderation(call):
         except Exception:
             pass
 
-# Обычная модерация (продажа) из оригинального кода
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_"))
 def callback_moderation(call):
     if c.data.startswith("mod_buy_"):
@@ -2192,16 +2181,12 @@ def cb_category_page(call):
 
 def select_srv(m):
     update_state(m.from_user.id, server=m.text)
-    safe_send_message(m.chat.id, f"Сервер <b>{html.escape(m.text)}</b> выбран!", reply_markup=kb_main_menu())
+    safe_send_message(m.chat.id, f"✅ Выбран игровой сервер: <b>{html.escape(m.text)}</b>", reply_markup=kb_main_menu())
+
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
-if __name__ == '__main__':
-    try:
-        bot.remove_webhook()
-    except Exception:
-        pass
-
-    logger.info("🚀 Бот полностью обновлен и запущен с поддержкой скупки и VC калькулятора!")
+if __name__ == "__main__":
+    logger.info("Бот успешно запущен и ожидает сообщения...")
     bot.infinity_polling(skip_pending=True)

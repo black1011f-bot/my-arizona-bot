@@ -19,7 +19,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAEnU4IKdiPFGMjAXlYm4C7p-Rm4Kl61ce8")
+# Безопасное получение токена из переменных окружения
+TOKEN = os.getenv("BOT_TOKEN")
+if not TOKEN:
+    logger.error("❌ Не задан токен бота! Установите переменную окружения BOT_TOKEN.")
+    exit(1)
+
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
 OWNER_USERNAME = "bounqy"
@@ -1315,7 +1320,6 @@ def cb_admin_broadcast(call):
     except: pass
     safe_send_message(call.message.chat.id, "📢 Введите текст массовой рассылки:", reply_markup=kb_cancel())
 
-# УПРАВЛЕНИЕ АКТИВНЫМИ ОБЪЯВЛЕНИЯМИ БЕЗ ID (СПИСОК)
 @bot.callback_query_handler(func=lambda c: c.data == "admin_manage_ad")
 def cb_admin_manage_ad(call):
     if not verify_admin_callback(call): return
@@ -1358,7 +1362,6 @@ def process_admin_input(m):
             return safe_send_message(m.chat.id, "⛔ Только владелец (@bounqy) может выполнять это действие.")
         target = val.lstrip('@').lower()
         
-        # Поиск user_id для отправки СМС-уведомления
         target_uid = None
         if target.isdigit():
             target_uid = int(target)

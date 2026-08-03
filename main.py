@@ -405,6 +405,24 @@ def ikb_ad_actions(aid: int, is_fav: bool = False):
     return markup
 
 # ==========================================
+# ПЕРЕХВАТЧИК ДЛЯ ЗАБЛОКИРОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ
+# ==========================================
+@bot.message_handler(func=lambda m: is_banned(m.from_user))
+def blocked_user_message(m):
+    safe_send_message(
+        m.chat.id, 
+        "⛔ <b>Вы заблокированы в системе модерации.</b> Ваши кнопки отключены, и доступ к функциям бота ограничен.", 
+        reply_markup=types.ReplyKeyboardRemove()
+    )
+
+@bot.callback_query_handler(func=lambda c: is_banned(c.from_user))
+def blocked_user_callback(c):
+    try:
+        bot.answer_callback_query(c.id, "⛔ Вы заблокированы в системе и не можете использовать бота!", show_alert=True)
+    except Exception:
+        pass
+
+# ==========================================
 # УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ
 # ==========================================
 def should_override_nav(msg):
@@ -465,13 +483,13 @@ def handle_navigation_override(m):
         select_srv(m)
 
 # ==========================================
-# ОСНОВНЫЕ КОМАНДЫ (ИЗМЕНЕННЫЕ)
+# ОСНОВНЫЕ КОМАНДЫ
 # ==========================================
 def cmd_start(m):
     register_user(m.from_user.id, m.from_user.username)
     
     if is_banned(m.from_user):
-        return safe_send_message(m.chat.id, "⛔ Вы заблокированы в системе модерации.")
+        return safe_send_message(m.chat.id, "⛔ Вы заблокированы в системе модерации.", reply_markup=types.ReplyKeyboardRemove())
         
     if is_admin_or_owner(m.from_user):
         register_admin_chat(m.chat.id)
@@ -638,7 +656,7 @@ def format_price(val: float) -> str:
 def start_add_ad(m):
     register_user(m.from_user.id, m.from_user.username)
     if is_banned(m.from_user):
-        return safe_send_message(m.chat.id, "⛔ Вы заблокированы.")
+        return safe_send_message(m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove())
     
     if not check_working_hours():
         return safe_send_message(m.chat.id, "⏱ Радиоцентр закрыт! Режим работы: с 08:00 до 22:00 МСК.")
@@ -1259,7 +1277,7 @@ def process_dialog_message(m):
 
 
 # ==========================================
-# АДМИН-ПАНЕЛЬ
+# АДМИН-ПАНЕЛЬ (Строго контролируется владельцем @bounqy)
 # ==========================================
 def admin_panel(m):
     if not is_admin_or_owner(m.from_user):
@@ -1273,10 +1291,11 @@ def admin_panel(m):
         types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"),
         types.InlineKeyboardButton("🛠 Управление объявлениями", callback_data="admin_manage_ad")
     )
+    # Только владелец (@bounqy) имеет полный доступ к управлению статусами блокировок/админки
     if is_owner(m.from_user):
         markup.add(
-            types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
-            types.InlineKeyboardButton("🟢 Разбанить", callback_data="admin_unban")
+            types.InlineKeyboardButton("🚫 Забанить / Убрать админа", callback_data="admin_ban"),
+            types.InlineKeyboardButton("🟢 Разбанить / Назначить", callback_data="admin_unban")
         )
     safe_send_message(m.chat.id, "👑 <b>Панель управления администратора:</b>", reply_markup=markup)
 
@@ -1295,23 +1314,25 @@ def cb_admin_stats(call):
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_ban")
 def cb_admin_ban(call):
+    # Принятие/отклонение или выдача админки/банов строго для владельца @bounqy
     if not is_owner(call.from_user):
-        try: return bot.answer_callback_query(call.id, "⛔ Заблокировать может только владелец бота (@bounqy)!", show_alert=True)
+        try: return bot.answer_callback_query(call.id, "⛔ Это действие доступно исключительно владельцу бота (@bounqy)!", show_alert=True)
         except: return
     update_state(call.from_user.id, admin_action="ban")
     try: bot.answer_callback_query(call.id)
     except: pass
-    safe_send_message(call.message.chat.id, "🚫 Введите username (без @) или ID пользователя для блокировки:", reply_markup=kb_cancel())
+    safe_send_message(call.message.chat.id, "🚫 Введите username (без @) или ID пользователя для блокировки / снятия прав:", reply_markup=kb_cancel())
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_unban")
 def cb_admin_unban(call):
+    # Принятие на админку или разбан строго через владельца @bounqy
     if not is_owner(call.from_user):
-        try: return bot.answer_callback_query(call.id, "⛔ Разблокировать может только владелец бота (@bounqy)!", show_alert=True)
+        try: return bot.answer_callback_query(call.id, "⛔ Принимать на админку и разблокировать может исключительно владелец бота (@bounqy)!", show_alert=True)
         except: return
     update_state(call.from_user.id, admin_action="unban")
     try: bot.answer_callback_query(call.id)
     except: pass
-    safe_send_message(call.message.chat.id, "🟢 Введите username (без @) или ID для разблокировки:", reply_markup=kb_cancel())
+    safe_send_message(call.message.chat.id, "🟢 Введите username (без @) или ID для разблокировки / приема на админку:", reply_markup=kb_cancel())
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_broadcast")
 def cb_admin_broadcast(call):
@@ -1359,8 +1380,9 @@ def process_admin_input(m):
     val = m.text.strip()
 
     if action in ["ban", "unban"]:
+        # Дополнительная жесткая проверка: принимать/отклонять и управлять статусами админов/банов может только @bounqy
         if not is_owner(m.from_user):
-            return safe_send_message(m.chat.id, "⛔ Только владелец (@bounqy) может выполнять это действие.")
+            return safe_send_message(m.chat.id, "⛔ Ошибка доступа! Принимать на админку и управлять блокировками может исключительно владелец (@bounqy).")
         target = val.lstrip('@').lower()
         
         target_uid = None
@@ -1384,20 +1406,28 @@ def process_admin_input(m):
             if action == "ban":
                 is_id = 1 if target.isdigit() else 0
                 cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (target, is_id))
-                msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> заблокирован."
+                msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> заблокирован / снят с прав владельцем (@bounqy)."
                 if target_uid:
                     try:
-                        safe_send_message(target_uid, "⛔ <b>Вы были заблокированы владельцем бота.</b> Доступ к функциям ограничен.")
+                        safe_send_message(
+                            target_uid, 
+                            "⛔ <b>Вы были заблокированы владельцем бота.</b> Ваши кнопки отключены, доступ к функциям ограничен.", 
+                            reply_markup=types.ReplyKeyboardRemove()
+                        )
                     except Exception as e:
                         logger.error(f"Не удалось отправить уведомление о бане пользователю {target_uid}: {e}")
             else:
                 cur.execute("DELETE FROM bans WHERE target = ?", (target,))
-                msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> разблокирован."
+                msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> успешно принят на админку / разблокирован владельцем (@bounqy)."
                 if target_uid:
                     try:
-                        safe_send_message(target_uid, "✅ <b>Вы были разблокированы владельцем бота!</b> Доступ восстановлен.")
+                        safe_send_message(
+                            target_uid, 
+                            "✅ <b>Ваша заявка на администратора была принята владельцем (@bounqy)!</b> Доступ и клавиатура восстановлены.", 
+                            reply_markup=kb_main_menu()
+                        )
                     except Exception as e:
-                        logger.error(f"Не удалось отправить уведомление о разбане пользователю {target_uid}: {e}")
+                        logger.error(f"Не удалось отправить уведомление пользователю {target_uid}: {e}")
             conn.commit()
         safe_send_message(m.chat.id, msg_txt, reply_markup=kb_main_menu())
 
@@ -1430,7 +1460,9 @@ def cb_adm_del_ad(call):
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("adm_edit_ad_"))
 def cb_adm_edit_ad(call):
-    if not verify_admin_callback(call): return
+    # Добавлена проверка на то, что редактировать могут только админы
+    if not verify_admin_callback(call): 
+        return
     aid = int(call.data.split("_")[3])
     update_state(call.from_user.id, admin_editing_active_aid=aid)
     try: bot.answer_callback_query(call.id)
@@ -1439,7 +1471,11 @@ def cb_adm_edit_ad(call):
 
 @bot.message_handler(func=lambda msg: "admin_editing_active_aid" in get_state(msg.from_user.id))
 def process_admin_edit_active(m):
-    if not is_admin_or_owner(m.from_user): return
+    # Добавлена проверка прав доступа
+    if not is_admin_or_owner(m.from_user): 
+        clear_state(m.from_user.id)
+        return safe_send_message(m.chat.id, "⛔ У вас нет прав на редактирование объявлений.")
+        
     uid = m.from_user.id
     st = get_state(uid)
     aid = st["admin_editing_active_aid"]
@@ -1532,3 +1568,4 @@ if __name__ == '__main__':
 
     logger.info("🚀 Бот полностью обновлен и запущен!")
     bot.infinity_polling(skip_pending=True)
+

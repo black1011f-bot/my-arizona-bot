@@ -6,6 +6,7 @@ import sqlite3
 import re
 import html
 from datetime import datetime, time as dtime
+from zoneinfo import ZoneInfo
 import telebot
 from telebot import types
 from telebot.apihelper import ApiTelegramException
@@ -19,7 +20,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Установка нового токена бота
+# Установка токена бота
 TOKEN = "8916669266:AAHjJmiPnoqyQCy59r3OxO2DtyoI2qND5Z4"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
@@ -271,8 +272,43 @@ def init_db():
 init_db()
 
 # ==========================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ И ВРЕМЯ ПО МСК
 # ==========================================
+def get_msk_time():
+    try:
+        return datetime.now(ZoneInfo("Europe/Moscow"))
+    except Exception:
+        return datetime.now()
+
+def check_working_hours() -> bool:
+    now_time = get_msk_time().time()
+    return dtime(8, 0, 1) <= now_time <= dtime(22, 0, 1)
+
+def background_cleanup_ads():
+    last_cleaned_date = None
+    while True:
+        time.sleep(30)
+        try:
+            now_msk = get_msk_time()
+            current_time = now_msk.time()
+            current_date = now_msk.date()
+            
+            if current_time >= dtime(22, 0, 1) or current_time < dtime(8, 0, 1):
+                if last_cleaned_date != current_date:
+                    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+                        cur = conn.cursor()
+                        cur.execute("DELETE FROM active_ads")
+                        cur.execute("DELETE FROM active_buy_ads")
+                        cur.execute("DELETE FROM pending_posts")
+                        cur.execute("DELETE FROM pending_buy_posts")
+                        conn.commit()
+                    logger.info(f"Ночная очистка объявлений выполнена в {current_time} МСК.")
+                    last_cleaned_date = current_date
+        except Exception as e:
+            logger.error(f"Ошибка фоновой ночной очистки: {e}")
+
+threading.Thread(target=background_cleanup_ads, daemon=True).start()
+
 def get_vc_rate() -> float:
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
@@ -383,10 +419,6 @@ def verify_admin_callback(call) -> bool:
         return False
     return True
 
-def check_working_hours() -> bool:
-    now_time = datetime.now().time()
-    return dtime(8, 0, 1) <= now_time <= dtime(22, 0, 1)
-
 def clean_server_name(server: str) -> str:
     return server.split(' ', 1)[-1] if ' ' in server else server
 
@@ -419,22 +451,6 @@ def format_smi_post(server: str, category: str, text: str, player_username: str,
         f"📂 <b>Раздел:</b> {cat_esc}\n"
         f"👨‍💻 <b>Отредактировал:</b> {editor_contact}"
     )
-
-def background_cleanup_ads():
-    while True:
-        time.sleep(300)
-        curr_t = time.time()
-        try:
-            with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-                cur = conn.cursor()
-                expired_limit = curr_t - 86400  
-                cur.execute("DELETE FROM active_ads WHERE last_updated < ?", (expired_limit,))
-                cur.execute("DELETE FROM active_buy_ads WHERE last_updated < ?", (expired_limit,))
-                conn.commit()
-        except Exception as e:
-            logger.error(f"Ошибка фоновой очистки: {e}")
-
-threading.Thread(target=background_cleanup_ads, daemon=True).start()
 
 # ==========================================
 # КЛАВИАТУРЫ
@@ -952,7 +968,6 @@ def _start_posting_flow(m, is_buy: bool):
     uid = m.from_user.id
     last_t = get_user_last_ad_time(uid)
     
-    # КД 2 минуты для обычных игроков без вип / без вип объявлений; для админов (@bounqy, @bounqy31) КД убран.
     if not is_admin_or_owner(m.from_user) and not is_user_premium(uid):
         if time.time() - last_t < 120:
             left = int(120 - (time.time() - last_t))
@@ -2180,7 +2195,7 @@ def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0
         nav_markup.add(*nav_btns)
         safe_send_message(chat_id, f"📑 Страница {page + 1} из {(total_ads + ADS_PER_PAGE - 1) // ADS_PER_PAGE}:", reply_markup=nav_markup)
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("page_"))
+@bot.callback_query_handler(func=lambda c: c.data.startswith("page_") and not c.data.startswith("buy_page_"))
 def cb_category_page(call):
     parts = call.data.split("_")
     cat_idx = int(parts[1])
@@ -2191,8 +2206,14 @@ def cb_category_page(call):
         pass
     render_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
 
-
+# ==========================================
+# ЗАПУСК БОТА
+# ==========================================
 if __name__ == '__main__':
-    logger.info("Бот запущен...")
-    bot.infinity_polling(skip_pending=True)
-
+    logger.info("Бот запущен и готов к работе...")
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=30)
+        except Exception as e:
+            logger.error(f"Ошибка в работе бота: {e}")
+            time.sleep(5)

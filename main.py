@@ -610,6 +610,11 @@ def cmd_help(m):
 def change_server(m):
     safe_send_message(m.chat.id, "👇 Выберите новый игровой сервер:", reply_markup=kb_servers())
 
+def select_srv(m):
+    srv = m.text
+    update_state(m.from_user.id, server=srv)
+    safe_send_message(m.chat.id, f"✅ Игровой сервер установлен: <b>{html.escape(srv)}</b>", reply_markup=kb_main_menu())
+
 def how_bot_works(m):
     text = (
         "📖 <b>Справочник: Как работает бот и радиоцентр</b>\n\n"
@@ -1372,6 +1377,7 @@ def show_buy_categories_menu(m):
     safe_send_message(m.chat.id, "📥 <b>Лента Скупки товаров:</b>\nВыберите интересующую категорию:", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add(*CATEGORIES, "🚫 Отмена"))
 
 def show_buy_ads_category(m):
+    update_state(m.from_user.id, viewing_buy_categories=True)
     cat_idx = CATEGORIES.index(m.text)
     render_buy_category_page(m.chat.id, m.from_user.id, cat_idx, page=0)
 
@@ -2119,6 +2125,7 @@ def process_admin_edit_active(m):
 # ПРОСМОТР КАТЕГОРИЙ ПРОДАЖ С ПАГИНАЦИЕЙ
 # ==========================================
 def show_ads_category(m):
+    update_state(m.from_user.id, viewing_buy_categories=False)
     cat_idx = CATEGORIES.index(m.text)
     render_category_page(m.chat.id, m.from_user.id, cat_idx, page=0)
 
@@ -2179,14 +2186,10 @@ def cb_category_page(call):
         pass
     render_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
 
-def select_srv(m):
-    update_state(m.from_user.id, server=m.text)
-    safe_send_message(m.chat.id, f"✅ Выбран игровой сервер: <b>{html.escape(m.text)}</b>", reply_markup=kb_main_menu())
-
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
-if __name__ == "__main__":
-    logger.info("Бот успешно запущен и ожидает сообщения...")
+if __name__ == '__main__':
+    logger.info("Бот успешно запущен и готов к работе...")
     bot.infinity_polling(skip_pending=True)

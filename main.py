@@ -19,8 +19,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Ваш обновленный токен
-TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAGHkb0zjiNrvFSDypbAWLrzdk-yPFX11MY")
+# НОВЫЙ ТОКЕН УСТАНОВЛЕН ЗДЕСЬ
+TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAEnU4IKdiPFGMjAXlYm4C7p-Rm4Kl61ce8")
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
 OWNER_USERNAME = "bounqy"
@@ -270,7 +270,6 @@ def set_user_last_ad_time(user_id, t):
         conn.commit()
 
 def register_user(user_id):
-    """Регистрирует пользователя в БД, если его там еще нет."""
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute("INSERT OR IGNORE INTO user_data (user_id, last_ad_time) VALUES (?, 0)", (user_id,))
@@ -401,9 +400,34 @@ def ikb_ad_actions(aid: int, is_fav: bool = False):
     return markup
 
 # ==========================================
-# МИДДЛВЕЙР НАВИГАЦИИ
+# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ (ФИКС БАГА ПОДАЧИ ОБЪЯВЛЕНИЙ)
 # ==========================================
-@bot.message_handler(func=lambda msg: msg.text in SYSTEM_NAV_BUTTONS or msg.text.startswith('/'))
+def should_override_nav(msg):
+    if not msg.text: 
+        return False
+        
+    uid = msg.from_user.id
+    st = get_state(uid)
+
+    # Кнопка Отмена всегда должна сбрасывать процесс
+    if msg.text == "🚫 Отмена" or msg.text.startswith('/'):
+        return True
+
+    # ЗАЩИТА: Если админ сейчас вводит текст для редактирования, не перебиваем его!
+    if "admin_editing_pid" in st or "admin_editing_active_aid" in st:
+        return False
+        
+    # ЗАЩИТА: Если игрок подает объявление, не перехватываем кнопки серверов и категорий!
+    if "posting_ad" in st:
+        step = st["posting_ad"].get("step")
+        if step == "server" and msg.text in SERVERS:
+            return False # Пропускаем к обработчику серверов
+        if step == "category" and msg.text in CATEGORIES:
+            return False # Пропускаем к обработчику категорий
+
+    return msg.text in SYSTEM_NAV_BUTTONS
+
+@bot.message_handler(func=should_override_nav)
 def handle_navigation_override(m):
     clear_state(m.from_user.id)
     
@@ -549,9 +573,6 @@ def got_payment(message):
         else:
             safe_send_message(message.chat.id, "✅ Оплата прошла, но данные сессии сбросились. Начните подачу заново.", reply_markup=kb_main_menu())
 
-# ==========================================
-# СРЕДНИЕ ЦЕНЫ
-# ==========================================
 def show_average_prices(m):
     uid = m.from_user.id
     srv = get_state(uid).get("server", "Phoenix")
@@ -644,11 +665,7 @@ def cancel_action(m):
     clear_state(uid)
     safe_send_message(m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu())
 
-def m_is_in_posting(uid, step):
-    st = get_state(uid)
-    return "posting_ad" in st and st["posting_ad"].get("step") == step
-
-@bot.message_handler(func=lambda msg: m_is_in_posting(msg.from_user.id, "server"))
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step") == "server")
 def process_post_server(m):
     srv = m.text
     if srv not in SERVERS:
@@ -664,7 +681,7 @@ def process_post_server(m):
 
     safe_send_message(m.chat.id, "📂 Выберите категорию товара:", reply_markup=m_kb)
 
-@bot.message_handler(func=lambda msg: m_is_in_posting(msg.from_user.id, "category"))
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step") == "category")
 def process_post_category(m):
     cat = m.text
     if cat not in CATEGORIES:
@@ -679,7 +696,7 @@ def process_post_category(m):
 
     safe_send_message(m.chat.id, "✍️ Введите текст объявления (описание товара, цену и условия):", reply_markup=kb_cancel())
 
-@bot.message_handler(func=lambda msg: m_is_in_posting(msg.from_user.id, "text"))
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step") == "text")
 def process_post_text(m):
     text = m.text
     if not check_auto_moderation(text):
@@ -694,11 +711,11 @@ def process_post_text(m):
 
     safe_send_message(m.chat.id, "🖼 Отправьте фотографию товара или нажмите «Пропустить»:", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add("Пропустить", "🚫 Отмена"))
 
-@bot.message_handler(func=lambda msg: m_is_in_posting(msg.from_user.id, "photo") and msg.text == "Пропустить")
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step") == "photo" and msg.text == "Пропустить")
 def process_post_no_photo(m):
     ask_vip_choice(m, None)
 
-@bot.message_handler(content_types=['photo'], func=lambda msg: m_is_in_posting(msg.from_user.id, "photo"))
+@bot.message_handler(content_types=['photo'], func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step") == "photo")
 def process_post_photo(m):
     photo_id = m.photo[-1].file_id
     ask_vip_choice(m, photo_id)
@@ -924,7 +941,7 @@ def process_admin_edit_text(m):
 
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("✅ Опубликовать отредактированное", callback_data=f"mod_publish_edited_{pid}"),
+        types.InlineKeyboardButton("✅ Опубликовать", callback_data=f"mod_publish_edited_{pid}"),
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_reject_{pid}")
     )
 
@@ -932,6 +949,7 @@ def process_admin_edit_text(m):
         safe_send_photo(m.chat.id, photo_id, caption=f"✏️ <b>Отредактированное объявление (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
     else:
         safe_send_message(m.chat.id, f"✏️ <b>Отредактированное объявление (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
+
 
 # ==========================================
 # МОИ ОБЪЯВЛЕНИЯ
@@ -1232,8 +1250,9 @@ def process_dialog_message(m):
         logger.error(f"Ошибка пересылки сообщения в чате: {e}")
         safe_send_message(uid, "❌ Не удалось доставить сообщение. Возможно, пользователь заблокировал бота.")
 
+
 # ==========================================
-# АДМИН-ПАНЕЛЬ
+# НОВАЯ РАСШИРЕННАЯ АДМИН-ПАНЕЛЬ
 # ==========================================
 def admin_panel(m):
     if not is_admin_or_owner(m.from_user):
@@ -1246,72 +1265,64 @@ def admin_panel(m):
         types.InlineKeyboardButton("📊 Статистика редакторов", callback_data="admin_stats"),
         types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"),
         types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
-        types.InlineKeyboardButton("🟢 Разбанить", callback_data="admin_unban")
+        types.InlineKeyboardButton("🟢 Разбанить", callback_data="admin_unban"),
+        types.InlineKeyboardButton("🛠 Управление объявлением (ID)", callback_data="admin_manage_ad") # НОВАЯ КНОПКА
     )
     safe_send_message(m.chat.id, "👑 <b>Панель управления администратора:</b>", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_stats")
 def cb_admin_stats(call):
-    if not verify_admin_callback(call):
-        return
-
+    if not verify_admin_callback(call): return
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute("SELECT username, count FROM editor_stats ORDER BY count DESC LIMIT 10")
         stats = cur.fetchall()
 
     text = "📊 <b>Статистика работы редакторов:</b>\n\n" + ("Пока нет данных." if not stats else "\n".join([f"• @{html.escape(uname)}: отредактировано постов — <b>{cnt}</b>" for uname, cnt in stats]))
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
+    try: bot.answer_callback_query(call.id)
+    except: pass
     safe_send_message(call.message.chat.id, text)
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_ban")
 def cb_admin_ban(call):
     if not is_owner(call.from_user):
-        try:
-            return bot.answer_callback_query(call.id, "⛔ Заблокировать может только владелец бота!", show_alert=True)
-        except Exception:
-            return
-    
+        try: return bot.answer_callback_query(call.id, "⛔ Заблокировать может только владелец бота!", show_alert=True)
+        except: return
     update_state(call.from_user.id, admin_action="ban")
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
+    try: bot.answer_callback_query(call.id)
+    except: pass
     safe_send_message(call.message.chat.id, "🚫 Введите username (без @) или ID пользователя:", reply_markup=kb_cancel())
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_unban")
 def cb_admin_unban(call):
     if not is_owner(call.from_user):
-        try:
-            return bot.answer_callback_query(call.id, "⛔ Разблокировать может только владелец бота!", show_alert=True)
-        except Exception:
-            return
-    
+        try: return bot.answer_callback_query(call.id, "⛔ Разблокировать может только владелец бота!", show_alert=True)
+        except: return
     update_state(call.from_user.id, admin_action="unban")
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
+    try: bot.answer_callback_query(call.id)
+    except: pass
     safe_send_message(call.message.chat.id, "🟢 Введите username (без @) или ID для разблокировки:", reply_markup=kb_cancel())
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_broadcast")
 def cb_admin_broadcast(call):
-    if not verify_admin_callback(call):
-        return
+    if not verify_admin_callback(call): return
     update_state(call.from_user.id, admin_action="broadcast")
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
+    try: bot.answer_callback_query(call.id)
+    except: pass
     safe_send_message(call.message.chat.id, "📢 Введите текст массовой рассылки:", reply_markup=kb_cancel())
+
+# --- НОВАЯ ФУНКЦИЯ: УПРАВЛЕНИЕ АКТИВНЫМИ ОБЪЯВЛЕНИЯМИ ---
+@bot.callback_query_handler(func=lambda c: c.data == "admin_manage_ad")
+def cb_admin_manage_ad(call):
+    if not verify_admin_callback(call): return
+    update_state(call.from_user.id, admin_action="manage_ad")
+    try: bot.answer_callback_query(call.id)
+    except: pass
+    safe_send_message(call.message.chat.id, "🛠 Введите ID опубликованного объявления для управления им:", reply_markup=kb_cancel())
 
 @bot.message_handler(func=lambda msg: "admin_action" in get_state(msg.from_user.id))
 def process_admin_input(m):
-    if not is_admin_or_owner(m.from_user):
-        return
+    if not is_admin_or_owner(m.from_user): return
     
     uid = m.from_user.id
     st = get_state(uid)
@@ -1346,9 +1357,72 @@ def process_admin_input(m):
             try:
                 safe_send_message(u_id, f"📢 <b>Сообщение от администрации:</b>\n\n{html.escape(val)}")
                 success += 1
-            except Exception:
-                pass
+            except: pass
         safe_send_message(m.chat.id, f"✅ Рассылка завершена. Доставлено: {success} пользователям.", reply_markup=kb_main_menu())
+
+    elif action == "manage_ad":
+        if not val.isdigit():
+            return safe_send_message(m.chat.id, "⚠️ ID должен быть числом.", reply_markup=kb_main_menu())
+        
+        aid = int(val)
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT server, category, text, photo FROM active_ads WHERE id = ?", (aid,))
+            ad = cur.fetchone()
+        
+        if not ad:
+            return safe_send_message(m.chat.id, f"❌ Объявление с ID {aid} не найдено или уже удалено.", reply_markup=kb_main_menu())
+
+        srv, cat, text, photo_id = ad
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("🗑 Удалить", callback_data=f"adm_del_ad_{aid}"),
+            types.InlineKeyboardButton("✏️ Изменить текст", callback_data=f"adm_edit_ad_{aid}")
+        )
+
+        msg_text = f"🛠 <b>Управление объявлением #{aid}</b>\n<b>Сервер:</b> {srv}\n<b>Категория:</b> {cat}\n\n<b>Текст:</b>\n{html.escape(text)}"
+        if photo_id:
+            safe_send_photo(m.chat.id, photo_id, caption=msg_text, reply_markup=markup)
+        else:
+            safe_send_message(m.chat.id, msg_text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_del_ad_"))
+def cb_adm_del_ad(call):
+    if not verify_admin_callback(call): return
+    aid = int(call.data.split("_")[3])
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM active_ads WHERE id = ?", (aid,))
+        conn.commit()
+    try:
+        bot.answer_callback_query(call.id, "✅ Объявление удалено.")
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+    except: pass
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("adm_edit_ad_"))
+def cb_adm_edit_ad(call):
+    if not verify_admin_callback(call): return
+    aid = int(call.data.split("_")[3])
+    update_state(call.from_user.id, admin_editing_active_aid=aid)
+    try: bot.answer_callback_query(call.id)
+    except: pass
+    safe_send_message(call.message.chat.id, f"✏️ Введите новый текст для объявления #{aid}:", reply_markup=kb_cancel())
+
+@bot.message_handler(func=lambda msg: "admin_editing_active_aid" in get_state(msg.from_user.id))
+def process_admin_edit_active(m):
+    if not is_admin_or_owner(m.from_user): return
+    uid = m.from_user.id
+    st = get_state(uid)
+    aid = st["admin_editing_active_aid"]
+    clear_state(uid)
+    
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE active_ads SET text = ? WHERE id = ?", (m.text, aid))
+        conn.commit()
+        
+    safe_send_message(m.chat.id, f"✅ Текст объявления #{aid} успешно изменен!", reply_markup=kb_main_menu())
+
 
 # ==========================================
 # ПРОСМОТР КАТЕГОРИЙ С ПАГИНАЦИЕЙ

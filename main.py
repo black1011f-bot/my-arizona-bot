@@ -220,6 +220,23 @@ def cmd_start(m):
     )
     bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=kb_servers())
 
+@bot.message_handler(commands=['help'])
+def cmd_help(m):
+    text = (
+        "❓ **Вопросы / Помощь по использованию бота**\n\n"
+        "🛠 **Как пользоваться ботом:**\n"
+        "1️⃣ **Выбор сервера:** В самом начале выберите ваш игровой сервер Arizona RP.\n"
+        "2️⃣ **Просмотр рынка:** Нажимайте на категории (*«💍 Аксессуары»*, *«🏎 Транспорт»* и т.д.), чтобы посмотреть свежие объявления от других игроков.\n"
+        "3️⃣ **Подача объявления:**\n"
+        "   • Нажмите **«🛒 Подать объявление о продаже»**.\n"
+        "   • Выберите раздел товара.\n"
+        "   • Напишите текст объявления (и прикрепите фото по желанию).\n"
+        "   • Редакторы СМИ проверят его по правилам ПРО и опубликуют!\n\n"
+        "⏱ **Режим работы СМИ:** Подача и публикация объявлений доступны ежедневно с **08:00 до 22:00 МСК**.\n\n"
+        "🛡 **Безопасность:** Помните, что все сделки совершаются только в игре (`/trade`, лавки ЦР)."
+    )
+    bot.send_message(m.chat.id, text, parse_mode="Markdown")
+
 @bot.message_handler(func=lambda msg: msg.text == "📊 Откуда цены?")
 def show_prices_info(m):
     text = (
@@ -434,7 +451,6 @@ def callbacks(call):
                 else:
                     bot.send_message(call.message.chat.id, info, parse_mode="Markdown", reply_markup=ikb_manage_active_ad(aid))
 
-    # УДАЛЕНИЕ ОБЪЯВЛЕНИЯ + УВЕДОМЛЕНИЕ ИГРОКУ
     elif data.startswith("del_active_"):
         aid = int(data.split('_')[2])
         if not is_admin_or_owner(u):
@@ -442,11 +458,10 @@ def callbacks(call):
 
         with ads_lock:
             if aid in active_ads:
-                player_id = active_ads[aid].get("user_id")  # Извлекаем Telegram ID автора
+                player_id = active_ads[aid].get("user_id")
                 del active_ads[aid]
                 bot.answer_callback_query(call.id, f"Объявление #{aid} удалено!")
                 
-                # Отправка СМС/уведомления автору
                 if player_id:
                     try:
                         bot.send_message(
@@ -564,7 +579,7 @@ def callbacks(call):
         
         with ads_lock:
             active_ads[pid] = {
-                "user_id": post["user_id"],  # Сохраняем ID автора объявления!
+                "user_id": post["user_id"],
                 "text": p_text, 
                 "photo": post["photo"], 
                 "server": post["server"],
@@ -661,5 +676,15 @@ if __name__ == '__main__':
         bot.remove_webhook()
     except Exception:
         pass
+
+    # Регистрируем меню команд в Telegram UI (как на скриншоте)
+    try:
+        bot.set_my_commands([
+            types.BotCommand("start", "Начать"),
+            types.BotCommand("help", "Вопросы/помощь")
+        ])
+    except Exception as e:
+        logger.warning(f"Не удалось установить команды Telegram: {e}")
+
     print("🚀 Радиоцентр запущен!")
     bot.infinity_polling(skip_pending=True)

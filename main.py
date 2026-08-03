@@ -74,6 +74,19 @@ def init_db():
         ''')
         
         cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pending_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                username TEXT,
+                server TEXT,
+                category TEXT,
+                text TEXT,
+                photo TEXT,
+                is_vip INTEGER
+            )
+        ''')
+
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS bans (
                 target TEXT PRIMARY KEY,
                 is_id INTEGER
@@ -237,7 +250,7 @@ def cmd_start(m):
     bot.send_message(m.chat.id, caption_text, reply_markup=kb_servers())
 
 # ==========================================
-# СВЯЗЬ С ПРОДАВЦОМ
+# СВЯЗЬ С ПРОДАВЦОМ И ДИАЛОГИ
 # ==========================================
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
@@ -279,9 +292,8 @@ def cb_contact_seller(call):
 
     bot.send_message(
         call.message.chat.id,
-        "✍️ **Связь с продавцом через бота**\n\n"
+        "✍️ Связь с продавцом через бота\n\n"
         "Отправьте ваше сообщение. Вы можете в любой момент завершить или возобновить диалог кнопками ниже.",
-        parse_mode="Markdown",
         reply_markup=ikb_chat_controls(aid)
     )
 
@@ -346,7 +358,7 @@ def process_message_to_seller(m):
         bot.send_message(m.chat.id, "❌ Не удалось доставить сообщение.")
 
 # ==========================================
-# КАТЕГОРИИ И СЕРВЕРА
+# КАТЕГОРИИ И СЕРВЕРА (БЕЗ ОШИБОК КНОПОК)
 # ==========================================
 
 @bot.message_handler(func=lambda msg: msg.text in CATEGORIES)
@@ -366,7 +378,7 @@ def render_category_page(message, user_id: int, cat_idx: int, page: int = 0):
         conn.close()
 
     if not all_ads:
-        return bot.send_message(message.chat.id, f"📊 Раздел: **{cat_name}** [{srv}]\nОбъявлений пока нет.", parse_mode="Markdown", reply_markup=kb_main_menu())
+        return bot.send_message(message.chat.id, f"📊 Раздел: {cat_name} [{srv}]\nОбъявлений пока нет.", reply_markup=kb_main_menu())
 
     for aid, seller_uid, text, photo in all_ads[:ADS_PER_PAGE]:
         markup = types.InlineKeyboardMarkup()
@@ -379,7 +391,7 @@ def render_category_page(message, user_id: int, cat_idx: int, page: int = 0):
 @bot.message_handler(func=lambda msg: msg.text in SERVERS)
 def select_srv(m):
     user_states.setdefault(m.from_user.id, {})["server"] = m.text
-    bot.send_message(m.chat.id, f"Сервер **{m.text}** выбран!", parse_mode="Markdown", reply_markup=kb_main_menu())
+    bot.send_message(m.chat.id, f"Сервер {m.text} выбран!", reply_markup=kb_main_menu())
 
 # ==========================================
 # ЗАПУСК БОТА

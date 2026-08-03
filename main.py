@@ -54,7 +54,7 @@ SYSTEM_NAV_BUTTONS = [
     "🔍 Поиск по товарам", "❤️ Избранное", "🔔 Подписки на поиск",
     "📋 Мои объявления", "📊 Средние цены", "📊 Как работает бот",
     "🛒 Подать объявление о продаже", "💎 Премиум (VIP)", "🔄 Сменить сервер",
-    "👑 Админ", "🚫 Отмена"
+    "👑 Админ", "📝 Подать заявку на админа", "🚫 Отмена"
 ] + CATEGORIES + SERVERS
 
 BAD_WORDS = [
@@ -214,6 +214,21 @@ def init_db():
             )
         ''')
 
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_apps (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                application_text TEXT
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS approved_admins (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT
+            )
+        ''')
+
         conn.commit()
 
 init_db()
@@ -299,7 +314,15 @@ def is_admin_or_owner(user) -> bool:
         return False
     if is_owner(user): 
         return True
-    return bool(user.username and user.username.lower() in ADMIN_USERNAMES)
+    uname = user.username.lower().lstrip('@') if user.username else ""
+    if uname in ADMIN_USERNAMES:
+        return True
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (user.id, uname))
+        if cur.fetchone():
+            return True
+    return False
 
 def verify_admin_callback(call) -> bool:
     if not is_admin_or_owner(call.from_user):
@@ -370,6 +393,7 @@ def kb_servers():
         m.add(*[types.KeyboardButton(s) for s in SERVERS[i:i+2]])
     m.add(types.KeyboardButton("📊 Как работает бот"), types.KeyboardButton("🛒 Подать объявление о продаже"))
     m.add(types.KeyboardButton("💎 Премиум (VIP)"), types.KeyboardButton("👑 Админ"))
+    m.add(types.KeyboardButton("📝 Подать заявку на админа"))
     return m
 
 def kb_main_menu():
@@ -382,6 +406,7 @@ def kb_main_menu():
     m.add("📊 Средние цены", "📊 Как работает бот")
     m.add("🛒 Подать объявление о продаже", "💎 Премиум (VIP)")
     m.add("🔄 Сменить сервер", "👑 Админ")
+    m.add("📝 Подать заявку на админа")
     return m
 
 def kb_cancel():
@@ -435,7 +460,7 @@ def should_override_nav(msg):
     if msg.text == "🚫 Отмена" or msg.text.startswith('/'):
         return True
 
-    if "admin_editing_pid" in st or "admin_editing_active_aid" in st:
+    if "admin_editing_pid" in st or "admin_editing_active_aid" in st or "applying_admin" in st:
         return False
         
     if "posting_ad" in st:
@@ -477,6 +502,8 @@ def handle_navigation_override(m):
         manage_subscriptions(m)
     elif m.text == "👑 Админ":
         admin_panel(m)
+    elif m.text == "📝 Подать заявку на админа":
+        start_admin_application(m)
     elif m.text in CATEGORIES:
         show_ads_category(m)
     elif m.text in SERVERS:
@@ -1277,6 +1304,118 @@ def process_dialog_message(m):
 
 
 # ==========================================
+# ЗАЯВКА НА АДМИНА
+# ==========================================
+def start_admin_application(m):
+    register_user(m.from_user.id, m.from_user.username)
+    if is_banned(m.from_user):
+        return safe_send_message(m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove())
+    
+    if is_admin_or_owner(m.from_user):
+        return safe_send_message(m.chat.id, "👑 Вы уже являетесь администратором бота!", reply_markup=kb_main_menu())
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM admin_apps WHERE user_id = ?", (m.from_user.id,))
+        if cur.fetchone():
+            return safe_send_message(m.chat.id, "⏳ Вы уже подали заявку на администратора. Ожидайте рассмотрения владельцем (@bounqy).", reply_markup=kb_main_menu())
+
+    update_state(m.from_user.id, applying_admin=True)
+    safe_send_message(
+        m.chat.id, 
+        "📝 <b>Подача заявки на пост администратора:</b>\n\n"
+        "Расскажите о себе в свободной форме (укажите ваш возраст, игровой опыт, почему хотите стать редактором/админом и сколько времени готовы уделять):\n\n"
+        "👇 <i>Отправьте ваш текст ответным сообщением:</i>", 
+        reply_markup=kb_cancel()
+    )
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("applying_admin"))
+def process_admin_application_text(m):
+    uid = m.from_user.id
+    clear_state(uid)
+    text = m.text.strip()
+    uname = m.from_user.username or "Без юзернейма"
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("INSERT OR REPLACE INTO admin_apps (user_id, username, application_text) VALUES (?, ?, ?)", (uid, uname, text))
+        conn.commit()
+
+    safe_send_message(m.chat.id, "✅ Ваша заявка на администратора успешно отправлена владельцу (@bounqy) на рассмотрение!", reply_markup=kb_main_menu())
+
+    # Рассылка уведомления владельцу и в админ-чаты с кнопками Принять/Отклонить
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("✅ Принять заявку", callback_data=f"app_accept_{uid}"),
+        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"app_reject_{uid}")
+    )
+
+    app_msg = (
+        f"🚨 <b>Новая заявка на администратора!</b>\n\n"
+        f"👤 <b>Кандидат:</b> @{html.escape(uname)} (ID: <code>{uid}</code>)\n\n"
+        f"💬 <b>Текст заявки:</b>\n{html.escape(text)}"
+    )
+
+    admin_chats = get_admin_chat_ids()
+    for chat_id in admin_chats:
+        safe_send_message(chat_id, app_msg, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("app_accept_") or c.data.startswith("app_reject_"))
+def callback_admin_app_decision(call):
+    # Строгое требование: принимать или отклонять заявку может только владелец (@bounqy)
+    if not is_owner(call.from_user):
+        try:
+            return bot.answer_callback_query(call.id, "⛔ Принимать или отклонять заявки на администратора может исключительно владелец бота (@bounqy)!", show_alert=True)
+        except Exception:
+            return
+
+    parts = call.data.split("_")
+    action = parts[1] # accept или reject
+    target_uid = int(parts[2])
+
+    try:
+        bot.answer_callback_query(call.id)
+    except Exception:
+        pass
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT username FROM admin_apps WHERE user_id = ?", (target_uid,))
+        row = cur.fetchone()
+        target_uname = row[0] if row else ""
+        cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (target_uid,))
+        
+        if action == "accept":
+            cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (target_uid, target_uname))
+        conn.commit()
+
+    if action == "accept":
+        try:
+            safe_send_message(
+                target_uid, 
+                "🎉 <b>Поздравляем! Ваша заявка на администратора была принята владельцем (@bounqy)!</b>\n\n"
+                "Вам открыт доступ к панели управления и функциям модерации.", 
+                reply_markup=kb_main_menu()
+            )
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление пользователю {target_uid}: {e}")
+
+        safe_send_message(call.message.chat.id, f"✅ Вы успешно приняли заявку пользователя ID: <code>{target_uid}</code>. Права администратора выданы.")
+    else:
+        try:
+            safe_send_message(target_uid, "❌ К сожалению, ваша заявка на пост администратора была отклонена владельцем.")
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление пользователю {target_uid}: {e}")
+
+        safe_send_message(call.message.chat.id, f"❌ Заявка пользователя ID: <code>{target_uid}</code> отклонена.")
+
+    try:
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+    except Exception:
+        pass
+
+
+# ==========================================
 # АДМИН-ПАНЕЛЬ (Строго контролируется владельцем @bounqy)
 # ==========================================
 def admin_panel(m):
@@ -1314,7 +1453,6 @@ def cb_admin_stats(call):
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_ban")
 def cb_admin_ban(call):
-    # Принятие/отклонение или выдача админки/банов строго для владельца @bounqy
     if not is_owner(call.from_user):
         try: return bot.answer_callback_query(call.id, "⛔ Это действие доступно исключительно владельцу бота (@bounqy)!", show_alert=True)
         except: return
@@ -1325,7 +1463,6 @@ def cb_admin_ban(call):
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_unban")
 def cb_admin_unban(call):
-    # Принятие на админку или разбан строго через владельца @bounqy
     if not is_owner(call.from_user):
         try: return bot.answer_callback_query(call.id, "⛔ Принимать на админку и разблокировать может исключительно владелец бота (@bounqy)!", show_alert=True)
         except: return
@@ -1380,7 +1517,6 @@ def process_admin_input(m):
     val = m.text.strip()
 
     if action in ["ban", "unban"]:
-        # Дополнительная жесткая проверка: принимать/отклонять и управлять статусами админов/банов может только @bounqy
         if not is_owner(m.from_user):
             return safe_send_message(m.chat.id, "⛔ Ошибка доступа! Принимать на админку и управлять блокировками может исключительно владелец (@bounqy).")
         target = val.lstrip('@').lower()
@@ -1406,6 +1542,7 @@ def process_admin_input(m):
             if action == "ban":
                 is_id = 1 if target.isdigit() else 0
                 cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (target, is_id))
+                cur.execute("DELETE FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (target_uid or 0, target))
                 msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> заблокирован / снят с прав владельцем (@bounqy)."
                 if target_uid:
                     try:
@@ -1418,12 +1555,14 @@ def process_admin_input(m):
                         logger.error(f"Не удалось отправить уведомление о бане пользователю {target_uid}: {e}")
             else:
                 cur.execute("DELETE FROM bans WHERE target = ?", (target,))
+                if target_uid:
+                    cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (target_uid, target))
                 msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> успешно принят на админку / разблокирован владельцем (@bounqy)."
                 if target_uid:
                     try:
                         safe_send_message(
                             target_uid, 
-                            "✅ <b>Ваша заявка на администратора была принята владельцем (@bounqy)!</b> Доступ и клавиатура восстановлены.", 
+                            "✅ <b>Ваш статус был обновлен владельцем (@bounqy)!</b> Доступ и клавиатура восстановлены.", 
                             reply_markup=kb_main_menu()
                         )
                     except Exception as e:
@@ -1460,7 +1599,6 @@ def cb_adm_del_ad(call):
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("adm_edit_ad_"))
 def cb_adm_edit_ad(call):
-    # Добавлена проверка на то, что редактировать могут только админы
     if not verify_admin_callback(call): 
         return
     aid = int(call.data.split("_")[3])
@@ -1471,7 +1609,6 @@ def cb_adm_edit_ad(call):
 
 @bot.message_handler(func=lambda msg: "admin_editing_active_aid" in get_state(msg.from_user.id))
 def process_admin_edit_active(m):
-    # Добавлена проверка прав доступа
     if not is_admin_or_owner(m.from_user): 
         clear_state(m.from_user.id)
         return safe_send_message(m.chat.id, "⛔ У вас нет прав на редактирование объявлений.")
@@ -1568,4 +1705,3 @@ if __name__ == '__main__':
 
     logger.info("🚀 Бот полностью обновлен и запущен!")
     bot.infinity_polling(skip_pending=True)
-

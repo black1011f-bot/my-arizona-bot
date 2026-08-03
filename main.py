@@ -2187,33 +2187,29 @@ def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0
     nav_markup = types.InlineKeyboardMarkup(row_width=2)
     nav_btns = []
     if page > 0:
-        nav_btns.append(types.InlineKeyboardButton("⏮ Назад", callback_data=f"page_{cat_idx}_{page - 1}"))
+        nav_btns.append(types.InlineKeyboardButton("⏮ Назад", callback_data=f"cat_page_{cat_idx}_{page - 1}"))
     if end_idx < total_ads:
-        nav_btns.append(types.InlineKeyboardButton("Вперед ⏭", callback_data=f"page_{cat_idx}_{page + 1}"))
+        nav_btns.append(types.InlineKeyboardButton("Вперед ⏭", callback_data=f"cat_page_{cat_idx}_{page + 1}"))
     
     if nav_btns:
         nav_markup.add(*nav_btns)
         safe_send_message(chat_id, f"📑 Страница {page + 1} из {(total_ads + ADS_PER_PAGE - 1) // ADS_PER_PAGE}:", reply_markup=nav_markup)
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("page_") and not c.data.startswith("buy_page_"))
+@bot.callback_query_handler(func=lambda c: c.data.startswith("cat_page_"))
 def cb_category_page(call):
     parts = call.data.split("_")
-    cat_idx = int(parts[1])
-    page = int(parts[2])
+    cat_idx = int(parts[2])
+    page = int(parts[3])
     try:
         bot.answer_callback_query(call.id)
     except Exception:
         pass
     render_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
 
+
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
-if __name__ == '__main__':
-    logger.info("Бот запущен и готов к работе...")
-    while True:
-        try:
-            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=30)
-        except Exception as e:
-            logger.error(f"Ошибка в работе бота: {e}")
-            time.sleep(5)
+if __name__ == "__main__":
+    logger.info("Бот СМИ запущен и готов к работе...")
+    bot.infinity_polling(skip_pending=True)

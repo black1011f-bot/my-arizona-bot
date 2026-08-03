@@ -19,7 +19,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# НОВЫЙ ТОКЕН УСТАНОВЛЕН ЗДЕСЬ
 TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAEnU4IKdiPFGMjAXlYm4C7p-Rm4Kl61ce8")
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
@@ -158,6 +157,7 @@ def init_db():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_data (
                 user_id INTEGER PRIMARY KEY,
+                username TEXT,
                 last_ad_time REAL
             )
         ''')
@@ -269,10 +269,13 @@ def set_user_last_ad_time(user_id, t):
         cur.execute("INSERT OR REPLACE INTO user_data (user_id, last_ad_time) VALUES (?, ?)", (user_id, t))
         conn.commit()
 
-def register_user(user_id):
+def register_user(user_id, username=None):
+    uname = username.lstrip('@').lower() if username else None
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("INSERT OR IGNORE INTO user_data (user_id, last_ad_time) VALUES (?, 0)", (user_id,))
+        cur.execute("INSERT OR IGNORE INTO user_data (user_id, username, last_ad_time) VALUES (?, ?, 0)", (user_id, uname))
+        if uname:
+            cur.execute("UPDATE user_data SET username = ? WHERE user_id = ?", (uname, user_id))
         conn.commit()
 
 def is_banned(user) -> bool:
@@ -400,7 +403,7 @@ def ikb_ad_actions(aid: int, is_fav: bool = False):
     return markup
 
 # ==========================================
-# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ (ФИКС БАГА ПОДАЧИ ОБЪЯВЛЕНИЙ)
+# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ
 # ==========================================
 def should_override_nav(msg):
     if not msg.text: 
@@ -409,21 +412,18 @@ def should_override_nav(msg):
     uid = msg.from_user.id
     st = get_state(uid)
 
-    # Кнопка Отмена всегда должна сбрасывать процесс
     if msg.text == "🚫 Отмена" or msg.text.startswith('/'):
         return True
 
-    # ЗАЩИТА: Если админ сейчас вводит текст для редактирования, не перебиваем его!
     if "admin_editing_pid" in st or "admin_editing_active_aid" in st:
         return False
         
-    # ЗАЩИТА: Если игрок подает объявление, не перехватываем кнопки серверов и категорий!
     if "posting_ad" in st:
         step = st["posting_ad"].get("step")
         if step == "server" and msg.text in SERVERS:
-            return False # Пропускаем к обработчику серверов
+            return False
         if step == "category" and msg.text in CATEGORIES:
-            return False # Пропускаем к обработчику категорий
+            return False
 
     return msg.text in SYSTEM_NAV_BUTTONS
 
@@ -466,7 +466,7 @@ def handle_navigation_override(m):
 # ОСНОВНЫЕ КОМАНДЫ
 # ==========================================
 def cmd_start(m):
-    register_user(m.from_user.id)
+    register_user(m.from_user.id, m.from_user.username)
     
     if is_banned(m.from_user):
         return safe_send_message(m.chat.id, "⛔ Вы заблокированы в системе модерации.")
@@ -514,7 +514,7 @@ def info_premium(m):
     status_text = "✅ <b>Ваш VIP-статус активен!</b>" if is_prem else "❌ <b>У вас нет активного VIP-статуса.</b>"
     
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("💳 Купить VIP (10 Звезд / 30 дней)", pay=True, callback_data="buy_vip_stars"))
+    markup.add(types.InlineKeyboardButton("💳 Купить VIP (50 Звезд / 30 дней)", pay=True, callback_data="buy_vip_stars"))
 
     text = (
         f"💎 <b>Премиум-статус (VIP) в боте</b>\n\n"
@@ -522,13 +522,13 @@ def info_premium(m):
         "Преимущества VIP статуса:\n"
         "• Значок премиум-аккаунта в ваших объявлениях\n"
         "• Приоритетное размещение товаров\n\n"
-        "Стоимость: <b>10 Telegram Stars</b> на 30 дней."
+        "Стоимость: <b>50 Telegram Stars</b> на 30 дней."
     )
     safe_send_message(m.chat.id, text, reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data == "buy_vip_stars")
 def send_invoice_vip(call):
-    prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=10)]
+    prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=50)]
     try:
         bot.send_invoice(
             chat_id=call.message.chat.id,
@@ -630,6 +630,7 @@ def format_price(val: float) -> str:
 # ПОДАЧА И МОДЕРАЦИЯ ОБЪЯВЛЕНИЙ
 # ==========================================
 def start_add_ad(m):
+    register_user(m.from_user.id, m.from_user.username)
     if is_banned(m.from_user):
         return safe_send_message(m.chat.id, "⛔ Вы заблокированы.")
     
@@ -1252,7 +1253,7 @@ def process_dialog_message(m):
 
 
 # ==========================================
-# НОВАЯ РАСШИРЕННАЯ АДМИН-ПАНЕЛЬ
+# АДМИН-ПАНЕЛЬ
 # ==========================================
 def admin_panel(m):
     if not is_admin_or_owner(m.from_user):
@@ -1264,10 +1265,13 @@ def admin_panel(m):
     markup.add(
         types.InlineKeyboardButton("📊 Статистика редакторов", callback_data="admin_stats"),
         types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"),
-        types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
-        types.InlineKeyboardButton("🟢 Разбанить", callback_data="admin_unban"),
-        types.InlineKeyboardButton("🛠 Управление объявлением (ID)", callback_data="admin_manage_ad") # НОВАЯ КНОПКА
+        types.InlineKeyboardButton("🛠 Управление объявлениями", callback_data="admin_manage_ad")
     )
+    if is_owner(m.from_user):
+        markup.add(
+            types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
+            types.InlineKeyboardButton("🟢 Разбанить", callback_data="admin_unban")
+        )
     safe_send_message(m.chat.id, "👑 <b>Панель управления администратора:</b>", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_stats")
@@ -1286,17 +1290,17 @@ def cb_admin_stats(call):
 @bot.callback_query_handler(func=lambda c: c.data == "admin_ban")
 def cb_admin_ban(call):
     if not is_owner(call.from_user):
-        try: return bot.answer_callback_query(call.id, "⛔ Заблокировать может только владелец бота!", show_alert=True)
+        try: return bot.answer_callback_query(call.id, "⛔ Заблокировать может только владелец бота (@bounqy)!", show_alert=True)
         except: return
     update_state(call.from_user.id, admin_action="ban")
     try: bot.answer_callback_query(call.id)
     except: pass
-    safe_send_message(call.message.chat.id, "🚫 Введите username (без @) или ID пользователя:", reply_markup=kb_cancel())
+    safe_send_message(call.message.chat.id, "🚫 Введите username (без @) или ID пользователя для блокировки:", reply_markup=kb_cancel())
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_unban")
 def cb_admin_unban(call):
     if not is_owner(call.from_user):
-        try: return bot.answer_callback_query(call.id, "⛔ Разблокировать может только владелец бота!", show_alert=True)
+        try: return bot.answer_callback_query(call.id, "⛔ Разблокировать может только владелец бота (@bounqy)!", show_alert=True)
         except: return
     update_state(call.from_user.id, admin_action="unban")
     try: bot.answer_callback_query(call.id)
@@ -1311,14 +1315,33 @@ def cb_admin_broadcast(call):
     except: pass
     safe_send_message(call.message.chat.id, "📢 Введите текст массовой рассылки:", reply_markup=kb_cancel())
 
-# --- НОВАЯ ФУНКЦИЯ: УПРАВЛЕНИЕ АКТИВНЫМИ ОБЪЯВЛЕНИЯМИ ---
+# УПРАВЛЕНИЕ АКТИВНЫМИ ОБЪЯВЛЕНИЯМИ БЕЗ ID (СПИСОК)
 @bot.callback_query_handler(func=lambda c: c.data == "admin_manage_ad")
 def cb_admin_manage_ad(call):
     if not verify_admin_callback(call): return
-    update_state(call.from_user.id, admin_action="manage_ad")
     try: bot.answer_callback_query(call.id)
     except: pass
-    safe_send_message(call.message.chat.id, "🛠 Введите ID опубликованного объявления для управления им:", reply_markup=kb_cancel())
+    
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, server, category, text, photo FROM active_ads ORDER BY id DESC LIMIT 10")
+        ads = cur.fetchall()
+        
+    if not ads:
+        return safe_send_message(call.message.chat.id, "📭 Нет активных объявлений для управления.", reply_markup=kb_main_menu())
+        
+    safe_send_message(call.message.chat.id, "🛠 <b>Управление активными объявлениями (последние 10):</b>")
+    for aid, srv, cat, text, photo in ads:
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("🗑 Удалить", callback_data=f"adm_del_ad_{aid}"),
+            types.InlineKeyboardButton("✏️ Изменить текст", callback_data=f"adm_edit_ad_{aid}")
+        )
+        preview = f"<b>ID: {aid}</b> | [{srv}] {cat}\n{text[:120]}..."
+        if photo:
+            safe_send_photo(call.message.chat.id, photo, caption=preview, reply_markup=markup)
+        else:
+            safe_send_message(call.message.chat.id, preview, reply_markup=markup)
 
 @bot.message_handler(func=lambda msg: "admin_action" in get_state(msg.from_user.id))
 def process_admin_input(m):
@@ -1332,17 +1355,45 @@ def process_admin_input(m):
 
     if action in ["ban", "unban"]:
         if not is_owner(m.from_user):
-            return safe_send_message(m.chat.id, "⛔ Только владелец может выполнять это действие.")
+            return safe_send_message(m.chat.id, "⛔ Только владелец (@bounqy) может выполнять это действие.")
         target = val.lstrip('@').lower()
+        
+        # Поиск user_id для отправки СМС-уведомления
+        target_uid = None
+        if target.isdigit():
+            target_uid = int(target)
+        else:
+            with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT user_id FROM user_data WHERE LOWER(username) = ?", (target,))
+                row = cur.fetchone()
+                if row:
+                    target_uid = row[0]
+                else:
+                    cur.execute("SELECT user_id FROM pending_posts WHERE LOWER(username) = ? LIMIT 1", (target,))
+                    row2 = cur.fetchone()
+                    if row2:
+                        target_uid = row2[0]
+
         with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
             cur = conn.cursor()
             if action == "ban":
-                is_id = 1 if val.isdigit() else 0
+                is_id = 1 if target.isdigit() else 0
                 cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (target, is_id))
                 msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> заблокирован."
+                if target_uid:
+                    try:
+                        safe_send_message(target_uid, "⛔ <b>Вы были заблокированы владельцем бота.</b> Доступ к функциям ограничен.")
+                    except Exception as e:
+                        logger.error(f"Не удалось отправить уведомление о бане пользователю {target_uid}: {e}")
             else:
                 cur.execute("DELETE FROM bans WHERE target = ?", (target,))
                 msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> разблокирован."
+                if target_uid:
+                    try:
+                        safe_send_message(target_uid, "✅ <b>Вы были разблокированы владельцем бота!</b> Доступ восстановлен.")
+                    except Exception as e:
+                        logger.error(f"Не удалось отправить уведомление о разбане пользователю {target_uid}: {e}")
             conn.commit()
         safe_send_message(m.chat.id, msg_txt, reply_markup=kb_main_menu())
 
@@ -1359,32 +1410,6 @@ def process_admin_input(m):
                 success += 1
             except: pass
         safe_send_message(m.chat.id, f"✅ Рассылка завершена. Доставлено: {success} пользователям.", reply_markup=kb_main_menu())
-
-    elif action == "manage_ad":
-        if not val.isdigit():
-            return safe_send_message(m.chat.id, "⚠️ ID должен быть числом.", reply_markup=kb_main_menu())
-        
-        aid = int(val)
-        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT server, category, text, photo FROM active_ads WHERE id = ?", (aid,))
-            ad = cur.fetchone()
-        
-        if not ad:
-            return safe_send_message(m.chat.id, f"❌ Объявление с ID {aid} не найдено или уже удалено.", reply_markup=kb_main_menu())
-
-        srv, cat, text, photo_id = ad
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            types.InlineKeyboardButton("🗑 Удалить", callback_data=f"adm_del_ad_{aid}"),
-            types.InlineKeyboardButton("✏️ Изменить текст", callback_data=f"adm_edit_ad_{aid}")
-        )
-
-        msg_text = f"🛠 <b>Управление объявлением #{aid}</b>\n<b>Сервер:</b> {srv}\n<b>Категория:</b> {cat}\n\n<b>Текст:</b>\n{html.escape(text)}"
-        if photo_id:
-            safe_send_photo(m.chat.id, photo_id, caption=msg_text, reply_markup=markup)
-        else:
-            safe_send_message(m.chat.id, msg_text, reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("adm_del_ad_"))
 def cb_adm_del_ad(call):

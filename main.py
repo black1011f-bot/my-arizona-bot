@@ -19,7 +19,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAGrZ_56enA5zdUceulNUIGY2fdCWarfAB4")
+# Использование нового актуального токена
+TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAEKhCxOrvEsz1RgwNdOZinC7X7vKbJ_CLg")
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
 OWNER_USERNAME = "bounqy"

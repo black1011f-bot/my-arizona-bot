@@ -6,7 +6,6 @@ import sqlite3
 from datetime import datetime, time as dtime
 import telebot
 from telebot import types
-import openai
 
 # ==========================================
 # ЛОГИРОВАНИЕ И КОНФИГУРАЦИЯ
@@ -19,9 +18,6 @@ logger = logging.getLogger(__name__)
 
 TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAGMsyFa-_OZBs8beZ7vIEi8bKX6uvRUrM8")
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_OPENAI_API_KEY_HERE")
-openai.api_key = OPENAI_API_KEY
 
 OWNER_USERNAME = "bounqy"
 ADMIN_USERNAMES = {"bounqy31", "bounqy"}
@@ -196,7 +192,7 @@ def kb_servers():
     for i in range(0, len(SERVERS), 2): 
         m.add(*[types.KeyboardButton(s) for s in SERVERS[i:i+2]])
     m.add(types.KeyboardButton("📊 Откуда цены?"), types.KeyboardButton("🛒 Подать объявление о продаже"))
-    m.add(types.KeyboardButton("💎 Премиум (VIP)"), types.KeyboardButton("🤖 ИИ-Помощник"), types.KeyboardButton("👑 Админ"))
+    m.add(types.KeyboardButton("💎 Премиум (VIP)"), types.KeyboardButton("👑 Админ"))
     return m
 
 def kb_main_menu():
@@ -207,7 +203,7 @@ def kb_main_menu():
     m.add("🔍 Поиск по товарам", "❤️ Избранное")
     m.add("🔔 Подписки на поиск", "📋 Мои объявления")
     m.add("📊 Откуда цены?", "🛒 Подать объявление о продаже")
-    m.add("💎 Премиум (VIP)", "🤖 ИИ-Помощник", "🔄 Сменить сервер")
+    m.add("💎 Премиум (VIP)", "🔄 Сменить сервер")
     m.add("👑 Админ")
     return m
 
@@ -239,47 +235,6 @@ def cmd_start(m):
         "👇 Для начала работы выберите ваш игровой сервер:"
     )
     bot.send_message(m.chat.id, caption_text, reply_markup=kb_servers())
-
-# ==========================================
-# МОДУЛЬ ИИ-ПОМОЩНИКА (GPT)
-# ==========================================
-
-@bot.message_handler(func=lambda msg: msg.text == "🤖 ИИ-Помощник")
-def start_ai_assistant(m):
-    uid = m.from_user.id
-    user_states[uid] = {"ai_chatting": True}
-    bot.send_message(
-        m.chat.id,
-        "🤖 **Привет! Я твой ИИ-помощник по игре Arizona RP.**\n"
-        "Ты можешь спросить меня о ценах на аксессуары, фарме, модах или игровых механиках.\n\n"
-        "Напиши свой вопрос ниже:",
-        parse_mode="Markdown",
-        reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("🚫 Выйти из ИИ"))
-    )
-
-@bot.message_handler(func=lambda msg: msg.from_user.id in user_states and user_states[msg.from_user.id].get("ai_chatting"))
-def process_ai_message(m):
-    uid = m.from_user.id
-    if m.text == "🚫 Выйти из ИИ":
-        user_states.pop(uid, None)
-        return bot.send_message(m.chat.id, "Выход из диалога с ИИ.", reply_markup=kb_main_menu())
-
-    bot.send_chat_action(m.chat.id, 'typing')
-    
-    try:
-        response = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Ты эксперт и помощник по игре Arizona RP, знаешь всё про экономику, сервера, аксессуары и фарм."},
-                {"role": "user", "content": m.text}
-            ],
-            max_tokens=500
-        )
-        answer = response.choices[0].message.content
-        bot.send_message(m.chat.id, f"🤖 **ИИ-Помощник:**\n\n{answer}", parse_mode="Markdown")
-    except Exception as e:
-        logger.error(f"Ошибка OpenAI: {e}")
-        bot.send_message(m.chat.id, "⚠️ Произошла ошибка при обращении к ИИ-помощнику. Проверьте правильность API-ключа.")
 
 # ==========================================
 # СВЯЗЬ С ПРОДАВЦОМ
@@ -314,7 +269,6 @@ def cb_contact_seller(call):
 
     bot.answer_callback_query(call.id)
     
-    # Безопасная обрезка текста без использования Markdown для предотвращения крашей
     safe_preview = (ad_text[:47] + "...") if len(ad_text) > 50 else ad_text
     user_states[buyer_id] = {
         "messaging_seller": True,

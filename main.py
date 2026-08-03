@@ -1,4 +1,4 @@
-# Интегрированный скрипт: объединен основной функционал СМИ-бота с динамическим разделом средних цен
+# Интегрированный скрипт: добавление функции платной подачи VIP-объявления за 1 Telegram Star
 
 import os
 import time
@@ -83,7 +83,9 @@ def init_db():
                 category TEXT,
                 text TEXT,
                 photo TEXT,
-                is_vip INTEGER
+                is_vip INTEGER,
+                editing_by INTEGER,
+                editing_since REAL
             )
         ''')
 
@@ -361,15 +363,64 @@ def how_bot_works(m):
 
 @bot.message_handler(func=lambda msg: msg.text == "💎 Премиум (VIP)")
 def info_premium(m):
+    is_prem = is_user_premium(m.from_user.id)
+    status_text = "✅ **Ваш VIP-статус активен!**" if is_prem else "❌ **У вас нет активного VIP-статуса.**"
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("💳 Купить VIP (10 Звезд / 30 дней)", pay=True, callback_data="buy_vip_stars"))
+
     text = (
-        "💎 **Премиум-статус (VIP) в боте**\n\n"
+        f"💎 **Премиум-статус (VIP) в боте**\n\n"
+        f"{status_text}\n\n"
         "Преимущества VIP статуса:\n"
         "• Значок премиум-аккаунта в ваших объявлениях\n"
         "• Приоритетное размещение товаров\n"
         "• Увеличенные лимиты и расширенные возможности поиска\n\n"
-        "Для получения статуса обратитесь к создателю: @" + OWNER_USERNAME
+        "Стоимость: **10 Telegram Stars** на 30 дней."
     )
-    bot.send_message(m.chat.id, text, parse_mode="Markdown")
+    bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data == "buy_vip_stars")
+def send_invoice_vip(call):
+    prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=10)]
+    try:
+        bot.send_invoice(
+            chat_id=call.message.chat.id,
+            title="Премиум-статус VIP",
+            description="Покупка VIP статуса в боте СМИ на 30 дней",
+            invoice_payload="vip_subscription_30_days",
+            provider_token="",
+            currency="XTR",
+            prices=prices,
+            start_parameter="buy_vip"
+        )
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"Ошибка создания счета: {e}", show_alert=True)
+
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def checkout(pre_checkout_query):
+    bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+@bot.message_handler(content_types=['successful_payment'])
+def got_payment(message):
+    payload = message.successful_payment.invoice_payload
+    if payload == "vip_subscription_30_days":
+        uid = message.from_user.id
+        expires = time.time() + 30 * 86400
+        with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES (?, ?)", (uid, expires))
+            conn.commit()
+        bot.send_message(message.chat.id, "🎉 Поздравляем! Вы успешно приобрели VIP-статус на 30 дней!", reply_markup=kb_main_menu())
+    elif payload.startswith("vip_single_ad_"):
+        # Платная разовая подача VIP-объявления (1 звезда)
+        uid = message.from_user.id
+        p_data = user_states.get(uid, {}).get("posting_ad")
+        if p_data:
+            p_data["is_vip"] = 1
+            finish_posting(message, p_data.get("photo_id"))
+        else:
+            bot.send_message(message.chat.id, "✅ Оплата прошла, но данные сессии сбросились. Пожалуйста, начните подачу объявления заново.", reply_markup=kb_main_menu())
 
 # ==========================================
 # РАЗДЕЛ "СРЕДНИЕ ЦЕНЫ"
@@ -431,7 +482,7 @@ def format_price(val: float) -> str:
     return f"{int(val)}"
 
 # ==========================================
-# ПОДАЧА И МОДЕРАЦИЯ ОБЪЯВЛЕНИЙ (С РЕДАКТИРОВАНИЕМ АДМИНИСТРАТОРОМ)
+# ПОДАЧА И МОДЕРАЦИЯ ОБЪЯВЛЕНИЙ
 # ==========================================
 
 @bot.message_handler(func=lambda msg: msg.text == "🛒 Подать объявление о продаже")
@@ -507,31 +558,87 @@ def process_post_text(m):
 
 @bot.message_handler(func=lambda msg: m_is_in_posting(msg.from_user.id, "photo") and msg.text == "Пропустить")
 def process_post_no_photo(m):
-    finish_posting(m, None)
+    ask_vip_choice(m, None)
 
 @bot.message_handler(content_types=['photo'], func=lambda msg: m_is_in_posting(msg.from_user.id, "photo"))
 def process_post_photo(m):
     photo_id = m.photo[-1].file_id
-    finish_posting(m, photo_id)
+    ask_vip_choice(m, photo_id)
 
 def m_is_in_posting(uid, step):
     return uid in user_states and "posting_ad" in user_states[uid] and user_states[uid]["posting_ad"].get("step") == step
 
-def finish_posting(m, photo_id):
+def ask_vip_choice(m, photo_id):
     uid = m.from_user.id
-    p_data = user_states[uid]["posting_ad"]
+    user_states[uid]["posting_ad"]["photo_id"] = photo_id
+
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    if is_user_premium(uid):
+        # Если у пользователя уже есть постоянный VIP
+        markup.add(types.InlineKeyboardButton("👑 Опубликовать как VIP (Бесплатно по вашему VIP)", callback_data="post_as_vip_free"))
+    else:
+        markup.add(types.InlineKeyboardButton("💎 Подать как VIP-объявление (1 Звезда / 1 раз)", pay=True, callback_data="buy_single_vip_star"))
+    markup.add(types.InlineKeyboardButton("📄 Опубликовать как обычное объявление", callback_data="post_as_regular"))
+
+    bot.send_message(m.chat.id, "💎 **Выберите формат публикации вашего объявления:**", parse_mode="Markdown", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data in ["post_as_vip_free", "post_as_regular"])
+def callback_publish_choice(call):
+    uid = call.from_user.id
+    p_data = user_states.get(uid, {}).get("posting_ad")
+    if not p_data:
+        return bot.answer_callback_query(call.id, "⚠️ Данные объявления устарели. Начните подачу заново.", show_alert=True)
+
+    is_vip = 1 if (call.data == "post_as_vip_free" or is_user_premium(uid)) else 0
+    p_data["is_vip"] = is_vip
+    bot.answer_callback_query(call.id)
+    finish_posting(call.message, p_data.get("photo_id"))
+
+@bot.callback_query_handler(func=lambda c: c.data == "buy_single_vip_star")
+def callback_buy_single_vip(call):
+    prices = [types.LabeledPrice(label="VIP Объявление (разовое)", amount=1)]
+    try:
+        bot.send_invoice(
+            chat_id=call.message.chat.id,
+            title="Разовое VIP-объявление",
+            description="Публикация объявления с VIP-статусом за 1 Telegram Star",
+            invoice_payload="vip_single_ad_pub",
+            provider_token="",
+            currency="XTR",
+            prices=prices,
+            start_parameter="buy_single_vip"
+        )
+    except Exception as e:
+        bot.answer_callback_query(call.id, f"Ошибка создания счета: {e}", show_alert=True)
+
+def finish_posting(m, photo_id):
+    uid = m.from_user.id if hasattr(m, "from_user") else m.chat.id
+    # Получаем юзернейм из сообщения или из контекста
+    chat_id = m.chat.id if hasattr(m, "chat") else uid
+    
+    p_data = user_states.get(uid, {}).get("posting_ad")
+    if not p_data:
+        # Если вызвалось из successful_payment, объект m — это Message от юзера
+        return
+
     srv = p_data["server"]
     cat = p_data["category"]
     text = p_data["text"]
+    is_vip = p_data.get("is_vip", 0)
 
-    uname = m.from_user.username or "Без юзернейма"
-    is_vip = 1 if is_user_premium(uid) else 0
+    # Достанем юзернейм
+    if hasattr(m, "from_user") and m.from_user:
+        uname = m.from_user.username or "Без юзернейма"
+        msg_obj = m
+    else:
+        uname = "Без юзернейма"
+        msg_obj = m
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
         cur = conn.cursor()
         cur.execute('''
-            INSERT INTO pending_posts (user_id, username, server, category, text, photo, is_vip)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO pending_posts (user_id, username, server, category, text, photo, is_vip, editing_by, editing_since)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)
         ''', (uid, uname, srv, cat, text, photo_id, is_vip))
         pid = cur.lastrowid
         conn.commit()
@@ -539,25 +646,25 @@ def finish_posting(m, photo_id):
     user_states.pop(uid, None)
     set_user_last_ad_time(uid, time.time())
 
-    bot.send_message(m.chat.id, "✅ Объявление отправлено на модерацию редакторам!", reply_markup=kb_main_menu())
+    bot.send_message(chat_id, "✅ Объявление отправлено на модерацию редакторам!", reply_markup=kb_main_menu())
 
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
         types.InlineKeyboardButton("✅ Одобрить", callback_data=f"mod_accept_{pid}"),
-        types.InlineKeyboardButton("✏️ Отредактировать", callback_data=f"mod_edit_{pid}"),
+        types.InlineKeyboardButton("✏️ Редактировать", callback_data=f"mod_edit_{pid}"),
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_reject_{pid}")
     )
 
-    preview = format_smi_post(srv, cat, text, uname, m.from_user.username, is_vip, uid)
+    preview = format_smi_post(srv, cat, text, uname, uname if uname != "Без юзернейма" else "", is_vip, uid)
     
-    for chat_id in ADMIN_CHAT_IDS:
+    for admin_chat_id in ADMIN_CHAT_IDS:
         try:
             if photo_id:
-                bot.send_photo(chat_id, photo_id, caption=f"📥 **Новое объявление на модерацию (ID: {pid}):**\n\n{preview}", parse_mode="Markdown", reply_markup=markup)
+                bot.send_photo(admin_chat_id, photo_id, caption=f"📥 **Новое объявление на модерацию (ID: {pid}):**\n\n{preview}", parse_mode="Markdown", reply_markup=markup)
             else:
-                bot.send_message(chat_id, f"📥 **Новое объявление на модерацию (ID: {pid}):**\n\n{preview}", parse_mode="Markdown", reply_markup=markup)
+                bot.send_message(admin_chat_id, f"📥 **Новое объявление на модерацию (ID: {pid}):**\n\n{preview}", parse_mode="Markdown", reply_markup=markup)
         except Exception as e:
-            logger.error(f"Ошибка отправки админу {chat_id}: {e}")
+            logger.error(f"Ошибка отправки админу {admin_chat_id}: {e}")
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_"))
 def callback_moderation(call):
@@ -567,27 +674,49 @@ def callback_moderation(call):
     parts = call.data.split("_")
     action = parts[1]
     pid = int(parts[2])
-
-    if action == "edit":
-        user_states[call.from_user.id] = {"admin_editing_pid": pid}
-        bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, f"✏️ Введите новый текст и цену для объявления (ID: {pid}):", reply_markup=kb_cancel())
-        return
+    admin_id = call.from_user.id
+    curr_time = time.time()
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT user_id, username, server, category, text, photo, is_vip FROM pending_posts WHERE id = ?", (pid,))
+        cur.execute("SELECT user_id, username, server, category, text, photo, is_vip, editing_by, editing_since FROM pending_posts WHERE id = ?", (pid,))
         post = cur.fetchone()
-        if (action == "accept" or action == "publish_edited") and post:
-            cur.execute("DELETE FROM pending_posts WHERE id = ?", (pid,))
-        elif action == "reject" and post:
-            cur.execute("DELETE FROM pending_posts WHERE id = ?", (pid,))
-        conn.commit()
 
     if not post:
         return bot.answer_callback_query(call.id, "⚠️ Объявление уже обработано или удалено.", show_alert=True)
 
-    user_id, uname, srv, cat, text, photo_id, is_vip = post
+    user_id, uname, srv, cat, text, photo_id, is_vip, editing_by, editing_since = post
+
+    # Проверка тайм-аута (12 минут = 720 секунд)
+    if editing_by != 0 and (curr_time - editing_since) > 720:
+        with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE pending_posts SET editing_by = 0, editing_since = 0 WHERE id = ?", (pid,))
+            conn.commit()
+        editing_by = 0
+
+    if action == "edit":
+        if editing_by != 0 and editing_by != admin_id:
+            return bot.answer_callback_query(call.id, "⛔ Это объявление уже редактирует другой администратор!", show_alert=True)
+        
+        with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE pending_posts SET editing_by = ?, editing_since = ? WHERE id = ?", (admin_id, curr_time, pid))
+            conn.commit()
+
+        user_states[admin_id] = {"admin_editing_pid": pid, "edit_start_time": curr_time}
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, f"✏️ Введите новый текст и цену для объявления (ID: {pid}). У вас есть 12 минут:", reply_markup=kb_cancel())
+        return
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
+        cur = conn.cursor()
+        if (action == "accept" or action == "publish_edited"):
+            cur.execute("DELETE FROM pending_posts WHERE id = ?", (pid,))
+        elif action == "reject":
+            cur.execute("DELETE FROM pending_posts WHERE id = ?", (pid,))
+        conn.commit()
+
     editor_uname = call.from_user.username or "Админ"
 
     if action == "accept" or action == "publish_edited":
@@ -639,13 +768,22 @@ def process_admin_edit_text(m):
         return
     
     uid = m.from_user.id
-    pid = user_states[uid]["admin_editing_pid"]
+    state_data = user_states[uid]
+    start_t = state_data.get("edit_start_time", 0)
+
+    if time.time() - start_t > 720:
+        user_states.pop(uid, None)
+        bot.send_message(m.chat.id, "⌛ Время редактирования истекло (более 12 минут). Вы сброшены на главную и не сможете редактировать в течение 5 минут.", reply_markup=kb_main_menu())
+        state_data["edit_ban_until"] = time.time() + 300
+        return
+
+    pid = state_data["admin_editing_pid"]
     new_text = m.text.strip()
     user_states.pop(uid, None)
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
         cur = conn.cursor()
-        cur.execute("UPDATE pending_posts SET text = ? WHERE id = ?", (new_text, pid))
+        cur.execute("UPDATE pending_posts SET text = ?, editing_by = 0, editing_since = 0 WHERE id = ?", (new_text, pid))
         conn.commit()
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
@@ -654,7 +792,7 @@ def process_admin_edit_text(m):
         post = cur.fetchone()
 
     if not post:
-        return bot.send_message(m.chat.id, "❌ Ошибка: объявление не найдено.")
+        return bot.send_message(m.chat.id, "❌ Ошибка: объявление не найдено.", reply_markup=kb_main_menu())
 
     user_id, uname, srv, cat, text, photo_id, is_vip = post
     editor_uname = m.from_user.username or "Админ"
@@ -1146,5 +1284,5 @@ if __name__ == '__main__':
     except Exception:
         pass
 
-    logger.info("🚀 Полный бот СМИ со всеми доработками и средними ценами успешно запущен!")
+    logger.info("🚀 Бот обновлен: добавлена кнопка разовой подачи VIP-объявления за 1 Telegram Star при подаче объявления!")
     bot.infinity_polling(skip_pending=True)

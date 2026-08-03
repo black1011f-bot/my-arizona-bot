@@ -530,7 +530,7 @@ def should_override_nav(msg):
     if msg.text == "🚫 Отмена" or msg.text.startswith('/'):
         return True
 
-    if "admin_editing_pid" in st or "admin_editing_buy_pid" in st or "admin_editing_active_aid" in st or "applying_admin" in st or "vc_setting_rate" in st or "vc_calc_step" in st or "vc_conv_input" in st:
+    if "admin_editing_pid" in st or "admin_editing_buy_pid" in st or "admin_editing_active_aid" in st or "applying_admin" in st or "vc_setting_rate" in st or "vc_calc_step" in st or "vc_conv_input" in st or "admin_action" in st:
         return False
         
     if "posting_ad" in st or "posting_buy_ad" in st:
@@ -2062,6 +2062,71 @@ def cb_admin_broadcast(call):
     except: pass
     safe_send_message(call.message.chat.id, "📢 Введите текст массовой рассылки:", reply_markup=kb_cancel())
 
+# Обработчик административных действий (бан, разбан, снятие, рассылка)
+@bot.message_handler(func=lambda msg: "admin_action" in get_state(msg.from_user.id))
+def process_admin_action_input(m):
+    uid = m.from_user.id
+    st = get_state(uid)
+    action = st.get("admin_action")
+    clear_state(uid)
+
+    if not is_admin_or_owner(m.from_user):
+        return
+
+    text = m.text.strip()
+
+    if action == "broadcast":
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT user_id FROM user_data")
+            users = cur.fetchall()
+        
+        success = 0
+        fail = 0
+        for (u_id,) in users:
+            try:
+                safe_send_message(u_id, f"📢 <b>Сообщение от администрации:</b>\n\n{text}")
+                success += 1
+            except Exception:
+                fail += 1
+        safe_send_message(m.chat.id, f"✅ Рассылка завершена.\nУспешно: {success}\nНе удалось: {fail}", reply_markup=kb_main_menu())
+
+    elif action == "ban":
+        target = text.lstrip('@').lower()
+        is_id = 1 if target.isdigit() else 0
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (target, is_id))
+            conn.commit()
+        safe_send_message(m.chat.id, f"✅ Пользователь <code>{html.escape(target)}</code> заблокирован в боте.", reply_markup=kb_main_menu())
+
+    elif action == "unban":
+        if not is_owner(m.from_user):
+            return safe_send_message(m.chat.id, "⛔ Недостаточно прав.", reply_markup=kb_main_menu())
+        target = text.lstrip('@').lower()
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM bans WHERE target = ?", (target,))
+            if target.isdigit():
+                cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (int(target), ""))
+            else:
+                cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) SELECT user_id, username FROM user_data WHERE LOWER(username) = ?", (target,))
+            conn.commit()
+        safe_send_message(m.chat.id, f"✅ Пользователь <code>{html.escape(target)}</code> разблокирован / назначен администратором.", reply_markup=kb_main_menu())
+
+    elif action == "demote_admin":
+        if not is_owner(m.from_user):
+            return safe_send_message(m.chat.id, "⛔ Недостаточно прав.", reply_markup=kb_main_menu())
+        target = text.lstrip('@').lower()
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            if target.isdigit():
+                cur.execute("DELETE FROM approved_admins WHERE user_id = ?", (int(target),))
+            else:
+                cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (target,))
+            conn.commit()
+        safe_send_message(m.chat.id, f"✅ Пользователь <code>{html.escape(target)}</code> снят с поста администратора.", reply_markup=kb_main_menu())
+
 @bot.callback_query_handler(func=lambda c: c.data == "admin_manage_ad")
 def cb_admin_manage_ad(call):
     if not verify_admin_callback(call): return
@@ -2137,10 +2202,11 @@ def cb_adm_edit_active_ad(call):
         bot.answer_callback_query(call.id)
     except Exception:
         pass
-    safe_send_message(call.message.chat.id, f"✏️ Введите новый текст для активного объявления (ID: {aid}). У вас есть 12 минут:", reply_markup=kb_cancel())
+    safe_send_message(call.message.chat.id, f"✏️ Введите новый текст для активного объявления (ID: {aid}):", reply_markup=kb_cancel())
 
+# Обработчик ввода нового текста при редактировании активного объявления администратором
 @bot.message_handler(func=lambda msg: "admin_editing_active_aid" in get_state(msg.from_user.id))
-def process_admin_edit_active_ad_text(m):
+def process_admin_edit_active_text(m):
     if not is_admin_or_owner(m.from_user):
         return
     
@@ -2150,7 +2216,7 @@ def process_admin_edit_active_ad_text(m):
 
     if time.time() - start_t > 720:
         clear_state(uid)
-        return safe_send_message(m.chat.id, "⌛ Время редактирования истекло (более 12 минут).", reply_markup=kb_main_menu())
+        return safe_send_message(m.chat.id, "⌛ Время редактирования истекло.", reply_markup=kb_main_menu())
 
     aid = st.get("admin_editing_active_aid")
     is_buy = st.get("admin_editing_active_is_buy", False)
@@ -2161,103 +2227,7 @@ def process_admin_edit_active_ad_text(m):
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute(f"UPDATE {table_name} SET text = ? WHERE id = ?", (new_text, aid))
-        cur.execute(f"SELECT user_id, server, category, text, photo, is_vip FROM {table_name} WHERE id = ?", (aid,))
-        ad = cur.fetchone()
+        cur.execute(f"UPDATE {table_name} SET text = ?, last_updated = ? WHERE id = ?", (new_text, time.time(), aid))
         conn.commit()
 
-    if not ad:
-        return safe_send_message(m.chat.id, "❌ Ошибка: объявление не найдено.", reply_markup=kb_main_menu())
-
-    user_id, srv, cat, text, photo_id, is_vip = ad
-    
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT username FROM user_data WHERE user_id = ?", (user_id,))
-        urow = cur.fetchone()
-        uname = urow[0] if urow and urow[0] else "Без юзернейма"
-
-    editor_uname = m.from_user.username or "Админ"
-    final_text = format_smi_post(srv, cat, text, uname, editor_uname, is_vip, user_id, is_buy=is_buy)
-    markup = ikb_ad_actions(aid, is_fav=False)
-
-    if photo_id:
-        safe_send_photo(m.chat.id, photo_id, caption=f"✅ Активное объявление ID {aid} успешно обновлено:\n\n{final_text}", reply_markup=markup)
-    else:
-        safe_send_message(m.chat.id, f"✅ Активное объявление ID {aid} успешно обновлено:\n\n{final_text}", reply_markup=markup)
-
-@bot.message_handler(func=lambda msg: "admin_action" in get_state(msg.from_user.id))
-def process_admin_input(m):
-    if not is_admin_or_owner(m.from_user): return
-    
-    uid = m.from_user.id
-    st = get_state(uid)
-    action = st.get("admin_action")
-    clear_state(uid)
-    val = m.text.strip()
-
-    if action in ["ban", "unban", "demote_admin"]:
-        if not is_owner(m.from_user):
-            return safe_send_message(m.chat.id, "⛔ Ошибка доступа!")
-        
-        target = val.lstrip('@').lower()
-        target_uid = None
-        if target.isdigit():
-            target_uid = int(target)
-        else:
-            with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-                cur = conn.cursor()
-                cur.execute("SELECT user_id FROM user_data WHERE LOWER(username) = ?", (target,))
-                row = cur.fetchone()
-                if row:
-                    target_uid = row[0]
-
-        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-            cur = conn.cursor()
-            if action == "ban":
-                is_id = 1 if target.isdigit() else 0
-                cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (target, is_id))
-                cur.execute("DELETE FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (target_uid or 0, target))
-                msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> заблокирован."
-            elif action == "unban":
-                cur.execute("DELETE FROM bans WHERE target = ?", (target,))
-                if target_uid:
-                    cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (target_uid, target))
-                msg_txt = f"✅ Пользователь <code>{html.escape(target)}</code> разблокирован / добавлен в администраторы."
-            elif action == "demote_admin":
-                if target_uid:
-                    cur.execute("DELETE FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (target_uid, target))
-                else:
-                    cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (target,))
-                msg_txt = f"❌ Администратор <code>{html.escape(target)}</code> снят с должности."
-            conn.commit()
-        safe_send_message(m.chat.id, msg_txt, reply_markup=kb_main_menu())
-
-    elif action == "broadcast":
-        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT user_id FROM user_data")
-            users = cur.fetchall()
-
-        success = 0
-        failed = 0
-        for (u_id,) in users:
-            try:
-                safe_send_message(u_id, f"📢 <b>Рассылка от редакции:</b>\n\n{html.escape(val)}")
-                success += 1
-                time.sleep(0.05)
-            except Exception:
-                failed += 1
-        safe_send_message(m.chat.id, f"📢 Рассылка завершена!\n• Успешно: {success}\n• Ошибок: {failed}", reply_markup=kb_main_menu())
-
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
-if __name__ == '__main__':
-    logger.info("Бот успешно запущен и готов к работе...")
-    while True:
-        try:
-            bot.infinity_polling(timeout=60, long_polling_timeout=30)
-        except Exception as e:
-            logger.error(f"Ошибка в polling: {e}")
-            time.sleep(5)
+    safe_send_message(m.chat.id, f"✅ Активное объявление #{aid} успешно обновлено!", reply_markup=kb_main_menu())

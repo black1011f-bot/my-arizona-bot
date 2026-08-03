@@ -6,7 +6,7 @@ import sqlite3
 from datetime import datetime, time as dtime
 import telebot
 from telebot import types
-import openai  # Требуется pip install openai
+import openai
 
 # ==========================================
 # ЛОГИРОВАНИЕ И КОНФИГУРАЦИЯ
@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 TOKEN = os.getenv("BOT_TOKEN", "8916669266:AAGMsyFa-_OZBs8beZ7vIEi8bKX6uvRUrM8")
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
-# Настройка OpenAI API для ИИ-помощника (получите ключ на platform.openai.com)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "YOUR_OPENAI_API_KEY_HERE")
 openai.api_key = OPENAI_API_KEY
 
@@ -29,8 +28,6 @@ ADMIN_USERNAMES = {"bounqy31", "bounqy"}
 
 ADMIN_CHAT_IDS = set() 
 MODERATION_CHAT_ID = int(os.getenv("MODERATION_CHAT_ID", "0"))
-
-WELCOME_VIDEO_ID = "YOUR_VIDEO_FILE_ID_HERE" 
 
 DB_NAME = "smi_bot.db"
 db_lock = threading.Lock()
@@ -81,29 +78,9 @@ def init_db():
         ''')
         
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS pending_posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                username TEXT,
-                server TEXT,
-                category TEXT,
-                text TEXT,
-                photo TEXT,
-                is_vip INTEGER
-            )
-        ''')
-
-        cursor.execute('''
             CREATE TABLE IF NOT EXISTS bans (
                 target TEXT PRIMARY KEY,
                 is_id INTEGER
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS editor_stats (
-                username TEXT PRIMARY KEY,
-                count INTEGER
             )
         ''')
 
@@ -115,58 +92,12 @@ def init_db():
         ''')
 
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS pending_bans (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                admin_id INTEGER,
-                admin_username TEXT,
-                target TEXT
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS daily_message_limits (
-                user_id INTEGER PRIMARY KEY,
-                msg_count INTEGER,
-                last_reset_date TEXT
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS chat_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT,
-                sender_id INTEGER,
-                sender_username TEXT,
-                recipient_id INTEGER,
-                message_text TEXT
-            )
-        ''')
-
-        # Таблица активных диалогов между покупателем и продавцом
-        cursor.execute('''
             CREATE TABLE IF NOT EXISTS active_dialogs (
                 buyer_id INTEGER,
                 seller_id INTEGER,
                 ad_id INTEGER,
                 is_active INTEGER,
                 PRIMARY KEY (buyer_id, seller_id, ad_id)
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS favorites (
-                user_id INTEGER,
-                ad_id INTEGER,
-                PRIMARY KEY (user_id, ad_id)
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS keyword_subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                server TEXT,
-                keyword TEXT
             )
         ''')
 
@@ -215,32 +146,6 @@ def get_seller_rating_info(seller_id: int) -> str:
     avg_rating, count = row[0], row[1]
     return f"⭐ {avg_rating:.1f} / 5 (Отзывов: {count})"
 
-def check_auto_moderation(text: str) -> bool:
-    if not text:
-        return True
-    lower_text = text.lower()
-    for word in BAD_WORDS:
-        if word in lower_text:
-            return False
-    return True
-
-def get_user_last_ad_time(user_id):
-    with db_lock:
-        conn = sqlite3.connect(DB_NAME)
-        cur = conn.cursor()
-        cur.execute("SELECT last_ad_time FROM user_data WHERE user_id = ?", (user_id,))
-        row = cur.fetchone()
-        conn.close()
-        return row[0] if row else 0
-
-def set_user_last_ad_time(user_id, t):
-    with db_lock:
-        conn = sqlite3.connect(DB_NAME)
-        cur = conn.cursor()
-        cur.execute("INSERT OR REPLACE INTO user_data (user_id, last_ad_time) VALUES (?, ?)", (user_id, t))
-        conn.commit()
-        conn.close()
-
 def is_banned(user) -> bool:
     if not user:
         return False
@@ -253,56 +158,12 @@ def is_banned(user) -> bool:
         conn.close()
     return bool(res)
 
-def is_owner(user) -> bool:
-    return bool(user and user.username and user.username.lower() == OWNER_USERNAME.lower())
-
-def is_admin_or_owner(user) -> bool:
-    if not user: 
-        return False
-    if is_owner(user): 
-        return True
-    return bool(user.username and user.username.lower() in ADMIN_USERNAMES)
-
 def register_admin(user, chat_id: int):
-    if is_admin_or_owner(user):
+    if user and (user.username and user.username.lower() in ADMIN_USERNAMES or user.username.lower() == OWNER_USERNAME.lower()):
         ADMIN_CHAT_IDS.add(chat_id)
-
-def verify_admin_callback(call) -> bool:
-    if not is_admin_or_owner(call.from_user):
-        bot.answer_callback_query(call.id, "⛔ Нет доступа к функциям СМИ!", show_alert=True)
-        return False
-    return True
-
-def check_working_hours() -> bool:
-    now_time = datetime.now().time()
-    return dtime(8, 0, 0) <= now_time <= dtime(22, 0, 0)
 
 def clean_server_name(server: str) -> str:
     return server.split(' ', 1)[-1] if ' ' in server else server
-
-def format_smi_post(server: str, category: str, text: str, player_username: str, editor_username: str, is_vip: bool = False, user_id: int = 0) -> str:
-    clean_srv = clean_server_name(server)
-    is_prem = is_user_premium(user_id) if user_id else False
-    
-    if is_vip:
-        player_contact = "🛡️ [Контакт скрыт по желанию VIP]"
-        vip_header = "👑 **[VIP ОБЪЯВЛЕНИЕ]**\n"
-    else:
-        player_contact = f"@{player_username}" if player_username and player_username != "Без юзернейма" else "Не указан"
-        vip_header = ""
-
-    editor_contact = f"@{editor_username}" if editor_username else "СМИ"
-    prem_icon = "💎 " if is_prem else ""
-    rating_str = get_seller_rating_info(user_id) if user_id else ""
-
-    return (
-        f"{vip_header}"
-        f"📰 | **[СМИ {clean_srv}] Объявление:** {prem_icon}\n"
-        f"📞 **Контакт игрока:** {player_contact} | {rating_str}\n\n"
-        f"{text}\n\n"
-        f"📂 **Раздел:** {category}\n"
-        f"👨‍💻 **Отредактировал:** {editor_contact}"
-    )
 
 def background_cleanup_ads():
     while True:
@@ -350,9 +211,6 @@ def kb_main_menu():
     m.add("👑 Админ")
     return m
 
-def kb_cancel():
-    return types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("🚫 Отмена"))
-
 def ikb_chat_controls(aid: int):
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
@@ -375,12 +233,12 @@ def cmd_start(m):
     register_admin(m.from_user, m.chat.id)
     
     caption_text = (
-        "👋 **ДОБРО ПОЖАЛОВАТЬ В ЦЕНТР ЦЕН!**\n"
+        "👋 ДОБРО ПОЖАЛОВАТЬ В ЦЕНТР ЦЕН!\n"
         "Здесь ты узнаешь все актуальные цены ARIZONA RP!\n\n"
-        "⏱ **Режим работы радиоцентра:** ежедневно с **08:00 до 22:00 МСК**.\n\n"
-        "👇 **Для начала работы выберите ваш игровой сервер:**"
+        "⏱ Режим работы радиоцентра: ежедневно с 08:00 до 22:00 МСК.\n\n"
+        "👇 Для начала работы выберите ваш игровой сервер:"
     )
-    bot.send_message(m.chat.id, caption_text, parse_mode="Markdown", reply_markup=kb_servers())
+    bot.send_message(m.chat.id, caption_text, reply_markup=kb_servers())
 
 # ==========================================
 # МОДУЛЬ ИИ-ПОМОЩНИКА (GPT)
@@ -393,7 +251,7 @@ def start_ai_assistant(m):
     bot.send_message(
         m.chat.id,
         "🤖 **Привет! Я твой ИИ-помощник по игре Arizona RP.**\n"
-        "Ты можешь спросить меня о ценах на акксессуары, фарме, модах или игровых механиках.\n\n"
+        "Ты можешь спросить меня о ценах на аксессуары, фарме, модах или игровых механиках.\n\n"
         "Напиши свой вопрос ниже:",
         parse_mode="Markdown",
         reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("🚫 Выйти из ИИ"))
@@ -409,7 +267,6 @@ def process_ai_message(m):
     bot.send_chat_action(m.chat.id, 'typing')
     
     try:
-        # Используем современный синтаксис OpenAI API
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -425,7 +282,7 @@ def process_ai_message(m):
         bot.send_message(m.chat.id, "⚠️ Произошла ошибка при обращении к ИИ-помощнику. Проверьте правильность API-ключа.")
 
 # ==========================================
-# СВЯЗЬ С ПРОДАВЦОМ И УПРАВЛЕНИЕ КНОПКАМИ ДИАЛОГА
+# СВЯЗЬ С ПРОДАВЦОМ
 # ==========================================
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
@@ -448,7 +305,6 @@ def cb_contact_seller(call):
     if seller_id == buyer_id:
         return bot.answer_callback_query(call.id, "⚠️ Вы не можете написать самому себе!", show_alert=True)
 
-    # Активируем запись диалога
     with db_lock:
         conn = sqlite3.connect(DB_NAME)
         cur = conn.cursor()
@@ -457,11 +313,14 @@ def cb_contact_seller(call):
         conn.close()
 
     bot.answer_callback_query(call.id)
+    
+    # Безопасная обрезка текста без использования Markdown для предотвращения крашей
+    safe_preview = (ad_text[:47] + "...") if len(ad_text) > 50 else ad_text
     user_states[buyer_id] = {
         "messaging_seller": True,
         "seller_id": seller_id,
         "ad_id": aid,
-        "ad_info": f"[{server}] {category}: {ad_text[:50]}..."
+        "ad_info": f"[{server}] {category}: {safe_preview}"
     }
 
     bot.send_message(
@@ -485,7 +344,7 @@ def cb_stop_chat(call):
         conn.close()
 
     bot.answer_callback_query(call.id, "🛑 Диалог завершен!")
-    bot.send_message(call.message.chat.id, "❌ Диалог с продавцом приостановлен. Вы не можете отправлять сообщения, пока не возобновите его.", reply_markup=ikb_chat_controls(aid))
+    bot.send_message(call.message.chat.id, "❌ Диалог с продавцом приостановлен.", reply_markup=ikb_chat_controls(aid))
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("resume_chat_"))
 def cb_resume_chat(call):
@@ -509,7 +368,6 @@ def process_message_to_seller(m):
     aid = state_data.get("ad_id")
     seller_id = state_data.get("seller_id")
 
-    # Проверяем, активен ли диалог в БД
     with db_lock:
         conn = sqlite3.connect(DB_NAME)
         cur = conn.cursor()
@@ -518,23 +376,23 @@ def process_message_to_seller(m):
         conn.close()
 
     if not row or row[0] == 0:
-        return bot.send_message(m.chat.id, "⚠️ Диалог завершен. Нажмите кнопку «Возобновить / Начать заново», чтобы продолжить писать.")
+        return bot.send_message(m.chat.id, "⚠️ Диалог завершен. Нажмите кнопку возобновления.")
 
     forward_text = (
-        f"📩 **Сообщение по объявлению!**\n\n"
-        f"📌 **Товар ID:** `{aid}`\n"
-        f"💬 **Текст:**\n{m.text}"
+        f"📩 Сообщение по объявлению!\n\n"
+        f"📌 Товар ID: {aid}\n"
+        f"💬 Текст:\n{m.text}"
     )
 
     try:
-        bot.send_message(seller_id, forward_text, parse_mode="Markdown", reply_markup=ikb_chat_controls(aid))
-        bot.send_message(m.chat.id, "✅ **Сообщение доставлено продавцу!**", parse_mode="Markdown", reply_markup=ikb_chat_controls(aid))
+        bot.send_message(seller_id, forward_text, reply_markup=ikb_chat_controls(aid))
+        bot.send_message(m.chat.id, "✅ Сообщение доставлено продавцу!", reply_markup=ikb_chat_controls(aid))
     except Exception as e:
         logger.error(f"Ошибка доставки продавцу: {e}")
         bot.send_message(m.chat.id, "❌ Не удалось доставить сообщение.")
 
 # ==========================================
-# ОСТАЛЬНЫЕ ОБРАБОТЧИКИ (Категории, Поиск, Старт)
+# КАТЕГОРИИ И СЕРВЕРА
 # ==========================================
 
 @bot.message_handler(func=lambda msg: msg.text in CATEGORIES)
@@ -560,9 +418,9 @@ def render_category_page(message, user_id: int, cat_idx: int, page: int = 0):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("✉️ Написать продавцу", callback_data=f"contact_seller_{aid}"))
         if photo:
-            bot.send_photo(message.chat.id, photo, caption=text, parse_mode="Markdown", reply_markup=markup)
+            bot.send_photo(message.chat.id, photo, caption=text, reply_markup=markup)
         else:
-            bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
+            bot.send_message(message.chat.id, text, reply_markup=markup)
 
 @bot.message_handler(func=lambda msg: msg.text in SERVERS)
 def select_srv(m):
@@ -578,5 +436,5 @@ if __name__ == '__main__':
     except Exception:
         pass
 
-    logger.info("🚀 Бот СМИ с ИИ и управлением диалогами запущен!")
+    logger.info("🚀 Бот СМИ успешно запущен!")
     bot.infinity_polling(skip_pending=True)

@@ -1,4 +1,4 @@
-# Интегрированный скрипт: добавление функции платной подачи VIP-объявления за 1 Telegram Star
+# Интегрированный скрипт: добавлена кнопка «Редактировать» в админ-панель модерации объявлений, исправлена логика подачи.
 
 import os
 import time
@@ -323,7 +323,7 @@ def ikb_ad_actions(aid: int, is_fav: bool = False):
     return markup
 
 # ==========================================
-# ОСНОВНЫЕ КОМАНДЫ И МЕНЮ (/start и Справка)
+# ОСНОВНЫЕ КОМАНДЫ И МЕНЮ (/start, /help и Справка)
 # ==========================================
 
 user_states = {}
@@ -344,6 +344,25 @@ def cmd_start(m):
     )
     bot.send_message(m.chat.id, caption_text, parse_mode="Markdown", reply_markup=kb_servers())
 
+@bot.message_handler(commands=['help'])
+def cmd_help(m):
+    help_text = (
+        "🛠 **Помощь и часто задаваемые вопросы (FAQ)**\n\n"
+        "❓ **1. Как подать объявление?**\n"
+        "• Выберите свой сервер в главном меню.\n"
+        "• Нажмите кнопку «🛒 Подать объявление о продаже».\n"
+        "• Выберите категорию, введите текст товара/цену и прикрепите фото (или пропустите его).\n"
+        "• Выберите формат (обычное или VIP) — после этого объявление отправится на проверку редакторам.\n\n"
+        "❓ **2. Сколько времени проверяется объявление?**\n"
+        "• Модерация объявлений редакторами происходит в рабочие часы радиоцентра: с **08:00 до 22:00 МСК**.\n\n"
+        "❓ **3. Что делать, если не работает какая-то кнопка или бот завис?**\n"
+        "• Попробуйте перезапустить бот командой /start.\n"
+        "• Если проблема сохраняется или какая-то кнопка не откликается, пожалуйста, обратитесь в наше официальное сообщество ВК: **@bountyarz**.\n\n"
+        "❓ **4. Безопасно ли использовать бот?**\n"
+        "• Да. Бот создан игроками для игроков. Мы **никогда** не запрашиваем пароли, пин-коды или личные данные от ваших игровых аккаунтов."
+    )
+    bot.send_message(m.chat.id, help_text, parse_mode="Markdown", reply_markup=kb_main_menu())
+
 @bot.message_handler(func=lambda msg: msg.text == "🔄 Сменить сервер")
 def change_server(m):
     bot.send_message(m.chat.id, "👇 Выберите новый игровой сервер:", reply_markup=kb_servers())
@@ -357,7 +376,7 @@ def how_bot_works(m):
         "3. **Публикация:** После одобрения объявление появляется в ленте выбранного сервера, где его видят другие игроки.\n"
         "4. **Связь с продавцом:** Нажав на кнопку под товаром, покупатель может безопасно написать продавцу прямо через бота.\n"
         "5. **Избранное и Подписки:** Вы можете добавлять товары в избранное или настраивать ключевые слова, чтобы бот присылал уведомления о новых поступлениях.\n"
-        "6. **Безопасность:** Бот создан игроками для игроков. Администрация бота не имеет доступа к вашему игровому аккаунту."
+        "6. **Безопасность и поддержка:** Если у вас возникли проблемы с кнопками или работой бота, пишите в сообщество ВК **@bountyarz**."
     )
     bot.send_message(m.chat.id, text, parse_mode="Markdown")
 
@@ -413,7 +432,6 @@ def got_payment(message):
             conn.commit()
         bot.send_message(message.chat.id, "🎉 Поздравляем! Вы успешно приобрели VIP-статус на 30 дней!", reply_markup=kb_main_menu())
     elif payload.startswith("vip_single_ad_"):
-        # Платная разовая подача VIP-объявления (1 звезда)
         uid = message.from_user.id
         p_data = user_states.get(uid, {}).get("posting_ad")
         if p_data:
@@ -574,11 +592,10 @@ def ask_vip_choice(m, photo_id):
 
     markup = types.InlineKeyboardMarkup(row_width=1)
     if is_user_premium(uid):
-        # Если у пользователя уже есть постоянный VIP
         markup.add(types.InlineKeyboardButton("👑 Опубликовать как VIP (Бесплатно по вашему VIP)", callback_data="post_as_vip_free"))
     else:
         markup.add(types.InlineKeyboardButton("💎 Подать как VIP-объявление (1 Звезда / 1 раз)", pay=True, callback_data="buy_single_vip_star"))
-    markup.add(types.InlineKeyboardButton("📄 Опубликовать как обычное объявление", callback_data="post_as_regular"))
+    markup.add(types.InlineKeyboardButton("📄 Опубликовать как обычное (бесплатно)", callback_data="post_as_regular"))
 
     bot.send_message(m.chat.id, "💎 **Выберите формат публикации вашего объявления:**", parse_mode="Markdown", reply_markup=markup)
 
@@ -589,7 +606,7 @@ def callback_publish_choice(call):
     if not p_data:
         return bot.answer_callback_query(call.id, "⚠️ Данные объявления устарели. Начните подачу заново.", show_alert=True)
 
-    is_vip = 1 if (call.data == "post_as_vip_free" or is_user_premium(uid)) else 0
+    is_vip = 1 if call.data == "post_as_vip_free" else 0
     p_data["is_vip"] = is_vip
     bot.answer_callback_query(call.id)
     finish_posting(call.message, p_data.get("photo_id"))
@@ -613,12 +630,10 @@ def callback_buy_single_vip(call):
 
 def finish_posting(m, photo_id):
     uid = m.from_user.id if hasattr(m, "from_user") else m.chat.id
-    # Получаем юзернейм из сообщения или из контекста
     chat_id = m.chat.id if hasattr(m, "chat") else uid
     
     p_data = user_states.get(uid, {}).get("posting_ad")
     if not p_data:
-        # Если вызвалось из successful_payment, объект m — это Message от юзера
         return
 
     srv = p_data["server"]
@@ -626,13 +641,10 @@ def finish_posting(m, photo_id):
     text = p_data["text"]
     is_vip = p_data.get("is_vip", 0)
 
-    # Достанем юзернейм
     if hasattr(m, "from_user") and m.from_user:
         uname = m.from_user.username or "Без юзернейма"
-        msg_obj = m
     else:
         uname = "Без юзернейма"
-        msg_obj = m
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
         cur = conn.cursor()
@@ -687,7 +699,6 @@ def callback_moderation(call):
 
     user_id, uname, srv, cat, text, photo_id, is_vip, editing_by, editing_since = post
 
-    # Проверка тайм-аута (12 минут = 720 секунд)
     if editing_by != 0 and (curr_time - editing_since) > 720:
         with db_lock, sqlite3.connect(DB_NAME, timeout=5.0) as conn:
             cur = conn.cursor()
@@ -1284,5 +1295,5 @@ if __name__ == '__main__':
     except Exception:
         pass
 
-    logger.info("🚀 Бот обновлен: добавлена кнопка разовой подачи VIP-объявления за 1 Telegram Star при подаче объявления!")
+    logger.info("🚀 Бот обновлен: добавлена кнопка редактирования в панель модерации объявлений!")
     bot.infinity_polling(skip_pending=True)

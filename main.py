@@ -24,6 +24,9 @@ ADMIN_USERNAMES = {"bounqy31", "bounqy"}
 ADMIN_CHAT_IDS = set() 
 MODERATION_CHAT_ID = int(os.getenv("MODERATION_CHAT_ID", "0"))
 
+# Вставьте сюда ваш file_id приветственного видео в Telegram
+WELCOME_VIDEO_ID = "YOUR_VIDEO_FILE_ID_HERE" 
+
 # Хранилища данных (In-Memory)
 user_states = {}
 user_data = {}
@@ -97,7 +100,7 @@ def verify_admin_callback(call) -> bool:
 
 def check_working_hours() -> bool:
     now_time = datetime.now().time()
-    return dtime(8, 0, 0) <= now_time <= dtime(22, 0, 22)
+    return dtime(8, 0, 0) <= now_time <= dtime(22, 0, 0)
 
 def clean_server_name(server: str) -> str:
     return server.split(' ', 1)[-1] if ' ' in server else server
@@ -130,8 +133,8 @@ def background_cleanup_ads():
         now_time = datetime.now().time()
         curr_t = time.time()
 
-        is_night = now_time >= dtime(22, 0, 22) or now_time < dtime(8, 0, 0)
-        is_morning_clean = dtime(8, 0, 0) <= now_time <= dtime(8, 5, 22)
+        is_night = now_time >= dtime(22, 0, 0) or now_time < dtime(8, 0, 0)
+        is_morning_clean = dtime(8, 0, 0) <= now_time <= dtime(8, 5, 0)
 
         messages_to_delete = []
 
@@ -225,7 +228,7 @@ def ikb_manage_active_ad(aid: int):
     return markup
 
 # ==========================================
-# ОСНОВНЫЕ КОМАНДЫ
+# ОСНОВНЫЕ КОМАНДЫ (С ВИДЕО-ПРИВЕТСТВИЕМ)
 # ==========================================
 
 @bot.message_handler(commands=['start'])
@@ -235,7 +238,7 @@ def cmd_start(m):
         
     register_admin(m.from_user, m.chat.id)
     
-    text = (
+    caption_text = (
         "👋 **Добро пожаловать в Торговый Помощник СМИ Arizona RP!** 🛒✨\n\n"
         "Ваш персональный радиоцентр и торговая площадка прямо в Telegram! "
         "Здесь вы можете быстро находить любые товары, отслеживать актуальные предложения и продавать своё имущество.\n\n"
@@ -248,7 +251,20 @@ def cmd_start(m):
         "⏱ **Режим работы радиоцентра:** ежедневно с **08:00 до 22:00 МСК**.\n\n"
         "👇 **Для начала работы выберите ваш игровой сервер:**"
     )
-    bot.send_message(m.chat.id, text, parse_mode="Markdown", reply_markup=kb_servers())
+
+    try:
+        # Отправка видео с приветствием по file_id
+        bot.send_video(
+            m.chat.id, 
+            WELCOME_VIDEO_ID, 
+            caption=caption_text, 
+            parse_mode="Markdown", 
+            reply_markup=kb_servers()
+        )
+    except Exception as e:
+        logger.warning(f"Не удалось отправить приветственное видео (проверьте WELCOME_VIDEO_ID): {e}")
+        # Запасной вариант: обычное текстовое приветствие
+        bot.send_message(m.chat.id, caption_text, parse_mode="Markdown", reply_markup=kb_servers())
 
 @bot.message_handler(commands=['help'])
 def cmd_help(m):
@@ -822,6 +838,13 @@ def cb_approve_post(call):
         pass
 
 # ==========================================
+# ВРЕМЕННЫЙ ХЕНДЛЕР ДЛЯ ПОЛУЧЕНИЯ FILE_ID ВИДЕО
+# ==========================================
+@bot.message_handler(content_types=['video'])
+def get_video_id(m):
+    bot.reply_to(m, f"📋 **File ID этого видео:**\n`{m.video.file_id}`", parse_mode="Markdown")
+
+# ==========================================
 # ПРОСМОТР ОБЪЯВЛЕНИЙ ПО КАТЕГОРИЯМ (ПАГИНАЦИЯ)
 # ==========================================
 
@@ -884,6 +907,5 @@ if __name__ == '__main__':
     except Exception:
         pass
 
-    logger.info("🚀 Высокопроизводительный бот СМИ запущен!")
+    logger.info("🚀 Высокопроизводительный бот СМИ запущен с видео-приветствием!")
     bot.infinity_polling(skip_pending=True)
-

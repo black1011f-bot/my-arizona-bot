@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 TOKEN = "8916669266:AAFbIqOvrkdekhVkh1NTmMvpxSI_neTyN9I"
-YT_CHANNEL_URL = "https://youtube.com/@bounty_squad31"
+MANAGER_USERNAME = "bounqy"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
@@ -678,7 +678,6 @@ def process_search_keyword(m):
 
   for row in results:
     aid = row["id"]
-    owner_id = row["user_id"]
     category = row["category"]
     text = row["text"]
     photo = row["photo"]
@@ -860,7 +859,6 @@ def process_ad_text_or_photo(m):
       reply_markup=kb_main_menu(),
   )
 
-  # Уведомляем админов/редакторов
   markup = types.InlineKeyboardMarkup(row_width=2)
   acc_prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
   rej_prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
@@ -1131,65 +1129,6 @@ def background_cleanup_ads():
 threading.Thread(target=background_cleanup_ads, daemon=True).start()
 
 
-# ==========================================
-# ФОНОВАЯ ПРОВЕРКА YOUTUBE СТРИМОВ
-# ==========================================
-def background_youtube_stream_checker():
-  last_live_id = None
-  time.sleep(15)
-  while True:
-    try:
-      headers = {
-          "User-Agent": (
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-              " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-          )
-      }
-      resp = requests.get(
-          f"{YT_CHANNEL_URL}/live",
-          headers=headers,
-          allow_redirects=True,
-          timeout=15,
-      )
-      html_content = resp.text
-
-      match = re.search(r"watch\?v=([a-zA-Z0-9_-]{11})", html_content)
-      if not match:
-        match = re.search(r'"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"', html_content)
-
-      is_actually_live = "isLive\":true" in html_content or "LIVE" in html_content
-
-      if match and is_actually_live:
-        video_id = match.group(1)
-        if video_id != last_live_id:
-          last_live_id = video_id
-          admin_chats = get_admin_chat_ids()
-          notif_text = (
-              "🔴 <b>ВНИМАНИЕ! СТРИМ НА YOUTUBE НАЧАЛСЯ!</b> 🎥\n\n"
-              "📡 Канал: <b>Bounty Squad</b>\n"
-              f"🔗 Ссылка: https://www.youtube.com/watch?v={video_id}"
-          )
-          for chat_id in admin_chats:
-            try:
-              safe_send_message(chat_id, notif_text)
-            except Exception as e:
-              logger.error(
-                  "Не удалось отправить уведомление о стриме в чат"
-                  f" {chat_id}: {e}"
-              )
-      else:
-        last_live_id = None
-    except Exception as e:
-      logger.error(f"Ошибка в фоновой проверке стримов YouTube: {e}")
-
-    time.sleep(180)
-
-
-threading.Thread(
-    target=background_youtube_stream_checker, daemon=True
-).start()
-
-
 def get_vc_rate() -> float:
   with db_lock, get_db() as conn:
     cur = conn.cursor()
@@ -1302,20 +1241,6 @@ def is_user_premium(user_id: int) -> bool:
   return bool(row and row["expires_at"] > time.time())
 
 
-def get_seller_rating_info(seller_id: int) -> str:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT AVG(rating) as avg_r, COUNT(rating) as cnt FROM seller_reviews"
-        " WHERE seller_id = ?",
-        (seller_id,),
-    )
-    row = cur.fetchone()
-  if not row or row["cnt"] == 0:
-    return "⭐ Нет оценок (0)"
-  return f"⭐ {row['avg_r']:.1f} / 5 (Отзывов: {row['cnt']})"
-
-
 def check_auto_moderation(text: str) -> bool:
   if not text:
     return True
@@ -1387,10 +1312,6 @@ def verify_admin_callback(call) -> bool:
   return True
 
 
-def clean_server_name(server: str) -> str:
-  return server.split(" ", 1)[-1] if " " in server else server
-
-
 # ==========================================
 # КЛАВИАТУРЫ
 # ==========================================
@@ -1404,7 +1325,7 @@ def kb_servers():
       types.KeyboardButton("💎 VIP-статус"),
       types.KeyboardButton("👑 Админ-панель"),
   )
-  m.row(types.KeyboardButton("📝 Подать заявку на администратора"))
+  m.row(types.KeyboardButton("💬 Связаться с менеджером"))
   return m
 
 
@@ -1437,7 +1358,7 @@ def kb_main_menu():
   m.row(types.KeyboardButton("💎 VIP-статус"))
   m.row(
       types.KeyboardButton("👑 Админ-панель"),
-      types.KeyboardButton("📝 Подать заявку на администратора"),
+      types.KeyboardButton("💬 Связаться с менеджером"),
   )
   return m
 
@@ -1461,33 +1382,11 @@ def ikb_chat_controls(aid: int):
   return markup
 
 
-def ikb_user_ad_actions(
-    aid: int, is_fav: bool = False, is_buy: bool = False, edit_count: int = 0
-):
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  fav_text = "❌ Убрать из избранного" if is_fav else "❤️ В избранное"
-  markup.add(
-      types.InlineKeyboardButton(
-          "✉️ Написать автору", callback_data=f"contact_seller_{aid}"
-      ),
-      types.InlineKeyboardButton(fav_text, callback_data=f"fav_toggle_{aid}"),
-  )
-  if edit_count < 1:
-    edit_prefix = "edit_my_buy_" if is_buy else "edit_my_sale_"
-    markup.add(
-        types.InlineKeyboardButton(
-            "✏️ Редактировать объявление", callback_data=f"{edit_prefix}{aid}"
-        )
-    )
-  return markup
-
-
 def ikb_ad_actions(
     aid: int,
     is_fav: bool = False,
     user_id: int = 0,
     is_buy: bool = False,
-    edit_count: int = 0,
 ):
   markup = types.InlineKeyboardMarkup(row_width=2)
   fav_text = "❌ Убрать из избранного" if is_fav else "❤️ В избранное"
@@ -1547,31 +1446,14 @@ def should_override_nav(msg):
 
   is_in_active_input = (
       st.get("posting_ad", {}).get("step") in ["category", "text_or_photo"]
-      or st.get("posting_buy_ad", {}).get("step") in ["category", "text_or_photo"]
       or st.get("searching_keyword")
       or st.get("adding_subscription")
       or st.get("vc_setting_rate")
       or st.get("vc_conv_input")
       or st.get("vc_calc_step")
-      or st.get("applying_admin")  # Сбрасывает зависание анкеты при клике на меню
-      or st.get("admin_editing_pid")
-      or st.get("admin_editing_buy_pid")
       or st.get("owner_broadcast_input")
-      or st.get("editing_user_ad_id")
       or st.get("admin_action_input")
   )
-
-  if st.get("applying_admin") and msg.text in [
-      "🔍 Найти товар в базе", "❤️ Сохраненные", "🔔 Уведомления о поиске", 
-      "📋 Мои публикации", "📊 Анализ цен на сервере", "📖 Справка и правила", 
-      "📤 Продать товар", "📥 Скупить товар", "💱 Курс VC и калькулятор", 
-      "💎 VIP-статус", "🌐 Сменить игровой сервер", "👑 Админ-панель", 
-      "📝 Подать заявку на администратора"
-  ] + CATEGORIES + SERVERS:
-    return True
-
-  if is_in_active_input:
-    return False
 
   nav_buttons = [
       "🔍 Найти товар в базе",
@@ -1586,8 +1468,11 @@ def should_override_nav(msg):
       "💎 VIP-статус",
       "🌐 Сменить игровой сервер",
       "👑 Админ-панель",
-      "📝 Подать заявку на администратора",
+      "💬 Связаться с менеджером",
   ] + CATEGORIES
+
+  if is_in_active_input and msg.text not in nav_buttons and msg.text not in SERVERS:
+    return False
 
   return msg.text in nav_buttons or msg.text in SERVERS
 
@@ -1623,13 +1508,10 @@ def handle_navigation_override(m):
     manage_subscriptions(m)
   elif m.text == "👑 Админ-панель":
     admin_panel(m)
-  elif m.text == "📝 Подать заявку на администратора":
-    start_admin_application(m)
+  elif m.text == "💬 Связаться с менеджером":
+    contact_manager(m)
   elif m.text in CATEGORIES:
-    if get_state(m.from_user.id).get("viewing_buy_categories"):
-      show_buy_ads_category(m)
-    else:
-      show_ads_category(m)
+    pass
   elif m.text in SERVERS:
     select_srv(m)
 
@@ -1685,29 +1567,7 @@ def cmd_help(m):
       " модераторы проверяют заявки?</b>\n💡 <i>Обычно проверка занимает от"
       " силы пару минут, если редактора находятся в сети. Вы получите"
       " уведомление в чат сразу после публикации или отклонения"
-      " объявления.</i>\n\n❓ <b>3. Как изменить или удалить уже"
-      " опубликованное объявление?</b>\n💡 <i>В личном кабинете или разделе"
-      " управления объявлениями вы можете в любой момент снять товар с"
-      " публикации, изменить цену или обновить описание.</i>\n\n❓ <b>4. Как"
-      " работает калькулятор Vice City и конвертер валют?</b>\n💡 <i>В разделе"
-      " «💱 Курс VC и калькулятор» можно мгновенно переводить вирты в"
-      " VC-баксы по актуальному курсу, а также рассчитывать выгоду перелетов и"
-      " чистую прибыль с учетом комиссий.</i>\n\n❓ <b>5. Как безопасно связаться"
-      " с продавцом или покупателем?</b>\n💡 <i>Под карточкой каждого активного"
-      " объявления есть кнопка «✉️ Написать автору». Она открывает"
-      " защищенный внутренний чат для обсуждения всех деталей сделки.</i>\n\n❓"
-      " <b>6. Каковы главные правила подачи объявлений и модерации?</b>\n💡"
-      " <i>Запрещено указывать нереалистичные цены, использовать нецензурную"
-      " лексику, рекламировать сторонние ресурсы или нарушать правила"
-      " проекта. Нарушители могут получить бан в боте.</i>\n\n❓ <b>7. Что"
-      " делать, если мое объявление отклонили?</b>\n💡 <i>В системном"
-      " уведомлении об отклонении всегда указана причина. Чаще всего это"
-      " опечатки, отсутствие конкретики или нарушение правил. Просто исправьте"
-      " текст и отправьте его повторно.</i>\n\n❓ <b>8. Куда обращаться при"
-      " обнаружении багов или технических неполадок?</b>\n💡 <i>Если бот завис,"
-      " работает некорректно или вы нашли ошибку, обязательно напишите об этом"
-      " в наше официальное сообщество ВКонтакте: <b>@bountyarz</b>. Наша"
-      " команда оперативно всё проверит!</i>\n\n⏱ <b>Дополнительная"
+      " объявления.</i>\n\n⏱ <b>Дополнительная"
       " информация:</b> Радиоцентр и редакция работают ежедневно с"
       " <b>08:00:01 до 22:00:01 МСК</b>."
   )
@@ -2169,9 +2029,7 @@ def cb_mod_decision(call):
       pass
 
   try:
-    bot.answer_callback_query(
-        call.id, "✅ Решение успешно применено!"
-    )
+    bot.answer_callback_query(call.id, "✅ Решение успешно применено!")
     bot.delete_message(call.message.chat.id, call.message.message_id)
   except Exception:
     pass
@@ -2185,7 +2043,7 @@ def cb_back_to_admin(call):
 
 
 # ==========================================
-# РАСШИРЕННЫЕ ФУНКЦИИ ВЛАДЕЛЬЦА (@bounqy)
+# РАССЫЛКИ И УПРАВЛЕНИЕ (ВЛАДЕЛЕЦ)
 # ==========================================
 @bot.callback_query_handler(
     func=lambda c: c.data == "owner_broadcast_start" and is_owner(c.from_user)
@@ -2420,14 +2278,6 @@ def process_admin_action_input(m):
           f"✅ Пользователь <b>{target_raw}</b> назначен администратором.",
           reply_markup=kb_main_menu(),
       )
-      if target_id:
-        try:
-          safe_send_message(
-              target_id,
-              "🎉 Вам были выданы права администратора владельцем бота!",
-          )
-        except Exception:
-          pass
     elif action == "remove_adm":
       if is_id:
         cur.execute(
@@ -2485,348 +2335,32 @@ def show_average_prices(m):
 
 
 # ==========================================
-# ПОДАЧА ИНТЕРАКТИВНОЙ ЗАЯВКИ НА РЕДАКТОРА / АДМИНА
+# СВЯЗЬ С МЕНЕДЖЕРОМ (@bounqy)
 # ==========================================
-def start_admin_application(m):
-  uid = m.from_user.id
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ?", (uid,))
-    if cur.fetchone() or is_admin_or_owner_id(uid):
-      return safe_send_message(
-          m.chat.id,
-          "✅ Вы уже являетесь редактором или администратором системы!",
-          reply_markup=kb_main_menu(),
-      )
-    cur.execute("SELECT 1 FROM admin_apps WHERE user_id = ?", (uid,))
-    if cur.fetchone():
-      return safe_send_message(
-          m.chat.id,
-          "⏳ Ваша заявка на пост редактора/администратора уже находится на"
-          " рассмотрении.",
-          reply_markup=kb_main_menu(),
-      )
-
-  update_state(uid, applying_admin={"step": "age"})
-  safe_send_message(
-      m.chat.id,
-      "📝 <b>Подача заявки на пост Редактора / Администратора</b>\n\n"
-      "<b>Шаг 1 из 5:</b> Укажите ваш возраст (строго от 14 лет):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id)
-    .get("applying_admin", {})
-    .get("step")
-    == "age"
-)
-def process_app_age(m):
-  uid = m.from_user.id
-  text = m.text.strip()
-  
-  try:
-    age = int(text)
-  except ValueError:
-    return safe_send_message(m.chat.id, "⚠️ Пожалуйста, введите возраст цифрой (например: 15).")
-
-  if age < 14:
-    clear_state(uid)
-    return safe_send_message(
-        m.chat.id,
-        "❌ К сожалению, набор доступен только с 14 лет.",
-        reply_markup=kb_main_menu()
-    )
-
-  st = get_state(uid)
-  st["applying_admin"]["age"] = age
-  st["applying_admin"]["step"] = "level"
-  update_state(uid, applying_admin=st["applying_admin"])
-  
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-  markup.add(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
-  
-  safe_send_message(
-      m.chat.id,
-      "<b>Шаг 2 из 5:</b> Укажите ваш игровой уровень на сервере (требуется 15 и выше):",
-      reply_markup=markup,
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id)
-    .get("applying_admin", {})
-    .get("step")
-    == "level"
-)
-def process_app_level(m):
-  uid = m.from_user.id
-  text = m.text.strip()
-
-  if text == "⬅️ Назад":
-    st = get_state(uid)
-    st["applying_admin"]["step"] = "age"
-    update_state(uid, applying_admin=st["applying_admin"])
-    return safe_send_message(m.chat.id, "<b>Шаг 1 из 5:</b> Укажите ваш возраст (строго от 14 лет):", reply_markup=kb_cancel())
-
-  try:
-    level = int(text)
-  except ValueError:
-    return safe_send_message(m.chat.id, "⚠️ Введите уровень цифрой (например: 18).")
-
-  if level < 15:
-    clear_state(uid)
-    return safe_send_message(
-        m.chat.id,
-        "❌ К сожалению, минимальный игровой уровень для подачи заявки — 15.",
-        reply_markup=kb_main_menu()
-    )
-
-  st = get_state(uid)
-  st["applying_admin"]["level"] = level
-  st["applying_admin"]["step"] = "rules"
-  update_state(uid, applying_admin=st["applying_admin"])
-  
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-  markup.add(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
-
-  safe_send_message(
-      m.chat.id,
-      "<b>Шаг 3 из 5:</b> Оцените свое знание правил сервера и проекта (насколько хорошо знаете правила?):",
-      reply_markup=markup,
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id)
-    .get("applying_admin", {})
-    .get("step")
-    == "rules"
-)
-def process_app_rules(m):
-  uid = m.from_user.id
-  text = m.text.strip()
-
-  if text == "⬅️ Назад":
-    st = get_state(uid)
-    st["applying_admin"]["step"] = "level"
-    update_state(uid, applying_admin=st["applying_admin"])
-    return safe_send_message(m.chat.id, "<b>Шаг 2 из 5:</b> Укажите ваш игровой уровень на сервере (требуется 15 и выше):", reply_markup=kb_cancel())
-
-  if not text:
-    return safe_send_message(m.chat.id, "⚠️ Поле не может быть пустым.")
-
-  st = get_state(uid)
-  st["applying_admin"]["rules"] = text
-  st["applying_admin"]["step"] = "history"
-  update_state(uid, applying_admin=st["applying_admin"])
-
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-  markup.add(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
-
-  safe_send_message(
-      m.chat.id,
-      "<b>Шаг 4 из 5:</b> Расскажите про историю ваших наказаний (есть ли активные баны/варны)?",
-      reply_markup=markup,
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id)
-    .get("applying_admin", {})
-    .get("step")
-    == "history"
-)
-def process_app_history(m):
-  uid = m.from_user.id
-  text = m.text.strip()
-
-  if text == "⬅️ Назад":
-    st = get_state(uid)
-    st["applying_admin"]["step"] = "rules"
-    update_state(uid, applying_admin=st["applying_admin"])
-    return safe_send_message(m.chat.id, "<b>Шаг 3 из 5:</b> Оцените свое знание правил сервера и проекта:", reply_markup=kb_cancel())
-
-  if not text:
-    return safe_send_message(m.chat.id, "⚠️ Поле не может быть пустым.")
-
-  st = get_state(uid)
-  st["applying_admin"]["history"] = text
-  st["applying_admin"]["step"] = "preview"
-  update_state(uid, applying_admin=st["applying_admin"])
-
-  app_data = st["applying_admin"]
-  
-  preview_text = (
-      "📋 <b>Проверьте вашу заявку перед отправкой:</b>\n\n"
-      f"• <b>Возраст:</b> {app_data['age']} лет\n"
-      f"• <b>Игровой уровень:</b> {app_data['level']}\n"
-      f"• <b>Знание правил:</b> {app_data['rules']}\n"
-      f"• <b>История наказаний / адекватность:</b> {app_data['history']}\n\n"
-      "Что вы хотите сделать с заявкой?"
-  )
-
-  markup = types.InlineKeyboardMarkup(row_width=2)
+def contact_manager(m):
+  markup = types.InlineKeyboardMarkup()
   markup.add(
-      types.InlineKeyboardButton("📤 Отправить заявку", callback_data="app_action_send"),
-      types.InlineKeyboardButton("🔄 Заполнить заново", callback_data="app_action_restart"),
+      types.InlineKeyboardButton(
+          "💬 Написать менеджеру", url=f"https://t.me/{MANAGER_USERNAME}"
+      )
   )
-  markup.add(
-      types.InlineKeyboardButton("❌ Отменить", callback_data="app_action_cancel")
+  safe_send_message(
+      m.chat.id,
+      f"💬 <b>Связь с менеджером</b>\n\n"
+      f"По всем вопросам вы можете напрямую обратиться к нашему менеджеру: <b>@{MANAGER_USERNAME}</b>.",
+      reply_markup=markup,
   )
-
-  safe_send_message(m.chat.id, preview_text, reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("app_action_"))
-def cb_app_actions(call):
-  uid = call.from_user.id
-  action = call.data.replace("app_action_", "")
-
-  if action == "cancel":
-    clear_state(uid)
-    try:
-      bot.answer_callback_query(call.id, "❌ Заявка отменена.")
-      bot.delete_message(call.message.chat.id, call.message.message_id)
-    except Exception:
-      pass
-    return safe_send_message(call.message.chat.id, "❌ Вы отменили подачу заявки.", reply_markup=kb_main_menu())
-
-  elif action == "restart":
-    clear_state(uid)
-    try:
-      bot.delete_message(call.message.chat.id, call.message.message_id)
-    except Exception:
-      pass
-    return start_admin_application(call.message)
-
-  elif action == "send":
-    st = get_state(uid)
-    app_data = st.get("applying_admin", {})
-    if not app_data:
-      try:
-        return bot.answer_callback_query(call.id, "⚠️ Данные заявки не найдены. Начните заново.", show_alert=True)
-      except Exception:
-        pass
-
-    full_text = (
-        f"👤 <b>Новая заявка на админа/редактора!</b>\n"
-        f"• Кандидат: @{call.from_user.username or 'Без юзернейма'} (ID: <code>{uid}</code>)\n"
-        f"• <b>Возраст:</b> {app_data.get('age')}\n"
-        f"• <b>Игровой уровень:</b> {app_data.get('level')}\n"
-        f"• <b>Знание правил:</b> {app_data.get('rules')}\n"
-        f"• <b>Наказания:</b> {app_data.get('history')}"
-    )
-
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          "INSERT OR REPLACE INTO admin_apps (user_id, username, application_text) VALUES (?, ?, ?)",
-          (uid, call.from_user.username or "", full_text),
-      )
-
-    clear_state(uid)
-    try:
-      bot.answer_callback_query(call.id, "✅ Заявка успешно отправлена владельцу @bounqy!")
-      bot.delete_message(call.message.chat.id, call.message.message_id)
-    except Exception:
-      pass
-
-    safe_send_message(
-        call.message.chat.id,
-        "✅ Ваша заявка успешно отправлена Владельцу и администрации! Ожидайте решения.",
-        reply_markup=kb_main_menu(),
-    )
-
-    owner_id = get_owner_user_id()
-    admin_chats = get_all_admin_ids()
-    recipients = set(admin_chats)
-    if owner_id:
-      recipients.add(owner_id)
-    else:
-      try:
-        with db_lock, get_db() as conn:
-          cur = conn.cursor()
-          cur.execute(
-              "SELECT user_id FROM user_data WHERE LOWER(username) = ?",
-              (OWNER_USERNAME.lower(),),
-          )
-          row = cur.fetchone()
-          if row:
-            recipients.add(row["user_id"])
-      except Exception:
-        pass
-
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("✅ Принять", callback_data=f"app_acc_{uid}"),
-        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"app_rej_{uid}"),
-    )
-
-    for adm_id in recipients:
-      try:
-        safe_send_message(adm_id, full_text, reply_markup=markup)
-      except Exception:
-        pass
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("app_acc_") or c.data.startswith("app_rej_"))
-def cb_app_decision(call):
-  if not verify_admin_callback(call):
-    return
-  is_acc = c.data.startswith("app_acc_")
-  target_uid = int(c.data.replace("app_acc_" if is_acc else "app_rej_", ""))
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT username FROM admin_apps WHERE user_id = ?", (target_uid,))
-    row = cur.fetchone()
-    uname = row["username"] if row else str(target_uid)
-    cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (target_uid,))
-
-  if is_acc:
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES (?, ?)",
-          (target_uid, uname),
-      )
-    log_admin_action(call.from_user.username or "admin", "APPROVE_ADMIN_APP", str(target_uid))
-    try:
-      safe_send_message(
-          target_uid,
-          "🎉 <b>Поздравляем!</b> Ваша заявка на пост редактора / администратора была <b>одобрена</b>!",
-          reply_markup=kb_main_menu(),
-      )
-    except Exception:
-      pass
-  else:
-    log_admin_action(call.from_user.username or "admin", "REJECT_ADMIN_APP", str(target_uid))
-    try:
-      safe_send_message(
-          target_uid,
-          "❌ К сожалению, ваша заявка на пост редактора / администратора была отклонена.",
-          reply_markup=kb_main_menu(),
-      )
-    except Exception:
-      pass
-
-  try:
-    bot.answer_callback_query(call.id, "✅ Решение по заявке зафиксировано!")
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
 
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-  logger.info("Бот запущен и готов к работе...")
+  logger.info("Бот успешно запущен и готов к работе...")
   while True:
     try:
-      bot.infinity_polling(timeout=60, long_polling_timeout=30)
+      bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=30)
     except Exception as e:
       logger.error(f"Ошибка в polling: {e}")
       time.sleep(5)
+

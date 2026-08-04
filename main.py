@@ -13,7 +13,6 @@ import requests
 import telebot
 from telebot import types
 from telebot.apihelper import ApiTelegramException
-from flask import Flask, request
 
 # ==========================================
 # ЛОГИРОВАНИЕ И КОНФИГУРАЦИЯ
@@ -27,11 +26,7 @@ TOKEN = "8916669266:AAFbIqOvrkdekhVkh1NTmMvpxSI_neTyN9I"
 MANAGER_USERNAME = "bounqy31"
 BOT_USERNAME = "arizona_coin_bot"
 
-# URL вашего сайта/хостинга (например, https://your-app.onrender.com) для 24/7 вебхука
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
-
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
-app = Flask(__name__)
 
 OWNER_USERNAME = "bounqy"
 ADMIN_USERNAMES = {"bounqy31", "bounqy"}
@@ -2340,36 +2335,9 @@ def contact_manager(m):
 
 
 # ==========================================
-# FLASK МАРШРУТЫ ДЛЯ 24/7 ВЕБХУКА
-# ==========================================
-@app.route("/", methods=["GET"])
-def index():
-  return "Arizona RP SMI Bot is running 24/7!", 200
-
-
-@app.route(f"/webhook/{TOKEN}", methods=["POST"])
-def webhook():
-  if request.headers.get("content-type") == "application/json":
-    json_string = request.get_data().decode("utf-8")
-    update = telebot.types.Update.de_json(json_string)
-    bot.process_new_updates([update])
-    return "", 200
-  return "Forbidden", 403
-
-
-# ==========================================
-# ЗАПУСК БОТА ЧЕРЕЗ ВЕБ-СЕРВЕР (24/7)
+# ЗАПУСК БОТА ЧЕРЕЗ LONG POLLING
 # ==========================================
 if __name__ == "__main__":
-  port = int(os.environ.get("PORT", 5000))
-  
-  if WEBHOOK_URL:
-    bot.remove_webhook()
-    time.sleep(1)
-    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook/{TOKEN}")
-    logger.info(f"Вебхук успешно установлен на: {WEBHOOK_URL}/webhook/{TOKEN}")
-  else:
-    logger.warning("WEBHOOK_URL не задан! Бот запущен в режиме Flask (необходимо настроить вебхук хостинга).")
-
-  logger.info(f"Веб-сервер запущен на порту {port}...")
-  app.run(host="0.0.0.0", port=port)
+  logger.info("Бот запущен в режиме Long Polling...")
+  bot.remove_webhook()
+  bot.infinity_polling(skip_pending=True)

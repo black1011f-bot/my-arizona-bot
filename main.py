@@ -615,7 +615,7 @@ def should_override_nav(msg):
     if msg.text == "❌ Отменить действие" or msg.text.startswith('/'):
         return True
 
-    if "admin_editing_pid" in st or "admin_editing_buy_pid" in st or "admin_editing_active_aid" in st or "applying_admin" in st or "vc_setting_rate" in st or "vc_calc_step" in st or "vc_conv_input" in st or "admin_action" in st or "editing_active_ad_id" in st or "searching_keyword" in st or "adding_subscription" in st:
+    if "admin_editing_pid" in st or "admin_editing_buy_pid" in st or "admin_editing_active_aid" in st or "applying_admin" in st or "vc_setting_rate" in st or "vc_calc_step" in st or "vc_conv_input" in st or "admin_action" in st or "editing_active_ad_id" in st or "searching_keyword" in st or "adding_subscription" in st or "waiting_for_new_text" in st or "waiting_for_username_ban" in st or "waiting_for_username_unban" in st:
         return False
         
     if "posting_ad" in st or "posting_buy_ad" in st:
@@ -1673,6 +1673,10 @@ def admin_panel(m):
         
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
+        types.InlineKeyboardButton("📋 Обьявы", callback_data="admin_ads_list"),
+        types.InlineKeyboardButton("👤 Юзеры", callback_data="admin_users_menu")
+    )
+    markup.add(
         types.InlineKeyboardButton("Модерировать ПРОДАЖИ", callback_data="admin_mod_sales"),
         types.InlineKeyboardButton("Модерировать СКУПКИ", callback_data="admin_mod_buys")
     )
@@ -1948,44 +1952,315 @@ def cb_admin_edit_active_ad(call):
     safe_send_message(call.message.chat.id, "✏️ Введите ID активного объявления для удаления:", reply_markup=kb_cancel())
 
 @bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("admin_action") == "edit_active")
-def process_admin_edit_active(m):
+def process_admin_delete_active_ad_by_id(m):
     uid = m.from_user.id
     clear_state(uid)
     try:
         aid = int(m.text.strip())
     except ValueError:
-        return safe_send_message(m.chat.id, "⚠️ Введите числовой ID объявления.")
+        return safe_send_message(m.chat.id, "⚠️ Неверный формат ID. Введите число.")
         
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute("DELETE FROM active_ads WHERE id = ?", (aid,))
+        sales_deleted = cur.rowcount
         cur.execute("DELETE FROM active_buy_ads WHERE id = ?", (aid,))
+        buys_deleted = cur.rowcount
         conn.commit()
         
-    safe_send_message(m.chat.id, f"✅ Объявление с ID {aid} удалено из активных (если существовало).", reply_markup=kb_main_menu())
+    if sales_deleted > 0 or buys_deleted > 0:
+        safe_send_message(m.chat.id, f"✅ Объявление с ID #{aid} успешно удалено из базы.", reply_markup=kb_main_menu())
+    else:
+        safe_send_message(m.chat.id, f"⚠️ Объявление с ID #{aid} не найдено в активных.", reply_markup=kb_main_menu())
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("admin_del_") or c.data.startswith("admin_del_buy_"))
-def cb_admin_delete_ad(call):
+# ==========================================
+# ИНТЕГРАЦИЯ СКРИПТОВ 1, 2, 3, 4 (АДАПТИРОВАННЫЕ ДЛЯ TELEBOT)
+# ==========================================
+
+# 1 Скрипт (Меню управления пользователями и бан/разбан)
+@bot.callback_query_handler(func=lambda c: c.data == "admin_users_menu")
+def admin_users_menu(call):
     if not verify_admin_callback(call): return
-    is_buy = "admin_del_buy_" in call.data
-    prefix = "admin_del_buy_" if is_buy else "admin_del_"
-    aid = int(call.data.replace(prefix, ""))
-    table = "active_buy_ads" if is_buy else "active_ads"
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[
+        [
+            types.InlineKeyboardButton(text="🚫 Забанить", callback_data="start_ban"),
+            types.InlineKeyboardButton(text="✅ Разбанить", callback_data="start_unban")
+        ],
+        [
+            types.InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_admin")
+        ]
+    ])
+    try:
+        bot.edit_message_text(
+            "👤 <b>Управление пользователями:</b>\nВыберите действие:",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    except Exception:
+        safe_send_message(call.message.chat.id, "👤 <b>Управление пользователями:</b>\nВыберите действие:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data == "start_ban")
+def prompt_ban_user(call):
+    if not verify_admin_callback(call): return
+    update_state(call.from_user.id, waiting_for_username_ban=True)
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="❌ Отменить", callback_data="cancel_edit")]
+    ])
+    safe_send_message(
+        call.message.chat.id,
+        "🚫 <b>Бан игрока</b>\n\nВведите юзернейм игрока (например, `@username` или `username`):",
+        reply_markup=markup
+    )
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("waiting_for_username_ban"))
+def process_ban_username(message):
+    username = message.text.strip().replace("@", "").lower()
     
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
+        cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, 0)", (username,))
         conn.commit()
-        
+
+    clear_state(message.from_user.id)
+    safe_send_message(
+        message.chat.id,
+        f"🚫 Пользователь <b>@{html.escape(username)}</b> успешно забанен.",
+        reply_markup=kb_main_menu()
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data == "start_unban")
+def prompt_unban_user(call):
+    if not verify_admin_callback(call): return
+    update_state(call.from_user.id, waiting_for_username_unban=True)
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="❌ Отменить", callback_data="cancel_edit")]
+    ])
+    safe_send_message(
+        call.message.chat.id,
+        "✅ <b>Разбан игрока</b>\n\nВведите юзернейм игрока для разблокировки:",
+        reply_markup=markup
+    )
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("waiting_for_username_unban"))
+def process_unban_username(message):
+    username = message.text.strip().replace("@", "").lower()
+    
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM bans WHERE target = ?", (username,))
+        conn.commit()
+
+    clear_state(message.from_user.id)
+    safe_send_message(
+        message.chat.id,
+        f"✅ Пользователь <b>@{html.escape(username)}</b> успешно разбанен.",
+        reply_markup=kb_main_menu()
+    )
+
+# Обработчик возврата в главное меню админки
+@bot.callback_query_handler(func=lambda c: c.data == "back_to_admin")
+def cb_back_to_admin(call):
+    if not verify_admin_callback(call): return
+    clear_state(call.from_user.id)
+    
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[
+        [
+            types.InlineKeyboardButton(text="📋 Обьявы", callback_data="admin_ads_list"),
+            types.InlineKeyboardButton(text="👤 Юзеры", callback_data="admin_users_menu")
+        ],
+        [
+            types.InlineKeyboardButton("Модерировать ПРОДАЖИ", callback_data="admin_mod_sales"),
+            types.InlineKeyboardButton("Модерировать СКУПКИ", callback_data="admin_mod_buys")
+        ],
+        [
+            types.InlineKeyboardButton("Редактировать объявление по ID", callback_data="admin_edit_active_ad"),
+            types.InlineKeyboardButton("Статистика редакторов", callback_data="admin_stats")
+        ],
+        [
+            types.InlineKeyboardButton(text="🔙 Выход", callback_data="exit_admin")
+        ]
+    ])
+    if is_owner(call.from_user):
+        markup.add(
+            types.InlineKeyboardButton("Бан/Разбан пользователя", callback_data="admin_ban_user"),
+            types.InlineKeyboardButton("Удалить админа", callback_data="admin_remove_admin")
+        )
+        markup.add(
+            types.InlineKeyboardButton("Снять админ-блокировку с поста", callback_data="admin_unlock_post")
+        )
+
     try:
-        bot.answer_callback_query(call.id, "🗑 Объявление удалено администратором!")
+        bot.edit_message_text(
+            "👑 <b>Панель управления редактора:</b>",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    except Exception:
+        safe_send_message(call.message.chat.id, "👑 <b>Панель управления редактора:</b>", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data == "exit_admin")
+def cb_exit_admin(call):
+    try:
         bot.delete_message(call.message.chat.id, call.message.message_id)
     except Exception:
         pass
+    safe_send_message(call.message.chat.id, "Выход из панели управления.", reply_markup=kb_main_menu())
+
+# 2, 3, 4 Скрипты (Список объявлений, выбор объявления, редактирование с предпросмотром и кнопкой сохранить/отменить)
+@bot.callback_query_handler(func=lambda c: c.data == "admin_ads_list")
+def cmd_admin_ads(call):
+    if not verify_admin_callback(call): return
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, text FROM active_ads")
+        ads = [{"id": row[0], "text": row[1]} for row in cur.fetchall()]
+
+    if not ads:
+        markup = types.InlineKeyboardMarkup(inline_keyboard=[
+            [types.InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_admin")]
+        ])
+        try:
+            bot.edit_message_text(
+                "📭 <b>Активных объявлений нет.</b>",
+                call.message.chat.id,
+                call.message.message_id,
+                reply_markup=markup,
+                parse_mode="HTML"
+            )
+        except Exception:
+            safe_send_message(call.message.chat.id, "📭 <b>Активных объявлений нет.</b>", reply_markup=markup)
+        return
+
+    keyboard = []
+    for ad in ads:
+        short_text = (ad['text'][:22] + '...') if len(ad['text']) > 22 else ad['text']
+        keyboard.append([
+            types.InlineKeyboardButton(
+                text=f"✏️ #{ad['id']} | {short_text}", 
+                callback_data=f"edit_ad_{ad['id']}"
+            )
+        ])
+    
+    keyboard.append([types.InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_admin")])
+    
+    markup = types.InlineKeyboardMarkup(inline_keyboard=keyboard)
+    try:
+        bot.edit_message_text(
+            "📋 <b>Выберите объявление для редактирования:</b>",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    except Exception:
+        safe_send_message(call.message.chat.id, "📋 <b>Выберите объявление для редактирования:</b>", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("edit_ad_"))
+def select_ad_to_edit(call):
+    if not verify_admin_callback(call): return
+    ad_id = int(call.data.split("_")[2])
+    update_state(call.from_user.id, editing_ad_id=ad_id, waiting_for_new_text=True)
+    
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="❌ Отменить", callback_data="cancel_edit")]
+    ])
+    
+    try:
+        bot.edit_message_text(
+            f"✏️ <b>Редактирование объявления #{ad_id}</b>\n\n"
+            "Отправьте новый текст для этого объявления в чат:",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    except Exception:
+        safe_send_message(call.message.chat.id, f"✏️ <b>Редактирование объявления #{ad_id}</b>\n\nОтправьте новый текст для этого объявления в чат:", reply_markup=markup)
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("waiting_for_new_text"))
+def process_new_ad_text(message):
+    uid = message.from_user.id
+    st = get_state(uid)
+    ad_id = st.get("editing_ad_id")
+    new_text = message.text
+
+    if not check_auto_moderation(new_text):
+        return safe_send_message(message.chat.id, "🤬 В тексте обнаружены запрещенные слова. Введите другой текст:")
+
+    update_state(uid, editing_ad_id=ad_id, new_text=new_text, waiting_for_new_text=False)
+
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="💾 Сохранить", callback_data=f"save_ad_{ad_id}")],
+        [types.InlineKeyboardButton(text="❌ Отменить", callback_data="cancel_edit")]
+    ])
+
+    safe_send_message(
+        message.chat.id,
+        f"👀 <b>Предпросмотр нового текста:</b>\n\n{html.escape(new_text)}\n\n"
+        "Сохранить изменения?",
+        reply_markup=markup
+    )
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("save_ad_"))
+def save_edited_ad(call):
+    if not verify_admin_callback(call): return
+    uid = call.from_user.id
+    st = get_state(uid)
+    ad_id = int(call.data.split("_")[2])
+    new_text = st.get("new_text")
+
+    if new_text:
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE active_ads SET text = ? WHERE id = ?", (new_text, ad_id))
+            conn.commit()
+
+    clear_state(uid)
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="🔙 Назад в админ-панель", callback_data="back_to_admin")]
+    ])
+    try:
+        bot.edit_message_text(
+            f"✅ <b>Объявление #{ad_id} успешно обновлено!</b>",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    except Exception:
+        safe_send_message(call.message.chat.id, f"✅ <b>Объявление #{ad_id} успешно обновлено!</b>", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data == "cancel_edit")
+def cancel_edit(call):
+    if not verify_admin_callback(call): return
+    clear_state(call.from_user.id)
+    markup = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(text="🔙 Назад в админ-панель", callback_data="back_to_admin")]
+    ])
+    try:
+        bot.edit_message_text(
+            "❌ <b>Редактирование отменено.</b>",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    except Exception:
+        safe_send_message(call.message.chat.id, "❌ <b>Редактирование отменено.</b>", reply_markup=markup)
+
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-    logger.info("Бот запущен и готов к работе...")
-    bot.infinity_polling(skip_pending=True)
+    logger.info("Бот успешно запущен и готов к работе...")
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True)
+        except Exception as e:
+            logger.error(f"Ошибка в polling: {e}")
+            time.sleep(5)

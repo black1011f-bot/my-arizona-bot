@@ -334,7 +334,6 @@ def get_admin_chat_ids():
         return [row[0] for row in cur.fetchall()]
 
 def get_all_admin_ids():
-    """Исправлено: собирает все чаты и одобренных админов гарантированно"""
     admin_ids = set(get_admin_chat_ids())
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
@@ -1170,6 +1169,9 @@ def finish_posting(chat_id: int, user_id: int, username: str, photo_id: str, is_
         except Exception as e:
             logger.error(f"Не удалось отправить уведомление админу {admin_chat_id}: {e}")
 
+# ==========================================
+# ОБРАБОТЧИКИ МОДЕРАЦИИ (ИСПРАВЛЕННЫЙ ПОРЯДОК И ФИЛЬТРЫ)
+# ==========================================
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_buy_"))
 def callback_buy_moderation(call):
     try:
@@ -1260,10 +1262,8 @@ def callback_buy_moderation(call):
         except Exception:
             pass
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("mod_"))
+@bot.callback_query_handler(func=lambda c: c.data.startswith("mod_") and not c.data.startswith("mod_buy_"))
 def callback_moderation(call):
-    if c.data.startswith("mod_buy_"):
-        return
     try:
         bot.answer_callback_query(call.id)
     except Exception:
@@ -2124,10 +2124,5 @@ def process_admin_action(call):
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == '__main__':
-    logger.info("Бот запущен и готов к работе...")
-    while True:
-        try:
-            bot.infinity_polling(timeout=60, long_polling_timeout=30)
-        except Exception as e:
-            logger.error(f"Ошибка в polling: {e}")
-            time.sleep(5)
+    logger.info("Бот запущен...")
+    bot.infinity_polling(skip_pending=True)

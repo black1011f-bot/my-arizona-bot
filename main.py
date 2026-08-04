@@ -1,4 +1,3 @@
-from datetime import datetime, time as dtime
 import contextlib
 import html
 import logging
@@ -121,7 +120,9 @@ def set_user_server(user_id: int, server: str):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "UPDATE user_data SET server = ? WHERE user_id = ?", (server, user_id)
+        "INSERT INTO user_data (user_id, server, last_ad_time) VALUES (?, ?,"
+        " 0) ON CONFLICT(user_id) DO UPDATE SET server = ?",
+        (user_id, server, server),
     )
   update_state(user_id, server=server)
 
@@ -658,9 +659,8 @@ def set_user_last_ad_time(user_id, t):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "INSERT OR REPLACE INTO user_data (user_id, last_ad_time) VALUES (?,"
-        " ?)",
-        (user_id, t),
+        "UPDATE user_data SET last_ad_time = ? WHERE user_id = ?",
+        (t, user_id),
     )
 
 
@@ -2897,20 +2897,20 @@ def info_premium(m):
   else:
     markup.add(
         types.InlineKeyboardButton(
-            "⭐ Продлить VIP (30 дней) за 100 ⭐️", callback_data="buy_premium_30"
+            "💎 Ваш VIP-статус активен", callback_data="vip_already_active"
         )
     )
   safe_send_message(m.chat.id, text, reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda c: c.data == "buy_premium_30")
-def cb_buy_premium(call):
-  prices = [types.LabeledPrice(label="VIP-статус (30 дней)", amount=100)]
+def cb_buy_premium_30(call):
+  prices = [types.LabeledPrice(label="VIP Статус (30 дней)", amount=100)]
   try:
     bot.send_invoice(
         chat_id=call.message.chat.id,
-        title="VIP-статус (30 дней)",
-        description="Покупка VIP-статуса на 30 дней",
+        title="VIP Статус на 30 дней",
+        description="Покупка VIP-статуса в боте на 30 дней",
         invoice_payload="premium_30",
         provider_token="",
         currency="XTR",
@@ -2919,16 +2919,27 @@ def cb_buy_premium(call):
     )
   except Exception as e:
     try:
-      bot.answer_callback_query(
-          call.id, f"Ошибка создания счета: {e}", show_alert=True
-      )
+      bot.answer_callback_query(call.id, f"Ошибка: {e}", show_alert=True)
     except Exception:
       pass
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "vip_already_active")
+def cb_vip_active_alert(call):
+  try:
+    bot.answer_callback_query(
+        call.id,
+        "У вас уже активирован VIP-статус! Повторная покупка недоступна.",
+        show_alert=True,
+    )
+  except Exception:
+    pass
 
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-  logger.info("Бот успешно запущен!")
+  logger.info("Бот успешно запущен и работает...")
   bot.infinity_polling(skip_pending=True)
+

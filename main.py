@@ -709,33 +709,53 @@ def clean_server_name(server: str) -> str:
 
 
 # ==========================================
-# КЛАВИАТУРЫ
+# КЛАВИАТУРЫ (Исправлено точное построение строк)
 # ==========================================
 def kb_servers():
-  m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
   for i in range(0, len(SERVERS), 2):
-    m.add(*[types.KeyboardButton(s) for s in SERVERS[i : i + 2]])
-  m.add(types.KeyboardButton("📖 Справка и правила"))
-  m.add(
-      types.KeyboardButton("💎 VIP-статус"), types.KeyboardButton("👑 Админ-панель")
+    row_buttons = [types.KeyboardButton(s) for s in SERVERS[i : i + 2]]
+    m.row(*row_buttons)
+  m.row(types.KeyboardButton("📖 Справка и правила"))
+  m.row(
+      types.KeyboardButton("💎 VIP-статус"),
+      types.KeyboardButton("👑 Админ-панель"),
   )
-  m.add(types.KeyboardButton("📝 Стать редактором / админом"))
+  m.row(types.KeyboardButton("📝 Стать редактором / админом"))
   return m
 
 
 def kb_main_menu():
-  m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-  m.add("🌐 Сменить игровой сервер")
-  m.add("💍 Аксессуары и вещи", "🚗 Транспорт и тюнинг")
-  m.add("👕 Скины и охранники", "🏠 Недвижимость и бизнесы")
-  m.add("📦 Ресурсы и материалы")
-  m.add("📤 Продать товар", "📥 Скупить товар")
-  m.add("💱 Курс VC и калькулятор")
-  m.add("🔍 Найти товар в базе", "❤️ Сохраненные")
-  m.add("🔔 Уведомления о поиске", "📋 Мои публикации")
-  m.add("📊 Анализ цен на сервере")
-  m.add("💎 VIP-статус")
-  m.add("👑 Админ-панель", "📝 Стать редактором / админом")
+  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
+  m.row(types.KeyboardButton("🌐 Сменить игровой сервер"))
+  m.row(
+      types.KeyboardButton("💍 Аксессуары и вещи"),
+      types.KeyboardButton("🚗 Транспорт и тюнинг"),
+  )
+  m.row(
+      types.KeyboardButton("👕 Скины и охранники"),
+      types.KeyboardButton("🏠 Недвижимость и бизнесы"),
+  )
+  m.row(types.KeyboardButton("📦 Ресурсы и материалы"))
+  m.row(
+      types.KeyboardButton("📤 Продать товар"),
+      types.KeyboardButton("📥 Скупить товар"),
+  )
+  m.row(types.KeyboardButton("💱 Курс VC и калькулятор"))
+  m.row(
+      types.KeyboardButton("🔍 Найти товар в базе"),
+      types.KeyboardButton("❤️ Сохраненные"),
+  )
+  m.row(
+      types.KeyboardButton("🔔 Уведомления о поиске"),
+      types.KeyboardButton("📋 Мои публикации"),
+  )
+  m.row(types.KeyboardButton("📊 Анализ цен на сервере"))
+  m.row(types.KeyboardButton("💎 VIP-статус"))
+  m.row(
+      types.KeyboardButton("👑 Админ-панель"),
+      types.KeyboardButton("📝 Стать редактором / админом"),
+  )
   return m
 
 
@@ -805,13 +825,12 @@ def blocked_user_callback(c):
 
 
 # ==========================================
-# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ (ИЗ СКРИПТА 1)
+# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ
 # ==========================================
 def should_override_nav(msg):
   if not msg.text:
     return False
 
-  # Убираем .startswith("/") отсюда, чтобы команды обрабатывались своими хендлерами
   if msg.text == "❌ Отменить действие":
     return True
 
@@ -2408,11 +2427,14 @@ def handle_chat_message(m):
 # ИНСТРУМЕНТЫ ДЛЯ VICE CITY (КАЛЬКУЛЯТОРЫ)
 # ==========================================
 def show_vc_menu(m):
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-  markup.add("Настроить курс VC")
-  markup.add("Перевести SA$ в VC$", "Перевести VC$ в SA$")
-  markup.add("Рассчитать выгоду перелета")
-  markup.add("❌ Отменить действие")
+  markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+  markup.row(types.KeyboardButton("Настроить курс VC"))
+  markup.row(
+      types.KeyboardButton("Перевести SA$ в VC$"),
+      types.KeyboardButton("Перевести VC$ в SA$"),
+  )
+  markup.row(types.KeyboardButton("Рассчитать выгоду перелета"))
+  markup.row(types.KeyboardButton("❌ Отменить действие"))
   rate = get_vc_rate()
   safe_send_message(
       m.chat.id,

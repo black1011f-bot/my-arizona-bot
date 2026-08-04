@@ -503,7 +503,9 @@ def background_youtube_stream_checker():
     time.sleep(180)
 
 
-threading.Thread(target=background_youtube_stream_checker, daemon=True).start()
+threading.Thread(
+    target=background_youtube_stream_checker, daemon=True
+).start()
 
 
 def get_vc_rate() -> float:
@@ -2898,23 +2900,22 @@ def info_premium(m):
             "⭐ Продлить VIP (30 дней) за 100 ⭐️", callback_data="buy_premium_30"
         )
     )
-
   safe_send_message(m.chat.id, text, reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda c: c.data == "buy_premium_30")
-def cb_buy_premium_30(call):
-  prices = [types.LabeledPrice(label="VIP Статус (30 дней)", amount=100)]
+def cb_buy_premium(call):
+  prices = [types.LabeledPrice(label="VIP-статус (30 дней)", amount=100)]
   try:
     bot.send_invoice(
         chat_id=call.message.chat.id,
-        title="VIP Статус",
-        description="Подписка на VIP статус бота на 30 дней",
+        title="VIP-статус (30 дней)",
+        description="Покупка VIP-статуса на 30 дней",
         invoice_payload="premium_30",
         provider_token="",
         currency="XTR",
         prices=prices,
-        start_parameter="buy_premium",
+        start_parameter="buy_vip_sub",
     )
   except Exception as e:
     try:
@@ -2925,6 +2926,9 @@ def cb_buy_premium_30(call):
       pass
 
 
+# ==========================================
+# ЗАПУСК БОТА
+# ==========================================
 if __name__ == "__main__":
-  logger.info("Бот запущен...")
+  logger.info("Бот успешно запущен!")
   bot.infinity_polling(skip_pending=True)

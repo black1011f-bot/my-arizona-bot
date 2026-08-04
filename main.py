@@ -925,9 +925,10 @@ def change_server(m):
 def select_srv(m):
   srv = m.text
   uid = m.from_user.id
-  st = get_state(uid)
-  st.pop("changing_server", None)
-  update_state(uid, server=srv, **st)
+  
+  # Просто обновляем ключ сервера напрямую
+  update_state(uid, server=srv)
+  
   safe_send_message(
       m.chat.id,
       f"✅ Игровой сервер установлен: <b>{html.escape(srv)}</b>\nДобро пожаловать в панель управления!",
@@ -2794,105 +2795,3 @@ def admin_panel(m):
     return safe_send_message(
         m.chat.id, "⛔ Доступ запрещен.", reply_markup=kb_main_menu()
     )
-
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  markup.add(
-      types.InlineKeyboardButton(
-          "📤 Модерация Продаж", callback_data="admin_mod_sales"
-      ),
-      types.InlineKeyboardButton(
-          "📥 Модерация Скупок", callback_data="admin_mod_buys"
-      ),
-  )
-  markup.add(
-      types.InlineKeyboardButton(
-          "📋 Активные объявления", callback_data="admin_active_ads_manage"
-      ),
-      types.InlineKeyboardButton(
-          "📊 Рейтинг редакторов", callback_data="admin_stats"
-      ),
-  )
-
-  if is_owner(m.from_user):
-    markup.add(
-        types.InlineKeyboardButton(
-            "➕ Сделать адм", callback_data="owner_add_admin"
-        ),
-        types.InlineKeyboardButton(
-            "➖ Снять с адм", callback_data="owner_remove_admin"
-        ),
-    )
-    markup.add(
-        types.InlineKeyboardButton(
-            "🚫 Забанить игрока", callback_data="start_ban"
-        ),
-        types.InlineKeyboardButton(
-            "✅ Разбанить игрока", callback_data="start_unban"
-        ),
-    )
-    markup.add(
-        types.InlineKeyboardButton(
-            "📜 Логи действий", callback_data="owner_view_logs"
-        )
-    )
-
-  safe_send_message(
-      m.chat.id,
-      "👑 <b>Панель управления радиоцентра:</b>",
-      reply_markup=markup,
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "back_to_admin")
-def cb_back_to_admin(call):
-  if not verify_admin_callback(call):
-    return
-  try:
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-  admin_panel(call.message)
-
-
-# ==========================================
-# ПРОСМОТР ЛОГОВ (ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА @bounqy)
-# ==========================================
-@bot.callback_query_handler(func=lambda c: c.data == "owner_view_logs")
-def cb_owner_view_logs(call):
-  if not is_owner(call.from_user):
-    return bot.answer_callback_query(
-        call.id, "⛔ Доступ только для владельца @bounqy!", show_alert=True
-    )
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT sender_id, receiver_id, text, timestamp FROM chat_logs_history"
-        " ORDER BY id DESC LIMIT 10"
-    )
-    logs = cur.fetchall()
-
-  if not logs:
-    return bot.answer_callback_query(
-        call.id, "📭 Логи чатов пусты.", show_alert=True
-    )
-
-  text = "📜 <b>Последние 10 сообщений P2P чатов:</b>\n\n"
-  for row in logs:
-    s_id, r_id, msg_text, ts = (
-        row["sender_id"],
-        row["receiver_id"],
-        row["text"],
-        row["timestamp"],
-    )
-    dt_str = datetime.fromtimestamp(ts).strftime("%d.%m %H:%M:%S")
-    text += f"[{dt_str}] От {s_id} к {r_id}: {html.escape(msg_text)}\n"
-
-  safe_send_message(call.message.chat.id, text)
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-
-
-bot.infinity_polling(skip_pending=True)

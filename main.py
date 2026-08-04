@@ -20,7 +20,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = "8916669266:AAFall7GhTxs_ZAlMr4_d4W_XMZnunkY2NA"
+# Новый токен бота
+TOKEN = "8916669266:AAFGS9RYMCHOp1yQfBe6kGCh6-V3CdRwOPc"
 YT_CHANNEL_URL = "https://youtube.com/@bounty_squad31"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
@@ -810,7 +811,6 @@ def should_override_nav(msg):
   uid = msg.from_user.id
   st = get_state(uid)
 
-  # Если пользователь находится на этапе активного ввода, навигация не должна перехватывать текст
   is_in_active_input = (
       st.get("posting_ad", {}).get("step") in ["category", "text_or_photo"]
       or st.get("posting_buy_ad", {}).get("step") in ["category", "text_or_photo"]
@@ -880,7 +880,7 @@ def handle_navigation_override(m):
   elif m.text == "🔔 Уведомления о поиске":
     manage_subscriptions(m)
   elif m.text == "👑 Админ-панель":
-    admin_panel(m)
+    admin_panel_cmd(m)
   elif m.text == "📝 Стать редактором / админом":
     start_admin_application(m)
   elif m.text in CATEGORIES:
@@ -982,10 +982,7 @@ def change_server(m):
 def select_srv(m):
   srv = m.text
   uid = m.from_user.id
-
-  # Сохраняем выбранный сервер и в память, и в БД SQLite
   set_user_server(uid, srv)
-
   safe_send_message(
       m.chat.id,
       f"✅ Игровой сервер установлен: <b>{html.escape(srv)}</b>\nДобро"
@@ -2670,7 +2667,7 @@ def show_average_prices(m):
 
 
 # ==========================================
-# ЗАЯВКИ В АДМИНЫ (ФОРМАТ ARIZONA RP) И ПАНЕЛЬ
+# ЗАЯВКИ В АДМИНЫ И ПАНЕЛЬ УПРАВЛЕНИЯ
 # ==========================================
 def start_admin_application(m):
   update_state(m.from_user.id, applying_admin={"step": "server"})
@@ -2879,11 +2876,52 @@ def cb_manage_admin_app(call):
         pass
 
 
-def admin_panel(m):
+@bot.message_handler(commands=["admin"])
+def admin_panel_cmd(m):
   if not is_admin_or_owner(m.from_user):
     return safe_send_message(
         m.chat.id, "⛔ Доступ запрещен.", reply_markup=kb_main_menu()
     )
+
+  markup = types.InlineKeyboardMarkup(row_width=1)
+  markup.add(
+      types.InlineKeyboardButton(
+          "📤 Модерация продаж", callback_data="admin_mod_sales"
+      ),
+      types.InlineKeyboardButton(
+          "📥 Модерация скупок", callback_data="admin_mod_buys"
+      ),
+  )
+  safe_send_message(
+      m.chat.id,
+      "👑 <b>Панель администратора:</b>\nВыберите раздел для управления:",
+      reply_markup=markup,
+  )
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "back_to_admin")
+def cb_back_to_admin(call):
+  if not verify_admin_callback(call):
+    return
+  markup = types.InlineKeyboardMarkup(row_width=1)
+  markup.add(
+      types.InlineKeyboardButton(
+          "📤 Модерация продаж", callback_data="admin_mod_sales"
+      ),
+      types.InlineKeyboardButton(
+          "📥 Модерация скупок", callback_data="admin_mod_buys"
+      ),
+  )
+  try:
+    bot.edit_message_text(
+        "👑 <b>Панель администратора:</b>\nВыберите раздел для управления:",
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=markup,
+        parse_mode="HTML",
+    )
+  except Exception:
+    pass
 
 
 # ==========================================

@@ -2101,16 +2101,18 @@ def process_admin_action_input(m):
         target = text.lstrip('@').lower()
         with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
             cur = conn.cursor()
-            if target.isdigit():
-                cur.execute("DELETE FROM approved_admins WHERE user_id = ?", (int(target),))
-            else:
-                cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (target,))
+            cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ? OR user_id = ?", (target, target))
             conn.commit()
-        safe_send_message(m.chat.id, f"❌ Администратор {text} снят с должности.", reply_markup=kb_main_menu())
+        safe_send_message(m.chat.id, f"❌ Администратор {text} успешно снят.", reply_markup=kb_main_menu())
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
-if __name__ == "__main__":
-    logger.info("Бот успешно запущен и готов к работе!")
-    bot.infinity_polling(skip_pending=True)
+if __name__ == '__main__':
+    logger.info("🤖 Бот СМИ запущен и готов к работе...")
+    while True:
+        try:
+            bot.polling(none_stop=True, interval=0, timeout=20)
+        except Exception as e:
+            logger.error(f"⚠️ Ошибка в пуллинге: {e}")
+            time.sleep(5)

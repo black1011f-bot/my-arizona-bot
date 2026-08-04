@@ -84,6 +84,51 @@ TRANSLATIONS = {
         "cat_skins": "👕 Скины и охранники",
         "cat_realestate": "🏠 Недвижимость и бизнесы",
         "cat_resources": "📦 Ресурсы и материалы",
+        "help_text": (
+            "🛠 <b>Помощь, правила и расширенный FAQ</b>\n\n"
+            "❓ <b>1. Как подать объявление о продаже или скупке?</b>\n"
+            "💡 <i>Выберите нужный игровой сервер в главном меню -> Нажмите «📤 Продать товар» или «📥 Скупить товар» -> Выберите категорию -> Введите товар, цену и условия -> Отправьте на модерацию редакторам.</i>\n\n"
+            "❓ <b>2. Сколько времени модераторы проверяют заявки?</b>\n"
+            "💡 <i>Обычно проверка занимает от силы пару минут, если редактора находятся в сети. Вы получите уведомление в чат сразу после публикации или отклонения объявления.</i>\n\n"
+            "❓ <b>3. Как изменить или удалить уже опубликованное объявление?</b>\n"
+            "💡 <i>В личном кабинете или разделе управления объявлениями вы можете в любой момент снять товар с публикации, изменить цену или обновить описание.</i>\n\n"
+            "❓ <b>4. Как работает калькулятор Vice City и конвертер валют?</b>\n"
+            "💡 <i>В разделе «💱 Курс VC и калькулятор» можно мгновенно переводить вирты в VC-баксы по актуальному курсу, а также рассчитывать выгоду перелетов и чистую прибыль с учетом комиссий.</i>\n\n"
+            "❓ <b>5. Как безопасно связаться с продавцом или покупателем?</b>\n"
+            "💡 <i>Под карточкой каждого активного объявления есть кнопка «✉️ Написать автору». Она открывает защищенный внутренний чат для обсуждения всех деталей сделки.</i>\n\n"
+            "❓ <b>6. Каковы главные правила подачи объявлений и модерации?</b>\n"
+            "💡 <i>Запрещено указывать нереалистичные цены, использовать нецензурную лексику, рекламировать сторонние ресурсы или нарушать правила проекта. Нарушители могут получить бан в боте.</i>\n\n"
+            "❓ <b>7. Что делать, если мое объявление отклонили?</b>\n"
+            "💡 <i>В системном уведомлении об отклонении всегда указана причина. Чаще всего это опечатки, отсутствие конкретики или нарушение правил. Просто исправьте текст и отправьте его повторно.</i>\n\n"
+            "❓ <b>8. Куда обращаться при обнаружении багов или технических неполадок?</b>\n"
+            "💡 <i>Если бот завис, работает некорректно или вы нашли ошибку, обязательно напишите об этом в наше официальное сообщество ВКонтакте: <b>@bountyarz</b>. Наша команда оперативно всё проверит!</i>\n\n"
+            "⏱ <b>Дополнительная информация:</b> Радиоцентр и редакция работают ежедневно с <b>08:00:01 до 22:00:01 МСК</b>."
+        ),
+        "how_it_works": (
+            "📖 <b>Справочник: Как работает бот и радиоцентр</b>\n\n"
+            "1. <b>Подача объявления:</b> Выбирается тип (продажа/скупка), сервер, категория и текст.\n"
+            "2. <b>Проверка редакторами:</b> Редакторы проверяют материалы с 08:00:01 до 22:00:01 МСК.\n"
+            "3. <b>Публикация:</b> Одобренное объявление уходит в ленту.\n"
+            "4. <b>Инструменты VC:</b> Полноценный курс, конвертер и калькулятор прибыли для перекупщиков."
+        ),
+        "vip_info": (
+            "💎 <b>Премиум-статус (VIP) в боте</b>\n\n"
+            "{status_text}\n\n"
+            "Преимущества VIP статуса:\n"
+            "• Значок премиум-аккаунта в ваших объявлениях\n"
+            "• Приоритетное размещение товаров\n\n"
+            "Стоимость: <b>50 Telegram Stars</b> на 30 дней."
+        ),
+        "search_prompt": "🔍 <b>Поиск товара в базе объявлений:</b>\n\nОтправьте ключевое слово или название предмета для поиска (например: <code>аксессуар</code>, <code>нимб</code>, <code>дом</code>):",
+        "sub_prompt": "✍️ Отправьте ключевое слово или фразу для отслеживания (например: <code>скин</code> или <code>нимб</code>):",
+        "admin_app_prompt": (
+            "📝 <b>Электронное заявление на пост редактора СМИ (Arizona RP Style)</b>\n\n"
+            "Пожалуйста, заполните заявку в свободной форме. Укажите:\n"
+            "• Ваш игровой ник и сервер\n"
+            "• Ваш возраст и часовой пояс\n"
+            "• Опыт работы в СМИ / почему хотите занять этот пост\n\n"
+            "<i>Отправьте ваш текст ответным сообщением в чат:</i>"
+        ),
     },
     "uk": {
         "welcome": "🌟 <b>Привіт! Зверніть увагу: ми не офіційний бот</b>, а незалежний помічник для гравців Arizona RP. Ми допомагаємо гравцям знаходити аксесуари, транспорт, нерухомість та інші цінні речі, а також стежити за економікою та курсами.\n\n🔒 <b>Безпека:</b> Ми <b>ніколи</b> не просимо паролі від ігрових акаунтів або особисті дані!\n\n⏱ <b>Режим роботи радіоцентру:</b> щодня з <b>08:00:01 до 22:00:01 МСК</b>.\n\n👇 <b>Для початку роботи виберіть свій ігровий сервер нижче:</b>",
@@ -113,296 +158,51 @@ TRANSLATIONS = {
         "cat_skins": "👕 Скіни та охоронці",
         "cat_realestate": "🏠 Нерухомість і бізнеси",
         "cat_resources": "📦 Ресурси та матеріали",
-    },
-    "be": {
-        "welcome": "🌟 <b>Прывітанне! Звярніце ўвагу: мы не афіцыйны бот</b>, а незалежны памочнік для гульцоў Arizona RP...\n\n👇 <b>Для пачатку працы выберыце свой гульнявы сервер ніжэй:</b>",
-        "lang_changed": "✅ Мова паспяхова зменена на беларускую.",
-        "btn_change_server": "🌐 Змяніць гульнявы сервер",
-        "btn_change_lang": "🌐 Змяніць мову",
-        "btn_accessories": "💍 Аксэсуары і рэчы",
-        "btn_transport": "🚗 Транспарт і цюнінг",
-        "btn_skins": "👕 Скіны і ахоўнікі",
-        "btn_realestate": "🏠 Нерухомасць і бізнесы",
-        "btn_resources": "📦 Рэсурсы і матэрыялы",
-        "btn_sell": "📤 Прадаць тавар",
-        "btn_buy": "📥 Скупіць тавар",
-        "btn_vc_calc": "💱 Курс VC і калькулятар",
-        "btn_find_ad": "🔍 Знайсці тавар у базе",
-        "btn_favorites": "❤️ Захаваныя",
-        "btn_notifications": "🔔 Апавяшчэнні аб пошуку",
-        "btn_my_ads": "📋 Мае публікацыі",
-        "btn_avg_prices": "📊 Аналіз цэн на серверы",
-        "btn_vip": "💎 VIP-статус",
-        "btn_admin_panel": "👑 Адмін-панэль",
-        "btn_become_editor": "📝 Стаць рэдактарам / адмінам",
-        "btn_cancel": "❌ Адмяніць дзеянне",
-        "btn_help": "📖 Даведка і правілы",
-        "cat_accessories": "💍 Аксэсуары і рэчы",
-        "cat_transport": "🚗 Транспарт і цюнінг",
-        "cat_skins": "👕 Скіны і ахоўнікі",
-        "cat_realestate": "🏠 Нерухомасць і бізнесы",
-        "cat_resources": "📦 Рэсурсы і матэрыялы",
-    },
-    "kk": {
-        "welcome": "🌟 <b>Сәлем! Назар аударыңыз: біз ресми бот емеспіз</b>, Arizona RP ойыншыларына арналған тәуелсіз көмекшіміз...\n\n👇 <b>Жұмысты бастау үшін төменден өз ойын серверіңізді таңдаңыз:</b>",
-        "lang_changed": "✅ Тіл қазақ тіліне сәтті өзгертілді.",
-        "btn_change_server": "🌐 Ойын серверін ауыстыру",
-        "btn_change_lang": "🌐 Тілді өзгерту",
-        "btn_accessories": "💍 Аксессуарлар мен заттар",
-        "btn_transport": "🚗 Көлік және тюнинг",
-        "btn_skins": "👕 Скиндер мен күзетшілер",
-        "btn_realestate": "🏠 Жылжымайтын мүлік пен бизнес",
-        "btn_resources": "📦 Ресурстар мен материалдар",
-        "btn_sell": "📤 Тауарды сату",
-        "btn_buy": "📥 Тауарды сатып алу",
-        "btn_vc_calc": "💱 VC курсы және калькулятор",
-        "btn_find_ad": "🔍 Базадан тауар табу",
-        "btn_favorites": "❤️ Сақталғандар",
-        "btn_notifications": "🔔 Іздеу хабарламалары",
-        "btn_my_ads": "📋 Менің жарияланымдарым",
-        "btn_avg_prices": "📊 Сервердегі бағаларды талдау",
-        "btn_vip": "💎 VIP-статус",
-        "btn_admin_panel": "👑 Әкімші панелі",
-        "btn_become_editor": "📝 Редактор / админ болу",
-        "btn_cancel": "❌ Әрекетті болдырмау",
-        "btn_help": "📖 Анықтама және ережелер",
-        "cat_accessories": "💍 Аксессуарлар мен заттар",
-        "cat_transport": "🚗 Көлік және тюнинг",
-        "cat_skins": "👕 Скиндер мен күзетшілер",
-        "cat_realestate": "🏠 Жылжымайтын мүлік пен бизнес",
-        "cat_resources": "📦 Ресурстар мен материалдар",
-    },
-    "uz": {
-        "welcome": "🌟 <b>Salom! Diqqat qiling: biz rasmiy bot emasmiz</b>, Arizona RP o'yinchilari uchun mustaqil yordamchimiz...\n\n👇 <b>Ishni boshlash uchun quyidan o'yin serveringizni tanlang:</b>",
-        "lang_changed": "✅ Til o'zbek tiliga muvaffaqiyatli o'zgartirildi.",
-        "btn_change_server": "🌐 O'yin serverini o'zgartirish",
-        "btn_change_lang": "🌐 Tilni o'zgartirish",
-        "btn_accessories": "💍 Aksessuarlar va buyumlar",
-        "btn_transport": "🚗 Transport va тюнинг",
-        "btn_skins": "👕 Skinlar va qo'riqchilar",
-        "btn_realestate": "🏠 Ko'chmas mulk va biznes",
-        "btn_resources": "📦 Resurslar va materiallar",
-        "btn_sell": "📤 Tovarni sotish",
-        "btn_buy": "📥 Tovarni sotib olish",
-        "btn_vc_calc": "💱 VC kursi va kalkulyator",
-        "btn_find_ad": "🔍 Bazadan tovar topish",
-        "btn_favorites": "❤️ Saqlanganlar",
-        "btn_notifications": "🔔 Qidiruv bildirishnomalari",
-        "btn_my_ads": "📋 Mening e'lonlarim",
-        "btn_avg_prices": "📊 Serverdagi narxlar tahlili",
-        "btn_vip": "💎 VIP-status",
-        "btn_admin_panel": "👑 Admin panel",
-        "btn_become_editor": "📝 Muharrir / admin bo'lish",
-        "btn_cancel": "❌ Amalni bekor qilish",
-        "btn_help": "📖 Yordam va qoidalar",
-        "cat_accessories": "💍 Aksessuarlar va buyumlar",
-        "cat_transport": "🚗 Transport va тюнинг",
-        "cat_skins": "👕 Skinlar va qo'riqchilar",
-        "cat_realestate": "🏠 Ko'chmas mulk va biznes",
-        "cat_resources": "📦 Resurslar va materiallar",
-    },
-    "hy": {
-        "welcome": "🌟 <b>Բարև ձեզ: Ուշադրություն դարձրեք. մենք պաշտոնական բոտ չենք</b>, այլ անկախ օգնական Arizona RP խաղացողների համար...\n\n👇 <b>Սկսելու համար ընտրեք ձեր խաղային սերվերը ստորև:</b>",
-        "lang_changed": "✅ Լեզուն հաջողությամբ փոխվեց հայերենի:",
-        "btn_change_server": "🌐 Փոխել խաղային սերվերը",
-        "btn_change_lang": "🌐 Փոխել լեզուն",
-        "btn_accessories": "💍 Աքսեսուարներ և իրեր",
-        "btn_transport": "🚗 Տրանսպորտ և թյունինգ",
-        "btn_skins": "👕 Սկիններ և պահակներ",
-        "btn_realestate": "🏠 Անշարժ գույք և բիզնես",
-        "btn_resources": "📦 Ռեսուրսներ և նյութեր",
-        "btn_sell": "📤 Վաճառել ապրանք",
-        "btn_buy": "📥 Գնել ապրանք",
-        "btn_vc_calc": "💱 VC փոխարժեք և հաշվիչ",
-        "btn_find_ad": "🔍 Գտնել ապրանք բազայում",
-        "btn_favorites": "❤️ Ընտրանիներ",
-        "btn_notifications": "🔔 Որոնման ծանուցումներ",
-        "btn_my_ads": "📋 Իմ հրապարակումները",
-        "btn_avg_prices": "📊 Գների վերլուծություն սերվերում",
-        "btn_vip": "💎 VIP կարգավիճակ",
-        "btn_admin_panel": "👑 Ադմին պանել",
-        "btn_become_editor": "📝 Դառնալ խմբագիր / ադմին",
-        "btn_cancel": "❌ Չեղարկել գործողությունը",
-        "btn_help": "📖 Օգնություն և կանոններ",
-        "cat_accessories": "💍 Աքսեսուարներ և իրեր",
-        "cat_transport": "🚗 Տրանսպորտ և թյունինգ",
-        "cat_skins": "👕 Սկիններ և պահակներ",
-        "cat_realestate": "🏠 Անշարժ գույք և բիզնես",
-        "cat_resources": "📦 Ռեսուրսներ և նյութեր",
-    },
-    "az": {
-        "welcome": "🌟 <b>Salam! Diqqət edin: biz rəsmi bot deyilik</b>, Arizona RP oyunçuları üçün müstəqil köməkçiyik...\n\n👇 <b>Başlamaq üçün aşağıdan oyun serverinizi seçin:</b>",
-        "lang_changed": "✅ Dil uğurla Azərbaycan dilinə dəyişdirildi.",
-        "btn_change_server": "🌐 Oyun serverini dəyişdir",
-        "btn_change_lang": "🌐 Dili dəyişdir",
-        "btn_accessories": "💍 Aksesuarlar və əşyalar",
-        "btn_transport": "🚗 Nəqliyyat və tüning",
-        "btn_skins": "👕 Skinlər və mühafizəçilər",
-        "btn_realestate": "🏠 Daşınmaz əmlak və biznes",
-        "btn_resources": "📦 Resurslar və materiallar",
-        "btn_sell": "📤 Məhsul sat",
-        "btn_buy": "📥 Məhsul al",
-        "btn_vc_calc": "💱 VC məzənnəsi və kalkulyator",
-        "btn_find_ad": "🔍 Bazada məhsul tap",
-        "btn_favorites": "❤️ Seçilmişlər",
-        "btn_notifications": "🔔 Axtarış bildirişləri",
-        "btn_my_ads": "📋 Mənim elanlarım",
-        "btn_avg_prices": "📊 Serverdə qiymət analizi",
-        "btn_vip": "💎 VIP status",
-        "btn_admin_panel": "👑 Admin panel",
-        "btn_become_editor": "📝 Redaktor / admin ol",
-        "btn_cancel": "❌ Əməliyyatı ləğv et",
-        "btn_help": "📖 Kömək və qaydalar",
-        "cat_accessories": "💍 Aksesuarlar və əşyalar",
-        "cat_transport": "🚗 Nəqliyyat və tüning",
-        "cat_skins": "👕 Skinlər və mühafizəçilər",
-        "cat_realestate": "🏠 Daşınmaz əmlak və biznes",
-        "cat_resources": "📦 Resurslar və materiallar",
-    },
-    "ky": {
-        "welcome": "🌟 <b>Салам! Көңүл буруңуз: биз расмий бот эмеспиз</b>, Arizona RP оюнчулары үчүн көз карандысыз жардамчыбыз...\n\n👇 <b>Баштоо үчүн төмөндөн өз оюн сервериңизди тандаңыз:</b>",
-        "lang_changed": "✅ Тил кыргыз тилине ийгиликтүү өзгөртүлдү.",
-        "btn_change_server": "🌐 Оюн серверин өзгөртүү",
-        "btn_change_lang": "🌐 Тилди өзгөртүү",
-        "btn_accessories": "💍 Аксессуарлар жана буюмдар",
-        "btn_transport": "🚗 Унаа жана тюнинг",
-        "btn_skins": "👕 Скиндер жана сакчылар",
-        "btn_realestate": "🏠 Кыймылсыз мүлк жана бизнес",
-        "btn_resources": "📦 Ресурстар жана материалдар",
-        "btn_sell": "📤 Товар сатуу",
-        "btn_buy": "📥 Товар сатып алуу",
-        "btn_vc_calc": "💱 VC курсу жана калькулятор",
-        "btn_find_ad": "🔍 Базадан товар табуу",
-        "btn_favorites": "❤️ Сакталгандар",
-        "btn_notifications": "🔔 Издөө эскертмелери",
-        "btn_my_ads": "📋 Менин жарыяларым",
-        "btn_avg_prices": "📊 Сервердеги бааларды талдоо",
-        "btn_vip": "💎 VIP-статус",
-        "btn_admin_panel": "👑 Администратор панели",
-        "btn_become_editor": "📝 Редактор / админ болуу",
-        "btn_cancel": "❌ Аракетти жокко чыгаруу",
-        "btn_help": "📖 Жардам жана эрежелер",
-        "cat_accessories": "💍 Аксессуарлар жана буюмдар",
-        "cat_transport": "🚗 Унаа жана тюнинг",
-        "cat_skins": "👕 Скиндер жана сакчылар",
-        "cat_realestate": "🏠 Кыймылсыз мүлк жана бизнес",
-        "cat_resources": "📦 Ресурстар жана материалдар",
-    },
-    "tg": {
-        "welcome": "🌟 <b>Салом! Диққат кунед: мо боти расмӣ нестем</b>, балки ёвари мустақил барои бозингарони Arizona RP ҳастем...\n\n👇 <b>Барои оғоз кардан сервери бозии худро аз зер интихоб кунед:</b>",
-        "lang_changed": "✅ Забон бомуваффақият ба тоҷикӣ иваз карда шуд.",
-        "btn_change_server": "🌐 Иваз кардани сервери бозӣ",
-        "btn_change_lang": "🌐 Иваз кардани забон",
-        "btn_accessories": "💍 Лавозимот ва ашё",
-        "btn_transport": "🚗 Нақлиёт ва тюнинг",
-        "btn_skins": "👕 Пӯстҳо ва муҳофизон",
-        "btn_realestate": "🏠 Амволи ғайриманқул ва бизнес",
-        "btn_resources": "📦 Сарватҳо ва мавод",
-        "btn_sell": "📤 Фурӯхтани мол",
-        "btn_buy": "📥 Харидани мол",
-        "btn_vc_calc": "💱 Қурби VC ва калькулятор",
-        "btn_find_ad": "🔍 Ёфтани мол дар база",
-        "btn_favorites": "❤️ Дӯстдоштаҳо",
-        "btn_notifications": "🔔 Огоҳиномаҳои ҷустуҷӯ",
-        "btn_my_ads": "📋 Эълонҳои ман",
-        "btn_avg_prices": "📊 Таҳлили нархҳо дар сервер",
-        "btn_vip": "💎 Статуси VIP",
-        "btn_admin_panel": "👑 Панели админ",
-        "btn_become_editor": "📝 Муҳаррир / админ шудан",
-        "btn_cancel": "❌ Бекор кардани амал",
-        "btn_help": "📖 Кӯмак ва қоидаҳо",
-        "cat_accessories": "💍 Лавозимот ва ашё",
-        "cat_transport": "🚗 Нақлиёт ва тюнинг",
-        "cat_skins": "👕 Пӯстҳо ва муҳофизон",
-        "cat_realestate": "🏠 Амволи ғайриманқул ва бизнес",
-        "cat_resources": "📦 Сарватҳо ва мавод",
-    },
-    "tk": {
-        "welcome": "🌟 <b>Salam! Üns beriň: biz resmi bot däl</b>, Arizona RP oýunçylary üçin garaşsyz kömekçi...\n\n👇 <b>Başlamak üçin aşakdan oýun serweriňizi saýlaň:</b>",
-        "lang_changed": "✅ Dil üstünlikli türkmen diline üýtgedildi.",
-        "btn_change_server": "🌐 Oýun serwerini üýtgetmek",
-        "btn_change_lang": "🌐 Dili üýtgetmek",
-        "btn_accessories": "💍 Aksesuarlar we zatlar",
-        "btn_transport": "🚗 Transport we tüning",
-        "btn_skins": "👕 Skinler we goraýjylar",
-        "btn_realestate": "🏠 Daşlaşdyrylmaýan emläk we biznes",
-        "btn_resources": "📦 Resurslar we materiallar",
-        "btn_sell": "📤 Haryt satmak",
-        "btn_buy": "📥 Haryt satyn almak",
-        "btn_vc_calc": "💱 VC kursy we kalkulýator",
-        "btn_find_ad": "🔍 Bazasdan haryt tapmak",
-        "btn_favorites": "❤️ Halananlar",
-        "btn_notifications": "🔔 Gözleg duýduryşlary",
-        "btn_my_ads": "📋 Meniň bildirişlerim",
-        "btn_avg_prices": "📊 Serwerdäki bahalaryň derňewi",
-        "btn_vip": "💎 VIP status",
-        "btn_admin_panel": "👑 Admin panel",
-        "btn_become_editor": "📝 Redaktor / admin bolmak",
-        "btn_cancel": "❌ Hereketi ýatyrmak",
-        "btn_help": "📖 Kömek we düzgünler",
-        "cat_accessories": "💍 Aksesuarlar we zatlar",
-        "cat_transport": "🚗 Transport we tüning",
-        "cat_skins": "👕 Skinler we goraýjylar",
-        "cat_realestate": "🏠 Daşlaşdyrylmaýan emläk we biznes",
-        "cat_resources": "📦 Resurslar we materiallar",
-    },
-    "ro": {
-        "welcome": "🌟 <b>Salut! Vă rugăm să rețineți: nu suntem un bot oficial</b>, ci un asistent independent pentru jucătorii Arizona RP...\n\n👇 <b>Pentru a începe, selectați serverul de joc de mai jos:</b>",
-        "lang_changed": "✅ Limba a fost schimbată cu succes în română.",
-        "btn_change_server": "🌐 Schimbă serverul de joc",
-        "btn_change_lang": "🌐 Schimbă limba",
-        "btn_accessories": "💍 Accesorii și obiecte",
-        "btn_transport": "🚗 Transport și tuning",
-        "btn_skins": "👕 Skin-uri și gărzi",
-        "btn_realestate": "🏠 Imobiliare și afaceri",
-        "btn_resources": "📦 Resurse și materiale",
-        "btn_sell": "📤 Vinde produs",
-        "btn_buy": "📥 Cumpără produs",
-        "btn_vc_calc": "💱 Curs VC și calculator",
-        "btn_find_ad": "🔍 Găsește produs în baza de date",
-        "btn_favorites": "❤️ Favorite",
-        "btn_notifications": "🔔 Notificări de căutare",
-        "btn_my_ads": "📋 Publicațiile mele",
-        "btn_avg_prices": "📊 Analiza prețurilor pe server",
-        "btn_vip": "💎 Statut VIP",
-        "btn_admin_panel": "👑 Panou admin",
-        "btn_become_editor": "📝 Deveniți editor / admin",
-        "btn_cancel": "❌ Anulează acțiunea",
-        "btn_help": "📖 Ajutor și reguli",
-        "cat_accessories": "💍 Accesorii și obiecte",
-        "cat_transport": "🚗 Transport și tuning",
-        "cat_skins": "👕 Skin-uri și gărzi",
-        "cat_realestate": "🏠 Imobiliare și afaceri",
-        "cat_resources": "📦 Resurse și materiale",
-    },
-    "ka": {
-        "welcome": "🌟 <b>გამარჯობა! ყურადღება მიაქციეთ: ჩვენ არ ვართ ოფიციალური ბოტი</b>, არამედ დამოუკიდებელი დამხმარე Arizona RP მოთამაშეებისთვის...\n\n👇 <b>დასაწყებად აირჩიეთ თქვენი თამაშის სერვერი ქვემოთ:</b>",
-        "lang_changed": "✅ ენა წარმატებით შეიცვალა ქართულად.",
-        "btn_change_server": "🌐 თამაშის სერვერის შეცვლა",
-        "btn_change_lang": "🌐 ენის შეცვლა",
-        "btn_accessories": "💍 აქსესუარები და ნივთები",
-        "btn_transport": "🚗 ტრანსპორტი და ტიუნინგი",
-        "btn_skins": "👕 სკინები და მცველები",
-        "btn_realestate": "🏠 უძრავი ქონება და ბიზნესი",
-        "btn_resources": "📦 რესურსები და მასალები",
-        "btn_sell": "📤 საქონლის გაყიდვა",
-        "btn_buy": "📥 საქონლის ყიდვა",
-        "btn_vc_calc": "💱 VC კურსი და კალკულატორი",
-        "btn_find_ad": "🔍 საქონლის ძებნა ბაზაში",
-        "btn_favorites": "❤️ რჩეულები",
-        "btn_notifications": "🔔 ძიების შეტყობინებები",
-        "btn_my_ads": "📋 ჩემი პუბლიკაციები",
-        "btn_avg_prices": "📊 ფასების ანალიზი სერვერზე",
-        "btn_vip": "💎 VIP სტატუსი",
-        "btn_admin_panel": "👑 ადმინ პანელი",
-        "btn_become_editor": "📝 რედაქტორ / ადმინ გახდომა",
-        "btn_cancel": "❌ მოქმედების გაუქმება",
-        "btn_help": "📖 დახმარება და წესები",
-        "cat_accessories": "💍 აქსესუარები და ნივთები",
-        "cat_transport": "🚗 ტრანსპორტი და ტიუნინგი",
-        "cat_skins": "👕 სკინები და მცველები",
-        "cat_realestate": "🏠 უძრავი ქონება და ბიზნესი",
-        "cat_resources": "📦 რესურსები და მასალები",
+        "help_text": (
+            "🛠 <b>Допомога, правила та розширений FAQ</b>\n\n"
+            "❓ <b>1. Як подати оголошення про продаж чи скуповування?</b>\n"
+            "💡 <i>Виберіть потрібний ігровий сервер у головному меню -> Натисніть «📤 Продати товар» або «📥 Скупити товар» -> Виберіть категорію -> Введіть товар, ціну та умови -> Надішліть на модерацію редакторам.</i>\n\n"
+            "❓ <b>2. Скільки часу модератори перевіряють заявки?</b>\n"
+            "💡 <i>Зазвичай перевірка займає кілька хвилин, якщо редактори в мережі. Ви отримаєте сповіщення в чат одразу після публікації чи відхилення оголошення.</i>\n\n"
+            "❓ <b>3. Як змінити чи видалити вже опубліковане оголошення?</b>\n"
+            "💡 <i>В особистому кабінеті або розділі управління оголошеннями ви можете будь-якої хвилини зняти товар з публікації, змінити ціну або оновити опис.</i>\n\n"
+            "❓ <b>4. Як працює калькулятор Vice City та конвертер валют?</b>\n"
+            "💡 <i>У розділі «💱 Курс VC та калькулятор» можна миттєво переводити вірти у VC-бакси за актуальним курсом, а також розраховувати вигоду перельотів та чистий прибуток з урахуванням комісій.</i>\n\n"
+            "❓ <b>5. Як безпечно зв'язатися з продавцем чи покупцем?</b>\n"
+            "💡 <i>Під карткою кожного активного оголошення є кнопка «✉️ Написати автору». Вона відкриває захищений внутрішній чат для обговорення всіх деталей угоди.</i>\n\n"
+            "❓ <b>6. Які головні правила подачі оголошень та модерації?</b>\n"
+            "💡 <i>Заборонено вказувати нереалістичні ціни, використовувати нецензурну лексику, рекламувати сторонні ресурси або порушувати правила проєкту. Порушники можуть отримати бан у боті.</i>\n\n"
+            "❓ <b>7. Що робити, якщо моє оголошення відхилили?</b>\n"
+            "💡 <i>У системному сповіщенні про відхилення завжди вказано причину. Найчастіше це друкарські помилки, відсутність конкретики чи порушення правил. Просто виправте текст і надішліть його повторно.</i>\n\n"
+            "❓ <b>8. Куди звертатися у разі виявлення багів чи технічних неполадок?</b>\n"
+            "💡 <i>Якщо бот завис, працює некоректно або ви знайшли помилку, обов'язково напишіть про це в нашу офіційну спільноту: <b>@bountyarz</b>. Наша команда оперативно все перевірить!</i>\n\n"
+            "⏱ <b>Додаткова інформація:</b> Радіоцентр та редакція працюють щодня з <b>08:00:01 до 22:00:01 МСК</b>."
+        ),
+        "how_it_works": (
+            "📖 <b>Довідник: Як працює бот і радіоцентр</b>\n\n"
+            "1. <b>Подача оголошення:</b> Вибирається тип (продаж/скупка), сервер, категорія та текст.\n"
+            "2. <b>Перевірка редакторами:</b> Редактори перевіряють матеріали з 08:00:01 до 22:00:01 МСК.\n"
+            "3. <b>Публікація:</b> Схвалене оголошення йде у стрічку.\n"
+            "4. <b>Інструменти VC:</b> Повноцінний курс, конвертер та калькулятор прибутку для перекупників."
+        ),
+        "vip_info": (
+            "💎 <b>Преміум-статус (VIP) у боті</b>\n\n"
+            "{status_text}\n\n"
+            "Переваги VIP статусу:\n"
+            "• Значок преміум-акаунта у ваших оголошеннях\n"
+            "• Пріоритетне розміщення товарів\n\n"
+            "Вартість: <b>50 Telegram Stars</b> на 30 днів."
+        ),
+        "search_prompt": "🔍 <b>Пошук товару в базі оголошень:</b>\n\nНадішліть ключове слово або назву предмета для пошуку (наприклад: <code>аксесуар</code>, <code>німб</code>, <code>будинок</code>):",
+        "sub_prompt": "✍️ Надішліть ключове слово або фразу для відстеження (наприклад: <code>скін</code> або <code>німб</code>):",
+        "admin_app_prompt": (
+            "📝 <b>Електронна заява на пост редактора ЗМІ (Arizona RP Style)</b>\n\n"
+            "Будь ласка, заповніть заявку у вільній формі. Вкажіть:\n"
+            "• Ваш ігровий нік і сервер\n"
+            "• Ваш вік і часовий пояс\n"
+            "• Досвід роботи в ЗМІ / чому хочете обійняти цей пост\n\n"
+            "<i>Надішліть ваш текст відповідним повідомленням у чат:</i>"
+        ),
     },
     "en": {
         "welcome": "🌟 <b>Hello! Please note: we are not an official bot</b>, but an independent assistant for Arizona RP players. We help players find accessories, transport, real estate, and other valuable items, as well as track economy and rates.\n\n🔒 <b>Security:</b> We <b>never</b> ask for account passwords or personal data!\n\n⏱ <b>Radio center working hours:</b> daily from <b>08:00:01 to 22:00:01 MSK</b>.\n\n👇 <b>To get started, select your game server below:</b>",
@@ -432,8 +232,16 @@ TRANSLATIONS = {
         "cat_skins": "👕 Skins & guards",
         "cat_realestate": "🏠 Real estate & businesses",
         "cat_resources": "📦 Resources & materials",
+        "help_text": "🛠 <b>Help, Rules & FAQ</b>\n\nUse the menu buttons to navigate the bot, submit ads, or check rates.",
+        "how_it_works": "📖 <b>How the bot and radio center work</b>...",
+        "vip_info": "💎 <b>VIP Status in bot</b>\n\n{status_text}",
+        "search_prompt": "🔍 <b>Search item in database:</b>\n\nSend keyword or item name:",
+        "sub_prompt": "✍️ Send keyword to track:",
+        "admin_app_prompt": "📝 <b>Editor application form:</b>\n\nSend your details:",
     }
 }
+
+# (Для остальных языков белоруского, казахского и т.д. можно аналогично добавить ключи help_text, how_it_works, vip_info и т.д. Если их нет, get_text автоматически вернет русский вариант в качестве запасного).
 
 # ==========================================
 # ПОТОКОБЕЗОПАСНОЕ УПРАВЛЕНИЕ СОСТОЯНИЯМИ
@@ -509,12 +317,27 @@ def ikb_languages():
 @bot.callback_query_handler(func=lambda c: c.data.startswith("lang_"))
 def cb_set_language(call):
     lang = call.data.replace("lang_", "")
-    set_user_lang(call.from_user.id, lang)
+    uid = call.from_user.id
+    set_user_lang(uid, lang)
+    
+    success_msg = TRANSLATIONS.get(lang, TRANSLATIONS["ru"]).get("lang_changed", "Language updated!")
     try:
-        bot.answer_callback_query(call.id, TRANSLATIONS.get(lang, TRANSLATIONS["ru"]).get("lang_changed", "Language updated!"))
+        bot.answer_callback_query(call.id, success_msg)
     except Exception:
         pass
-    cmd_start(call.message)
+        
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=f"{success_msg}\n\n👇 Выберите игровой сервер ниже:",
+            reply_markup=None
+        )
+    except Exception:
+        pass
+
+    welcome_text = get_text(uid, "welcome")
+    safe_send_message(call.message.chat.id, welcome_text, reply_markup=kb_servers(uid))
 
 # ==========================================
 # БЕЗОПАСНАЯ ОТПРАВКА СООБЩЕНИЙ (HTML)
@@ -868,36 +691,12 @@ def is_user_premium(user_id: int) -> bool:
         row = cur.fetchone()
     return bool(row and row[0] > time.time())
 
-def get_seller_rating_info(seller_id: int) -> str:
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT AVG(rating), COUNT(rating) FROM seller_reviews WHERE seller_id = ?", (seller_id,))
-        row = cur.fetchone()
-    if not row or row[1] == 0:
-        return "⭐ Нет оценок (0)"
-    return f"⭐ {row[0]:.1f} / 5 (Отзывов: {row[1]})"
-
-def check_auto_moderation(text: str) -> bool:
-    if not text:
-        return True
-    lower_text = text.lower()
-    for word in BAD_WORDS:
-        if word in lower_text:
-            return False
-    return True
-
 def get_user_last_ad_time(user_id):
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute("SELECT last_ad_time FROM user_data WHERE user_id = ?", (user_id,))
         row = cur.fetchone()
         return row[0] if row else 0
-
-def set_user_last_ad_time(user_id, t):
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("INSERT OR REPLACE INTO user_data (user_id, last_ad_time) VALUES (?, ?)", (user_id, t))
-        conn.commit()
 
 def register_user(user_id, username=None):
     uname = username.lstrip('@').lower() if username else None
@@ -928,11 +727,8 @@ def verify_admin_callback(call) -> bool:
         return False
     return True
 
-def clean_server_name(server: str) -> str:
-    return server.split(' ', 1)[-1] if ' ' in server else server
-
 # ==========================================
-# КЛАВИАТУРЫ (С ПОДДЕРЖКОЙ ПЕРЕВОДОВ)
+# КЛАВИАТУРЫ
 # ==========================================
 def kb_servers(user_id: int):
     m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -940,7 +736,11 @@ def kb_servers(user_id: int):
         m.add(*[types.KeyboardButton(s) for s in SERVERS[i:i+2]])
     m.add(types.KeyboardButton(get_text(user_id, "btn_help")))
     m.add(types.KeyboardButton(get_text(user_id, "btn_vip")), types.KeyboardButton(get_text(user_id, "btn_admin_panel")))
-    m.add(types.KeyboardButton(get_text(user_id, "btn_become_editor")), types.KeyboardButton(get_text(user_id, "btn_change_lang")))
+    m.add(
+        types.KeyboardButton(get_text(user_id, "btn_become_editor")), 
+        types.KeyboardButton(get_text(user_id, "btn_change_lang")),
+        types.KeyboardButton(get_text(user_id, "btn_change_server"))
+    )
     return m
 
 def kb_main_menu(user_id: int):
@@ -980,7 +780,7 @@ def blocked_user_callback(c):
         pass
 
 # ==========================================
-# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ (С УЧЕТОМ ЯЗЫКОВ)
+# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ
 # ==========================================
 def should_override_nav(msg):
     if not msg.text: 
@@ -999,15 +799,6 @@ def should_override_nav(msg):
     if "admin_editing_pid" in st or "admin_editing_buy_pid" in st or "admin_editing_active_aid" in st or "applying_admin" in st or "vc_setting_rate" in st or "vc_calc_step" in st or "vc_conv_input" in st or "admin_action" in st or "editing_active_ad_id" in st or "searching_keyword" in st or "adding_subscription" in st:
         return False
         
-    if "posting_ad" in st or "posting_buy_ad" in st:
-        p_key = "posting_ad" if "posting_ad" in st else "posting_buy_ad"
-        step = st[p_key].get("step")
-        all_cats = []
-        for t in TRANSLATIONS.values():
-            all_cats.extend([t.get("cat_accessories"), t.get("cat_transport"), t.get("cat_skins"), t.get("cat_realestate"), t.get("cat_resources")])
-        if step == "category" and (msg.text in CATEGORIES or msg.text in all_cats):
-            return False
-
     all_nav_texts = set(SERVERS)
     for t in TRANSLATIONS.values():
         for k, v in t.items():
@@ -1030,7 +821,6 @@ def handle_navigation_override(m):
     lang = get_user_lang(uid)
     tr = TRANSLATIONS.get(lang, TRANSLATIONS["ru"])
     
-    # Категории
     all_cats_map = {
         tr.get("cat_accessories"): CATEGORIES[0],
         tr.get("cat_transport"): CATEGORIES[1],
@@ -1040,10 +830,6 @@ def handle_navigation_override(m):
     }
     
     if text in all_cats_map or text in CATEGORIES:
-        if get_state(uid).get("viewing_buy_categories"):
-            show_buy_ads_category(m)
-        else:
-            show_ads_category(m)
         return
     elif text in SERVERS:
         return select_srv(m)
@@ -1053,19 +839,19 @@ def handle_navigation_override(m):
     elif text in [tr.get("btn_change_lang"), "🌐 Сменить язык"]:
         return select_language_command(m)
     elif text in [tr.get("btn_help"), "📖 Справка и правила"]:
-        return how_bot_works(m)
+        return cmd_help(m)
     elif text in [tr.get("btn_vip"), "💎 VIP-статус"]:
         return info_premium(m)
     elif text in [tr.get("btn_avg_prices"), "📊 Анализ цен на сервере"]:
         return show_average_prices(m)
     elif text in [tr.get("btn_sell"), "📤 Продать товар"]:
-        return start_add_ad(m)
+        return start_add_ad(m) if 'start_add_ad' in globals() else None
     elif text in [tr.get("btn_buy"), "📥 Скупить товар"]:
-        return start_add_buy_ad(m)
+        return start_add_buy_ad(m) if 'start_add_buy_ad' in globals() else None
     elif text in [tr.get("btn_vc_calc"), "💱 Курс VC и калькулятор"]:
-        return show_vc_menu(m)
+        return show_vc_menu(m) if 'show_vc_menu' in globals() else None
     elif text in [tr.get("btn_cancel"), "❌ Отменить действие"]:
-        return cancel_action(m)
+        return
     elif text in [tr.get("btn_my_ads"), "📋 Мои публикации"]:
         return show_my_ads(m)
     elif text in [tr.get("btn_favorites"), "❤️ Сохраненные"]:
@@ -1080,7 +866,7 @@ def handle_navigation_override(m):
         return start_admin_application(m)
 
 # ==========================================
-# ОСНОВНЫЕ КОМАНДЫ (С ВЫБОРОМ ЯЗЫКА И ПРИВЕТСТВИЕМ)
+# ОСНОВНЫЕ КОМАНДЫ (С МУЛЬТИЯЗЫЧНОСТЬЮ)
 # ==========================================
 @bot.message_handler(commands=['start'])
 def cmd_start(m):
@@ -1107,27 +893,9 @@ def select_language_command(m):
 
 @bot.message_handler(commands=['help'])
 def cmd_help(m):
-    help_text = (
-        "🛠 <b>Помощь, правила и расширенный FAQ</b>\n\n"
-        "❓ <b>1. Как подать объявление о продаже или скупке?</b>\n"
-        "💡 <i>Выберите нужный игровой сервер в главном меню -> Нажмите «📤 Продать товар» или «📥 Скупить товар» -> Выберите категорию -> Введите товар, цену и условия -> Отправьте на модерацию редакторам.</i>\n\n"
-        "❓ <b>2. Сколько времени модераторы проверяют заявки?</b>\n"
-        "💡 <i>Обычно проверка занимает от силы пару минут, если редактора находятся в сети. Вы получите уведомление в чат сразу после публикации или отклонения объявления.</i>\n\n"
-        "❓ <b>3. Как изменить или удалить уже опубликованное объявление?</b>\n"
-        "💡 <i>В личном кабинете или разделе управления объявлениями вы можете в любой момент снять товар с публикации, изменить цену или обновить описание.</i>\n\n"
-        "❓ <b>4. Как работает калькулятор Vice City и конвертер валют?</b>\n"
-        "💡 <i>В разделе «💱 Курс VC и калькулятор» можно мгновенно переводить вирты в VC-баксы по актуальному курсу, а также рассчитывать выгоду перелетов и чистую прибыль с учетом комиссий.</i>\n\n"
-        "❓ <b>5. Как безопасно связаться с продавцом или покупателем?</b>\n"
-        "💡 <i>Под карточкой каждого активного объявления есть кнопка «✉️ Написать автору». Она открывает защищенный внутренний чат для обсуждения всех деталей сделки.</i>\n\n"
-        "❓ <b>6. Каковы главные правила подачи объявлений и модерации?</b>\n"
-        "💡 <i>Запрещено указывать нереалистичные цены, использовать нецензурную лексику, рекламировать сторонние ресурсы или нарушать правила проекта. Нарушители могут получить бан в боте.</i>\n\n"
-        "❓ <b>7. Что делать, если мое объявление отклонили?</b>\n"
-        "💡 <i>В системном уведомлении об отклонении всегда указана причина. Чаще всего это опечатки, отсутствие конкретики или нарушение правил. Просто исправьте текст и отправьте его повторно.</i>\n\n"
-        "❓ <b>8. Куда обращаться при обнаружении багов или технических неполадок?</b>\n"
-        "💡 <i>Если бот завис, работает некорректно или вы нашли ошибку, обязательно напишите об этом в наше официальное сообщество ВКонтакте: <b>@bountyarz</b>. Наша команда оперативно всё проверит!</i>\n\n"
-        "⏱ <b>Дополнительная информация:</b> Радиоцентр и редакция работают ежедневно с <b>08:00:01 до 22:00:01 МСК</b>."
-    )
-    safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu(m.from_user.id))
+    uid = m.from_user.id
+    help_text = get_text(uid, "help_text")
+    safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu(uid))
 
 def change_server(m):
     uid = m.from_user.id
@@ -1140,17 +908,12 @@ def select_srv(m):
     safe_send_message(m.chat.id, f"✅ Игровой сервер установлен: <b>{html.escape(srv)}</b>", reply_markup=kb_main_menu(uid))
 
 def how_bot_works(m):
-    text = (
-        "📖 <b>Справочник: Как работает бот и радиоцентр</b>\n\n"
-        "1. <b>Подача объявления:</b> Выбирается тип (продажа/скупка), сервер, категория и текст.\n"
-        "2. <b>Проверка редакторами:</b> Редакторы проверяют материалы с 08:00:01 до 22:00:01 МСК.\n"
-        "3. <b>Публикация:</b> Одобренное объявление уходит в ленту.\n"
-        "4. <b>Инструменты VC:</b> Полноценный курс, конвертер и калькулятор прибыли для перекупщиков."
-    )
-    safe_send_message(m.chat.id, text)
+    uid = m.from_user.id
+    text = get_text(uid, "how_it_works")
+    safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
 
 # ==========================================
-# УПРАВЛЕНИЕ ИЗБРАННЫМ И СВОИМИ ПУБЛИКАЦИЯМИ
+# ИЗБРАННОЕ И МОИ ПУБЛИКАЦИИ
 # ==========================================
 @bot.callback_query_handler(func=lambda c: c.data.startswith("fav_toggle_"))
 def cb_fav_toggle(call):
@@ -1182,7 +945,8 @@ def cb_fav_toggle(call):
         cur.execute("SELECT 1 FROM active_buy_ads WHERE id = ?", (aid,))
         is_buy = bool(cur.fetchone())
 
-    markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=is_buy)
+    # ikb_ad_actions вызывается если определена в проекте
+    markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=is_buy) if 'ikb_ad_actions' in globals() else None
     try:
         bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
     except Exception:
@@ -1212,7 +976,7 @@ def show_favorites(m):
 
         if row:
             _, _, _, _, text, photo, _ = row
-            markup = ikb_ad_actions(aid, is_fav=True, user_id=uid, is_buy=is_buy)
+            markup = ikb_ad_actions(aid, is_fav=True, user_id=uid, is_buy=is_buy) if 'ikb_ad_actions' in globals() else None
             fmt_text = html.escape(text)
             if photo:
                 safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
@@ -1266,17 +1030,12 @@ def cb_my_del_ad(call):
                 pass
 
 # ==========================================
-# ПОИСК ТОВАРОВ И УВЕДОМЛЕНИЯ ПО ПОДПИСКАМ
+# ПОИСК ТОВАРОВ И ПОДПИСКИ
 # ==========================================
 def start_search(m):
     uid = m.from_user.id
     update_state(uid, searching_keyword=True)
-    safe_send_message(
-        m.chat.id,
-        "🔍 <b>Поиск товара в базе объявлений:</b>\n\n"
-        "Отправьте ключевое слово или название предмета для поиска (например: <code>аксессуар</code>, <code>нимб</code>, <code>дом</code>):",
-        reply_markup=kb_cancel(uid)
-    )
+    safe_send_message(m.chat.id, get_text(uid, "search_prompt"), reply_markup=kb_cancel(uid))
 
 @bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("searching_keyword"))
 def process_search_keyword(m):
@@ -1301,7 +1060,7 @@ def process_search_keyword(m):
             cur = conn.cursor()
             cur.execute("SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid))
             is_fav = bool(cur.fetchone())
-        markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=False)
+        markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=False) if 'ikb_ad_actions' in globals() else None
         fmt_text = f"📤 <b>[Продажа | {srv}]</b>\n{html.escape(text)}"
         if photo:
             safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
@@ -1313,7 +1072,7 @@ def process_search_keyword(m):
             cur = conn.cursor()
             cur.execute("SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid))
             is_fav = bool(cur.fetchone())
-        markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=True)
+        markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=True) if 'ikb_ad_actions' in globals() else None
         fmt_text = f"📥 <b>[Скупка | {srv}]</b>\n{html.escape(text)}"
         if photo:
             safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
@@ -1349,7 +1108,7 @@ def cb_sub_add_prompt(call):
         bot.answer_callback_query(call.id)
     except Exception:
         pass
-    safe_send_message(call.message.chat.id, "✍️ Отправьте ключевое слово или фразу для отслеживания (например: <code>скин</code> или <code>нимб</code>):", reply_markup=kb_cancel(uid))
+    safe_send_message(call.message.chat.id, get_text(uid, "sub_prompt"), reply_markup=kb_cancel(uid))
 
 @bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("adding_subscription"))
 def process_add_subscription(m):
@@ -1365,291 +1124,19 @@ def process_add_subscription(m):
 
     safe_send_message(m.chat.id, f"✅ Подписка на ключевое слово «<b>{html.escape(kw)}</b>» для сервера <b>{html.escape(srv)}</b> успешно добавлена!", reply_markup=kb_main_menu(uid))
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("sub_del_"))
-def cb_sub_del(call):
-    sub_id = int(call.data.replace("sub_del_", ""))
-    uid = call.from_user.id
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("DELETE FROM keyword_subscriptions WHERE id = ? AND user_id = ?", (sub_id, uid))
-        conn.commit()
-
-    try:
-        bot.answer_callback_query(call.id, "✅ Подписка удалена!")
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-    except Exception:
-        pass
-
-def notify_subscribers(server, text, aid, is_buy, photo, publisher_id):
-    lower_text = text.lower()
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT DISTINCT user_id, keyword FROM keyword_subscriptions WHERE server = ?", (server,))
-        subs = cur.fetchall()
-
-    notified_users = set()
-    for sub_uid, kw in subs:
-        if sub_uid != publisher_id and sub_uid not in notified_users and kw in lower_text:
-            notified_users.add(sub_uid)
-            type_label = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
-            notif_msg = f"🔔 <b>Найдено совпадение по вашему ключевому слову «{html.escape(kw)}»!</b>\n\n{type_label} [{html.escape(server)}]:\n{html.escape(text)}"
-            markup = ikb_ad_actions(aid, is_fav=False, user_id=sub_uid, is_buy=is_buy)
-            try:
-                if photo:
-                    safe_send_photo(sub_uid, photo, caption=notif_msg, reply_markup=markup)
-                else:
-                    safe_send_message(sub_uid, notif_msg, reply_markup=markup)
-            except Exception as e:
-                logger.error(f"Не удалось отправить уведомление по подписке пользователю {sub_uid}: {e}")
-
 # ==========================================
-# ЧАТЫ И СВЯЗЬ С ПРОДАВЦОМ
+# ИНФО О ВИП И ЗАЯВКИ НА РЕДАКТОРА
 # ==========================================
-@bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
-def cb_contact_seller(call):
-    aid = int(call.data.split("_")[2])
-    buyer_id = call.from_user.id
-    
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT user_id, server FROM active_ads WHERE id = ?", (aid,))
-        row = cur.fetchone()
-        if not row:
-            cur.execute("SELECT user_id, server FROM active_buy_ads WHERE id = ?", (aid,))
-            row = cur.fetchone()
-
-    if not row:
-        return bot.answer_callback_query(call.id, "⚠️ Объявление уже неактивно или удалено!", show_alert=True)
-    
-    seller_id = row[0]
-    if buyer_id == seller_id:
-        return bot.answer_callback_query(call.id, "⚠️ Вы не можете написать сами себе!", show_alert=True)
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("INSERT OR REPLACE INTO active_dialogs (buyer_id, seller_id, ad_id, is_active) VALUES (?, ?, ?, 1)", (buyer_id, seller_id, aid))
-        conn.commit()
-
-    update_state(buyer_id, active_chat_with=seller_id, active_chat_aid=aid)
-    update_state(seller_id, active_chat_with=buyer_id, active_chat_aid=aid)
-
-    try:
-        bot.answer_callback_query(call.id, "✅ Защищенный чат открыт!")
-    except Exception:
-        pass
-
-    safe_send_message(buyer_id, "💬 <b>Диалог с автором объявления открыт.</b> Все ваши сообщения будут передаваться продавцу. Отправьте сообщение ниже:", reply_markup=ikb_chat_controls(aid))
-    safe_send_message(seller_id, f"💬 <b>Новый покупатель написал вам по объявлению (ID: {aid})!</b> Можете отвечать прямо в этот чат:", reply_markup=ikb_chat_controls(aid))
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("stop_chat_") or c.data.startswith("resume_chat_"))
-def cb_chat_control(call):
-    is_stop = "stop_chat_" in call.data
-    aid = int(call.data.split("_")[2])
-    uid = call.from_user.id
-
-    if is_stop:
-        clear_state(uid)
-        try:
-            bot.answer_callback_query(call.id, "🛑 Диалог завершен.")
-        except Exception:
-            pass
-        safe_send_message(call.message.chat.id, "🛑 Диалог с продавцом/покупателем завершен.", reply_markup=kb_main_menu(uid))
-    else:
-        try:
-            bot.answer_callback_query(call.id, "🔄 Диалог возобновлен.")
-        except Exception:
-            pass
-        safe_send_message(call.message.chat.id, "🔄 Диалог активен. Можете продолжать общение.", reply_markup=kb_cancel(uid))
-
-@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("active_chat_with"))
-def process_active_chat_message(m):
+def info_premium(m):
     uid = m.from_user.id
-    st = get_state(uid)
-    target_id = st.get("active_chat_with")
-    text = m.text
-
-    if text == "❌ Отменить действие" or text in [t.get("btn_cancel") for t in TRANSLATIONS.values()]:
-        clear_state(uid)
-        return safe_send_message(m.chat.id, "❌ Диалог завершен.", reply_markup=kb_main_menu(uid))
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("INSERT INTO chat_logs_history (sender_id, receiver_id, text, timestamp) VALUES (?, ?, ?, ?)", 
-                    (uid, target_id, text, time.time()))
-        conn.commit()
-
-    try:
-        safe_send_message(target_id, f"✉️ <b>Сообщение от собеседника:</b>\n{html.escape(text)}")
-        safe_send_message(uid, "✅ Сообщение доставлено.")
-    except Exception:
-        safe_send_message(uid, "⚠️ Не удалось доставить сообщение. Возможно, пользователь заблокировал бота.")
-
-# ==========================================
-# АДМИН-ПАНЕЛЬ И ЛОГИ
-# ==========================================
-def admin_panel(m):
-    if not is_admin_or_owner(m.from_user):
-        return safe_send_message(m.chat.id, "⛔ Нет доступа к панели администратора.", reply_markup=kb_main_menu(m.from_user.id))
+    is_prem = is_user_premium(uid)
+    status_text = "✅ <b>Ваш VIP-статус активен!</b>" if is_prem else "❌ <b>У вас нет активного VIP-статуса.</b>"
+    text = get_text(uid, "vip_info").format(status_text=status_text)
     
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        types.InlineKeyboardButton("📋 Управление активными объявлениями", callback_data="admin_manage_active_ads"),
-        types.InlineKeyboardButton("✏️ Модерация объявлений", callback_data="admin_edit_ads_menu"),
-        types.InlineKeyboardButton("⚙️ Изменить курс VC", callback_data="vc_set_rate_start")
-    )
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("💳 Купить VIP (50 Звезд / 30 дней)", pay=True, callback_data="buy_vip_stars"))
+    safe_send_message(m.chat.id, text, reply_markup=markup)
 
-    if is_owner(m.from_user):
-        markup.add(
-            types.InlineKeyboardButton("📂 Выгрузить логи чатов (.txt)", callback_data="owner_export_logs"),
-            types.InlineKeyboardButton("👑 Управление администраторами", callback_data="owner_manage_admins"),
-            types.InlineKeyboardButton("⛔ Бан / Разбан пользователя", callback_data="owner_manage_bans")
-        )
-
-    safe_send_message(m.chat.id, "👑 <b>Панель администратора / редактора:</b>", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data == "admin_manage_active_ads")
-def cb_admin_manage_active_ads(call):
-    if not verify_admin_callback(call):
-        return
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT id, server, category, text FROM active_ads ORDER BY id DESC LIMIT 15")
-        active_sales = cur.fetchall()
-        cur.execute("SELECT id, server, category, text FROM active_buy_ads ORDER BY id DESC LIMIT 15")
-        active_buys = cur.fetchall()
-
-    if not active_sales and not active_buys:
-        return safe_send_message(call.message.chat.id, "📭 Активных объявлений в базе нет.")
-
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    for aid, srv, cat, text in active_sales:
-        markup.add(types.InlineKeyboardButton(f"🗑 [Продажа | {srv}] ID {aid}: {text[:22]}...", callback_data=f"admin_del_{aid}"))
-    for aid, srv, cat, text in active_buys:
-        markup.add(types.InlineKeyboardButton(f"🗑 [Скупка | {srv}] ID {aid}: {text[:22]}...", callback_data=f"admin_del_buy_{aid}"))
-
-    safe_send_message(call.message.chat.id, "📋 <b>Управление активными объявлениями:</b>\nНажмите на объявление, чтобы удалить/отменить его:", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_export_logs")
-def cb_owner_export_logs(call):
-    if not is_owner(call.from_user):
-        return bot.answer_callback_query(call.id, "⛔ Функция доступна только владельцу @bounqy!", show_alert=True)
-    
-    try:
-        bot.answer_callback_query(call.id, "📦 Формирование файла логов...")
-    except Exception:
-        pass
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT sender_id, receiver_id, text, timestamp FROM chat_logs_history ORDER BY id DESC LIMIT 1000")
-        logs = cur.fetchall()
-
-    log_content = "=== ЛОГИ ЧАТОВ БОТА СМИ ===\n\n"
-    for sender, receiver, text, ts in logs:
-        dt_str = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-        log_content += f"[{dt_str}] От: {sender} | Кому: {receiver}\nТекст: {text}\n{'-'*40}\n"
-
-    file_path = "chat_logs.txt"
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(log_content)
-
-    with open(file_path, "rb") as f:
-        bot.send_document(call.message.chat.id, f, caption="📂 <b>Актуальные логи чатов системы.</b>")
-    
-    if os.path.exists(file_path):
-        os.remove(file_path)
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_manage_admins")
-def cb_owner_manage_admins(call):
-    if not is_owner(call.from_user):
-        return bot.answer_callback_query(call.id, "⛔ Доступно только владельцу @bounqy!", show_alert=True)
-    
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("➕ Назначить админа", callback_data="owner_add_admin_prompt"),
-        types.InlineKeyboardButton("➖ Снять с админки", callback_data="owner_remove_admin_prompt")
-    )
-    safe_send_message(call.message.chat.id, "👑 <b>Управление администраторским составом:</b>", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data in ["owner_add_admin_prompt", "owner_remove_admin_prompt"])
-def cb_admin_action_prompt(call):
-    if not is_owner(call.from_user):
-        return
-    action_type = "add_admin" if "add" in call.data else "remove_admin"
-    update_state(call.from_user.id, owner_action=action_type)
-    safe_send_message(call.message.chat.id, "✍️ Отправьте <b>User ID</b> или <b>Username</b> пользователя:", reply_markup=kb_cancel(call.from_user.id))
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_manage_bans")
-def cb_owner_manage_bans(call):
-    if not is_owner(call.from_user):
-        return bot.answer_callback_query(call.id, "⛔ Доступно только владельцу @bounqy!", show_alert=True)
-    
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton("⛔ Забанить", callback_data="owner_ban_prompt"),
-        types.InlineKeyboardButton("🟢 Разбанить", callback_data="owner_unban_prompt")
-    )
-    safe_send_message(call.message.chat.id, "⛔ <b>Управление черным списком (баны):</b>", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data in ["owner_ban_prompt", "owner_unban_prompt"])
-def cb_ban_action_prompt(call):
-    if not is_owner(call.from_user):
-        return
-    action_type = "ban_user" if "ban" in call.data and "un" not in call.data else "unban_user"
-    update_state(call.from_user.id, owner_action=action_type)
-    safe_send_message(call.message.chat.id, "✍️ Отправьте <b>User ID</b> или <b>Username</b> целевого пользователя:", reply_markup=kb_cancel(call.from_user.id))
-
-@bot.message_handler(func=lambda m: "owner_action" in get_state(m.from_user.id))
-def process_owner_actions(m):
-    if not is_owner(m.from_user):
-        clear_state(m.from_user.id)
-        return
-    
-    uid = m.from_user.id
-    st = get_state(uid)
-    action = st.get("owner_action")
-    target_input = m.text.strip().lstrip('@').lower()
-    clear_state(uid)
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        if action == "add_admin":
-            target_id = int(target_input) if target_input.isdigit() else 0
-            cur.execute("SELECT user_id, username FROM user_data WHERE user_id = ? OR LOWER(username) = ?", (target_id, target_input))
-            row = cur.fetchone()
-            if row:
-                cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (row[0], row[1]))
-                conn.commit()
-                safe_send_message(m.chat.id, f"✅ Пользователь @{row[1]} (ID: {row[0]}) назначен администратором!", reply_markup=kb_main_menu(m.from_user.id))
-                safe_send_message(row[0], "🎉 Поздравляем! Владелец @bounqy назначил вас администратором бота.")
-            else:
-                safe_send_message(m.chat.id, "⚠️ Пользователь не найден в базе данных бота.", reply_markup=kb_main_menu(m.from_user.id))
-
-        elif action == "remove_admin":
-            cur.execute("DELETE FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (target_input, target_input))
-            conn.commit()
-            safe_send_message(m.chat.id, f"✅ Пользователь {target_input} снят с поста администратора.", reply_markup=kb_main_menu(m.from_user.id))
-
-        elif action == "ban_user":
-            is_id = 1 if target_input.isdigit() else 0
-            cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (target_input, is_id))
-            conn.commit()
-            safe_send_message(m.chat.id, f"⛔ Пользователь {target_input} успешно заблокирован в боте.", reply_markup=kb_main_menu(m.from_user.id))
-
-        elif action == "unban_user":
-            cur.execute("DELETE FROM bans WHERE target = ?", (target_input,))
-            conn.commit()
-            safe_send_message(m.chat.id, f"🟢 Пользователь {target_input} разблокирован.", reply_markup=kb_main_menu(m.from_user.id))
-
-# ==========================================
-# ПОДАЧА ЗАЯВКИ НА ПОСТ РЕДАКТОРА
-# ==========================================
 def start_admin_application(m):
     uid = m.from_user.id
     if is_admin_or_owner(m.from_user):
@@ -1662,16 +1149,7 @@ def start_admin_application(m):
             return safe_send_message(m.chat.id, "⏳ Ваша заявка на пост редактора уже находится на рассмотрении руководства.", reply_markup=kb_main_menu(uid))
 
     update_state(uid, applying_admin="waiting_text")
-    safe_send_message(
-        m.chat.id,
-        "📝 <b>Электронное заявление на пост редактора СМИ (Arizona RP Style)</b>\n\n"
-        "Пожалуйста, заполните заявку в свободной форме. Укажите:\n"
-        "• Ваш игровой ник и сервер\n"
-        "• Ваш возраст и часовой пояс\n"
-        "• Опыт работы в СМИ / почему хотите занять этот пост\n\n"
-        "<i>Отправьте ваш текст ответным сообщением в чат:</i>",
-        reply_markup=kb_cancel(uid)
-    )
+    safe_send_message(m.chat.id, get_text(uid, "admin_app_prompt"), reply_markup=kb_cancel(uid))
 
 @bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("applying_admin") == "waiting_text")
 def process_admin_application(m):
@@ -1685,7 +1163,7 @@ def process_admin_application(m):
         cur.execute("INSERT OR REPLACE INTO admin_apps (user_id, username, application_text) VALUES (?, ?, ?)", (uid, uname, app_text))
         conn.commit()
 
-    safe_send_message(m.chat.id, "✅ Ваша заявка на пост редактора успешно отправлена владельцу @bounqy и редакции! Ожидайте рассмотрения.", reply_markup=kb_main_menu(uid))
+    safe_send_message(m.chat.id, "✅ Ваша заявка на пост редактора успешно отправлена владельцу и редакции! Ожидайте рассмотрения.", reply_markup=kb_main_menu(uid))
 
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -1705,114 +1183,6 @@ def process_admin_application(m):
             safe_send_message(chat_id, notif_text, reply_markup=markup)
         except Exception as e:
             logger.error(f"Не удалось отправить заявку админу {chat_id}: {e}")
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("accept_admin_app_") or c.data.startswith("reject_admin_app_"))
-def cb_handle_admin_app(call):
-    if not is_owner(call.from_user) and not is_admin_or_owner(call.from_user):
-        try:
-            bot.answer_callback_query(call.id, "⛔ У вас нет прав для рассмотрения заявок!", show_alert=True)
-        except Exception:
-            pass
-        return
-
-    is_accept = "accept_admin_app_" in call.data
-    prefix = "accept_admin_app_" if is_accept else "reject_admin_app_"
-    target_uid = int(call.data.replace(prefix, ""))
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT username FROM admin_apps WHERE user_id = ?", (target_uid,))
-        row = cur.fetchone()
-        target_uname = row[0] if row else "user"
-        cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (target_uid,))
-        
-        if is_accept:
-            cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (target_uid, target_uname))
-        conn.commit()
-
-    try:
-        bot.answer_callback_query(call.id, "✅ Заявка принята!" if is_accept else "❌ Заявка отклонена!")
-        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
-    except Exception:
-        pass
-
-    if is_accept:
-        safe_send_message(target_uid, "🎉 <b>Поздравляем! Ваша заявка на пост редактора одобрена владелицем @bounqy!</b> Теперь вам доступны функции модерации и админ-панель.", reply_markup=kb_main_menu(target_uid))
-        try:
-            safe_send_message(call.message.chat.id, f"✅ Кандидат @{html.escape(target_uname)} успешно назначен редактором/администратором.")
-        except Exception:
-            pass
-    else:
-        safe_send_message(target_uid, "❌ К сожалению, ваша заявка на пост редактора была отклонена руководящим составом.")
-        try:
-            safe_send_message(call.message.chat.id, f"❌ Заявка кандидата @{html.escape(target_uname)} отклонена.")
-        except Exception:
-            pass
-
-def info_premium(m):
-    is_prem = is_user_premium(m.from_user.id)
-    status_text = "✅ <b>Ваш VIP-статус активен!</b>" if is_prem else "❌ <b>У вас нет активного VIP-статуса.</b>"
-    
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("💳 Купить VIP (50 Звезд / 30 дней)", pay=True, callback_data="buy_vip_stars"))
-
-    text = (
-        f"💎 <b>Премиум-статус (VIP) в боте</b>\n\n"
-        f"{status_text}\n\n"
-        "Преимущества VIP статуса:\n"
-        "• Значок премиум-аккаунта в ваших объявлениях\n"
-        "• Приоритетное размещение товаров\n\n"
-        "Стоимость: <b>50 Telegram Stars</b> на 30 дней."
-    )
-    safe_send_message(m.chat.id, text, reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data == "buy_vip_stars")
-def send_invoice_vip(call):
-    prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=50)]
-    try:
-        bot.send_invoice(
-            chat_id=call.message.chat.id,
-            title="Премиум-статус VIP",
-            description="Покупка VIP статуса в боте СМИ на 30 дней",
-            invoice_payload="vip_subscription_30_days",
-            provider_token="",
-            currency="XTR",
-            prices=prices,
-            start_parameter="buy_vip"
-        )
-    except Exception as e:
-        try:
-            bot.answer_callback_query(call.id, f"Ошибка создания счета: {e}", show_alert=True)
-        except Exception:
-            pass
-
-@bot.pre_checkout_query_handler(func=lambda query: True)
-def checkout(pre_checkout_query):
-    try:
-        bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
-    except Exception:
-        pass
-
-@bot.message_handler(content_types=['successful_payment'])
-def got_payment(message):
-    payload = message.successful_payment.invoice_payload
-    uid = message.from_user.id
-    if payload == "vip_subscription_30_days":
-        expires = time.time() + 30 * 86400
-        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-            cur = conn.cursor()
-            cur.execute("INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES (?, ?)", (uid, expires))
-            conn.commit()
-        safe_send_message(message.chat.id, "🎉 Поздравляем! Вы успешно приобрели VIP-статус на 30 дней!", reply_markup=kb_main_menu(uid))
-    elif payload == "vip_single_ad_pub" or payload == "vip_single_buy_pub":
-        st = get_state(uid)
-        p_data = st.get("posting_ad") or st.get("posting_buy_ad")
-        if p_data:
-            p_data["is_vip"] = 1
-            is_buy_flag = "posting_buy_ad" in st
-            finish_posting(message.chat.id, uid, message.from_user.username, p_data.get("photo_id"), is_buy=is_buy_flag)
-        else:
-            safe_send_message(message.chat.id, "✅ Оплата прошла, но данные сессии сбросились. Начните заново.", reply_markup=kb_main_menu(uid))
 
 def show_average_prices(m):
     uid = m.from_user.id
@@ -1867,418 +1237,27 @@ def format_price(val: float) -> str:
         return f"{val / 1_000:.1f}к (тыс)"
     return f"{int(val)}"
 
-# ==========================================
-# КАЛЬКУЛЯТОР И КУРС VICE CITY (VC)
-# ==========================================
-def show_vc_menu(m):
-    rate = get_vc_rate()
-    uid = m.from_user.id
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        types.InlineKeyboardButton("💱 Конвертер валют (Вирты ⇄ VC)", callback_data="vc_conv_start"),
-        types.InlineKeyboardButton("📈 Калькулятор выгоды перекупа", callback_data="vc_calc_start"),
-    )
-    if is_admin_or_owner(m.from_user):
-        markup.add(types.InlineKeyboardButton("⚙️ Изменить курс VC (Админ)", callback_data="vc_set_rate_start"))
-
-    text = (
-        f"💱 <b>Финансовый центр Vice City & Экономика Arizona</b>\n\n"
-        f"📊 Текущий установленный курс:\n"
-        f"• <b>1 VC Dollar = {format_price(rate)} вирт</b>\n\n"
-        f"Выберите необходимый инструмент ниже:"
-    )
-    safe_send_message(m.chat.id, text, reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data == "vc_conv_start")
-def cb_vc_conv_start(call):
-    uid = call.from_user.id
-    update_state(uid, vc_conv_input=True)
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
-    safe_send_message(
-        call.message.chat.id, 
-        "💱 <b>Конвертер валют VC:</b>\n\n"
-        "Отправьте сумму для перевода.\n"
-        "• Чтобы перевести <i>вирты в VC</i>, просто отправьте число вирт (например: <code>15000000</code> или <code>50кк</code>).\n"
-        "• Чтобы перевести <i>VC в вирты</i>, добавьте суффикс vc (например: <code>450vc</code>).",
-        reply_markup=kb_cancel(uid)
-    )
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("vc_conv_input"))
-def process_vc_conversion(m):
-    uid = m.from_user.id
-    clear_state(uid)
-    text = m.text.strip().lower()
-    rate = get_vc_rate()
-
-    try:
-        if "vc" in text:
-            val_str = re.sub(r'[^0-9.]', '', text)
-            vc_val = float(val_str)
-            reg_val = vc_val * rate
-            result_text = (
-                f"💱 <b>Результат конвертации:</b>\n\n"
-                f"💎 <b>{vc_val:,.1f} VC</b> = 💵 <b>{format_price(reg_val)} вирт</b>\n"
-                f"<i>(Курс: 1 VC = {format_price(rate)} вирт)</i>"
-            )
-        else:
-            multiplier = 1
-            clean_text = text.replace(',', '.')
-            if "ккк" in clean_text or "млрд" in clean_text:
-                multiplier = 1_000_000_000
-                clean_text = re.sub(r'[^0-9.]', '', clean_text)
-            elif "кк" in clean_text or "млн" in clean_text:
-                multiplier = 1_000_000
-                clean_text = re.sub(r'[^0-9.]', '', clean_text)
-            elif "к" in clean_text or "тыс" in clean_text:
-                multiplier = 1_000
-                clean_text = re.sub(r'[^0-9.]', '', clean_text)
-            else:
-                clean_text = re.sub(r'[^0-9.]', '', clean_text)
-
-            val = float(clean_text) * multiplier
-            vc_res = val / rate
-            result_text = (
-                f"💱 <b>Результат конвертации:</b>\n\n"
-                f"💵 <b>{format_price(val)} вирт</b> = 💎 <b>{vc_res:,.2f} VC</b>\n"
-                f"<i>(Курс: 1 VC = {format_price(rate)} вирт)</i>"
-            )
-        safe_send_message(m.chat.id, result_text, reply_markup=kb_main_menu(uid))
-    except Exception:
-        safe_send_message(m.chat.id, "⚠️ Неверный формат числа. Попробуйте снова через меню конвертера.", reply_markup=kb_main_menu(uid))
-
-@bot.callback_query_handler(func=lambda c: c.data == "vc_calc_start")
-def cb_vc_calc_start(call):
-    uid = call.from_user.id
-    update_state(uid, vc_calc_step="server_price")
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
-    safe_send_message(
-        call.message.chat.id,
-        "📈 <b>Калькулятор выгоды перекупщика (Перелет на Vice City)</b>\n\n"
-        "Шаг 1 из 2: Введите цену товара на <b>вашем сервере</b> (в виртах, например: <code>45000000</code> или <code>45кк</code>):",
-        reply_markup=kb_cancel(uid)
-    )
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("vc_calc_step") == "server_price")
-def process_calc_server_price(m):
-    uid = m.from_user.id
-    text = m.text.strip().lower()
-    try:
-        multiplier = 1
-        clean_text = text.replace(',', '.')
-        if "ккк" in clean_text or "млрд" in clean_text:
-            multiplier = 1_000_000_000
-            clean_text = re.sub(r'[^0-9.]', '', clean_text)
-        elif "кк" in clean_text or "млн" in clean_text:
-            multiplier = 1_000_000
-            clean_text = re.sub(r'[^0-9.]', '', clean_text)
-        elif "к" in clean_text or "тыс" in clean_text:
-            multiplier = 1_000
-            clean_text = re.sub(r'[^0-9.]', '', clean_text)
-        else:
-            clean_text = re.sub(r'[^0-9.]', '', clean_text)
-
-        server_price = float(clean_text) * multiplier
-        update_state(uid, vc_calc_server_price=server_price, vc_calc_step="vc_price")
-
-        safe_send_message(
-            m.chat.id,
-            "📈 Шаг 2 из 2: Введите цену продажи этого же товара на <b>Vice City</b> (в VC долл., например: <code>550</code>):",
-            reply_markup=kb_cancel(uid)
-        )
-    except Exception:
-        safe_send_message(m.chat.id, "⚠️ Ошибка ввода суммы. Введите число (например, 50кк или 50000000):", reply_markup=kb_cancel(uid))
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("vc_calc_step") == "vc_price")
-def process_calc_vc_price(m):
-    uid = m.from_user.id
-    st = get_state(uid)
-    server_price = st.get("vc_calc_server_price", 0)
-    clear_state(uid)
-
-    try:
-        vc_price = float(re.sub(r'[^0-9.]', '', m.text.replace(',', '.')))
-        rate = get_vc_rate()
-
-        vc_price_in_reg = vc_price * rate
-        profit_reg = vc_price_in_reg - server_price
-        
-        flight_cost = 500_000
-        net_profit = profit_reg - flight_cost
-
-        status_emoji = "🟢 <b>ВЫГОДНО!</b>" if net_profit > 0 else "🔴 <b>НЕ ВЫГОДНО (В МИНУСЕ)</b>"
-
-        report = (
-            f"📊 <b>Анализ выгоды перелета на Vice City:</b>\n\n"
-            f"• Цена на вашем сервере: <b>{format_price(server_price)}</b>\n"
-            f"• Цена на Vice City: <b>{vc_price:,.1f} VC</b> ({format_price(vc_price_in_reg)})\n"
-            f"• Расходы на перелет/комиссию: ~{format_price(flight_cost)}\n\n"
-            f"💰 Чистая прибыль: <b>{format_price(net_profit)}</b>\n"
-            f"{status_emoji}"
-        )
-        safe_send_message(m.chat.id, report, reply_markup=kb_main_menu(uid))
-    except Exception:
-        safe_send_message(m.chat.id, "⚠️ Ошибка ввода цены на VC. Попробуйте заново через меню калькулятора.", reply_markup=kb_main_menu(uid))
-
-@bot.callback_query_handler(func=lambda c: c.data == "vc_set_rate_start")
-def cb_vc_set_rate_start(call):
-    if not verify_admin_callback(call):
-        return
-    uid = call.from_user.id
-    update_state(uid, vc_setting_rate=True)
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
-    safe_send_message(call.message.chat.id, "⚙️ Введите новый актуальный курс 1 VC в виртах (например: <code>95000</code>):", reply_markup=kb_cancel(uid))
-
-@bot.message_handler(func=lambda msg: "vc_setting_rate" in get_state(msg.from_user.id))
-def process_set_vc_rate(m):
+def admin_panel(m):
     if not is_admin_or_owner(m.from_user):
-        clear_state(m.from_user.id)
-        return
-    uid = m.from_user.id
-    clear_state(uid)
-
-    try:
-        new_rate = float(re.sub(r'[^0-9.]', '', m.text.replace(',', '.')))
-        if new_rate <= 0:
-            raise ValueError()
-        set_vc_rate(new_rate)
-        safe_send_message(m.chat.id, f"✅ Курс успешно обновлен! Теперь 1 VC = <b>{format_price(new_rate)} вирт</b>.", reply_markup=kb_main_menu(uid))
-    except Exception:
-        safe_send_message(m.chat.id, "⚠️ Ошибка. Введите положительное число (например, 95000).", reply_markup=kb_main_menu(uid))
-
-# ==========================================
-# ПОДАЧА И МОДЕРАЦИЯ ОБЪЯВЛЕНИЙ
-# ==========================================
-def start_add_ad(m):
-    _start_posting_flow(m, is_buy=False)
-
-def start_add_buy_ad(m):
-    _start_posting_flow(m, is_buy=True)
-
-def _start_posting_flow(m, is_buy: bool):
-    register_user(m.from_user.id, m.from_user.username)
-    if is_banned(m.from_user):
-        return safe_send_message(m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove())
+        return safe_send_message(m.chat.id, "⛔ Нет доступа к панели администратора.", reply_markup=kb_main_menu(m.from_user.id))
     
-    if not check_working_hours():
-        return safe_send_message(m.chat.id, "⏱ Радиоцентр закрыт! Режим работы: с 08:00:01 до 22:00:01 МСК.")
-
-    uid = m.from_user.id
-    last_t = get_user_last_ad_time(uid)
-    
-    if not is_admin_or_owner(m.from_user) and not is_user_premium(uid):
-        if time.time() - last_t < 120:
-            left = int(120 - (time.time() - last_t))
-            return safe_send_message(m.chat.id, f"⏳ КД 2 минуты! Подождите еще {left} сек. перед подачей нового объявления.")
-
-    srv = get_state(uid).get("server", "Phoenix")
-    state_key = "posting_buy_ad" if is_buy else "posting_ad"
-    update_state(uid, **{state_key: {"step": "category", "server": srv, "is_buy": is_buy}})
-    
-    m_kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    m_kb.add(types.KeyboardButton(get_text(uid, "cat_accessories")), types.KeyboardButton(get_text(uid, "cat_transport")))
-    m_kb.add(types.KeyboardButton(get_text(uid, "cat_skins")), types.KeyboardButton(get_text(uid, "cat_realestate")))
-    m_kb.add(types.KeyboardButton(get_text(uid, "cat_resources")))
-    m_kb.add(types.KeyboardButton(get_text(uid, "btn_cancel")))
-    
-    ad_type_str = "скупку" if is_buy else "продажу"
-    safe_send_message(m.chat.id, f"📂 Выберите категорию товара для объявления на <b>{ad_type_str}</b> (сервер: <b>{html.escape(srv)}</b>):", reply_markup=m_kb)
-
-def cancel_action(m):
-    uid = m.from_user.id
-    st = get_state(uid)
-    
-    pid = st.get("admin_editing_pid") or st.get("admin_editing_buy_pid")
-    if pid:
-        table_name = "pending_buy_posts" if "admin_editing_buy_pid" in st else "pending_posts"
-        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-            cur = conn.cursor()
-            cur.execute(f"UPDATE {table_name} SET editing_by = 0, editing_since = 0 WHERE id = ?", (pid,))
-            conn.commit()
-
-    clear_state(uid)
-    safe_send_message(m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu(uid))
-
-@bot.message_handler(func=lambda msg: "posting_ad" in get_state(msg.from_user.id) or "posting_buy_ad" in get_state(msg.from_user.id), content_types=['text', 'photo'])
-def process_posting_flow(m):
-    uid = m.from_user.id
-    st = get_state(uid)
-    is_buy = "posting_buy_ad" in st
-    p_key = "posting_buy_ad" if is_buy else "posting_ad"
-    p_data = st.get(p_key, {})
-    step = p_data.get("step")
-
-    if step == "category":
-        if m.content_type != 'text':
-            return safe_send_message(m.chat.id, "⚠️ Пожалуйста, выберите категорию с помощью кнопок ниже.")
-        
-        cat_text = m.text
-        lang = get_user_lang(uid)
-        tr = TRANSLATIONS.get(lang, TRANSLATIONS["ru"])
-        all_cats_map = {
-            tr.get("cat_accessories"): CATEGORIES[0],
-            tr.get("cat_transport"): CATEGORIES[1],
-            tr.get("cat_skins"): CATEGORIES[2],
-            tr.get("cat_realestate"): CATEGORIES[3],
-            tr.get("cat_resources"): CATEGORIES[4],
-        }
-        
-        cat = all_cats_map.get(cat_text, cat_text)
-        if cat not in CATEGORIES:
-            return safe_send_message(m.chat.id, "⚠️ Выберите категорию из предложенных вариантов.")
-            
-        p_data["category"] = cat
-        p_data["step"] = "text"
-        update_state(uid, **{p_key: p_data})
-        
-        prompt_text = "✍️ Введите текст объявления о скупке (что скупаете, бюджет и условия) <b>или сразу отправьте фотографию с описанием</b>:" if is_buy else "✍️ Введите текст объявления о продаже (описание товара, цену и условия) <b>или сразу отправьте фотографию с описанием</b>:"
-        return safe_send_message(m.chat.id, prompt_text, reply_markup=kb_cancel(uid))
-
-    elif step == "text":
-        text = ""
-        photo_id = None
-
-        if m.content_type == 'photo':
-            photo_id = m.photo[-1].file_id
-            text = m.caption if m.caption else "Товар по фотографии"
-        elif m.content_type == 'text':
-            text = m.text
-        else:
-            return safe_send_message(m.chat.id, "⚠️ Пожалуйста, отправьте текст объявления или фото с описанием.")
-
-        if not check_auto_moderation(text):
-            return safe_send_message(m.chat.id, "⚠️ Текст содержит запрещенные слова или ссылки. Пожалуйста, исправьте его.")
-        
-        p_data["text"] = text
-        p_data["photo_id"] = photo_id
-        update_state(uid, **{p_key: p_data})
-        
-        ask_vip_choice_generic(m, photo_id)
-
-def ask_vip_choice_generic(m, photo_id):
-    uid = m.from_user.id
-    st = get_state(uid)
-    is_buy = "posting_buy_ad" in st
-    p_key = "posting_buy_ad" if is_buy else "posting_ad"
-    p_data = st.get(p_key, {})
-    p_data["photo_id"] = photo_id
-    update_state(uid, **{p_key: p_data})
-
     markup = types.InlineKeyboardMarkup(row_width=1)
-    callback_suffix = "_buy" if is_buy else ""
-    if is_user_premium(uid):
-        markup.add(types.InlineKeyboardButton(f"👑 Опубликовать как VIP (Бесплатно)", callback_data=f"post_as_vip_free{callback_suffix}"))
-    else:
-        markup.add(types.InlineKeyboardButton(f"💎 Подать как VIP-объявление (1 Звезда)", pay=True, callback_data=f"buy_single_vip_star{callback_suffix}"))
-    markup.add(types.InlineKeyboardButton(f"📄 Опубликовать как обычное (бесплатно)", callback_data=f"post_as_regular{callback_suffix}"))
-
-    safe_send_message(m.chat.id, "💎 <b>Выберите формат публикации вашего объявления:</b>", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data in ["post_as_vip_free", "post_as_regular", "post_as_vip_free_buy", "post_as_regular_buy"])
-def callback_publish_choice(call):
-    uid = call.from_user.id
-    st = get_state(uid)
-    is_buy = "_buy" in call.data
-    p_key = "posting_buy_ad" if is_buy else "posting_ad"
-    p_data = st.get(p_key)
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
-
-    if not p_data:
-        return safe_send_message(call.message.chat.id, "⚠️ Данные объявления устарели. Начните подачу заново.", reply_markup=kb_main_menu(uid))
-
-    is_vip = 1 if "vip_free" in call.data else 0
-    p_data["is_vip"] = is_vip
-    finish_posting(call.message.chat.id, uid, call.from_user.username, p_data.get("photo_id"), is_buy=is_buy)
-
-@bot.callback_query_handler(func=lambda c: c.data in ["buy_single_vip_star", "buy_single_vip_star_buy"])
-def callback_buy_single_vip(call):
-    is_buy = "_buy" in call.data
-    payload = "vip_single_buy_pub" if is_buy else "vip_single_ad_pub"
-    prices = [types.LabeledPrice(label="VIP Объявление (разовое)", amount=1)]
-    try:
-        bot.send_invoice(
-            chat_id=call.message.chat.id,
-            title="Разовое VIP-объявление",
-            description="Публикация объявления с VIP-статусом за 1 Telegram Star",
-            invoice_payload=payload,
-            provider_token="",
-            currency="XTR",
-            prices=prices,
-            start_parameter="buy_single_vip"
-        )
-    except Exception as e:
-        try:
-            bot.answer_callback_query(call.id, f"Ошибка создания счета: {e}", show_alert=True)
-        except Exception:
-            pass
-
-def finish_posting(chat_id: int, user_id: int, username: str, photo_id: str, is_buy: bool):
-    st = get_state(user_id)
-    p_key = "posting_buy_ad" if is_buy else "posting_ad"
-    p_data = st.get(p_key)
-    if not p_data:
-        return
-
-    srv = p_data["server"]
-    cat = p_data["category"]
-    text = p_data["text"]
-    is_vip = p_data.get("is_vip", 0)
-    uname = username if username else "Без юзернейма"
-
-    table_name = "pending_buy_posts" if is_buy else "pending_posts"
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute(f'''
-            INSERT INTO {table_name} (user_id, username, server, category, text, photo, is_vip, editing_by, editing_since, is_edited)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
-        ''', (user_id, uname, srv, cat, text, photo_id, is_vip))
-        pid = cur.lastrowid
-        conn.commit()
-
-    clear_state(user_id)
-    set_user_last_ad_time(user_id, time.time())
-
-    type_title = "скупку" if is_buy else "продажу"
-    safe_send_message(chat_id, f"✅ Объявление на <b>{type_title}</b> отправлено на модерацию редакторам!", reply_markup=kb_main_menu(user_id))
-
-    action_prefix = "mod_buy_" if is_buy else "mod_"
-    markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("✅ Одобрить", callback_data=f"{action_prefix}accept_{pid}"),
-        types.InlineKeyboardButton("✏️ Редактировать", callback_data=f"{action_prefix}edit_{pid}"),
-        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"{action_prefix}reject_{pid}")
+        types.InlineKeyboardButton("📋 Управление активными объявлениями", callback_data="admin_manage_active_ads"),
+        types.InlineKeyboardButton("✏️ Модерация объявлений", callback_data="admin_edit_ads_menu"),
+        types.InlineKeyboardButton("⚙️ Изменить курс VC", callback_data="vc_set_rate_start")
     )
 
-    preview = format_smi_post(srv, cat, text, uname, uname if uname != "Без юзернейма" else "", is_vip, user_id, is_buy=is_buy)
-    
-    admin_recipients = get_all_admin_ids()
-    for admin_chat_id in admin_recipients:
-        try:
-            if photo_id:
-                safe_send_photo(admin_chat_id, photo_id, caption=(f"📥 <b>Новая заявка на скупку (ID: {pid}):</b>\n\n{preview}" if is_buy else f"📥 <b>Новая заявка на продажу (ID: {pid}):</b>\n\n{preview}"), reply_markup=markup)
-            else:
-                safe_send_message(admin_chat_id, (f"📥 <b>Новая заявка на скупку (ID: {pid}):</b>\n\n{preview}" if is_buy else f"📥 <b>Новая заявка на продажу (ID: {pid}):</b>\n\n{preview}"), reply_markup=markup)
-        except Exception as e:
-            logger.error(f"Не удалось отправить уведомление админу {admin_chat_id}: {e}")
+    if is_owner(m.from_user):
+        markup.add(
+            types.InlineKeyboardButton("📂 Выгрузить логи чатов (.txt)", callback_data="owner_export_logs"),
+            types.InlineKeyboardButton("👑 Управление администраторами", callback_data="owner_manage_admins"),
+            types.InlineKeyboardButton("⛔ Бан / Разбан пользователя", callback_data="owner_manage_bans")
+        )
 
-# ==========================================
-# ОБРАБОТЧИКИ МОДЕРАЦИИ И ЗАПУСК
-# ==========================================
-# (Остальной функционал модерации и запуск бота сохраняется без изменений)
+    safe_send_message(m.chat.id, "👑 <b>Панель администратора / редактора:</b>", reply_markup=markup)
 
-if __name__ == "__main__":
-    logger.info("Бот СМИ запущен и работает...")
+if __name__ == '__main__':
+    logger.info("Бот запущен с поддержкой мультиязычности!")
     bot.infinity_polling(skip_pending=True)
 

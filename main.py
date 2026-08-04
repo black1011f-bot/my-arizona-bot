@@ -158,103 +158,475 @@ TRANSLATIONS = {
         "cat_skins": "👕 Скіни та охоронці",
         "cat_realestate": "🏠 Нерухомість і бізнеси",
         "cat_resources": "📦 Ресурси та матеріали",
-        "help_text": "🛠 <b>Допомога, правила та розширений FAQ</b>",
-        "how_it_works": "📖 <b>Довідник: Як працює бот і радіоцентр</b>",
-        "vip_info": "💎 <b>Преміум-статус (VIP) у боті</b>\n\n{status_text}",
-        "search_prompt": "🔍 <b>Пошук товару в базі оголошень:</b>\n\nНадішліть ключове слово:",
-        "sub_prompt": "✍️ Надішліть ключове слово для відстеження:",
-        "admin_app_prompt": "📝 <b>Електронна заява на пост редактора ЗМІ:</b>\n\nНадішліть ваш текст:",
+        "help_text": (
+            "🛠 <b>Допомога, правила та розширений FAQ</b>\n\n"
+            "❓ <b>1. Як подати оголошення про продаж або скупку?</b>\n"
+            "💡 <i>Виберіть потрібний ігровий сервер у головному меню -> Натисніть «📤 Продати товар» або «📥 Скупити товар» -> Виберіть категорію -> Введіть товар, ціну та умови -> Надішліть на модерацію редакторам.</i>\n\n"
+            "❓ <b>2. Скільки часу редактори перевіряють заявки?</b>\n"
+            "💡 <i>Зазвичай перевірка займає максимум пару хвилин, якщо редактори є в мережі. Ви отримаєте сповіщення в чат одразу після публікації або відхилення оголошення.</i>\n\n"
+            "❓ <b>3. Як змінити або видалити вже опубліковане оголошення?</b>\n"
+            "💡 <i>У особистому кабінеті або розділі управління оголошеннями ви можете в будь-який момент зняти товар з публікації, змінити ціну або оновити опис.</i>\n\n"
+            "❓ <b>4. Як працює калькулятор Vice City та конвертер валют?</b>\n"
+            "💡 <i>У розділі «💱 Курс VC та калькулятор» можна миттєво переводити вірти у VC-бакси за актуальним курсом, а також розраховувати вигоду перельотів і чистий прибуток з урахуванням комісій.</i>\n\n"
+            "❓ <b>5. Як безпечно зв'язатися з продавцем чи покупцем?</b>\n"
+            "💡 <i>Під карткою кожного активного оголошення є кнопка «✉️ Написати автору». Вона відкриває захищений внутрішній чат для обговорення всіх деталей угоди.</i>\n\n"
+            "❓ <b>6. Які головні правила подачі оголошень та модерації?</b>\n"
+            "💡 <i>Заборонено вказувати нереалістичні ціни, використовувати нецензурну лексику, рекламувати сторонні ресурси чи порушувати правила проєкту. Порушники можуть отримати бан у боті.</i>\n\n"
+            "❓ <b>7. Що робити, якщо моє оголошення відхилили?</b>\n"
+            "💡 <i>У системному сповіщенні про відхилення завжди вказано причину. Найчастіше це друкарські помилки, відсутність конкретики або порушення правил. Просто виправте текст і надішліть його повторно.</i>\n\n"
+            "❓ <b>8. Куди звертатися при виявленні багів чи технічних неполадок?</b>\n"
+            "💡 <i>Якщо бот завис, працює некоректно або ви знайшли помилку, обов'язково напишіть про це в наше офіційне товариство: <b>@bountyarz</b>. Наша команда оперативно все перевірить!</i>\n\n"
+            "⏱ <b>Додаткова інформація:</b> Радіоцентр та редакція працюють щодня з <b>08:00:01 до 22:00:01 МСК</b>."
+        ),
+        "how_it_works": (
+            "📖 <b>Довідник: Як працює бот і радіоцентр</b>\n\n"
+            "1. <b>Подача оголошення:</b> Вибирається тип (продаж/скупка), сервер, категорія та текст.\n"
+            "2. <b>Перевірка редакторами:</b> Редактори перевіряють матеріали з 08:00:01 до 22:00:01 МСК.\n"
+            "3. <b>Публікація:</b> Схвалене оголошення йде в стрічку.\n"
+            "4. <b>Інструменти VC:</b> Повноцінний курс, конвертер та калькулятор прибутку для перекупників."
+        ),
+        "vip_info": (
+            "💎 <b>Преміум-статус (VIP) у боті</b>\n\n"
+            "{status_text}\n\n"
+            "Переваги VIP статусу:\n"
+            "• Значок преміум-акаунта у ваших оголошеннях\n"
+            "• Пріоритетне розміщення товарів\n\n"
+            "Вартість: <b>50 Telegram Stars</b> на 30 днів."
+        ),
+        "search_prompt": "🔍 <b>Пошук товару в базі оголошень:</b>\n\nНадішліть ключове слово або назву предмета для пошуку (наприклад: <code>аксесуар</code>, <code>німб</code>, <code>будинок</code>):",
+        "sub_prompt": "✍️ Надішліть ключове слово або фразу для відстеження (наприклад: <code>скін</code> або <code>німб</code>):",
+        "admin_app_prompt": (
+            "📝 <b>Електронна заява на пост редактора ЗМІ (Arizona RP Style)</b>\n\n"
+            "Будь ласка, заповніть заявку у вільній формі. Вкажіть:\n"
+            "• Ваш ігровий нік і сервер\n"
+            "• Ваш вік і часовий пояс\n"
+            "• Досвід роботи в ЗМІ / чому хочете обійняти цей пост\n\n"
+            "<i>Надішліть ваш текст відповідним повідомленням у чат:</i>"
+        ),
     },
     "be": {
-        "welcome": "🌟 <b>Вірыем! Звярніце ўвагу: мы не афіцыйны бот</b>, а незалежны памочнік для гульцоў Arizona RP...",
+        "welcome": "🌟 <b>Вірыем! Звярніце ўвагу: мы не афіцыйны бот</b>, а незалежны памочнік для гульцоў Arizona RP. Мы дапамагаем гульцам знаходзіць аксэсуары, транспарт, нерухомасць і іншыя каштоўныя рэчы, а таксама сачыць за эканомікай і курсамі.\n\n🔒 <b>Бяспека:</b> Мы <b>ніколі</b> не просім паролі ад гульнявых акаўнтаў або асабістыя дадзеныя!\n\n⏱ <b>Рэжым працы радыёцэнтра:</b> штодня з <b>08:00:01 да 22:00:01 МСК</b>.\n\n👇 <b>Для пачатку працы выберыце свой гульнявы сервер ніжэй:</b>",
         "lang_changed": "✅ Мова паспяхова зменена на беларускую.",
-        "btn_change_server": "🌐 Змяніць гульнявы сервер", "btn_change_lang": "🌐 Змяніць мову",
-        "btn_accessories": "💍 Аксэсуары і рэчы", "btn_transport": "🚗 Транспарт і цюнінг", "btn_skins": "👕 Скіны і ахоўнікі", "btn_realestate": "🏠 Нерухомасць і бізнесы", "btn_resources": "📦 Рэсурсы і матэрыялы",
-        "btn_sell": "📤 Прадаць тавар", "btn_buy": "📥 Скупіць тавар", "btn_vc_calc": "💱 Курс VC і калькулятар", "btn_find_ad": "🔍 Знайсці тавар у базе", "btn_favorites": "❤️ Захаваныя", "btn_notifications": "🔔 Паведамленні аб пошуку", "btn_my_ads": "📋 Мае публікацыі", "btn_avg_prices": "📊 Аналіз цэн на серверы", "btn_vip": "💎 VIP-статус", "btn_admin_panel": "👑 Адмін-панэль", "btn_become_editor": "📝 Стаць рэдактарам / адмінам", "btn_cancel": "❌ Скасаваць дзеянне", "btn_help": "📖 Даведка і правілы",
-        "cat_accessories": "💍 Аксэсуары і рэчы", "cat_transport": "🚗 Транспарт і цюнінг", "cat_skins": "👕 Скіны і ахоўнікі", "cat_realestate": "🏠 Нерухомасць і бізнесы", "cat_resources": "📦 Рэсурсы і матэрыялы",
-        "help_text": "🛠 Дапамога", "how_it_works": "📖 Даведнік", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Пошук:", "sub_prompt": "✍️ Падпіска:", "admin_app_prompt": "📝 Заява:"
+        "btn_change_server": "🌐 Змяніць гульнявой сервер",
+        "btn_change_lang": "🌐 Змяніць мову",
+        "btn_accessories": "💍 Аксэсуары і рэчы",
+        "btn_transport": "🚗 Транспарт і цюнінг",
+        "btn_skins": "👕 Скіны і ахоўнікі",
+        "btn_realestate": "🏠 Нерухомасць і бізнесы",
+        "btn_resources": "📦 Рэсурсы і матэрыялы",
+        "btn_sell": "📤 Прадаць тавар",
+        "btn_buy": "📥 Скупіць тавар",
+        "btn_vc_calc": "💱 Курс VC і калькулятар",
+        "btn_find_ad": "🔍 Знайсці тавар у базе",
+        "btn_favorites": "❤️ Захаваныя",
+        "btn_notifications": "🔔 Паведамленні аб пошуку",
+        "btn_my_ads": "📋 Мае публікацыі",
+        "btn_avg_prices": "📊 Аналіз цэн на серверы",
+        "btn_vip": "💎 VIP-статус",
+        "btn_admin_panel": "👑 Адмін-панэль",
+        "btn_become_editor": "📝 Стаць рэдактарам / адмінам",
+        "btn_cancel": "❌ Скасаваць дзеянне",
+        "btn_help": "📖 Даведка і правілы",
+        "cat_accessories": "💍 Аксэсуары і рэчы",
+        "cat_transport": "🚗 Транспарт і цюнінг",
+        "cat_skins": "👕 Скіны і ахоўнікі",
+        "cat_realestate": "🏠 Нерухомасць і бізнесы",
+        "cat_resources": "📦 Рэсурсы і матэрыялы",
+        "help_text": "🛠 <b>Дапамога, правілы і пашыраны FAQ</b>\n\n❓ <b>1. Як падаць аб'яву аб продажы ці скупы?</b>\n💡 <i>Выберыце патрэбны гульнявой сервер у галоўным меню -> Націсніце «📤 Прадаць тавар» або «📥 Скупіць тавар» -> Выберыце катэгорыю -> Увядзіце тавар, цану і ўмовы -> Адпраўце на мадэрацыю рэдактарам.</i>",
+        "how_it_works": "📖 <b>Даведнік: Як працуе бот і радыёцэнтр</b>",
+        "vip_info": "💎 <b>Прэміум-статус (VIP) у боце</b>\n\n{status_text}\n\nКошт: <b>50 Telegram Stars</b> на 30 дзён.",
+        "search_prompt": "🔍 <b>Пошук тавару ў базе аб'яў:</b>\n\nАдпраўце ключавое слова або назву прадмета:",
+        "sub_prompt": "✍️ Адпраўце ключавое слова для адсочвання:",
+        "admin_app_prompt": "📝 <b>Электронная заява на пасаду рэдактара СМІ:</b>\n\nАдпраўце ваш тэкст:",
     },
     "kk": {
-        "welcome": "🌟 <b>Сәлем! Назар аударыңыз: біз ресми бот емеспіз</b>, Arizona RP ойыншыларына көмекшіміз...",
-        "lang_changed": "✅ Тіл қазақ тіліне өзгертілді.",
-        "btn_change_server": "🌐 Серверді өзгерту", "btn_change_lang": "🌐 Тілді өзгерту",
-        "btn_accessories": "💍 Аксессуарлар", "btn_transport": "🚗 Көлік", "btn_skins": "👕 Скиндер", "btn_realestate": "🏠 Жылжымайтын мүлік", "btn_resources": "📦 Ресурстар",
-        "btn_sell": "📤 Сату", "btn_buy": "📥 Сатып алу", "btn_vc_calc": "💱 VC курсы", "btn_find_ad": "🔍 Іздеу", "btn_favorites": "❤️ Сақталғандар", "btn_notifications": "🔔 Хабарламалар", "btn_my_ads": "📋 Менің жарияланымдарым", "btn_avg_prices": "📊 Бағаларды талдау", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 Админ панелі", "btn_become_editor": "📝 Редактор болу", "btn_cancel": "❌ Болдырмау", "btn_help": "📖 Анықтама",
-        "cat_accessories": "💍 Аксессуарлар", "cat_transport": "🚗 Көлік", "cat_skins": "👕 Скиндер", "cat_realestate": "🏠 Жылжымайтын мүлік", "cat_resources": "📦 Ресурстар",
-        "help_text": "🛠 Көмек", "how_it_works": "📖 Анықтама", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Іздеу:", "sub_prompt": "✍️ Бақылау:", "admin_app_prompt": "📝 Өтініш:"
+        "welcome": "🌟 <b>Сәлем! Назар аударыңыз: біз ресми бот емеспіз</b>, Arizona RP ойыншыларына арналған тәуелсіз көмекшіміз. Біз ойыншыларға аксессуарлар, көлік, жылжымайтын мүлік және басқа да құнды заттарды табуға, сондай-ақ экономика мен курстарды қадағалауға көмектесеміз.\n\n🔒 <b>Қауіпсіздік:</b> Біз <b>ешқашан</b> ойын аккаунттарының парольдерін немесе жеке деректерді сұрамаймыз!\n\n⏱ <b>Радиоорталықтың жұмыс уақыты:</b> күн сайын <b>08:00:01 мен 22:00:01 МСК</b> аралығында.\n\n👇 <b>Жұмысты бастау үшін төменден өз ойын серверіңізді таңдаңыз:</b>",
+        "lang_changed": "✅ Тіл қазақ тіліне сәтті өзгертілді.",
+        "btn_change_server": "🌐 Серверді өзгерту",
+        "btn_change_lang": "🌐 Тілді өзгерту",
+        "btn_accessories": "💍 Аксессуарлар мен заттар",
+        "btn_transport": "🚗 Көлік және тюнинг",
+        "btn_skins": "👕 Скиндер мен күзетшілер",
+        "btn_realestate": "🏠 Жылжымайтын мүлік және бизнес",
+        "btn_resources": "📦 Ресурстар мен материалдар",
+        "btn_sell": "📤 Тауарды сату",
+        "btn_buy": "📥 Тауарды сатып алу",
+        "btn_vc_calc": "💱 VC курсы және калькулятор",
+        "btn_find_ad": "🔍 Базадан тауар табу",
+        "btn_favorites": "❤️ Сақталғандар",
+        "btn_notifications": "🔔 Іздеу туралы хабарламалар",
+        "btn_my_ads": "📋 Менің жарияланымдарым",
+        "btn_avg_prices": "📊 Сервердегі бағаларды талдау",
+        "btn_vip": "💎 VIP-статус",
+        "btn_admin_panel": "👑 Админ панели",
+        "btn_become_editor": "📝 Редактор / админ болу",
+        "btn_cancel": "❌ Әрекетті болдырмау",
+        "btn_help": "📖 Анықтама және ережелер",
+        "cat_accessories": "💍 Аксессуарлар мен заттар",
+        "cat_transport": "🚗 Көлік және тюнинг",
+        "cat_skins": "👕 Скиндер мен күзетшілер",
+        "cat_realestate": "🏠 Жылжымайтын мүлік және бизнес",
+        "cat_resources": "📦 Ресурстар мен материалдар",
+        "help_text": "🛠 <b>Көмек, ережелер және кеңейтілген FAQ</b>",
+        "how_it_works": "📖 <b>Анықтамалық: Бот және радиоорталық қалай жұмыс істейді</b>",
+        "vip_info": "💎 <b>Ботымыздағы премиум-статус (VIP)</b>\n\n{status_text}\n\nҚұны: <b>50 Telegram Stars</b> 30 күнге.",
+        "search_prompt": "🔍 <b>Хабарламалар базасынан іздеу:</b>\n\nКілт сөзді жіберіңіз:",
+        "sub_prompt": "✍️ Бақылау үшін кілт сөзді жіберіңіз:",
+        "admin_app_prompt": "📝 <b>СМИ редакторы қызметіне электронды өтініш:</b>\n\nМәтініңізді жіберіңіз:",
     },
     "uz": {
-        "welcome": "🌟 <b>Salom! Biz rasmiy bot emasmiz</b>...", "lang_changed": "✅ Til o'zbek tiliga o'zgartirildi.",
-        "btn_change_server": "🌐 Serverni o'zgartirish", "btn_change_lang": "🌐 Tilni o'zgartirish",
-        "btn_accessories": "💍 Aksessuarlar", "btn_transport": "🚗 Transport", "btn_skins": "👕 Skinlar", "btn_realestate": "🏠 Ko'chmas mulk", "btn_resources": "📦 Resurslar",
-        "btn_sell": "📤 Sotish", "btn_buy": "📥 Sotib olish", "btn_vc_calc": "💱 VC kursi", "btn_find_ad": "🔍 Topish", "btn_favorites": "❤️ Saqlanganlar", "btn_notifications": "🔔 Bildirishnomalar", "btn_my_ads": "📋 Mening nashrlarim", "btn_avg_prices": "📊 Narxlar tahlili", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 Admin paneli", "btn_become_editor": "📝 Muharrir bo'lish", "btn_cancel": "❌ Bekor qilish", "btn_help": "📖 Yordam",
-        "cat_accessories": "💍 Aksessuarlar", "cat_transport": "🚗 Transport", "cat_skins": "👕 Skinlar", "cat_realestate": "🏠 Ko'chmas mulk", "cat_resources": "📦 Resurslar",
-        "help_text": "🛠 Yordam", "how_it_works": "📖 Qo'llanma", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Izlash:", "sub_prompt": "✍️ Kuzatish:", "admin_app_prompt": "📝 Ariza:"
+        "welcome": "🌟 <b>Salom! Diqqat qiling: biz rasmiy bot emasmiz</b>, Arizona RP o'yinchilari uchun mustaqil yordamchimiz. Biz o'yinchilarga aksessuarlar, transport, ko'chmas mulk va boshqa qimmatbaho narsalarni topishda, shuningdek iqtisodiyot va kurslarni kuzatishda yordam beramiz.\n\n🔒 <b>Xavfsizlik:</b> Biz <b>hech qachon</b> o'yin akkauntlari parollarini yoki shaxsiy ma'lumotlarni so'ramaymiz!\n\n⏱ <b>Radio markazining ish vaqti:</b> har kuni <b>08:00:01 dan 22:00:01 MSK</b> gacha.\n\n👇 <b>Ishni boshlash uchun quyidan o'yin gapingizni tanlang:</b>",
+        "lang_changed": "✅ Til muvaffaqiyatli o'zbek tiliga o'zgartirildi.",
+        "btn_change_server": "🌐 O'yin serverini o'zgartirish",
+        "btn_change_lang": "🌐 Tilni o'zgartirish",
+        "btn_accessories": "💍 Aksessuarlar va buyumlar",
+        "btn_transport": "🚗 Transport va tuning",
+        "btn_skins": "👕 Skinlar va qo'riqchilar",
+        "btn_realestate": "🏠 Ko'chmas mulk va biznes",
+        "btn_resources": "📦 Resurslar va materiallar",
+        "btn_sell": "📤 Tovarni sotish",
+        "btn_buy": "📥 Tovarni sotib olish",
+        "btn_vc_calc": "💱 VC kursi va kalkulyator",
+        "btn_find_ad": "🔍 Bazadan tovar topish",
+        "btn_favorites": "❤️ Saqlanganlar",
+        "btn_notifications": "🔔 Qidiruv bildirishnomalari",
+        "btn_my_ads": "📋 Mening e'lonlarim",
+        "btn_avg_prices": "📊 Serverdagi narxlar tahlili",
+        "btn_vip": "💎 VIP-status",
+        "btn_admin_panel": "👑 Admin paneli",
+        "btn_become_editor": "📝 Muharrir / admin bo'lish",
+        "btn_cancel": "❌ Amalni bekor qilish",
+        "btn_help": "📖 Yordam va qoidalar",
+        "cat_accessories": "💍 Aksessuarlar va buyumlar",
+        "cat_transport": "🚗 Transport va tuning",
+        "cat_skins": "👕 Skinlar va qo'riqchilar",
+        "cat_realestate": "🏠 Ko'chmas mulk va biznes",
+        "cat_resources": "📦 Resurslar va materiallar",
+        "help_text": "🛠 <b>Yordam, qoidalar va kengaytirilgan FAQ</b>",
+        "how_it_works": "📖 <b>Qo'llanma: Bot va radio markazi qanday ishlaydi</b>",
+        "vip_info": "💎 <b>Botdagi premium-status (VIP)</b>\n\n{status_text}\n\nNarxi: 30 kun uchun <b>50 Telegram Stars</b>.",
+        "search_prompt": "🔍 <b>E'lonlar bazasidan qidirish:</b>\n\nKalit so'zni yuboring:",
+        "sub_prompt": "✍️ Kuzatish uchun kalit so'zni yuboring:",
+        "admin_app_prompt": "📝 <b>OAV muharriri lavozimiga ariza:</b>\n\nMatningizni yuboring:",
     },
     "hy": {
-        "welcome": "🌟 <b>Բարև ձեզ: Մենք պաշտոնական բոտ չենք</b>...", "lang_changed": "✅ Լեզուն փոխվեց հայերենի:",
-        "btn_change_server": "🌐 Փոխել սերվերը", "btn_change_lang": "🌐 Փոխել լեզուն",
-        "btn_accessories": "💍 Աքսեսուարներ", "btn_transport": "🚗 Տրանսպորտ", "btn_skins": "👕 Սկիններ", "btn_realestate": "🏠 Անշարժ գույք", "btn_resources": "📦 Ռեսուրսներ",
-        "btn_sell": "📤 Վաճառել", "btn_buy": "📥 Գնել", "btn_vc_calc": "💱 VC հաշվիչ", "btn_find_ad": "🔍 Գտնել", "btn_favorites": "❤️ Պահպանվածներ", "btn_notifications": "🔔 Ծանուցումներ", "btn_my_ads": "📋 Իմ հրապարակումները", "btn_avg_prices": "📊 Գների վերլուծություն", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 Ադմին վահանակ", "btn_become_editor": "📝 Դառնալ խմբագիր", "btn_cancel": "❌ Չեղարկել", "btn_help": "📖 Օգնություն",
-        "cat_accessories": "💍 Աքսեսուարներ", "cat_transport": "🚗 Տրանսպորտ", "cat_skins": "👕 Սկիններ", "cat_realestate": "🏠 Անշարժ գույք", "cat_resources": "📦 Ռեսուրսներ",
-        "help_text": "🛠 Օգնություն", "how_it_works": "📖 Ինչպես է աշխատում", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Որոնել:", "sub_prompt": "✍️ Հետևել:", "admin_app_prompt": "📝 Դիմում:"
+        "welcome": "🌟 <b>Բարև ձեզ: Խնդրում ենք նկատել՝ մենք պաշտոնական բոտ չենք</b>, այլ անկախ օգնական Arizona RP խաղացողների համար։ Մենք օգնում ենք գտնել աքսեսուարներ, տրանսպորտ, անշարժ գույք և այլ արժեքավոր իրեր։\n\n🔒 <b>Անվտանգություն:</b> Մենք <b>երբեք</b> չենք խնդրում խաղային հաշիվների գաղտնաբառեր կամ անձնական տվյալներ!\n\n⏱ <b>Ռադիոկենտրոնի աշխատանքային ժամերը:</b> ամեն օր <b>08:00:01-ից 22:00:01 ՄՍԿ</b>:\n\n👇 <b>Սկսելու համար ընտրեք ձեր խաղային սերվերը ստորև:</b>",
+        "lang_changed": "✅ Լեզուն հաջողությամբ փոխվեց հայերենի:",
+        "btn_change_server": "🌐 Փոխել խաղային սերվերը",
+        "btn_change_lang": "🌐 Փոխել լեզուն",
+        "btn_accessories": "💍 Աքսեսուարներ և իրեր",
+        "btn_transport": "🚗 Տրանսպորտ և թյունինգ",
+        "btn_skins": "👕 Սկիններ և պահակներ",
+        "btn_realestate": "🏠 Անշարժ գույք և բիզնեսներ",
+        "btn_resources": "📦 Ռեսուրսներ և նյութեր",
+        "btn_sell": "📤 Վաճառել ապրանք",
+        "btn_buy": "📥 Գնել ապրանք",
+        "btn_vc_calc": "💱 VC փոխարժեք և հաշվիչ",
+        "btn_find_ad": "🔍 Գտնել ապրանք բազայում",
+        "btn_favorites": "❤️ Պահպանվածներ",
+        "btn_notifications": "🔔 Որոնման ծանուցումներ",
+        "btn_my_ads": "📋 Իմ հրապարակումները",
+        "btn_avg_prices": "📊 Սերվերի գների վերլուծություն",
+        "btn_vip": "💎 VIP կարգավիճակ",
+        "btn_admin_panel": "👑 Ադմին վահանակ",
+        "btn_become_editor": "📝 Դառնալ խմբագիր / ադմին",
+        "btn_cancel": "❌ Չեղարկել գործողությունը",
+        "btn_help": "📖 Օգնություն և կանոններ",
+        "cat_accessories": "💍 Աքսեսուարներ և իրեր",
+        "cat_transport": "🚗 Տրանսպորտ և թյունինգ",
+        "cat_skins": "👕 Սկիններ և պահակներ",
+        "cat_realestate": "🏠 Անշարժ գույք և բիզնեսներ",
+        "cat_resources": "📦 Ռեսուրսներ և նյութեր",
+        "help_text": "🛠 <b>Օգնություն, կանոններ և ընդլայնված FAQ</b>",
+        "how_it_works": "📖 <b>Ուղեցույց. Ինչպես է աշխատում բոտը</b>",
+        "vip_info": "💎 <b>Պրեմիում կարգավիճակ (VIP) բոտում</b>\n\n{status_text}\n\nԱրժեքը՝ <b>50 Telegram Stars</b> 30 օրվա համար:",
+        "search_prompt": "🔍 <b>Որոնել հայտարարությունների բազայում:</b>\n\nՈւղարկեք հիմնաբառը:",
+        "sub_prompt": "✍️ Ուղարկեք հետևելու հիմնաբառը:",
+        "admin_app_prompt": "📝 <b>Էլեկտրոնային դիմում ԶԼՄ խմբագրի պաշտոնի համար:</b>\n\nՈւղարկեք ձեր տեքստը:",
     },
     "az": {
-        "welcome": "🌟 <b>Salam! Biz rəsmi bot deyilik</b>...", "lang_changed": "✅ Dil dəyişdirildi.",
-        "btn_change_server": "🌐 Serveri dəyişmək", "btn_change_lang": "🌐 Dili dəyişmək",
-        "btn_accessories": "💍 Aksesuarlar", "btn_transport": "🚗 Nəqliyyat", "btn_skins": "👕 Skinlər", "btn_realestate": "🏠 Daşınmaz əmlak", "btn_resources": "📦 Resurslar",
-        "btn_sell": "📤 Satmaq", "btn_buy": "📥 Almaq", "btn_vc_calc": "💱 VC kalkulyator", "btn_find_ad": "🔍 Axtarış", "btn_favorites": "❤️ Seçilmişlər", "btn_notifications": "🔔 Bildirişlər", "btn_my_ads": "📋 Mənim elanlarım", "btn_avg_prices": "📊 Qiymət təhlili", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 Admin paneli", "btn_become_editor": "📝 Redaktor olmaq", "btn_cancel": "❌ Ləğv etmək", "btn_help": "📖 Kömək",
-        "cat_accessories": "💍 Aksesuarlar", "cat_transport": "🚗 Nəqliyyat", "cat_skins": "👕 Skinlər", "cat_realestate": "🏠 Daşınmaz əmlak", "cat_resources": "📦 Resurslar",
-        "help_text": "🛠 Kömək", "how_it_works": "📖 Bot necə işləyir", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Axtar:", "sub_prompt": "✍️ İzlə:", "admin_app_prompt": "📝 Ərizə:"
+        "welcome": "🌟 <b>Salam! Nəzərə alın: biz rəsmi bot deyilik</b>, Arizona RP oyunçuları üçün müstəqil köməkçiyik. Biz oyunçulara aksesuarlar, nəqliyyat, daşınmaz əmlak və digər qiymətli əşyaları tapmağa kömək edirik.\n\n🔒 <b>Təhlükəsizlik:</b> Biz <b>heç vaxt</b> oyun hesablarının parollarını və ya şəxsi məlumatları istəmirik!\n\n⏱ <b>Radio mərkəzinin iş rejimi:</b> hər gün <b>08:00:01-dən 22:00:01 MSK</b>-dək.\n\n👇 <b>Başlamaq üçün oyun serverinizi seçin:</b>",
+        "lang_changed": "✅ Dil azərbaycan dilinə dəyişdirildi.",
+        "btn_change_server": "🌐 Oyun serverini dəyişmək",
+        "btn_change_lang": "🌐 Dili dəyişmək",
+        "btn_accessories": "💍 Aksesuarlar və əşyalar",
+        "btn_transport": "🚗 Nəqliyyat və tüninq",
+        "btn_skins": "👕 Skinlər və mühafizəçilər",
+        "btn_realestate": "🏠 Daşınmaz əmlak və bizneslər",
+        "btn_resources": "📦 Resurslar və materiallar",
+        "btn_sell": "📤 Məhsul satmaq",
+        "btn_buy": "📥 Məhsul almaq",
+        "btn_vc_calc": "💱 VC məzənnəsi və kalkulyator",
+        "btn_find_ad": "🔍 Bazada məhsul tapmaq",
+        "btn_favorites": "❤️ Seçilmişlөр",
+        "btn_notifications": "🔔 Axtarış bildirişləri",
+        "btn_my_ads": "📋 Mənim elanlarım",
+        "btn_avg_prices": "📊 Server qiymət təhlili",
+        "btn_vip": "💎 VIP status",
+        "btn_admin_panel": "👑 Admin paneli",
+        "btn_become_editor": "📝 Redaktor / admin olmaq",
+        "btn_cancel": "❌ Əməliyyatı ləğv etmək",
+        "btn_help": "📖 Kömək və qaydalar",
+        "cat_accessories": "💍 Aksesuarlar və əşyalar",
+        "cat_transport": "🚗 Nəqliyyat və tüninq",
+        "cat_skins": "👕 Skinlər və mühafizəçilər",
+        "cat_realestate": "🏠 Daşınmaz əmlak və bizneslər",
+        "cat_resources": "📦 Resurslar və materiallar",
+        "help_text": "🛠 <b>Kömək, qaydalar və genişləndirilmiş FAQ</b>",
+        "how_it_works": "📖 <b>Bələdçi: Bot necə işləyir</b>",
+        "vip_info": "💎 <b>Botda VIP status</b>\n\n{status_text}\n\nQiymət: 30 gün üçün <b>50 Telegram Stars</b>.",
+        "search_prompt": "🔍 <b>Elanlar bazasında axtarış:</b>\n\nAçar sözü göndərin:",
+        "sub_prompt": "✍️ İzləmək üçün açar sözü göndərin:",
+        "admin_app_prompt": "📝 <b>KİV redaktoru vəzifəsi üçün ərizə:</b>\n\nMətninizi göndərin:",
     },
     "ky": {
-        "welcome": "🌟 <b>Салам! Биз расмий бот эмеспиз</b>...", "lang_changed": "✅ Тил өзгөртүлдү.",
-        "btn_change_server": "🌐 Серверди өзгөртүү", "btn_change_lang": "🌐 Тилди өзгөртүү",
-        "btn_accessories": "💍 Аксессуарлар", "btn_transport": "🚗 Унаа", "btn_skins": "👕 Скиндер", "btn_realestate": "🏠 Кыймылсыз мүлк", "btn_resources": "📦 Ресурстар",
-        "btn_sell": "📤 Сатуу", "btn_buy": "📥 Сатып алуу", "btn_vc_calc": "💱 VC курсу", "btn_find_ad": "🔍 Издөө", "btn_favorites": "❤️ Сакталгандар", "btn_notifications": "🔔 Эскертмелер", "btn_my_ads": "📋 Менин жарыяларым", "btn_avg_prices": "📊 Бааларды талдоо", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 Админ панели", "btn_become_editor": "📝 Редактор болуу", "btn_cancel": "❌ Жокко чыгаруу", "btn_help": "📖 Жардам",
-        "cat_accessories": "💍 Аксессуарлар", "cat_transport": "🚗 Унаа", "cat_skins": "👕 Скиндер", "cat_realestate": "🏠 Кыймылсыз мүлк", "cat_resources": "📦 Ресурстар",
-        "help_text": "🛠 Жардам", "how_it_works": "📖 Бот кандай иштейт", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Издөө:", "sub_prompt": "✍️ Көзөмөл:", "admin_app_prompt": "📝 Арыз:"
+        "welcome": "🌟 <b>Салам! Эскертүү: биз расмий бот эмеспиз</b>, Arizona RP оюнчулары үчүн көз карандысыз жардамчыбыз. Биз оюнчуларга аксессуарларды, унааны, кыймылсыз мүлктү табууга жардам беребиз.\n\n🔒 <b>Коопсуздук:</b> Биз <b>эч качан</b> оюн аккаунттарынын сыр сөздөрүн же жеке маалыматтарды сурабайбыз!\n\n⏱ <b>Радио борбордун иш убактысы:</b> күн сайын <b>08:00:01 дөн 22:00:01 МСК</b> чейин.\n\n👇 <b>Баштоо үчүн оюн сервериңизди тандаңыз:</b>",
+        "lang_changed": "✅ Тил кыргыз тилине ийгиликтүү өзгөртүлдү.",
+        "btn_change_server": "🌐 Оюн серверин өзгөртүү",
+        "btn_change_lang": "🌐 Тилди өзгөртүү",
+        "btn_accessories": "💍 Аксессуарлар жана буюмдар",
+        "btn_transport": "🚗 Унаа жана тюнинг",
+        "btn_skins": "👕 Скиндер жана сакчылар",
+        "btn_realestate": "🏠 Кыймылсыз мүлк жана бизнес",
+        "btn_resources": "📦 Ресурстар жана материалдар",
+        "btn_sell": "📤 Товар сатуу",
+        "btn_buy": "📥 Товар сатып алуу",
+        "btn_vc_calc": "💱 VC курсу жана калькулятор",
+        "btn_find_ad": "🔍 Базадан товар табуу",
+        "btn_favorites": "❤️ Сакталгандар",
+        "btn_notifications": "🔔 Издөө эскертмелери",
+        "btn_my_ads": "📋 Менин жарыяларым",
+        "btn_avg_prices": "📊 Сервер бааларын талдоо",
+        "btn_vip": "💎 VIP статус",
+        "btn_admin_panel": "👑 Админ панели",
+        "btn_become_editor": "📝 Редактор / админ болуу",
+        "btn_cancel": "❌ Аракетти жокко чыгаруу",
+        "btn_help": "📖 Жардам жана эрежелер",
+        "cat_accessories": "💍 Аксессуарлар жана буюмдар",
+        "cat_transport": "🚗 Унаа жана тюнинг",
+        "cat_skins": "👕 Скиндер жана сакчылар",
+        "cat_realestate": "🏠 Кыймылсыз мүлк жана бизнес",
+        "cat_resources": "📦 Ресурстар жана материалдар",
+        "help_text": "🛠 <b>Жардам, эрежелер жана кеңейтилген FAQ</b>",
+        "how_it_works": "📖 <b>Маалыматчы: Бот кандай иштейт</b>",
+        "vip_info": "💎 <b>Ботогу VIP статус</b>\n\n{status_text}\n\nБаасы: 30 күнгө <b>50 Telegram Stars</b>.",
+        "search_prompt": "🔍 <b>Жарыялар базасынан издөө:</b>\n\nАчкыч сөздү жөнөтүңүз:",
+        "sub_prompt": "✍️ Көзөмөлдөө үчүн ачкыч сөздү жөнөтүңүз:",
+        "admin_app_prompt": "📝 <b>ММК редактору кызматына арыз:</b>\n\nТекстиңизди жөнөтүңүз:",
     },
     "tg": {
-        "welcome": "🌟 <b>Салом! Мо боти расмӣ нестем</b>...", "lang_changed": "✅ Забон иваз шуд.",
-        "btn_change_server": "🌐 Иваз кардани сервер", "btn_change_lang": "🌐 Иваз кардани забон",
-        "btn_accessories": "💍 Лавозимот", "btn_transport": "🚗 Нақлиёт", "btn_skins": "👕 Пӯстҳо", "btn_realestate": "🏠 Амвол", "btn_resources": "📦 Захираҳо",
-        "btn_sell": "📤 Фурӯш", "btn_buy": "📥 Харид", "btn_vc_calc": "💱 Қурби VC", "btn_find_ad": "🔍 Ёфтани мол", "btn_favorites": "❤️ Захирашудаҳо", "btn_notifications": "🔔 Огоҳиномаҳо", "btn_my_ads": "📋 Нашрияҳо", "btn_avg_prices": "📊 Таҳлили нархҳо", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 Админ", "btn_become_editor": "📝 Муҳаррир шудан", "btn_cancel": "❌ Бекор кардан", "btn_help": "📖 Кӯмак",
-        "cat_accessories": "💍 Лавозимот", "cat_transport": "🚗 Нақлиёт", "cat_skins": "👕 Пӯстҳо", "cat_realestate": "🏠 Амвол", "cat_resources": "📦 Захираҳо",
-        "help_text": "🛠 Кӯмак", "how_it_works": "📖 Тарзи кор", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Ҷустуҷӯ:", "sub_prompt": "✍️ Пайгирӣ:", "admin_app_prompt": "📝 Ариза:"
+        "welcome": "🌟 <b>Салом! Лутфан таваҷҷӯҳ кунед: мо боти расмӣ нестем</b>, балки ёвари мустақил барои бозингарони Arizona RP ҳастем. Мо ба бозингарон дар дарёфти лавозимот, нақлиёт ва амвол кӯмак мекунем.\n\n🔒 <b>Амният:</b> Мо <b>ҳеҷ гоҳ</b> паролҳои ҳисобҳои бозиро талаб намекунем!\n\n⏱ <b>Вақти кори маркази радио:</b> ҳар рӯз аз <b>08:00:01 то 22:00:01 МСК</b>.\n\n👇 <b>Барои оғоз сервери худро интихоб кунед:</b>",
+        "lang_changed": "✅ Забон бомуваффақият ба тоҷикӣ иваз шуд.",
+        "btn_change_server": "🌐 Иваз кардани сервер",
+        "btn_change_lang": "🌐 Иваз кардани забон",
+        "btn_accessories": "💍 Лавозимот ва ашё",
+        "btn_transport": "🚗 Нақлиёт ва тюнинг",
+        "btn_skins": "👕 Пӯстҳо ва муҳофизон",
+        "btn_realestate": "🏠 Амвол ва тиҷорат",
+        "btn_resources": "📦 Захираҳо ва мавод",
+        "btn_sell": "📤 Фурӯши мол",
+        "btn_buy": "📥 Хариди мол",
+        "btn_vc_calc": "💱 Қурби VC ва ҳисобкунак",
+        "btn_find_ad": "🔍 Ёфтани мол дар база",
+        "btn_favorites": "❤️ Захирашудаҳо",
+        "btn_notifications": "🔔 Огоҳиномаҳои ҷустуҷӯ",
+        "btn_my_ads": "📋 Нашрияҳои ман",
+        "btn_avg_prices": "📊 Таҳлили нархҳои сервер",
+        "btn_vip": "💎 Статуси VIP",
+        "btn_admin_panel": "👑 Панели админ",
+        "btn_become_editor": "📝 Муҳаррир / админ шудан",
+        "btn_cancel": "❌ Бекор кардани амал",
+        "btn_help": "📖 Кӯмак ва қоидаҳо",
+        "cat_accessories": "💍 Лавозимот ва ашё",
+        "cat_transport": "🚗 Нақлиёт ва тюнинг",
+        "cat_skins": "👕 Пӯстҳо ва муҳофизон",
+        "cat_realestate": "🏠 Амвол ва тиҷорат",
+        "cat_resources": "📦 Захираҳо ва мавод",
+        "help_text": "🛠 <b>Кӯмак, қоидаҳо ва FAQ</b>",
+        "how_it_works": "📖 <b>Роҳнамо: Тарзи кори бот</b>",
+        "vip_info": "💎 <b>Статуси VIP дар бот</b>\n\n{status_text}\n\nАрзиш: <b>50 Telegram Stars</b> барои 30 рӯз.",
+        "search_prompt": "🔍 <b>Ҷустуҷӯ дар базаи эълонҳо:</b>\n\nКалидвожаро фиристед:",
+        "sub_prompt": "✍️ Калидвожа барои пайгирӣ:",
+        "admin_app_prompt": "📝 <b>Ариза ба вазифаи муҳаррири ВАО:</b>\n\nМатни худро фиристед:",
     },
     "tk": {
-        "welcome": "🌟 <b>Salam! Biz resmi bot däl</b>...", "lang_changed": "✅ Dil üýtgedildi.",
-        "btn_change_server": "🌐 Serweri üýtgetmek", "btn_change_lang": "🌐 Dili üýtgetmek",
-        "btn_accessories": "💍 Aksesuarlar", "btn_transport": "🚗 Ulag", "btn_skins": "👕 Skinler", "btn_realestate": "🏠 Emläk", "btn_resources": "📦 Serişdeler",
-        "btn_sell": "📤 Satmak", "btn_buy": "📥 Satyn almak", "btn_vc_calc": "💱 VC bahasy", "btn_find_ad": "🔍 Gözlemek", "btn_favorites": "❤️ Ýazgydakylar", "btn_notifications": "🔔 Duýduryşlar", "btn_my_ads": "📋 Neşirlerim", "btn_avg_prices": "📊 Bahalar", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 Admin", "btn_become_editor": "📝 Redaktor", "btn_cancel": "❌ Ýatyrmak", "btn_help": "📖 Ýardam",
-        "cat_accessories": "💍 Aksesuarlar", "cat_transport": "🚗 Ulag", "cat_skins": "👕 Skinler", "cat_realestate": "🏠 Emläk", "cat_resources": "📦 Serişdeler",
-        "help_text": "🛠 Ýardam", "how_it_works": "📖 Bot neneji işleýär", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Gözleg:", "sub_prompt": "✍️ İzlemek:", "admin_app_prompt": "📝 Ýüz tutma:"
+        "welcome": "🌟 <b>Salam! Üns beriň: biz resmi bot däl</b>, Arizona RP oýunçylary üçin garaşsyz kömekçi. Biz oýunçylara aksesuarlar, ulag, emläk tapmaga kömek edýäris.\n\n🔒 <b>Howpsuzlyk:</b> Biz <b>hiç wagt</b> oýun hasaplarynyň parolyny soramaýarys!\n\n⏱ <b>Radio merkeziniň iş wagty:</b> gündelik <b>08:00:01-den 22:00:01 MSK</b> aralygynda.\n\n👇 <b>Başlamak üçin serweriňizi saýlaň:</b>",
+        "lang_changed": "✅ Dil üstünlikli türkmen diline üýtgedildi.",
+        "btn_change_server": "🌐 Serweri üýtgetmek",
+        "btn_change_lang": "🌐 Dili üýtgetmek",
+        "btn_accessories": "💍 Aksesuarlar we zatlar",
+        "btn_transport": "🚗 Ulag we тюнинг",
+        "btn_skins": "👕 Skinler we goraýjylar",
+        "btn_realestate": "🏠 Emläk we biznes",
+        "btn_resources": "📦 Serişdeler we materiallar",
+        "btn_sell": "📤 Haryt satmak",
+        "btn_buy": "📥 Haryt satyn almak",
+        "btn_vc_calc": "💱 VC bahasy we kalkulyator",
+        "btn_find_ad": "🔍 Bazadan haryt gözlemek",
+        "btn_favorites": "❤️ Ýazgydakylar",
+        "btn_notifications": "🔔 Gözleg duýduryşlary",
+        "btn_my_ads": "📋 Neşirlerim",
+        "btn_avg_prices": "📊 Serwer baha derňewi",
+        "btn_vip": "💎 VIP status",
+        "btn_admin_panel": "👑 Admin paneli",
+        "btn_become_editor": "📝 Redaktor / admin bolmak",
+        "btn_cancel": "❌ Ýatyrmak",
+        "btn_help": "📖 Ýardam we düzgünler",
+        "cat_accessories": "💍 Aksesuarlar we zatlar",
+        "cat_transport": "🚗 Ulag we тюнинг",
+        "cat_skins": "👕 Skinler we goraýjylar",
+        "cat_realestate": "🏠 Emläk we biznes",
+        "cat_resources": "📦 Serişdeler we materiallar",
+        "help_text": "🛠 <b>Ýardam, düzgünler we FAQ</b>",
+        "how_it_works": "📖 <b>Gollanma: Bot neneji işleýär</b>",
+        "vip_info": "💎 <b>Botda VIP status</b>\n\n{status_text}\n\nBahasy: 30 gün üçin <b>50 Telegram Stars</b>.",
+        "search_prompt": "🔍 <b>Gözleg sözüni iberiň:</b>",
+        "sub_prompt": "✍️ Yzarlamak üçin açar söz iberiň:",
+        "admin_app_prompt": "📝 <b>KBS redaktory wezipesine ýüz tutma:</b>\n\nTekstiňizi iberiň:",
     },
     "ro": {
-        "welcome": "🌟 <b>Salut! Nu suntem un bot oficial</b>...", "lang_changed": "✅ Limba a fost schimbată.",
-        "btn_change_server": "🌐 Schimbă serverul", "btn_change_lang": "🌐 Schimbă limba",
-        "btn_accessories": "💍 Accesorii", "btn_transport": "🚗 Transport", "btn_skins": "👕 Skin-uri", "btn_realestate": "🏠 Imobiliare", "btn_resources": "📦 Resurse",
-        "btn_sell": "📤 Vinde", "btn_buy": "📥 Cumpără", "btn_vc_calc": "💱 Calculator VC", "btn_find_ad": "🔍 Caută", "btn_favorites": "❤️ Favorite", "btn_notifications": "🔔 Notificări", "btn_my_ads": "📋 Publicațiile mele", "btn_avg_prices": "📊 Prețuri", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 Admin", "btn_become_editor": "📝 Devino editor", "btn_cancel": "❌ Anulează", "btn_help": "📖 Ajutor",
-        "cat_accessories": "💍 Accesorii", "cat_transport": "🚗 Transport", "cat_skins": "👕 Skin-uri", "cat_realestate": "🏠 Imobiliare", "cat_resources": "📦 Resurse",
-        "help_text": "🛠 Ajutor", "how_it_works": "📖 Cum funcționează", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 Caută:", "sub_prompt": "✍️ Urmărește:", "admin_app_prompt": "📝 Cerere:"
+        "welcome": "🌟 <b>Salut! Vă rugăm să rețineți: nu suntem un bot oficial</b>, ci un asistent independent pentru jucătorii Arizona RP. Vă ajutăm să găsiți accesorii, transport, imobiliare și alte lucruri valoroase.\n\n🔒 <b>Securitate:</b> Nu cerem <b>niciodată</b> parole de cont sau date personale!\n\n⏱ <b>Programul centrului radio:</b> zilnic de la <b>08:00:01 la 22:00:01 MSK</b>.\n\n👇 <b>Pentru a începe, selectați serverul dvs. de joc mai jos:</b>",
+        "lang_changed": "✅ Limba a fost schimbată cu succes în română.",
+        "btn_change_server": "🌐 Schimbă serverul",
+        "btn_change_lang": "🌐 Schimbă limba",
+        "btn_accessories": "💍 Accesorii și articole",
+        "btn_transport": "🚗 Transport și tuning",
+        "btn_skins": "👕 Skin-uri și gărzi",
+        "btn_realestate": "🏠 Imobiliare și afaceri",
+        "btn_resources": "📦 Resurse și materiale",
+        "btn_sell": "📤 Vinde un articol",
+        "btn_buy": "📥 Cumpără un articol",
+        "btn_vc_calc": "💱 Curs VC și calculator",
+        "btn_find_ad": "🔍 Caută în baza de date",
+        "btn_favorites": "❤️ Favorite",
+        "btn_notifications": "🔔 Notificări de căutare",
+        "btn_my_ads": "📋 Publicațiile mele",
+        "btn_avg_prices": "📊 Analiza prețurilor pe server",
+        "btn_vip": "💎 Statut VIP",
+        "btn_admin_panel": "👑 Panou admin",
+        "btn_become_editor": "📝 Devino editor / admin",
+        "btn_cancel": "❌ Anulează acțiunea",
+        "btn_help": "📖 Ajutor și reguli",
+        "cat_accessories": "💍 Accesorii și articole",
+        "cat_transport": "🚗 Transport și tuning",
+        "cat_skins": "👕 Skin-uri și gărzi",
+        "cat_realestate": "🏠 Imobiliare și afaceri",
+        "cat_resources": "📦 Resurse și materiale",
+        "help_text": "🛠 <b>Ajutor, reguli și FAQ extins</b>",
+        "how_it_works": "📖 <b>Ghid: Cum funcționează botul</b>",
+        "vip_info": "💎 <b>Statut VIP în bot</b>\n\n{status_text}\n\nPreț: <b>50 Telegram Stars</b> pentru 30 de zile.",
+        "search_prompt": "🔍 <b>Căutare în baza de anunțuri:</b>\n\nTrimiteți cuvântul cheie:",
+        "sub_prompt": "✍️ Trimiteți cuvântul cheie de urmărit:",
+        "admin_app_prompt": "📝 <b>Cerere electronică pentru postul de editor mass-media:</b>\n\nTrimiteți textul:",
     },
     "ka": {
-        "welcome": "🌟 <b>გამარჯობა! ჩვენ არ ვართ ოფიციალური ბოტი</b>...", "lang_changed": "✅ ენა შეიცვალა.",
-        "btn_change_server": "🌐 სერვერის შეცვლა", "btn_change_lang": "🌐 ენის შეცვლა",
-        "btn_accessories": "💍 აქსესუარები", "btn_transport": "🚗 ტრანსპორტი", "btn_skins": "👕 სკინები", "btn_realestate": "🏠 უძრავი ქონება", "btn_resources": "📦 რესურსები",
-        "btn_sell": "📤 გაყიდვა", "btn_buy": "📥 ყიდვა", "btn_vc_calc": "💱 VC კალკულატორი", "btn_find_ad": "🔍 ძებნა", "btn_favorites": "❤️ შენახული", "btn_notifications": "🔔 შეტყობინებები", "btn_my_ads": "📋 ჩემი პუბლიკაციები", "btn_avg_prices": "📊 ფასების ანალიზი", "btn_vip": "💎 VIP", "btn_admin_panel": "👑 ადმინ პანელი", "btn_become_editor": "📝 რედაქტორი", "btn_cancel": "❌ გაუქმება", "btn_help": "📖 დახმარება",
-        "cat_accessories": "💍 აქსესუარები", "cat_transport": "🚗 ტრანსპორტი", "cat_skins": "👕 სკინები", "cat_realestate": "🏠 უძრავი ქონება", "cat_resources": "📦 რესურსები",
-        "help_text": "🛠 დახმარება", "how_it_works": "📖 როგორ მუშაობს", "vip_info": "💎 VIP\n\n{status_text}", "search_prompt": "🔍 ძებნა:", "sub_prompt": "✍️ თვალთვალი:", "admin_app_prompt": "📝 განაცხადი:"
+        "welcome": "🌟 <b>გამარჯობა! გთხოვთ გაითვალისწინოთ: ჩვენ არ ვართ ოფიციალური ბოტი</b>, არამედ დამოუკიდებელი დამזმარე Arizona RP-ის მოთამაშეებისთვის. ჩვენ გვეხმარებით აქსესუარების, ტრანსპორტის, უძრავი ქონების პოვნაში.\n\n🔒 <b>უსაფრთხოება:</b> ჩვენ <b>არასდროს</b> არ ვითხოვთ ანგარიშის პაროლებს ან პირად მონაცემებს!\n\n⏱ <b>რადიოცენტრის სამუშაო საათები:</b> ყოველდღე <b>08:00:01-დან 22:00:01 MSK</b>-მდე.\n\n👇 <b>დასაწყებად აირჩიეთ თქვენი თამაშის სერვერი ქვემოთ:</b>",
+        "lang_changed": "✅ ენა წარმატებით შეიცვალა ქართულად.",
+        "btn_change_server": "🌐 სერვერის შეცვლა",
+        "btn_change_lang": "🌐 ენის შეცვლა",
+        "btn_accessories": "💍 აქსესუარები და ნივთები",
+        "btn_transport": "🚗 ტრანსპორტი და ტյუნინგი",
+        "btn_skins": "👕 სკინები და მცველები",
+        "btn_realestate": "🏠 უძრავი ქონება და ბიზნესი",
+        "btn_resources": "📦 რესურსები და მასალები",
+        "btn_sell": "📤 ნივთის გაყიდვა",
+        "btn_buy": "📥 ნივთის ყიდვა",
+        "btn_vc_calc": "💱 VC კურსი და კალკულატორი",
+        "btn_find_ad": "🔍 ნივთის ძებნა ბაზაში",
+        "btn_favorites": "❤️ შენახული",
+        "btn_notifications": "🔔 ძებნის შეტყობინებები",
+        "btn_my_ads": "📋 ჩემი პუბლიკაციები",
+        "btn_avg_prices": "📊 სერვერის ფასების ანალიზი",
+        "btn_vip": "💎 VIP სტატუსი",
+        "btn_admin_panel": "👑 ადმინ პანელი",
+        "btn_become_editor": "📝 გახდი რედაქტორი / ადმინი",
+        "btn_cancel": "❌ მოქმედების გაუქმება",
+        "btn_help": "📖 დახმარება და წესები",
+        "cat_accessories": "💍 აქსესუარები და ნივთები",
+        "cat_transport": "🚗 ტრანსპორტი და ტյუნინგი",
+        "cat_skins": "👕 სკინები და მცველები",
+        "cat_realestate": "🏠 უძრავი ქონება და ბიზნესი",
+        "cat_resources": "📦 რესურსები და მასალები",
+        "help_text": "🛠 <b>დახმარება, წესები და გაფართოებული FAQ</b>",
+        "how_it_works": "📖 <b>ცნობარი: როგორ მუშაობს ბოტი</b>",
+        "vip_info": "💎 <b>პრემიუმ სტატუსი (VIP) ბოტში</b>\n\n{status_text}\n\nფასი: <b>50 Telegram Stars</b> 30 დღის განმავლობაში.",
+        "search_prompt": "🔍 <b>ძებნა განცხადებების ბაზაში:</b>\n\nგამოაგზავნეთ საკვანძო სიტყვა:",
+        "sub_prompt": "✍️ გამოაგზავნეთ საკვანძო სიტყვა თვალთვალისთვის:",
+        "admin_app_prompt": "📝 <b>ელექტრონული განაცხადი მედია რედაქტორის პოზიციაზე:</b>\n\nგამოაგზავნეთ ტექსტი:",
     },
     "en": {
-        "welcome": "🌟 <b>Hello! Please note: we are not an official bot</b>, but an independent assistant for Arizona RP players...",
+        "welcome": "🌟 <b>Hello! Please note: we are not an official bot</b>, but an independent assistant for Arizona RP players. We help players find accessories, transport, real estate and other valuable items, as well as track the economy and exchange rates.\n\n🔒 <b>Security:</b> We <b>never</b> ask for game account passwords or personal data!\n\n⏱ <b>Radio center working hours:</b> daily from <b>08:00:01 to 22:00:01 MSK</b>.\n\n👇 <b>To get started, select your game server below:</b>",
         "lang_changed": "✅ Language successfully changed to English.",
-        "btn_change_server": "🌐 Change game server", "btn_change_lang": "🌐 Change language",
-        "btn_accessories": "💍 Accessories & items", "btn_transport": "🚗 Transport & tuning", "btn_skins": "👕 Skins & guards", "btn_realestate": "🏠 Real estate & businesses", "btn_resources": "📦 Resources & materials",
-        "btn_sell": "📤 Sell item", "btn_buy": "📥 Buy item", "btn_vc_calc": "💱 VC rate & calculator", "btn_find_ad": "🔍 Search item in database", "btn_favorites": "❤️ Favorites", "btn_notifications": "🔔 Search notifications", "btn_my_ads": "📋 My publications", "btn_avg_prices": "📊 Server price analysis", "btn_vip": "💎 VIP status", "btn_admin_panel": "👑 Admin panel", "btn_become_editor": "📝 Become editor / admin", "btn_cancel": "❌ Cancel action", "btn_help": "📖 Help & rules",
-        "cat_accessories": "💍 Accessories & items", "cat_transport": "🚗 Transport & tuning", "cat_skins": "👕 Skins & guards", "cat_realestate": "🏠 Real estate & businesses", "cat_resources": "📦 Resources & materials",
-        "help_text": "🛠 Help & Rules", "how_it_works": "📖 How it works", "vip_info": "💎 VIP Status\n\n{status_text}", "search_prompt": "🔍 Search query:", "sub_prompt": "✍️ Keyword to track:", "admin_app_prompt": "📝 Application:"
+        "btn_change_server": "🌐 Change game server",
+        "btn_change_lang": "🌐 Change language",
+        "btn_accessories": "💍 Accessories & items",
+        "btn_transport": "🚗 Transport & tuning",
+        "btn_skins": "👕 Skins & guards",
+        "btn_realestate": "🏠 Real estate & businesses",
+        "btn_resources": "📦 Resources & materials",
+        "btn_sell": "📤 Sell item",
+        "btn_buy": "📥 Buy item",
+        "btn_vc_calc": "💱 VC rate & calculator",
+        "btn_find_ad": "🔍 Search item in database",
+        "btn_favorites": "❤️ Favorites",
+        "btn_notifications": "🔔 Search notifications",
+        "btn_my_ads": "📋 My publications",
+        "btn_avg_prices": "📊 Server price analysis",
+        "btn_vip": "💎 VIP status",
+        "btn_admin_panel": "👑 Admin panel",
+        "btn_become_editor": "📝 Become editor / admin",
+        "btn_cancel": "❌ Cancel action",
+        "btn_help": "📖 Help & rules",
+        "cat_accessories": "💍 Accessories & items",
+        "cat_transport": "🚗 Transport & tuning",
+        "cat_skins": "👕 Skins & guards",
+        "cat_realestate": "🏠 Real estate & businesses",
+        "cat_resources": "📦 Resources & materials",
+        "help_text": (
+            "🛠 <b>Help, rules and extended FAQ</b>\n\n"
+            "❓ <b>1. How to submit a sale or purchase ad?</b>\n"
+            "💡 <i>Select the desired game server in the main menu -> Click «📤 Sell item» or «📥 Buy item» -> Select category -> Enter item, price and conditions -> Send for moderation.</i>\n\n"
+            "❓ <b>2. How long does moderation take?</b>\n"
+            "💡 <i>Usually a couple of minutes if editors are online. You will receive a notification immediately upon publication or rejection.</i>\n\n"
+            "❓ <b>3. How to edit or delete an ad?</b>\n"
+            "💡 <i>In your personal account / ad management section you can unpublish, change the price or update the description at any time.</i>\n\n"
+            "❓ <b>4. How does the Vice City calculator work?</b>\n"
+            "💡 <i>In the «💱 VC rate & calculator» section you can instantly convert cash to VC-bucks at the current rate and calculate profits.</i>\n\n"
+            "❓ <b>5. How to contact the seller or buyer safely?</b>\n"
+            "💡 <i>Under each active ad card there is a «✉️ Contact author» button opening a secure internal chat.</i>\n\n"
+            "❓ <b>6. What are the main rules?</b>\n"
+            "💡 <i>Unrealistic prices, profanity, third-party advertising are prohibited. Violators may be banned.</i>\n\n"
+            "❓ <b>7. What if my ad was rejected?</b>\n"
+            "💡 <i>The notification specifies the reason. Just fix the text and resubmit.</i>\n\n"
+            "❓ <b>8. Where to report bugs?</b>\n"
+            "💡 <i>Write to our official community: <b>@bountyarz</b>.</i>\n\n"
+            "⏱ <b>Additional info:</b> Radio center operates daily from <b>08:00:01 to 22:00:01 MSK</b>."
+        ),
+        "how_it_works": (
+            "📖 <b>Handbook: How the bot and radio center work</b>\n\n"
+            "1. <b>Ad submission:</b> Type (sale/buy), server, category and text are selected.\n"
+            "2. <b>Moderation:</b> Checked from 08:00:01 to 22:00:01 MSK.\n"
+            "3. <b>Publication:</b> Approved ads go live.\n"
+            "4. <b>VC Tools:</b> Rate converter and profit calculator."
+        ),
+        "vip_info": (
+            "💎 <b>VIP Status in the Bot</b>\n\n"
+            "{status_text}\n\n"
+            "Benefits of VIP status:\n"
+            "• Premium account badge in your ads\n"
+            "• Priority placement of items\n\n"
+            "Price: <b>50 Telegram Stars</b> for 30 days."
+        ),
+        "search_prompt": "🔍 <b>Search item in database:</b>\n\nSend a keyword or item name to search (e.g., <code>accessory</code>, <code>halo</code>, <code>house</code>):",
+        "sub_prompt": "✍️ Send a keyword or phrase to track (e.g., <code>skin</code> or <code>halo</code>):",
+        "admin_app_prompt": (
+            "📝 <b>Media Editor Application (Arizona RP Style)</b>\n\n"
+            "Please fill out the application in free form. Specify:\n"
+            "• Your game nickname and server\n"
+            "• Your age and time zone\n"
+            "• Experience in mass media / why you want this position\n\n"
+            "<i>Send your text as a reply message to the chat:</i>"
+        ),
     }
 }
 
@@ -1403,5 +1775,5 @@ def admin_panel(m):
     safe_send_message(m.chat.id, "👑 <b>Панель администратора / редактора:</b>", reply_markup=markup)
 
 if __name__ == '__main__':
-    logger.info("Бот запущен с исправленной логикой мультиязычности и работы кнопок!")
+    logger.info("Бот запущен с полными переводами для всех языков и исправленной логикой кнопок!")
     bot.infinity_polling(skip_pending=True)

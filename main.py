@@ -462,6 +462,21 @@ def is_admin_or_owner(user) -> bool:
             return True
     return False
 
+def is_admin_or_owner_id(user_id: int) -> bool:
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ?", (user_id,))
+        if cur.fetchone():
+            return True
+        cur.execute("SELECT username FROM user_data WHERE user_id = ?", (user_id,))
+        row = cur.fetchone()
+        if row and row[0] and row[0].lower() == OWNER_USERNAME.lower():
+            return True
+        cur.execute("SELECT 1 FROM admin_chats WHERE chat_id = ?", (user_id,))
+        if cur.fetchone():
+            return True
+    return False
+
 def verify_admin_callback(call) -> bool:
     if not is_admin_or_owner(call.from_user):
         try:
@@ -543,13 +558,16 @@ def ikb_chat_controls(aid: int):
     )
     return markup
 
-def ikb_ad_actions(aid: int, is_fav: bool = False):
+def ikb_ad_actions(aid: int, is_fav: bool = False, user_id: int = 0, is_buy: bool = False):
     markup = types.InlineKeyboardMarkup(row_width=2)
     fav_text = "❌ Убрать из избранного" if is_fav else "❤️ В избранное"
     markup.add(
         types.InlineKeyboardButton("✉️ Написать автору", callback_data=f"contact_seller_{aid}"),
         types.InlineKeyboardButton(fav_text, callback_data=f"fav_toggle_{aid}")
     )
+    if user_id and is_admin_or_owner_id(user_id):
+        del_prefix = "admin_del_buy_" if is_buy else "admin_del_"
+        markup.add(types.InlineKeyboardButton("🗑 Удалить (Админ)", callback_data=f"{del_prefix}{aid}"))
     return markup
 
 # ==========================================
@@ -702,12 +720,107 @@ def how_bot_works(m):
     )
     safe_send_message(m.chat.id, text)
 
+# ==========================================
+# ПОДАЧА ЗАЯВКИ НА ПОСТ РЕДАКТОРА (ARIZONA RP STYLE)
+# ==========================================
 def start_admin_application(m):
+    uid = m.from_user.id
+    if is_admin_or_owner(m.from_user):
+        return safe_send_message(m.chat.id, "👑 Вы уже являетесь администратором / владельцем бота!", reply_markup=kb_main_menu())
+    
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM admin_apps WHERE user_id = ?", (uid,))
+        if cur.fetchone():
+            return safe_send_message(m.chat.id, "⏳ Ваша заявка на пост редактора уже находится на рассмотрении руководства.", reply_markup=kb_main_menu())
+
+    update_state(uid, applying_admin="waiting_text")
     safe_send_message(
         m.chat.id,
-        "📝 Чтобы подать заявку на должность редактора/администратора, обратитесь к администраторам проекта или заполните форму в нашем сообществе.",
-        reply_markup=kb_main_menu()
+        "📝 <b>Электронное заявление на пост редактора СМИ (Arizona RP Style)</b>\n\n"
+        "Пожалуйста, заполните заявку в свободной форме. Укажите:\n"
+        "• Ваш игровой ник и сервер\n"
+        "• Ваш возраст и часовой пояс\n"
+        "• Опыт работы в СМИ / почему хотите занять этот пост\n\n"
+        "<i>Отправьте ваш текст ответным сообщением в чат:</i>",
+        reply_markup=kb_cancel()
     )
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("applying_admin") == "waiting_text")
+def process_admin_application(m):
+    uid = m.from_user.id
+    uname = m.from_user.username or "Без юзернейма"
+    app_text = m.text.strip()
+    clear_state(uid)
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("INSERT OR REPLACE INTO admin_apps (user_id, username, application_text) VALUES (?, ?, ?)", (uid, uname, app_text))
+        conn.commit()
+
+    safe_send_message(m.chat.id, "✅ Ваша заявка на пост редактора успешно отправлена владельцу @bounqy и редакции! Ожидайте рассмотрения.", reply_markup=kb_main_menu())
+
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("✅ Принять (Назначить админом)", callback_data=f"accept_admin_app_{uid}"),
+        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"reject_admin_app_{uid}")
+    )
+
+    notif_text = (
+        "📝 <b>Новая заявка на пост редактора / администратора!</b>\n\n"
+        f"👤 Кандидат: @{html.escape(uname)} (ID: <code>{uid}</code>)\n\n"
+        f"📄 <b>Текст заявки:</b>\n{html.escape(app_text)}"
+    )
+
+    admin_recipients = get_all_admin_ids()
+    for chat_id in admin_recipients:
+        try:
+            safe_send_message(chat_id, notif_text, reply_markup=markup)
+        except Exception as e:
+            logger.error(f"Не удалось отправить заявку админу {chat_id}: {e}")
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("accept_admin_app_") or c.data.startswith("reject_admin_app_"))
+def cb_handle_admin_app(call):
+    if not is_owner(call.from_user) and not is_admin_or_owner(call.from_user):
+        try:
+            bot.answer_callback_query(call.id, "⛔ У вас нет прав для рассмотрения заявок!", show_alert=True)
+        except Exception:
+            pass
+        return
+
+    is_accept = "accept_admin_app_" in call.data
+    prefix = "accept_admin_app_" if is_accept else "reject_admin_app_"
+    target_uid = int(call.data.replace(prefix, ""))
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT username FROM admin_apps WHERE user_id = ?", (target_uid,))
+        row = cur.fetchone()
+        target_uname = row[0] if row else "user"
+        cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (target_uid,))
+        
+        if is_accept:
+            cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (target_uid, target_uname))
+        conn.commit()
+
+    try:
+        bot.answer_callback_query(call.id, "✅ Заявка принята!" if is_accept else "❌ Заявка отклонена!")
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
+    except Exception:
+        pass
+
+    if is_accept:
+        safe_send_message(target_uid, "🎉 <b>Поздравляем! Ваша заявка на пост редактора одобрена владелицем @bounqy!</b> Теперь вам доступны функции модерации и админ-панель.", reply_markup=kb_main_menu())
+        try:
+            safe_send_message(call.message.chat.id, f"✅ Кандидат @{html.escape(target_uname)} успешно назначен редактором/администратором.")
+        except Exception:
+            pass
+    else:
+        safe_send_message(target_uid, "❌ К сожалению, ваша заявка на пост редактора была отклонена руководящим составом.")
+        try:
+            safe_send_message(call.message.chat.id, f"❌ Заявка кандидата @{html.escape(target_uname)} отклонена.")
+        except Exception:
+            pass
 
 def info_premium(m):
     is_prem = is_user_premium(m.from_user.id)
@@ -1295,7 +1408,7 @@ def callback_buy_moderation(call):
             conn.commit()
 
         update_state(admin_id, admin_editing_buy_pid=pid, edit_start_time=curr_time)
-        safe_send_message(call.message.chat.id, f"✏️ Введите новый текст для скупки (ID: {pid}). У вас есть 12 минут:", reply_markup=kb_cancel())
+        safe_send_message(call.message.chat.id, f"✏️ Введите новый текст для скупкы (ID: {pid}). У вас есть 12 минут:", reply_markup=kb_cancel())
         return
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
@@ -1319,7 +1432,7 @@ def callback_buy_moderation(call):
         safe_send_message(user_id, "🎉 Ваше объявление о скупке успешно опубликовано!")
 
         final_text = format_smi_post(srv, cat, text, uname, editor_uname, is_vip, user_id, is_buy=True)
-        markup = ikb_ad_actions(aid, is_fav=False)
+        markup = ikb_ad_actions(aid, is_fav=False, user_id=admin_id, is_buy=True)
 
         if photo_id:
             safe_send_photo(call.message.chat.id, photo_id, caption=final_text, reply_markup=markup)
@@ -1409,7 +1522,7 @@ def callback_moderation(call):
         safe_send_message(user_id, "🎉 Ваше объявление успешно прошло модерацию и было опубликовано!")
 
         final_text = format_smi_post(srv, cat, text, uname, editor_uname, is_vip, user_id, is_buy=False)
-        markup = ikb_ad_actions(aid, is_fav=False)
+        markup = ikb_ad_actions(aid, is_fav=False, user_id=admin_id, is_buy=False)
 
         if photo_id:
             safe_send_photo(call.message.chat.id, photo_id, caption=final_text, reply_markup=markup)
@@ -1483,6 +1596,29 @@ def process_admin_edit_text(m):
         safe_send_message(m.chat.id, f"✏️ <b>Отредактированное объявление (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
 
 # ==========================================
+# УДАЛЕНИЕ АКТИВНЫХ ОБЪЯВЛЕНИЙ АДМИНИСТРАТОРОМ
+# ==========================================
+@bot.callback_query_handler(func=lambda c: c.data.startswith("admin_del_") or c.data.startswith("admin_del_buy_"))
+def cb_admin_delete_active_ad(call):
+    if not verify_admin_callback(call):
+        return
+    is_buy = "admin_del_buy_" in call.data
+    prefix = "admin_del_buy_" if is_buy else "admin_del_"
+    aid = int(call.data.replace(prefix, ""))
+    table_name = "active_buy_ads" if is_buy else "active_ads"
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute(f"DELETE FROM {table_name} WHERE id = ?", (aid,))
+        conn.commit()
+
+    try:
+        bot.answer_callback_query(call.id, "🗑 Объявление успешно удалено администратором!")
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+    except Exception:
+        pass
+
+# ==========================================
 # ПРОСМОТР ПРОДАЖ И СКУПКИ
 # ==========================================
 def show_ads_category(m):
@@ -1518,7 +1654,7 @@ def render_category_page(chat_id: int, user_id: int, cat_idx: int, page: int = 0
             cur.execute("SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (user_id, aid))
             is_fav = bool(cur.fetchone())
 
-        markup = ikb_ad_actions(aid, is_fav=is_fav)
+        markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=user_id, is_buy=False)
         fmt_text = html.escape(text)
         if photo:
             safe_send_photo(chat_id, photo, caption=fmt_text, reply_markup=markup)
@@ -1580,7 +1716,7 @@ def render_buy_category_page(chat_id: int, user_id: int, cat_idx: int, page: int
             cur.execute("SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (user_id, aid))
             is_fav = bool(cur.fetchone())
 
-        markup = ikb_ad_actions(aid, is_fav=is_fav)
+        markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=user_id, is_buy=True)
         fmt_text = html.escape(text)
         if photo:
             safe_send_photo(chat_id, photo, caption=fmt_text, reply_markup=markup)
@@ -1727,7 +1863,7 @@ def show_favorites(m):
 
     safe_send_message(m.chat.id, "❤️ <b>Ваши сохраненные объявления:</b>")
     for aid, srv, cat, text, photo in favs:
-        markup = ikb_ad_actions(aid, is_fav=True)
+        markup = ikb_ad_actions(aid, is_fav=True, user_id=uid, is_buy=False)
         fmt_text = html.escape(text)
         if photo:
             safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
@@ -1756,7 +1892,7 @@ def cb_fav_toggle(call):
 
     try:
         bot.answer_callback_query(call.id, msg_alert)
-        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=ikb_ad_actions(aid, is_fav=new_fav))
+        bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=ikb_ad_actions(aid, is_fav=new_fav, user_id=uid, is_buy=False))
     except Exception:
         pass
 
@@ -1784,7 +1920,7 @@ def process_search_query(m):
     safe_send_message(m.chat.id, f"🔍 Результаты поиска по запросу «{html.escape(query)}» [{html.escape(srv)}]:")
     
     for aid, srv_name, cat, text, photo in results:
-        markup = ikb_ad_actions(aid, is_fav=False)
+        markup = ikb_ad_actions(aid, is_fav=False, user_id=uid, is_buy=False)
         fmt_text = f"📤 <b>[Продажа]</b>\n" + html.escape(text)
         if photo:
             safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
@@ -1792,7 +1928,7 @@ def process_search_query(m):
             safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
 
     for aid, srv_name, cat, text, photo in results_buy:
-        markup = ikb_ad_actions(aid, is_fav=False)
+        markup = ikb_ad_actions(aid, is_fav=False, user_id=uid, is_buy=True)
         fmt_text = f"📥 <b>[Скупка]</b>\n" + html.escape(text)
         if photo:
             safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
@@ -1913,7 +2049,7 @@ def cb_contact_seller(call):
 def forward_dialog_message(m):
     uid = m.from_user.id
     st = get_state(uid)
-    if any(k in st for k in ["posting_ad", "posting_buy_ad", "searching", "adding_sub", "vc_setting_rate", "vc_calc_step", "vc_conv_input", "admin_editing_pid", "admin_editing_buy_pid"]):
+    if any(k in st for k in ["posting_ad", "posting_buy_ad", "searching", "adding_sub", "vc_setting_rate", "vc_calc_step", "vc_conv_input", "admin_editing_pid", "admin_editing_buy_pid", "applying_admin"]):
         return
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:

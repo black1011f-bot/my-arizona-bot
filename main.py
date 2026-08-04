@@ -1,4 +1,4 @@
-from datetime import datetime, time as dtime
+from datetime import datetime, time as dtime, timedelta
 import contextlib
 import html
 import io
@@ -13,6 +13,7 @@ import requests
 import telebot
 from telebot import types
 from telebot.apihelper import ApiTelegramException
+from flask import Flask, request
 
 # ==========================================
 # ЛОГИРОВАНИЕ И КОНФИГУРАЦИЯ
@@ -26,10 +27,14 @@ TOKEN = "8916669266:AAFbIqOvrkdekhVkh1NTmMvpxSI_neTyN9I"
 MANAGER_USERNAME = "bounqy31"
 BOT_USERNAME = "arizona_coin_bot"
 
-# Конфигурация Gemini API (используем gemini-1.5-flash для стабильности)
+# URL вашего сайта/хостинга (например, https://your-app.onrender.com) для 24/7 вебхука
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
+
+# Конфигурация Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "ВАШ_GEMINI_API_KEY")
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
+app = Flask(__name__)
 
 OWNER_USERNAME = "bounqy"
 ADMIN_USERNAMES = {"bounqy31", "bounqy"}
@@ -684,6 +689,16 @@ def cb_admin_delete_ad(call):
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
+    cur.execute(f"SELECT * FROM {table} WHERE id = ?", (aid,))
+    row = cur.fetchone()
+    if not row:
+      try:
+        return bot.answer_callback_query(
+            call.id, "⚠️ Этот пост уже обработан или удален.", show_alert=True
+        )
+      except Exception:
+        pass
+      return
     cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
 
   try:
@@ -958,11 +973,20 @@ def process_search_keyword(m):
 
 
 # ==========================================
-# ПОДАЧА ОБЪЯВЛЕНИЙ
+# ПОДАЧА ОБЪЯВЛЕНИЙ И РАБОЧИЕ ЧАСЫ
 # ==========================================
 def check_working_hours() -> bool:
+  """Проверка рабочего времени радиоцентра.
+
+  Запрещено отправлять объявления с 22:00:01 до 08:00:00. Разрешено после
+  08:00:01 до 22:00:01.
+  """
   now_time = get_msk_time().time()
-  return dtime(8, 0, 1) <= now_time <= dtime(22, 0, 1)
+  start_t = dtime(8, 0, 1)
+  end_t = dtime(22, 0, 1)
+  if start_t <= now_time <= end_t:
+    return True
+  return False
 
 
 def start_add_ad(m):
@@ -981,7 +1005,8 @@ def start_add_ad(m):
   if not check_working_hours() and not is_admin_or_owner(m.from_user):
     return safe_send_message(
         m.chat.id,
-        "🌙 Радиоцентр закрыт! Объявления принимаются строго с <b>08:00:01 до 22:00:01 МСК</b>.",
+        "❌ <b>Отправка объявлений временно заблокирована!</b>\n\n"
+        "🌙 Ночной режим активен. Радиоцентр принимает объявления строго с <b>08:00:01 до 22:00:01 МСК</b>.",
         reply_markup=kb_main_menu(),
     )
 
@@ -1014,7 +1039,8 @@ def start_add_buy_ad(m):
   if not check_working_hours() and not is_admin_or_owner(m.from_user):
     return safe_send_message(
         m.chat.id,
-        "🌙 Радиоцентр закрыт! Объявления принимаются строго с <b>08:00:01 до 22:00:01 МСК</b>.",
+        "❌ <b>Отправка объявлений временно заблокирована!</b>\n\n"
+        "🌙 Ночной режим активен. Радиоцентр принимает объявления строго с <b>08:00:01 до 22:00:01 МСК</b>.",
         reply_markup=kb_main_menu(),
     )
 
@@ -1037,6 +1063,16 @@ def start_add_buy_ad(m):
 )
 def process_ad_category(m):
   uid = m.from_user.id
+
+  if not check_working_hours() and not is_admin_or_owner(m.from_user):
+    clear_state(uid)
+    return safe_send_message(
+        m.chat.id,
+        "❌ <b>Отправка объявлений временно заблокирована!</b>\n\n"
+        "🌙 Ночной режим активен. Радиоцентр принимает объявления строго с <b>08:00:01 до 22:00:01 МСК</b>.",
+        reply_markup=kb_main_menu(),
+    )
+
   cat = m.text.strip()
   if cat not in CATEGORIES:
     return safe_send_message(
@@ -1070,7 +1106,8 @@ def process_ad_text_or_photo(m):
     clear_state(uid)
     return safe_send_message(
         m.chat.id,
-        "🌙 Время работы радиоцентра истекло (08:00:01 - 22:00:01 МСК). Подача объявлений приостановлена.",
+        "❌ <b>Отправка объявлений временно заблокирована!</b>\n\n"
+        "🌙 Ночной режим активен. Радиоцентр принимает объявления строго с <b>08:00:01 до 22:00:01 МСК</b>.",
         reply_markup=kb_main_menu(),
     )
 
@@ -1944,6 +1981,11 @@ def cancel_action(m):
 
 @bot.message_handler(commands=["start"])
 def cmd_start(m):
+  try:
+    bot.delete_message(m.chat.id, m.message_id)
+  except Exception:
+    pass
+
   register_user(m.from_user.id, m.from_user.username)
 
   if is_banned(m.from_user):
@@ -1955,32 +1997,40 @@ def cmd_start(m):
     register_admin_chat(m.chat.id)
 
   update_state(m.from_user.id, changing_server=True)
-  start_text = (
-      f"👋 <b>Добро пожаловать в официальный бот объявлений радиоцентра Arizona RP!</b>\n\n"
-      f"🤖 Этот бот создан для быстрой, удобной и безопасной публикации ваших объявлений о продаже и покупке игрового имущества.\n\n"
-      f"⏱ <b>Режим работы радиоцентра:</b> строго с <b>08:00:01 до 22:00:01 МСК</b>.\n"
-      f"🛡 Все тексты объявлений автоматически проверяются ИИ и системой модерации.\n\n"
-      f"👇 <b>Выберите свой игровой сервер в меню ниже, чтобы начать:</b>"
+  welcome_text = (
+      "👋 <b>Добро пожаловать в официальный бот торговой площадки и радиоцентра Arizona RP!</b>\n\n"
+      "📌 <b>Правильный формат объявления:</b>\n"
+      "Предмет:\n"
+      "Цена/бюджет:\n"
+      "Какая лавка/нету:\n\n"
+      "• Подача и модерация объявлений на всех серверах\n"
+      "• Автоматическая защита ИИ (Gemini) от скамеров и мошенников\n"
+      "• Удобный поиск, избранное и система подписок на ключевые слова\n"
+      "• Встроенный калькулятор валюты Vice City\n\n"
+      "👇 <b>Выберите свой игровой сервер в меню ниже, чтобы начать работу:</b>"
   )
-  safe_send_message(m.chat.id, start_text, reply_markup=kb_servers())
+  safe_send_message(m.chat.id, welcome_text, reply_markup=kb_servers(), parse_mode="HTML")
 
 
 @bot.message_handler(commands=["help"])
 def cmd_help(m):
+  try:
+    bot.delete_message(m.chat.id, m.message_id)
+  except Exception:
+    pass
+
   help_text = (
-      f"📖 <b>Справочник и правила работы @{BOT_USERNAME}</b>\n\n"
-      f"📋 <b>Как подать объявление?</b>\n"
-      f"1️⃣ Выберите свой игровой сервер.\n"
-      f"2️⃣ Нажмите кнопку <b>«📤 Продать товар»</b> или <b>«📥 Скупить товар»</b>.\n"
-      f"3️⃣ Выберите нужную категорию товара.\n"
-      f"4️⃣ Отправьте текст объявления (или прикрепите фото с описанием).\n"
-      f"5️⃣ ИИ автоматически отредактирует текст по стандартам СМИ, после чего вы сможете отправить его на модерацию.\n\n"
-      f"⏱ <b>Время работы:</b> объявления принимаются и публикуются с <b>08:00:01 до 22:00:01 МСК</b>.\n"
-      f"⏳ <b>Кулдаун:</b> между подачами объявлений действует интервал в 2 минуты (для VIP-пользователей — 1 минута).\n"
-      f"💎 <b>VIP-статус:</b> дает расширенные лимиты подписок на поиск, бесплатные VIP-объявления и уменьшенный кулдаун.\n"
-      f"💬 <b>Связь с нами:</b> если возникли вопросы, вы всегда можете написать менеджеру через главное меню."
+      f"📖 <b>Справочник по боту и шаблон объявлений (@{BOT_USERNAME}):</b>\n\n"
+      "📝 <b>Формат отправки объявления:</b>\n"
+      "Предмет: [Название]\n"
+      "Цена/бюджет: [Сумма]\n"
+      "Какая лавка/нету: [Номер или нет]\n\n"
+      "1️⃣ <b>Время работы:</b> Отправка разрешена строго с 08:00:01 до 22:00:01 МСК. Ночной режим блокирует подачу.\n"
+      "2️⃣ <b>Модерация ИИ:</b> Все тексты автоматически проверяются на мат и мошенничество.\n"
+      "3️⃣ <b>Безопасность:</b> Бот защищает игроков от скама, а владелец (@bounqy) защищен от банов.\n"
+      "4️⃣ <b>Функционал:</b> Используйте кнопки меню для управления серверами, поиска товаров, настроек подписок и калькулятора VC."
   )
-  safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu())
+  safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu(), parse_mode="HTML")
 
 
 def change_server(m):
@@ -2294,7 +2344,7 @@ def cb_mod_open(call):
 
   if not post:
     try:
-      return bot.answer_callback_query(call.id, "⚠️ Пост уже обработан.", show_alert=True)
+      return bot.answer_callback_query(call.id, "⚠️ Этот пост уже обработан.", show_alert=True)
     except Exception:
       pass
 
@@ -2349,14 +2399,15 @@ def cb_mod_decision(call):
     cur = conn.cursor()
     cur.execute(f"SELECT * FROM {p_table} WHERE id = ?", (pid,))
     post = cur.fetchone()
-    if post:
-      cur.execute(f"DELETE FROM {p_table} WHERE id = ?", (pid,))
+    
+    if not post:
+      try:
+        return bot.answer_callback_query(call.id, "⚠️ Этот пост уже обработан.", show_alert=True)
+      except Exception:
+        pass
+      return
 
-  if not post:
-    try:
-      return bot.answer_callback_query(call.id, "⚠️ Пост уже обработан.", show_alert=True)
-    except Exception:
-      pass
+    cur.execute(f"DELETE FROM {p_table} WHERE id = ?", (pid,))
 
   log_admin_action(call.from_user.username or str(call.from_user.id), action, f"Post #{pid}")
 
@@ -2410,13 +2461,36 @@ def contact_manager(m):
 
 
 # ==========================================
-# ЗАПУСК БОТА
+# FLASK МАРШРУТЫ ДЛЯ 24/7 ВЕБХУКА
+# ==========================================
+@app.route("/", methods=["GET"])
+def index():
+  return "Arizona RP SMI Bot is running 24/7!", 200
+
+
+@app.route(f"/webhook/{TOKEN}", methods=["POST"])
+def webhook():
+  if request.headers.get("content-type") == "application/json":
+    json_string = request.get_data().decode("utf-8")
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "", 200
+  return "Forbidden", 403
+
+
+# ==========================================
+# ЗАПУСК БОТА ЧЕРЕЗ ВЕБ-СЕРВЕР (24/7)
 # ==========================================
 if __name__ == "__main__":
-  logger.info("Бот успешно запущен и готов к работе...")
-  while True:
-    try:
-      bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=30)
-    except Exception as e:
-      logger.error(f"Ошибка в polling: {e}")
-      time.sleep(5)
+  port = int(os.environ.get("PORT", 5000))
+  
+  if WEBHOOK_URL:
+    bot.remove_webhook()
+    time.sleep(1)
+    bot.set_webhook(url=f"{WEBHOOK_URL}/webhook/{TOKEN}")
+    logger.info(f"Вебхук успешно установлен на: {WEBHOOK_URL}/webhook/{TOKEN}")
+  else:
+    logger.warning("WEBHOOK_URL не задан! Бот запущен в режиме Flask (необходимо настроить вебхук хостинга).")
+
+  logger.info(f"Веб-сервер запущен на порту {port}...")
+  app.run(host="0.0.0.0", port=port)

@@ -1,5 +1,5 @@
-from contextlib import contextmanager
 from datetime import datetime, time as dtime
+import contextlib
 import html
 import logging
 import os
@@ -21,8 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Токен бота
-TOKEN = "8916669266:AAFGS9RYMCHOp1yQfBe6kGCh6-V3CdRwOPc"
+TOKEN = "8916669266:AAFall7GhTxs_ZAlMr4_d4W_XMZnunkY2NA"
 YT_CHANNEL_URL = "https://youtube.com/@bounty_squad31"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
@@ -104,7 +103,7 @@ BAD_WORDS = [
 user_states = {}
 
 
-@contextmanager
+@contextlib.contextmanager
 def get_db():
   conn = sqlite3.connect(DB_NAME, timeout=10.0)
   conn.row_factory = sqlite3.Row
@@ -190,7 +189,7 @@ def safe_send_message(chat_id, text, parse_mode="HTML", reply_markup=None):
 
 
 def safe_send_photo(
-    chat_id, photo, caption="", parse_mode="HTML", reply_markup=None
+    chat_id, photo, caption, parse_mode="HTML", reply_markup=None
 ):
   try:
     return bot.send_photo(
@@ -440,7 +439,8 @@ def background_cleanup_ads():
             cur.execute("DELETE FROM pending_posts")
             cur.execute("DELETE FROM pending_buy_posts")
           logger.info(
-              f"Утренняя авто-очистка объявлений выполнена ровно в {current_time} МСК."
+              f"Утренняя авто-очистка объявлений выполнена ровно в {current_time}"
+              " МСК."
           )
           last_cleaned_date = current_date
     except Exception as e:
@@ -462,6 +462,7 @@ def background_youtube_stream_checker():
       headers = {
           "User-Agent": (
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+              " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
           )
       }
       resp = requests.get(
@@ -470,10 +471,14 @@ def background_youtube_stream_checker():
           allow_redirects=True,
           timeout=15,
       )
-      final_url = resp.url
+      html_content = resp.text
 
-      if "/watch?v=" in final_url:
-        video_id = final_url.split("v=")[1].split("&")[0]
+      match = re.search(r"watch\?v=([a-zA-Z0-9_-]{11})", html_content)
+      if not match:
+        match = re.search(r'"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"', html_content)
+
+      if match:
+        video_id = match.group(1)
         if video_id != last_live_id:
           last_live_id = video_id
           admin_chats = get_admin_chat_ids()
@@ -800,13 +805,14 @@ def blocked_user_callback(c):
 
 
 # ==========================================
-# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ
+# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ (ИЗ СКРИПТА 1)
 # ==========================================
 def should_override_nav(msg):
   if not msg.text:
     return False
 
-  if msg.text == "❌ Отменить действие" or msg.text.startswith("/"):
+  # Убираем .startswith("/") отсюда, чтобы команды обрабатывались своими хендлерами
+  if msg.text == "❌ Отменить действие":
     return True
 
   uid = msg.from_user.id
@@ -852,11 +858,7 @@ def handle_navigation_override(m):
   if m.text != "❌ Отменить действие":
     clear_state(m.from_user.id)
 
-  if m.text == "/start":
-    cmd_start(m)
-  elif m.text == "/help":
-    cmd_help(m)
-  elif m.text == "🌐 Сменить игровой сервер":
+  if m.text == "🌐 Сменить игровой сервер":
     change_server(m)
   elif m.text == "📖 Справка и правила":
     how_bot_works(m)
@@ -881,7 +883,7 @@ def handle_navigation_override(m):
   elif m.text == "🔔 Уведомления о поиске":
     manage_subscriptions(m)
   elif m.text == "👑 Админ-панель":
-    admin_panel_cmd(m)
+    admin_panel(m)
   elif m.text == "📝 Стать редактором / админом":
     start_admin_application(m)
   elif m.text in CATEGORIES:
@@ -983,7 +985,9 @@ def change_server(m):
 def select_srv(m):
   srv = m.text
   uid = m.from_user.id
+
   set_user_server(uid, srv)
+
   safe_send_message(
       m.chat.id,
       f"✅ Игровой сервер установлен: <b>{html.escape(srv)}</b>\nДобро"
@@ -1396,7 +1400,17 @@ def process_ad_content(m):
     )
 
   st = get_state(uid)
-  key = "posting_ad" if "posting_ad" in st else "posting_buy_ad"
+  if "posting_ad" in st:
+    key = "posting_ad"
+  elif "posting_buy_ad" in st:
+    key = "posting_buy_ad"
+  else:
+    clear_state(uid)
+    return safe_send_message(
+        m.chat.id,
+        "⚠️ Ошибка состояния. Пожалуйста, начните подачу объявления заново.",
+        reply_markup=kb_main_menu(),
+    )
 
   text = m.caption if m.photo else m.text
   photo = m.photo[-1].file_id if m.photo else None
@@ -1637,6 +1651,32 @@ def cb_admin_mod_list(call):
       if is_buy
       else "📤 <b>Модерация продаж:</b>"
   )
+  try:
+    bot.edit_message_text(
+        title,
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=markup,
+        parse_mode="HTML",
+    )
+  except Exception:
+    safe_send_message(call.message.chat.id, title, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "back_to_admin")
+def cb_back_to_admin(call):
+  if not verify_admin_callback(call):
+    return
+  markup = types.InlineKeyboardMarkup(row_width=2)
+  markup.add(
+      types.InlineKeyboardButton(
+          "📤 Модерация продаж", callback_data="admin_mod_sales"
+      ),
+      types.InlineKeyboardButton(
+          "📥 Модерация скупки", callback_data="admin_mod_buys"
+      ),
+  )
+  title = "👑 <b>Панель администратора / редактора СМИ:</b>\nВыберите раздел для управления:"
   try:
     bot.edit_message_text(
         title,
@@ -2655,6 +2695,28 @@ def show_average_prices(m):
 # ==========================================
 # ЗАЯВКИ В АДМИНЫ И ПАНЕЛЬ УПРАВЛЕНИЯ
 # ==========================================
+def admin_panel(m):
+  if not verify_admin_callback(m) and not is_admin_or_owner(m.from_user):
+    return safe_send_message(
+        m.chat.id, "⛔ У вас нет доступа к панели администратора."
+    )
+  markup = types.InlineKeyboardMarkup(row_width=2)
+  markup.add(
+      types.InlineKeyboardButton(
+          "📤 Модерация продаж", callback_data="admin_mod_sales"
+      ),
+      types.InlineKeyboardButton(
+          "📥 Модерация скупки", callback_data="admin_mod_buys"
+      ),
+  )
+  safe_send_message(
+      m.chat.id,
+      "👑 <b>Панель администратора / редактора СМИ:</b>\nВыберите раздел для"
+      " управления:",
+      reply_markup=markup,
+  )
+
+
 def start_admin_application(m):
   update_state(m.from_user.id, applying_admin={"step": "server"})
   safe_send_message(
@@ -2828,59 +2890,29 @@ def cb_manage_admin_app(call):
             " (?, ?)",
             (uid, row["username"]),
         )
+        try:
+          bot.answer_callback_query(call.id, "✅ Заявка одобрена!")
+          bot.delete_message(call.message.chat.id, call.message.message_id)
+        except Exception:
+          pass
         safe_send_message(
             uid,
-            "🎉 Ваша заявка в администраторы <b>ОДОБРЕНА</b>! Добро пожаловать"
-            " в команду.",
+            "🎉 Поздравляем! Ваша заявка на пост редактора/администратора"
+            " одобрена!",
+            reply_markup=kb_main_menu(),
         )
-        msg = "Одобрено"
       else:
+        try:
+          bot.answer_callback_query(call.id, "❌ Заявка отклонена.")
+          bot.delete_message(call.message.chat.id, call.message.message_id)
+        except Exception:
+          pass
         safe_send_message(
-            uid, "❌ К сожалению, ваша заявка в администраторы отклонена."
+            uid,
+            "❌ К сожалению, ваша заявка на пост редактора/администратора"
+            " была отклонена.",
         )
-        msg = "Отклонено"
-
       cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (uid,))
-
-      try:
-        bot.edit_message_text(
-            f"{call.message.text}\n\n<b>Статус: {msg}</b>",
-            call.message.chat.id,
-            call.message.message_id,
-            parse_mode="HTML",
-        )
-      except Exception:
-        pass
-    else:
-      try:
-        bot.answer_callback_query(
-            call.id, "Заявка не найдена.", show_alert=True
-        )
-      except Exception:
-        pass
-
-
-@bot.message_handler(commands=["admin"])
-def admin_panel_cmd(m):
-  if not is_admin_or_owner(m.from_user):
-    return safe_send_message(
-        m.chat.id, "⛔ Доступ запрещен.", reply_markup=kb_main_menu()
-    )
-
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  markup.add(
-      types.InlineKeyboardButton(
-          "📤 Модерация продаж", callback_data="admin_mod_sales"
-      ),
-      types.InlineKeyboardButton(
-          "📥 Модерация скупок", callback_data="admin_mod_buys"
-      ),
-  )
-  safe_send_message(
-      m.chat.id,
-      "👑 <b>Панель администратора:</b>\nВыберите раздел для управления:",
-      reply_markup=markup,
-  )
 
 
 # ==========================================

@@ -1,3 +1,4 @@
+from datetime import datetime, time as dtime
 import contextlib
 import html
 import logging
@@ -20,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = "8916669266:AAFall7GhTxs_ZAlMr4_d4W_XMZnunkY2NA"
+TOKEN = "8916669266:AAGuCxDkWXkZUz-ouSsbEc1dZP1PcWBPYQg"
 YT_CHANNEL_URL = "https://youtube.com/@bounty_squad31"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
@@ -2887,59 +2888,41 @@ def info_premium(m):
       " контактным данным в VIP-объявлениях\n\n<i>Нажмите кнопку ниже для"
       " оплаты через Telegram Stars.</i>"
   )
+
   markup = types.InlineKeyboardMarkup()
-  if not is_prem:
-    markup.add(
-        types.InlineKeyboardButton(
-            "⭐ Купить VIP (30 дней) за 100 ⭐️", callback_data="buy_premium_30"
-        )
-    )
-  else:
-    markup.add(
-        types.InlineKeyboardButton(
-            "💎 Ваш VIP-статус активен", callback_data="vip_already_active"
-        )
-    )
+  markup.add(
+      types.InlineKeyboardButton(
+          "⭐ Купить VIP на 30 дней (150 ⭐️)", callback_data="buy_vip_30"
+      )
+  )
   safe_send_message(m.chat.id, text, reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda c: c.data == "buy_premium_30")
-def cb_buy_premium_30(call):
-  prices = [types.LabeledPrice(label="VIP Статус (30 дней)", amount=100)]
+@bot.callback_query_handler(func=lambda c: c.data == "buy_vip_30")
+def cb_buy_vip_30(call):
+  prices = [types.LabeledPrice(label="VIP-статус на 30 дней", amount=150)]
   try:
     bot.send_invoice(
         chat_id=call.message.chat.id,
-        title="VIP Статус на 30 дней",
-        description="Покупка VIP-статуса в боте на 30 дней",
+        title="VIP-статус (30 дней)",
+        description=(
+            "Покупка VIP-статуса на 30 дней для расширения возможностей в боте"
+        ),
         invoice_payload="premium_30",
         provider_token="",
         currency="XTR",
         prices=prices,
-        start_parameter="buy_vip_sub",
+        start_parameter="buy_vip_status",
     )
   except Exception as e:
     try:
-      bot.answer_callback_query(call.id, f"Ошибка: {e}", show_alert=True)
+      bot.answer_callback_query(
+          call.id, f"Ошибка создания счета: {e}", show_alert=True
+      )
     except Exception:
       pass
 
 
-@bot.callback_query_handler(func=lambda c: c.data == "vip_already_active")
-def cb_vip_active_alert(call):
-  try:
-    bot.answer_callback_query(
-        call.id,
-        "У вас уже активирован VIP-статус! Повторная покупка недоступна.",
-        show_alert=True,
-    )
-  except Exception:
-    pass
-
-
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
 if __name__ == "__main__":
-  logger.info("Бот успешно запущен и работает...")
+  logger.info("Бот запущен и готов к работе...")
   bot.infinity_polling(skip_pending=True)
-

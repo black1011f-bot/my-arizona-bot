@@ -484,7 +484,7 @@ def background_cleanup_ads():
 threading.Thread(target=background_cleanup_ads, daemon=True).start()
 
 # ==========================================
-# ФОНОВАЯ ПРОВЕРКА YOUTUBE СТРИМОВ (ИСПРАВЛЕНА)
+# ФОНОВАЯ ПРОВЕРКА YOUTUBE СТРИМОВ
 # ==========================================
 
 
@@ -511,7 +511,6 @@ def background_youtube_stream_checker():
       if not match:
         match = re.search(r'"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"', html_content)
 
-      # Проверка, что стрим реально активен в HTML (ищем признак live)
       is_actually_live = "isLive": True in html_content or "LIVE" in html_content
 
       if match and is_actually_live:
@@ -816,7 +815,9 @@ def ikb_chat_controls(aid: int):
   return markup
 
 
-def ikb_user_ad_actions(aid: int, is_fav: bool = False, is_buy: bool = False, edit_count: int = 0):
+def ikb_user_ad_actions(
+    aid: int, is_fav: bool = False, is_buy: bool = False, edit_count: int = 0
+):
   markup = types.InlineKeyboardMarkup(row_width=2)
   fav_text = "❌ Убрать из избранного" if is_fav else "❤️ В избранное"
   markup.add(
@@ -825,7 +826,6 @@ def ikb_user_ad_actions(aid: int, is_fav: bool = False, is_buy: bool = False, ed
       ),
       types.InlineKeyboardButton(fav_text, callback_data=f"fav_toggle_{aid}"),
   )
-  # Кнопка редактирования доступна автору, если товар выложен только 1 раз
   if edit_count < 1:
     edit_prefix = "edit_my_buy_" if is_buy else "edit_my_sale_"
     markup.add(
@@ -837,7 +837,11 @@ def ikb_user_ad_actions(aid: int, is_fav: bool = False, is_buy: bool = False, ed
 
 
 def ikb_ad_actions(
-    aid: int, is_fav: bool = False, user_id: int = 0, is_buy: bool = False, edit_count: int = 0
+    aid: int,
+    is_fav: bool = False,
+    user_id: int = 0,
+    is_buy: bool = False,
+    edit_count: int = 0,
 ):
   markup = types.InlineKeyboardMarkup(row_width=2)
   fav_text = "❌ Убрать из избранного" if is_fav else "❤️ В избранное"
@@ -1088,6 +1092,217 @@ def how_bot_works(m):
   safe_send_message(m.chat.id, text)
 
 
+def info_premium(m):
+  text = (
+      "💎 <b>VIP-статус в боте</b>\n\n"
+      "Привилегии владельца VIP-статуса:\n"
+      "• Кулдаун на подачу объявлений сокращен в 2 раза (1 минута вместо 2х).\n"
+      "• Возможность добавлять до 20 уведомлений по поиску.\n"
+      "• Увеличенные лимиты и приоритетный показ.\n\n"
+      "Оформить подписку можно через Telegram Stars."
+  )
+  markup = types.InlineKeyboardMarkup()
+  markup.add(
+      types.InlineKeyboardButton(
+          "💎 Купить VIP на 30 дней (150 ⭐)", callback_data="buy_premium_30"
+      )
+  )
+  safe_send_message(m.chat.id, text, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "buy_premium_30")
+def cb_buy_premium_30(call):
+  prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=150)]
+  try:
+    bot.send_invoice(
+        chat_id=call.message.chat.id,
+        title="VIP Статус (30 дней)",
+        description="Оформление VIP-статуса в боте на 1 месяц",
+        invoice_payload="premium_30",
+        provider_token="",
+        currency="XTR",
+        prices=prices,
+        start_parameter="buy_vip",
+    )
+  except Exception as e:
+    try:
+      bot.answer_callback_query(
+          call.id, f"Ошибка создания счета: {e}", show_alert=True
+      )
+    except Exception:
+      pass
+
+
+# ==========================================
+# КАЛЬКУЛЯТОР И КУРС VC
+# ==========================================
+def show_vc_menu(m):
+  rate = get_vc_rate()
+  text = (
+      f"💱 <b>Курс обмена Vice City и Калькулятор</b>\n\n"
+      f"Текущий курс обмена (SA $: VC $): <b>1 VC = {rate:,.0f} SA $</b>\n\n"
+      "Выберите нужное действие:"
+  )
+  markup = types.InlineKeyboardMarkup(row_width=2)
+  markup.add(
+      types.InlineKeyboardButton(
+          "🔄 Конвертер валют", callback_data="vc_conv_start"
+      ),
+      types.InlineKeyboardButton(
+          "🧮 Калькулятор перелетов", callback_data="vc_calc_start"
+      ),
+  )
+  if is_admin_or_owner(m.from_user):
+    markup.add(
+        types.InlineKeyboardButton(
+            "⚙️ Изменить курс VC", callback_data="vc_set_rate_start"
+        )
+    )
+  safe_send_message(m.chat.id, text, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "vc_set_rate_start")
+def cb_vc_set_rate_start(call):
+  if not verify_admin_callback(call):
+    return
+  update_state(call.from_user.id, vc_setting_rate=True)
+  safe_send_message(
+      call.message.chat.id,
+      "⚙️ Введите новый курс обмена (целое число SA $ за 1 VC):",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("vc_setting_rate")
+)
+def process_vc_set_rate(m):
+  uid = m.from_user.id
+  clear_state(uid)
+  try:
+    new_rate = float(m.text.strip().replace(" ", "").replace(",", "."))
+    if new_rate <= 0:
+      raise ValueError()
+  except ValueError:
+    return safe_send_message(
+        m.chat.id, "⚠️ Неверный формат курса. Введите положительное число."
+    )
+
+  set_vc_rate(new_rate)
+  safe_send_message(
+      m.chat.id,
+      f"✅ Курс VC успешно обновлен: <b>1 VC = {new_rate:,.0f} SA $</b>",
+      reply_markup=kb_main_menu(),
+  )
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "vc_conv_start")
+def cb_vc_conv_start(call):
+  update_state(call.from_user.id, vc_conv_input=True)
+  safe_send_message(
+      call.message.chat.id,
+      "🔄 <b>Конвертер валют</b>\n\nВведите сумму (например: <code>1500000</code>"
+      " для SA $ или <code>500vc</code> для VC-долларов):",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("vc_conv_input")
+)
+def process_vc_conv(m):
+  uid = m.from_user.id
+  clear_state(uid)
+  text = m.text.strip().lower().replace(" ", "").replace(",", ".")
+  rate = get_vc_rate()
+
+  try:
+    if "vc" in text:
+      val = float(text.replace("vc", ""))
+      sa_val = val * rate
+      res = f"🧮 <b>Результат конвертации:</b>\n{val:,.2f} VC = <b>{sa_val:,.0f} SA $</b>"
+    else:
+      val = float(text)
+      vc_val = val / rate if rate > 0 else 0
+      res = f"🧮 <b>Результат конвертации:</b>\n{val:,.0f} SA $ = <b>{vc_val:,.2f} VC</b>"
+  except ValueError:
+    return safe_send_message(
+        m.chat.id,
+        "⚠️ Неверный формат ввода. Укажите число (например, <code>1000000</code>"
+        " или <code>500vc</code>).",
+    )
+
+  safe_send_message(m.chat.id, res, reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "vc_calc_start")
+def cb_vc_calc_start(call):
+  update_state(call.from_user.id, vc_calc_step="buy_price")
+  safe_send_message(
+      call.message.chat.id,
+      "🧮 <b>Калькулятор перелетов / прибыли</b>\n\n1️⃣ Введите цену покупки"
+      " товара на своем сервере (в SA $):",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("vc_calc_step")
+    == "buy_price"
+)
+def process_calc_buy(m):
+  uid = m.from_user.id
+  try:
+    val = float(m.text.strip().replace(" ", "").replace(",", "."))
+  except ValueError:
+    return safe_send_message(
+        m.chat.id, "⚠️ Введите корректное числовое значение цены."
+    )
+
+  st = get_state(uid)
+  st["calc_buy"] = val
+  st["vc_calc_step"] = "sell_price"
+  update_state(uid, **st)
+  safe_send_message(
+      m.chat.id,
+      "2️⃣ Введите цену продажи товара на сервере Vice City (в VC $):",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("vc_calc_step")
+    == "sell_price"
+)
+def process_calc_sell(m):
+  uid = m.from_user.id
+  try:
+    val = float(m.text.strip().replace(" ", "").replace(",", "."))
+  except ValueError:
+    return safe_send_message(
+        m.chat.id, "⚠️ Введите корректное числовое значение цены."
+    )
+
+  st = get_state(uid)
+  buy_price = st.get("calc_buy", 0)
+  clear_state(uid)
+
+  rate = get_vc_rate()
+  sell_price_sa = val * rate
+  profit = sell_price_sa - buy_price
+  percent = (profit / buy_price * 100) if buy_price > 0 else 0
+
+  res = (
+      f"📊 <b>Финансовый расчет сделки:</b>\n\n"
+      f"• Цена покупки (SA $): <b>{buy_price:,.0f} SA $</b>\n"
+      f"• Цена продажи в VC: <b>{val:,.2f} VC</b> (~{sell_price_sa:,.0f} SA $)\n"
+      f"• Курс конвертации: <b>1 VC = {rate:,.0f} SA $</b>\n\n"
+      f"💰 Чистая прибыль: <b>{profit:,.0f} SA $</b>\n"
+      f"📈 Рентабельность: <b>{percent:+.2f}%</b>"
+  )
+  safe_send_message(m.chat.id, res, reply_markup=kb_main_menu())
+
+
 def admin_panel(m):
   if not is_admin_or_owner(m.from_user):
     return safe_send_message(
@@ -1103,7 +1318,6 @@ def admin_panel(m):
       ),
   )
 
-  # Расширенный функционал для владельца @bounqy
   if is_owner(m.from_user):
     markup.add(
         types.InlineKeyboardButton(
@@ -1133,17 +1347,24 @@ def admin_panel(m):
 # ==========================================
 # РАСШИРЕННЫЕ ФУНКЦИИ ВЛАДЕЛЬЦА (@bounqy)
 # ==========================================
-@bot.callback_query_handler(func=lambda c: c.data == "owner_broadcast_start" and is_owner(c.from_user))
+@bot.callback_query_handler(
+    func=lambda c: c.data == "owner_broadcast_start" and is_owner(c.from_user)
+)
 def cb_owner_broadcast_start(call):
   update_state(call.from_user.id, owner_broadcast_input=True)
   safe_send_message(
       call.message.chat.id,
-      "📢 <b>Режим рассылки сообщений</b>\n\nОтправьте текст (поддерживается HTML-разметка и красивые смайлики), который будет разослан всем пользователям бота:",
+      "📢 <b>Режим рассылки сообщений</b>\n\nОтправьте текст (поддерживается"
+      " HTML-разметка и красивые смайлики), который будет разослан всем"
+      " пользователям бота:",
       reply_markup=kb_cancel(),
   )
 
 
-@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("owner_broadcast_input") and is_owner(m.from_user))
+@bot.message_handler(
+    func=lambda m: get_state(m.from_user.id).get("owner_broadcast_input")
+    and is_owner(m.from_user)
+)
 def process_owner_broadcast(m):
   clear_state(m.from_user.id)
   text = m.text
@@ -1157,35 +1378,46 @@ def process_owner_broadcast(m):
 
   success = 0
   fail = 0
-  safe_send_message(m.chat.id, f"🚀 Начинаю рассылку для {len(users)} пользователей...")
+  safe_send_message(
+      m.chat.id, f"🚀 Начинаю рассылку для {len(users)} пользователей..."
+  )
 
   for row in users:
     uid = row["user_id"]
     try:
       safe_send_message(uid, text)
       success += 1
-      time.sleep(0.05) # Защита от флуд-контроля Telegram
+      time.sleep(0.05)
     except Exception:
       fail += 1
 
   safe_send_message(
       m.chat.id,
-      f"✅ <b>Рассылка завершена!</b>\n\n✔️ Успешно отправлено: {success}\n❌ Ошибок / заблокировали: {fail}",
+      f"✅ <b>Рассылка завершена!</b>\n\n✔️ Успешно отправлено:"
+      f" {success}\n❌ Ошибок / заблокировали: {fail}",
       reply_markup=kb_main_menu(),
   )
 
 
-@bot.callback_query_handler(func=lambda c: c.data == "owner_get_logs" and is_owner(c.from_user))
+@bot.callback_query_handler(
+    func=lambda c: c.data == "owner_get_logs" and is_owner(c.from_user)
+)
 def cb_owner_get_logs(call):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute("SELECT admin_username, action, target, timestamp FROM admin_action_logs ORDER BY id DESC")
+    cur.execute(
+        "SELECT admin_username, action, target, timestamp FROM"
+        " admin_action_logs ORDER BY id DESC"
+    )
     logs = cur.fetchall()
 
-  log_text = "=== ЖУРНАЛ ДЕЙСТВИЙ АДМИНИСТРАТОРОВ ==-\n\n"
+  log_text = "=== ЖУРНАЛ ДЕЙСТВИЙ АДМИНИСТРАТОРОВ ===\n\n"
   for row in logs:
     dt = datetime.fromtimestamp(row["timestamp"]).strftime("%Y-%m-%d %H:%M:%S")
-    log_text += f"[{dt}] Администратор @{row['admin_username']}: {row['action']} -> {row['target']}\n"
+    log_text += (
+        f"[{dt}] Администратор @{row['admin_username']}:"
+        f" {row['action']} -> {row['target']}\n"
+    )
 
   if not logs:
     log_text += "Логи пока пусты."
@@ -1194,56 +1426,93 @@ def cb_owner_get_logs(call):
   file_bytes.name = "admin_actions_log.txt"
 
   try:
-    bot.send_document(call.message.chat.id, file_bytes, caption="📋 Файл логов действий администраторов")
+    bot.send_document(
+        call.message.chat.id,
+        file_bytes,
+        caption="📋 Файл логов действий администраторов",
+    )
   except Exception as e:
     safe_send_message(call.message.chat.id, f"Ошибка отправки файла логов: {e}")
 
 
-@bot.callback_query_handler(func=lambda c: c.data == "owner_manage_ban" and is_owner(c.from_user))
+@bot.callback_query_handler(
+    func=lambda c: c.data == "owner_manage_ban" and is_owner(c.from_user)
+)
 def cb_owner_manage_ban(call):
   markup = types.InlineKeyboardMarkup(row_width=2)
   markup.add(
-      types.InlineKeyboardButton("🔨 Забанить юзера", callback_data="owner_ban_user"),
-      types.InlineKeyboardButton("🔓 Разбанить юзера", callback_data="owner_unban_user"),
+      types.InlineKeyboardButton(
+          "🔨 Забанить юзера", callback_data="owner_ban_user"
+      ),
+      types.InlineKeyboardButton(
+          "🔓 Разбанить юзера", callback_data="owner_unban_user"
+      ),
   )
   markup.add(types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_admin"))
-  bot.edit_message_text("🔨 Управление блокировками (по юзернейму/ID):", call.message.chat.id, call.message.message_id, reply_markup=markup)
+  bot.edit_message_text(
+      "🔨 Управление блокировками (по юзернейму/ID):",
+      call.message.chat.id,
+      call.message.message_id,
+      reply_markup=markup,
+  )
 
 
-@bot.callback_query_handler(func=lambda c: c.data in ["owner_ban_user", "owner_unban_user"] and is_owner(c.from_user))
+@bot.callback_query_handler(
+    func=lambda c: c.data in ["owner_ban_user", "owner_unban_user"]
+    and is_owner(c.from_user)
+)
 def cb_owner_ban_prompt(call):
   action_type = "ban" if "ban_user" in call.data else "unban"
   update_state(call.from_user.id, admin_action_input=action_type)
   safe_send_message(
       call.message.chat.id,
-      f"Введите юзернейм (без @) или ID пользователя для {'бана' if action_type == 'ban' else 'разбана'}:",
+      f"Введите юзернейм (без @) или ID пользователя для"
+      f" {'бана' if action_type == 'ban' else 'разбана'}:",
       reply_markup=kb_cancel(),
   )
 
 
-@bot.callback_query_handler(func=lambda c: c.data == "owner_manage_admins" and is_owner(c.from_user))
+@bot.callback_query_handler(
+    func=lambda c: c.data == "owner_manage_admins" and is_owner(c.from_user)
+)
 def cb_owner_manage_admins(call):
   markup = types.InlineKeyboardMarkup(row_width=2)
   markup.add(
-      types.InlineKeyboardButton("➕ Сделать админом", callback_data="owner_make_admin"),
-      types.InlineKeyboardButton("➖ Снять с адм", callback_data="owner_remove_admin"),
+      types.InlineKeyboardButton(
+          "➕ Сделать админом", callback_data="owner_make_admin"
+      ),
+      types.InlineKeyboardButton(
+          "➖ Снять с адм", callback_data="owner_remove_admin"
+      ),
   )
   markup.add(types.InlineKeyboardButton("🔙 Назад", callback_data="back_to_admin"))
-  bot.edit_message_text("👑 Управление администраторами:", call.message.chat.id, call.message.message_id, reply_markup=markup)
+  bot.edit_message_text(
+      "👑 Управление администраторами:",
+      call.message.chat.id,
+      call.message.message_id,
+      reply_markup=markup,
+  )
 
 
-@bot.callback_query_handler(func=lambda c: c.data in ["owner_make_admin", "owner_remove_admin"] and is_owner(c.from_user))
+@bot.callback_query_handler(
+    func=lambda c: c.data in ["owner_make_admin", "owner_remove_admin"]
+    and is_owner(c.from_user)
+)
 def cb_owner_admin_prompt(call):
   action_type = "make_adm" if "make_admin" in call.data else "remove_adm"
   update_state(call.from_user.id, admin_action_input=action_type)
   safe_send_message(
       call.message.chat.id,
-      f"Введите юзернейм (без @) или ID пользователя, чтобы {'назначить администратором' if action_type == 'make_adm' else 'снять с поста администратора'}:",
+      f"Введите юзернейм (без @) или ID пользователя, чтобы"
+      f" {'назначить администратором' if action_type == 'make_adm' else 'снять с поста администратора'}:",
       reply_markup=kb_cancel(),
   )
 
 
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("admin_action_input") and is_owner(msg.from_user))
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("admin_action_input")
+    and is_owner(msg.from_user)
+)
 def process_admin_action_input(m):
   uid = m.from_user.id
   st = get_state(uid)
@@ -1257,38 +1526,86 @@ def process_admin_action_input(m):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     if action == "ban":
-      cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (str(target_raw), is_id))
-      log_admin_action(m.from_user.username or "owner", "BAN", str(target_raw))
-      safe_send_message(m.chat.id, f"✅ Пользователь <b>{target_raw}</b> заблокирован.", reply_markup=kb_main_menu())
+      cur.execute(
+          "INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)",
+          (str(target_raw), is_id),
+      )
+      log_admin_action(
+          m.from_user.username or "owner", "BAN", str(target_raw)
+      )
+      safe_send_message(
+          m.chat.id,
+          f"✅ Пользователь <b>{target_raw}</b> заблокирован.",
+          reply_markup=kb_main_menu(),
+      )
     elif action == "unban":
       cur.execute("DELETE FROM bans WHERE target = ?", (str(target_raw),))
-      log_admin_action(m.from_user.username or "owner", "UNBAN", str(target_raw))
-      safe_send_message(m.chat.id, f"✅ Пользователь <b>{target_raw}</b> разблокирован.", reply_markup=kb_main_menu())
+      log_admin_action(
+          m.from_user.username or "owner", "UNBAN", str(target_raw)
+      )
+      safe_send_message(
+          m.chat.id,
+          f"✅ Пользователь <b>{target_raw}</b> разблокирован.",
+          reply_markup=kb_main_menu(),
+      )
     elif action == "make_adm":
-      # Ищем юзернейм или айди в user_data
       if is_id:
-        cur.execute("SELECT user_id, username FROM user_data WHERE user_id = ?", (target_val,))
+        cur.execute(
+            "SELECT user_id, username FROM user_data WHERE user_id = ?",
+            (target_val,),
+        )
       else:
-        cur.execute("SELECT user_id, username FROM user_data WHERE LOWER(username) = ?", (target_val,))
+        cur.execute(
+            "SELECT user_id, username FROM user_data WHERE LOWER(username) = ?",
+            (target_val,),
+        )
       u_row = cur.fetchone()
-      target_id = u_row["user_id"] if u_row else (target_val if is_id else 0)
-      target_uname = u_row["username"] if u_row and u_row["username"] else str(target_raw)
+      target_id = (
+          u_row["user_id"] if u_row else (target_val if is_id else 0)
+      )
+      target_uname = (
+          u_row["username"] if u_row and u_row["username"] else str(target_raw)
+      )
 
-      cur.execute("INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES (?, ?)", (target_id, target_uname))
-      log_admin_action(m.from_user.username or "owner", "MAKE_ADMIN", str(target_raw))
-      safe_send_message(m.chat.id, f"✅ Пользователь <b>{target_raw}</b> назначен администратором.", reply_markup=kb_main_menu())
+      cur.execute(
+          "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES"
+          " (?, ?)",
+          (target_id, target_uname),
+      )
+      log_admin_action(
+          m.from_user.username or "owner", "MAKE_ADMIN", str(target_raw)
+      )
+      safe_send_message(
+          m.chat.id,
+          f"✅ Пользователь <b>{target_raw}</b> назначен администратором.",
+          reply_markup=kb_main_menu(),
+      )
       if target_id:
         try:
-          safe_send_message(target_id, "🎉 Вам были выданы права администратора владельцем бота!")
+          safe_send_message(
+              target_id,
+              "🎉 Вам были выданы права администратора владельцем бота!",
+          )
         except Exception:
           pass
     elif action == "remove_adm":
       if is_id:
-        cur.execute("DELETE FROM approved_admins WHERE user_id = ?", (target_val,))
+        cur.execute(
+            "DELETE FROM approved_admins WHERE user_id = ?", (target_val,)
+        )
       else:
-        cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (target_raw.lower(),))
-      log_admin_action(m.from_user.username or "owner", "REMOVE_ADMIN", str(target_raw))
-      safe_send_message(m.chat.id, f"✅ Пользователь <b>{target_raw}</b> снят с поста администратора.", reply_markup=kb_main_menu())
+        cur.execute(
+            "DELETE FROM approved_admins WHERE LOWER(username) = ?",
+            (target_raw.lower(),),
+        )
+      log_admin_action(
+          m.from_user.username or "owner", "REMOVE_ADMIN", str(target_raw)
+      )
+      safe_send_message(
+          m.chat.id,
+          f"✅ Пользователь <b>{target_raw}</b> снят с поста администратора.",
+          reply_markup=kb_main_menu(),
+      )
 
 
 def show_average_prices(m):
@@ -1495,7 +1812,11 @@ def cb_admin_app_decision(call):
           " (?, ?)",
           (target_uid, uname),
       )
-      log_admin_action(call.from_user.username or "admin", "APPROVE_ADMIN_APP", str(target_uid))
+      log_admin_action(
+          call.from_user.username or "admin",
+          "APPROVE_ADMIN_APP",
+          str(target_uid),
+      )
 
   try:
     bot.answer_callback_query(
@@ -1546,8 +1867,8 @@ def _show_ads(m, is_buy):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        f"SELECT id, user_id, text, photo, is_vip, edit_count FROM {table} WHERE server = ?"
-        " AND category = ? ORDER BY is_vip DESC, id DESC LIMIT 10",
+        f"SELECT id, user_id, text, photo, is_vip, edit_count FROM {table} WHERE"
+        " server = ? AND category = ? ORDER BY is_vip DESC, id DESC LIMIT 10",
         (srv, cat),
     )
     ads = cur.fetchall()
@@ -1582,11 +1903,18 @@ def _show_ads(m, is_buy):
       )
       is_fav = bool(cur.fetchone())
 
-    # Если пользователь сам является автором объявления, даем персональную клавиатуру с редактированием
     if uid == owner_id:
-      markup = ikb_user_ad_actions(aid, is_fav=is_fav, is_buy=is_buy, edit_count=edit_count)
+      markup = ikb_user_ad_actions(
+          aid, is_fav=is_fav, is_buy=is_buy, edit_count=edit_count
+      )
     else:
-      markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=is_buy, edit_count=edit_count)
+      markup = ikb_ad_actions(
+          aid,
+          is_fav=is_fav,
+          user_id=uid,
+          is_buy=is_buy,
+          edit_count=edit_count,
+      )
 
     fmt_text = html.escape(text)
     if is_vip:
@@ -1601,7 +1929,10 @@ def _show_ads(m, is_buy):
 # ==========================================
 # РЕДАКТИРОВАНИЕ И УПРАВЛЕНИЕ СВОИМИ ОБЪЯВЛЕНИЯМИ
 # ==========================================
-@bot.callback_query_handler(func=lambda c: c.data.startswith("edit_my_sale_") or c.data.startswith("edit_my_buy_"))
+@bot.callback_query_handler(
+    func=lambda c: c.data.startswith("edit_my_sale_")
+    or c.data.startswith("edit_my_buy_")
+)
 def cb_edit_my_ad(call):
   is_buy = "edit_my_buy_" in call.data
   prefix = "edit_my_buy_" if is_buy else "edit_my_sale_"
@@ -1616,13 +1947,21 @@ def cb_edit_my_ad(call):
 
   if not row or row["user_id"] != uid:
     try:
-      return bot.answer_callback_query(call.id, "⚠️ Объявление не найдено или не принадлежит вам!", show_alert=True)
+      return bot.answer_callback_query(
+          call.id,
+          "⚠️ Объявление не найдено или не принадлежит вам!",
+          show_alert=True,
+      )
     except Exception:
       pass
 
   if row["edit_count"] >= 1:
     try:
-      return bot.answer_callback_query(call.id, "⚠️ Это объявление уже было отредактировано 1 раз!", show_alert=True)
+      return bot.answer_callback_query(
+          call.id,
+          "⚠️ Это объявление уже было отредактировано 1 раз!",
+          show_alert=True,
+      )
     except Exception:
       pass
 
@@ -1634,7 +1973,10 @@ def cb_edit_my_ad(call):
   )
 
 
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("editing_user_ad_id") is not None)
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("editing_user_ad_id")
+    is not None
+)
 def process_user_edit_ad_text(m):
   uid = m.from_user.id
   st = get_state(uid)
@@ -1647,14 +1989,24 @@ def process_user_edit_ad_text(m):
     return safe_send_message(m.chat.id, "⚠️ Текст не может быть пустым.")
 
   if not check_auto_moderation(new_text):
-    return safe_send_message(m.chat.id, "🤬 В вашем тексте обнаружены запрещенные слова.")
+    return safe_send_message(
+        m.chat.id, "🤬 В вашем тексте обнаружены запрещенные слова."
+    )
 
   table = "active_buy_ads" if is_buy else "active_ads"
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute(f"UPDATE {table} SET text = ?, edit_count = edit_count + 1 WHERE id = ? AND user_id = ?", (new_text, aid, uid))
+    cur.execute(
+        f"UPDATE {table} SET text = ?, edit_count = edit_count + 1 WHERE id = ?"
+        " AND user_id = ?",
+        (new_text, aid, uid),
+    )
 
-  safe_send_message(m.chat.id, f"✅ Объявление #{aid} успешно отредактировано!", reply_markup=kb_main_menu())
+  safe_send_message(
+      m.chat.id,
+      f"✅ Объявление #{aid} успешно отредактировано!",
+      reply_markup=kb_main_menu(),
+  )
 
 
 # ==========================================
@@ -1724,7 +2076,9 @@ def cb_admin_delete_ad(call):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
-    log_admin_action(call.from_user.username or "admin", "DELETE_AD", f"ID {aid}")
+    log_admin_action(
+        call.from_user.username or "admin", "DELETE_AD", f"ID {aid}"
+    )
 
   try:
     bot.answer_callback_query(
@@ -2224,7 +2578,11 @@ def process_successful_payment(message):
     if p_data:
       p_data["is_vip"] = 1
       finish_posting(
-          message.chat.id, uid, message.from_user.username, p_data.get("photo"), is_buy
+          message.chat.id,
+          uid,
+          message.from_user.username,
+          p_data.get("photo"),
+          is_buy,
       )
     else:
       safe_send_message(
@@ -2444,7 +2802,8 @@ def cb_moderate_action(call):
       cur = conn.cursor()
       cur.execute(
           f"INSERT INTO {active_table} (user_id, server, category, text,"
-          " photo, is_vip, last_updated, edit_count) VALUES (?, ?, ?, ?, ?, ?, ?, 0)",
+          " photo, is_vip, last_updated, edit_count) VALUES (?, ?, ?, ?, ?, ?,"
+          " ?, 0)",
           (user_id, server, category, text, photo, is_vip, time.time()),
       )
       new_ad_id = cur.lastrowid
@@ -2475,7 +2834,11 @@ def cb_moderate_action(call):
     with db_lock, get_db() as conn:
       cur = conn.cursor()
       cur.execute(f"DELETE FROM {pending_table} WHERE id = ?", (pid,))
-      log_admin_action(call.from_user.username or "admin", "REJECT_AD", f"Pending ID {pid}")
+      log_admin_action(
+          call.from_user.username or "admin",
+          "REJECT_AD",
+          f"Pending ID {pid}",
+      )
 
     try:
       bot.answer_callback_query(call.id, "❌ Объявление отклонено.")
@@ -2791,459 +3154,22 @@ def notify_subscribers(server: str, text: str, aid: int, is_buy: bool):
       notif = (
           "🔔 <b>Уведомление по подписке!</b>\nПоявилось новое объявление на"
           f" {ad_type} (Сервер: {server}) с ключевым словом"
-          f" «<b>{html.escape(kw)}</b>»."
+          f" «<b>{html.escape(kw)}</b>»:\n\n{html.escape(text)}"
       )
-      markup = ikb_ad_actions(aid, False, uid, is_buy)
       try:
-        safe_send_message(uid, notif, reply_markup=markup)
+        safe_send_message(uid, notif)
       except Exception:
         pass
 
 
 # ==========================================
-# ЧАТЫ (P2P ОБЩЕНИЕ)
+# ЗАПУСК БОТА
 # ==========================================
-@bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
-def start_dialog_with_seller(call):
-  aid = int(call.data.replace("contact_seller_", ""))
-  buyer_id = call.from_user.id
-  buyer_uname = call.from_user.username or "Без юзернейма"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT user_id, server, text FROM active_ads WHERE id = ?", (aid,)
-    )
-    row = cur.fetchone()
-    is_buy = False
-    if not row:
-      cur.execute(
-          "SELECT user_id, server, text FROM active_buy_ads WHERE id = ?",
-          (aid,),
-      )
-      row = cur.fetchone()
-      is_buy = True
-
-  if not row:
-    try:
-      bot.answer_callback_query(
-          call.id, "❌ Объявление не найдено или снято.", show_alert=True
-      )
-    except Exception:
-      pass
-    return
-
-  seller_id, srv, text = row["user_id"], row["server"], row["text"]
-
-  if buyer_id == seller_id:
-    try:
-      bot.answer_callback_query(
-          call.id, "Вы не можете написать сами себе :)", show_alert=True
-      )
-    except Exception:
-      pass
-    return
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT is_active FROM active_dialogs WHERE buyer_id=? AND"
-        " seller_id=? AND ad_id=?",
-        (buyer_id, seller_id, aid),
-    )
-    dialog = cur.fetchone()
-
-  if dialog and dialog["is_active"] == 1:
-    try:
-      bot.answer_callback_query(call.id, "Диалог уже открыт!", show_alert=True)
-    except Exception:
-      pass
-    return
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT OR REPLACE INTO active_dialogs (buyer_id, seller_id, ad_id,"
-        " is_active) VALUES (?, ?, ?, 1)",
-        (buyer_id, seller_id, aid),
-    )
-
-  ad_type_str = "скупке" if is_buy else "продаже"
-  buyer_msg = (
-      f"✅ Вы начали диалог с автором объявления (ID: {aid}). Теперь все ваши"
-      " сообщения в бот будут пересылаться ему. Нажмите кнопку, чтобы"
-      " завершить чат."
-  )
-  seller_msg = (
-      f"✉️ <b>Новое сообщение от покупателя @{buyer_uname}!</b>\nПо объявлению"
-      f" о {ad_type_str} (ID: {aid}):\n<i>{text[:50]}...</i>\nТеперь ваши"
-      " сообщения будут пересылаться ему."
-  )
-
-  safe_send_message(buyer_id, buyer_msg, reply_markup=ikb_chat_controls(aid))
-  safe_send_message(seller_id, seller_msg, reply_markup=ikb_chat_controls(aid))
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("stop_chat_"))
-def cb_stop_chat(call):
-  aid = int(call.data.replace("stop_chat_", ""))
-  uid = call.from_user.id
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT buyer_id, seller_id FROM active_dialogs WHERE ad_id=? AND"
-        " (buyer_id=? OR seller_id=?)",
-        (aid, uid, uid),
-    )
-    row = cur.fetchone()
-
-  if not row:
-    return
-
-  buyer_id, seller_id = row["buyer_id"], row["seller_id"]
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE active_dialogs SET is_active=0 WHERE ad_id=? AND buyer_id=? AND"
-        " seller_id=?",
-        (aid, buyer_id, seller_id),
-    )
-
-  other_id = seller_id if uid == buyer_id else buyer_id
-
-  try:
-    bot.edit_message_reply_markup(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        reply_markup=None,
-    )
-  except Exception:
-    pass
-
-  safe_send_message(uid, f"🛑 Диалог по объявлению {aid} завершен.")
-  safe_send_message(other_id, f"🛑 Собеседник завершил диалог по объявлению {aid}.")
-
-  if uid == buyer_id:
-    markup = types.InlineKeyboardMarkup(row_width=5)
-    markup.add(*[
-        types.InlineKeyboardButton(
-            str(i), callback_data=f"rate_{seller_id}_{i}"
-        )
-        for i in range(1, 6)
-    ])
-    safe_send_message(
-        uid, "Пожалуйста, оцените продавца от 1 до 5:", reply_markup=markup
-    )
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("rate_"))
-def cb_rate_seller(call):
-  parts = call.data.split("_")
-  seller_id = int(parts[1])
-  rating = int(parts[2])
-  buyer_id = call.from_user.id
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO seller_reviews (seller_id, buyer_id, rating, comment)"
-        " VALUES (?, ?, ?, '')",
-        (seller_id, buyer_id, rating),
-    )
-
-  try:
-    bot.answer_callback_query(call.id, f"✅ Спасибо! Вы поставили оценку {rating}.")
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("resume_chat_"))
-def cb_resume_chat(call):
-  aid = int(call.data.replace("resume_chat_", ""))
-  buyer_id = call.from_user.id
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT seller_id, is_active FROM active_dialogs WHERE ad_id=? AND"
-        " buyer_id=?",
-        (aid, buyer_id),
-    )
-    row = cur.fetchone()
-
-  if not row:
-    return
-  seller_id, is_active = row["seller_id"], row["is_active"]
-
-  if is_active:
-    try:
-      bot.answer_callback_query(call.id, "Диалог уже активен!", show_alert=True)
-    except Exception:
-      pass
-    return
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE active_dialogs SET is_active=1 WHERE ad_id=? AND buyer_id=? AND"
-        " seller_id=?",
-        (aid, buyer_id, seller_id),
-    )
-
-  safe_send_message(
-      buyer_id,
-      f"✅ Диалог по объявлению {aid} возобновлен.",
-      reply_markup=ikb_chat_controls(aid),
-  )
-  safe_send_message(
-      seller_id,
-      f"✅ Покупатель возобновил диалог по объявлению {aid}.",
-      reply_markup=ikb_chat_controls(aid),
-  )
-
-
-@bot.message_handler(
-    content_types=["text", "photo"],
-    func=lambda msg: not msg.text or not msg.text.startswith("/"),
-)
-def handle_chat_message(m):
-  uid = m.from_user.id
-
-  if is_banned(m.from_user):
-    return
-
-  if should_override_nav(m):
-    return handle_navigation_override(m)
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT buyer_id, seller_id, ad_id FROM active_dialogs WHERE"
-        " (buyer_id=? OR seller_id=?) AND is_active=1",
-        (uid, uid),
-    )
-    dialogs = cur.fetchall()
-
-  if dialogs:
-    for row in dialogs:
-      buyer_id, seller_id, ad_id = (
-          row["buyer_id"],
-          row["seller_id"],
-          row["ad_id"],
-      )
-      target_id = seller_id if uid == buyer_id else buyer_id
-      try:
-        if m.photo:
-          safe_send_photo(
-              target_id,
-              m.photo[-1].file_id,
-              caption=f"[Объявление ID {ad_id}]: {m.caption or ''}",
-          )
-        elif m.text:
-          safe_send_message(target_id, f"[Объявление ID {ad_id}]: {m.text}")
-
-        with db_lock, get_db() as conn:
-          cur = conn.cursor()
-          cur.execute(
-              "INSERT INTO chat_logs_history (sender_id, receiver_id, text,"
-              " timestamp) VALUES (?, ?, ?, ?)",
-              (uid, target_id, m.text or "[ФОТО]", time.time()),
-          )
-      except Exception as e:
-        logger.error(f"Ошибка пересылки сообщения: {e}")
-    return
-
-
-# ==========================================
-# ИНСТРУМЕНТЫ ДЛЯ VICE CITY (КАЛЬКУЛЯТОРЫ)
-# ==========================================
-def show_vc_menu(m):
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  markup.row(types.KeyboardButton("Настроить курс VC"))
-  markup.row(
-      types.KeyboardButton("Перевести SA$ в VC$"),
-      types.KeyboardButton("Перевести VC$ в SA$"),
-  )
-  markup.row(types.KeyboardButton("Рассчитать выгоду перелета"))
-  markup.row(types.KeyboardButton("❌ Отменить действие"))
-  rate = get_vc_rate()
-  safe_send_message(
-      m.chat.id,
-      f"💱 <b>Текущий курс:</b> 1 VC$ = {rate:,.0f} SA$\nВыберите нужное"
-      " действие:",
-      reply_markup=markup,
-  )
-
-
-@bot.message_handler(func=lambda m: m.text == "Настроить курс VC")
-def vc_set_rate_start(m):
-  update_state(m.from_user.id, vc_setting_rate=True)
-  safe_send_message(
-      m.chat.id,
-      "💰 Введите актуальный курс (например: 95000):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("vc_setting_rate")
-)
-def vc_set_rate_process(m):
-  uid = m.from_user.id
-  try:
-    val = float(m.text.replace(",", ".").replace(" ", ""))
-    if val <= 0:
-      raise ValueError
-    set_vc_rate(val)
-    clear_state(uid)
-    safe_send_message(
-        m.chat.id,
-        f"✅ Курс установлен: {val:,.0f} SA$",
-        reply_markup=kb_main_menu(),
-    )
-    show_vc_menu(m)
-  except ValueError:
-    safe_send_message(m.chat.id, "⚠️ Ошибка ввода. Введите число.")
-
-
-@bot.message_handler(
-    func=lambda m: m.text in ["Перевести SA$ в VC$", "Перевести VC$ в SA$"]
-)
-def vc_convert_start(m):
-  is_to_vc = m.text == "Перевести SA$ в VC$"
-  update_state(m.from_user.id, vc_conv_input=True, is_to_vc=is_to_vc)
-  safe_send_message(
-      m.chat.id,
-      "Введите сумму для перевода (можно с пробелами, например 1 000 000):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("vc_conv_input")
-)
-def vc_convert_process(m):
-  uid = m.from_user.id
-  st = get_state(uid)
-  is_to_vc = st.get("is_to_vc")
-  try:
-    amount = float(m.text.replace(",", ".").replace(" ", ""))
-    rate = get_vc_rate()
-    clear_state(uid)
-
-    if is_to_vc:
-      res = amount / rate
-      safe_send_message(
-          m.chat.id,
-          f"🔄 <b>{amount:,.0f} SA$</b> = <b>{res:,.0f} VC$</b>",
-          reply_markup=kb_main_menu(),
-      )
-    else:
-      res = amount * rate
-      safe_send_message(
-          m.chat.id,
-          f"🔄 <b>{amount:,.0f} VC$</b> = <b>{res:,.0f} SA$</b>",
-          reply_markup=kb_main_menu(),
-      )
-    show_vc_menu(m)
-  except ValueError:
-    safe_send_message(m.chat.id, "⚠️ Ошибка ввода. Введите число.")
-
-
-@bot.message_handler(func=lambda m: m.text == "Рассчитать выгоду перелета")
-def vc_calc_profit_start(m):
-  update_state(m.from_user.id, vc_calc_step=1)
-  safe_send_message(
-      m.chat.id,
-      "1️⃣ Введите стоимость билета на перелет (SA$):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("vc_calc_step")
-)
-def vc_calc_profit_process(m):
-  uid = m.from_user.id
-  st = get_state(uid)
-  step = st.get("vc_calc_step")
-
-  try:
-    val = float(m.text.replace(",", ".").replace(" ", ""))
-    if step == 1:
-      update_state(uid, vc_calc_step=2, ticket_cost=val)
-      safe_send_message(
-          m.chat.id,
-          "2️⃣ Введите ожидаемую прибыль от продаж на Vice City (в VC$):",
-      )
-    elif step == 2:
-      ticket = st.get("ticket_cost")
-      profit_vc = val
-      rate = get_vc_rate()
-
-      profit_sa = profit_vc * rate
-      net_profit = profit_sa - ticket
-
-      clear_state(uid)
-      res_text = (
-          f"📊 <b>Расчет выгоды:</b>\nБилет: {ticket:,.0f} SA$\nДоход:"
-          f" {profit_vc:,.0f} VC$ (≈ {profit_sa:,.0f} SA$)\n\n💰 <b>Чистая"
-          f" прибыль: {net_profit:,.0f} SA$</b>"
-      )
-      safe_send_message(m.chat.id, res_text, reply_markup=kb_main_menu())
-      show_vc_menu(m)
-  except ValueError:
-    safe_send_message(m.chat.id, "⚠️ Ошибка. Введите число.")
-
-
-# ==========================================
-# ПРЕМИУМ-СТАТУС И АНАЛИТИКА
-# ==========================================
-def info_premium(m):
-  uid = m.from_user.id
-  is_prem = is_user_premium(uid)
-  status_text = "✅ АКТИВЕН" if is_prem else "❌ НЕ АКТИВЕН"
-
-  text = (
-      f"💎 <b>VIP-статус: {status_text}</b>\n\n<b>Преимущества:</b>\n- 👑"
-      " Уникальная иконка 💎 в ваших объявлениях\n- 📌 Отсутствие КД на подачу"
-      " объявлений\n- 👑 Автоматическая VIP-модерация"
-  )
-  markup = types.InlineKeyboardMarkup()
-  markup.add(
-      types.InlineKeyboardButton(
-          "⭐ Купить VIP на 30 дней (99 ⭐️)", callback_data="buy_premium_30"
-      )
-  )
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "buy_premium_30")
-def cb_buy_premium(call):
-  prices = [types.LabeledPrice(label="VIP-статус на 30 дней", amount=99)]
-  try:
-    bot.send_invoice(
-        chat_id=call.message.chat.id,
-        title="VIP-статус (30 дней)",
-        description="Премиум-подписка для бота объявлений",
-        invoice_payload="premium_30",
-        provider_token="",
-        currency="XTR",
-        prices=prices,
-        start_parameter="buy_premium",
-    )
-  except Exception as e:
-    try:
-      bot.answer_callback_query(
-          call.id, f"Ошибка создания счета: {e}", show_alert=True
-      )
-    except Exception:
-      pass
-
-
 if __name__ == "__main__":
-  logger.info("Бот запущен и успешно работает...")
-  bot.infinity_polling(skip_pending=True)
-
+  logger.info("🤖 Бот успешно запущен и работает в многопоточном режиме...")
+  while True:
+    try:
+      bot.infinity_polling(timeout=60, long_polling_timeout=30)
+    except Exception as e:
+      logger.error(f"Ошибка в polling: {e}")
+      time.sleep(5)

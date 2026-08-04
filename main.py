@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 TOKEN = "8916669266:AAFbIqOvrkdekhVkh1NTmMvpxSI_neTyN9I"
-MANAGER_USERNAME = "bounqy"
+MANAGER_USERNAME = "bounqy31"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
@@ -2335,7 +2335,7 @@ def show_average_prices(m):
 
 
 # ==========================================
-# СВЯЗЬ С МЕНЕДЖЕРОМ (@bounqy)
+# СВЯЗЬ С МЕНЕДЖЕРОМ (@bounqy31)
 # ==========================================
 def contact_manager(m):
   markup = types.InlineKeyboardMarkup()
@@ -2363,4 +2363,3 @@ if __name__ == "__main__":
     except Exception as e:
       logger.error(f"Ошибка в polling: {e}")
       time.sleep(5)
-

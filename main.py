@@ -1027,6 +1027,64 @@ def how_bot_works(m):
   safe_send_message(m.chat.id, text)
 
 
+def admin_panel(m):
+  if not is_admin_or_owner(m.from_user):
+    return safe_send_message(
+        m.chat.id, "⛔ У вас нет доступа к админ-панели.", reply_markup=kb_main_menu()
+    )
+  markup = types.InlineKeyboardMarkup(row_width=2)
+  markup.add(
+      types.InlineKeyboardButton(
+          "📤 Модерация продаж", callback_data="admin_mod_sales"
+      ),
+      types.InlineKeyboardButton(
+          "📥 Модерация скупки", callback_data="admin_mod_buys"
+      ),
+  )
+  safe_send_message(
+      m.chat.id,
+      "👑 <b>Панель администратора / редактора СМИ:</b>\nВыберите раздел для"
+      " управления:",
+      reply_markup=markup,
+  )
+
+
+def show_average_prices(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT category, COUNT(*) as cnt FROM active_ads WHERE server = ?"
+        " GROUP BY category",
+        (srv,),
+    )
+    sales_stats = cur.fetchall()
+    cur.execute(
+        "SELECT category, COUNT(*) as cnt FROM active_buy_ads WHERE server = ?"
+        " GROUP BY category",
+        (srv,),
+    )
+    buys_stats = cur.fetchall()
+
+  text = f"📊 <b>Анализ цен и рынка на сервере {html.escape(srv)}</b>\n\n"
+  text += "📤 <b>Активные продажи по категориям:</b>\n"
+  if sales_stats:
+    for row in sales_stats:
+      text += f"- {row['category']}: объявлений {row['cnt']}\n"
+  else:
+    text += "<i>Нет активных объявлений о продаже.</i>\n"
+
+  text += "\n📥 <b>Активная скупка по категориям:</b>\n"
+  if buys_stats:
+    for row in buys_stats:
+      text += f"- {row['category']}: объявлений {row['cnt']}\n"
+  else:
+    text += "<i>Нет активных объявлений о скупке.</i>\n"
+
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
+
+
 # ==========================================
 # ПОДАЧА ЗАЯВКИ НА РЕДАКТОРА / АДМИНА
 # ==========================================
@@ -1818,6 +1876,54 @@ def finish_posting(chat_id, uid, username, photo_id, is_buy):
         safe_send_message(adm, notif_text, reply_markup=markup)
     except Exception:
       pass
+
+
+# ==========================================
+# ОБРАБОТЧИКИ ПЛАТЕЖЕЙ TELEGRAM STARS
+# ==========================================
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def process_pre_checkout_query(pre_checkout_query):
+  bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+
+@bot.message_handler(content_types=["successful_payment"])
+def process_successful_payment(message):
+  payment = message.successful_payment
+  payload = payment.invoice_payload
+  uid = message.from_user.id
+
+  if payload == "premium_30":
+    expires = time.time() + 30 * 86400
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute(
+          "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES"
+          " (?, ?)",
+          (uid, expires),
+      )
+    safe_send_message(
+        message.chat.id,
+        "🎉 <b>Спасибо за покупку VIP-статуса!</b>\nВаша подписка активна на"
+        " 30 дней.",
+        reply_markup=kb_main_menu(),
+    )
+  elif payload in ["vip_single_ad_pub", "vip_single_buy_pub"]:
+    is_buy = payload == "vip_single_buy_pub"
+    st = get_state(uid)
+    p_key = "posting_buy_ad" if is_buy else "posting_ad"
+    p_data = st.get(p_key)
+    if p_data:
+      p_data["is_vip"] = 1
+      finish_posting(
+          message.chat.id, uid, message.from_user.username, p_data.get("photo"), is_buy
+      )
+    else:
+      safe_send_message(
+          message.chat.id,
+          "✅ Оплата прошла успешно, но данные объявления не найдены."
+          " Обратитесь к администратору.",
+          reply_markup=kb_main_menu(),
+      )
 
 
 # ==========================================

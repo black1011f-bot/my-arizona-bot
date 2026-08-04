@@ -5,6 +5,7 @@ import logging
 import sqlite3
 import re
 import html
+import requests
 from datetime import datetime, time as dtime
 from zoneinfo import ZoneInfo
 import telebot
@@ -21,6 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 TOKEN = "8916669266:AAFall7GhTxs_ZAlMr4_d4W_XMZnunkY2NA"
+YT_CHANNEL_URL = "https://youtube.com/@bounty_squad31"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
@@ -307,6 +309,42 @@ def background_cleanup_ads():
             logger.error(f"Ошибка фоновой ночной очистки: {e}")
 
 threading.Thread(target=background_cleanup_ads, daemon=True).start()
+
+# ==========================================
+# ФОНОВАЯ ПРОВЕРКА YOUTUBE СТРИМОВ
+# ==========================================
+def background_youtube_stream_checker():
+    last_live_id = None
+    time.sleep(15)
+    while True:
+        try:
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            resp = requests.get(f"{YT_CHANNEL_URL}/live", headers=headers, allow_redirects=True, timeout=15)
+            final_url = resp.url
+            
+            if "/watch?v=" in final_url:
+                video_id = final_url.split("v=")[1].split("&")[0]
+                if video_id != last_live_id:
+                    last_live_id = video_id
+                    admin_chats = get_admin_chat_ids()
+                    notif_text = (
+                        "🔴 <b>ВНИМАНИЕ! СТРИМ НА YOUTUBE НАЧАЛСЯ!</b> 🎥\n\n"
+                        "📡 Канал: <b>Bounty Squad</b>\n"
+                        f"🔗 Ссылка: https://www.youtube.com/watch?v={video_id}"
+                    )
+                    for chat_id in admin_chats:
+                        try:
+                            safe_send_message(chat_id, notif_text)
+                        except Exception as e:
+                            logger.error(f"Не удалось отправить уведомление о стриме в чат {chat_id}: {e}")
+            else:
+                last_live_id = None
+        except Exception as e:
+            logger.error(f"Ошибка в фоновой проверке стримов YouTube: {e}")
+        
+        time.sleep(180) # Проверка каждые 3 минуты
+
+threading.Thread(target=background_youtube_stream_checker, daemon=True).start()
 
 def get_vc_rate() -> float:
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
@@ -1170,7 +1208,7 @@ def finish_posting(chat_id: int, user_id: int, username: str, photo_id: str, is_
             logger.error(f"Не удалось отправить уведомление админу {admin_chat_id}: {e}")
 
 # ==========================================
-# ОБРАБОТЧИКИ МОДЕРАЦИИ (ИСПРАВЛЕННЫЙ ПОРЯДОК И ФИЛЬТРЫ)
+# ОБРАБОТЧИКИ МОДЕРАЦИИ
 # ==========================================
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_buy_"))
 def callback_buy_moderation(call):
@@ -2031,98 +2069,9 @@ def cb_admin_edit_ads_menu(call):
         short_text = (text[:30] + '...') if len(text) > 30 else text
         markup.add(types.InlineKeyboardButton(f"📥 [Скупка | {srv}] ID {aid}: {short_text}", callback_data=f"select_edit_ad_buy_{aid}"))
 
-    safe_send_message(call.message.chat.id, "✏️ <b>Выберите активное объявление для редактирования:</b>", reply_markup=markup)
+    safe_send_message(call.message.chat.id, "✏️ Выберите объявление для редактирования:", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("select_edit_ad_"))
-def cb_select_edit_ad(call):
-    if not verify_admin_callback(call):
-        return
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
 
-    parts = call.data.split("_")
-    ad_type = parts[3]
-    aid = int(parts[4])
-
-    update_state(call.from_user.id, editing_active_ad_id=aid, editing_active_ad_type=ad_type)
-    safe_send_message(
-        call.message.chat.id,
-        f"✏️ <b>Редактирование активного объявления (ID: {aid}, Тип: {'Скупка' if ad_type == 'buy' else 'Продажа'}):</b>\n\n"
-        f"Отправьте новый текст для этого объявления:",
-        reply_markup=kb_cancel()
-    )
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("editing_active_ad_id"))
-def process_save_edited_active_ad(m):
-    if not is_admin_or_owner(m.from_user):
-        return
-    uid = m.from_user.id
-    st = get_state(uid)
-    aid = st.get("editing_active_ad_id")
-    ad_type = st.get("editing_active_ad_type")
-    new_text = m.text.strip()
-    clear_state(uid)
-
-    table_name = "active_buy_ads" if ad_type == "buy" else "active_ads"
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute(f"UPDATE {table_name} SET text = ?, last_updated = ? WHERE id = ?", (new_text, time.time(), aid))
-        cur.execute(f"SELECT user_id, server, category, text, photo, is_vip FROM {table_name} WHERE id = ?", (aid,))
-        ad_data = cur.fetchone()
-        conn.commit()
-
-    if not ad_data:
-        return safe_send_message(m.chat.id, "❌ Ошибка при обновлении объявления.", reply_markup=kb_main_menu())
-
-    safe_send_message(m.chat.id, f"✅ Объявление ID {aid} успешно отредактировано и обновлено!", reply_markup=kb_main_menu())
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("admin_"))
-def process_admin_action(call):
-    if not is_admin_or_owner(call.from_user):
-        return
-    
-    action = call.data.replace("admin_", "")
-    
-    if action == "stats":
-        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM active_ads")
-            ads_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM active_buy_ads")
-            buy_ads_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM user_data")
-            users_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM premium_users WHERE expires_at > ?", (time.time(),))
-            premium_count = cur.fetchone()[0]
-            cur.execute("SELECT COUNT(*) FROM bans")
-            banned_count = cur.fetchone()[0]
-            cur.execute("SELECT username, count FROM editor_stats ORDER BY count DESC LIMIT 5")
-            top_editors = cur.fetchall()
-
-        stats_text = (
-            "📊 <b>Статистика бота СМИ:</b>\n\n"
-            f"👥 Пользователей всего: <b>{users_count}</b>\n"
-            f"💎 VIP пользователей: <b>{premium_count}</b>\n"
-            f"🚫 Заблокировано: <b>{banned_count}</b>\n\n"
-            f"📤 Активных объявлений (продажа): <b>{ads_count}</b>\n"
-            f"📥 Активных скупок: <b>{buy_ads_count}</b>\n\n"
-            "🏆 <b>Топ редакторов:</b>\n"
-        )
-        for ed_name, cnt in top_editors:
-            stats_text += f"• @{html.escape(ed_name)} — отредактировано: {cnt}\n"
-        
-        try:
-            bot.answer_callback_query(call.id)
-        except Exception:
-            pass
-        safe_send_message(call.message.chat.id, stats_text)
-
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
 if __name__ == '__main__':
-    logger.info("Бот запущен...")
+    logger.info("Бот запущен и успешно работает...")
     bot.infinity_polling(skip_pending=True)

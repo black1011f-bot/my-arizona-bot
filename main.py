@@ -334,9 +334,8 @@ def get_admin_chat_ids():
         return [row[0] for row in cur.fetchall()]
 
 def get_all_admin_ids():
-    admin_ids = set()
-    for cid in get_admin_chat_ids():
-        admin_ids.add(cid)
+    """Исправлено: собирает все чаты и одобренных админов гарантированно"""
+    admin_ids = set(get_admin_chat_ids())
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute("SELECT user_id FROM approved_admins")
@@ -1007,11 +1006,12 @@ def cancel_action(m):
     uid = m.from_user.id
     st = get_state(uid)
     
-    pid = st.get("admin_editing_pid")
+    pid = st.get("admin_editing_pid") or st.get("admin_editing_buy_pid")
     if pid:
+        table_name = "pending_buy_posts" if "admin_editing_buy_pid" in st else "pending_posts"
         with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
             cur = conn.cursor()
-            cur.execute("UPDATE pending_posts SET editing_by = 0, editing_since = 0 WHERE id = ?", (pid,))
+            cur.execute(f"UPDATE {table_name} SET editing_by = 0, editing_since = 0 WHERE id = ?", (pid,))
             conn.commit()
 
     clear_state(uid)
@@ -1162,10 +1162,13 @@ def finish_posting(chat_id: int, user_id: int, username: str, photo_id: str, is_
     
     admin_recipients = get_all_admin_ids()
     for admin_chat_id in admin_recipients:
-        if photo_id:
-            safe_send_photo(admin_chat_id, photo_id, caption=f"📥 <b>Новая заявка на скупку (ID: {pid}):</b>\n\n{preview}" if is_buy else f"📥 <b>Новая заявка на продажу (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
-        else:
-            safe_send_message(admin_chat_id, f"📥 <b>Новая заявка на скупку (ID: {pid}):</b>\n\n{preview}" if is_buy else f"📥 <b>Новая заявка на продажу (ID: {pid}):</b>\n\n{preview}", reply_markup=markup)
+        try:
+            if photo_id:
+                safe_send_photo(admin_chat_id, photo_id, caption=(f"📥 <b>Новая заявка на скупку (ID: {pid}):</b>\n\n{preview}" if is_buy else f"📥 <b>Новая заявка на продажу (ID: {pid}):</b>\n\n{preview}"), reply_markup=markup)
+            else:
+                safe_send_message(admin_chat_id, (f"📥 <b>Новая заявка на скупку (ID: {pid}):</b>\n\n{preview}" if is_buy else f"📥 <b>Новая заявка на продажу (ID: {pid}):</b>\n\n{preview}"), reply_markup=markup)
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление админу {admin_chat_id}: {e}")
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_buy_"))
 def callback_buy_moderation(call):
@@ -1932,7 +1935,10 @@ def process_admin_application(m):
     
     admin_recipients = get_all_admin_ids()
     for chat in admin_recipients:
-        safe_send_message(chat, app_msg, reply_markup=markup)
+        try:
+            safe_send_message(chat, app_msg, reply_markup=markup)
+        except Exception as e:
+            logger.error(f"Не удалось отправить заявку админу {chat}: {e}")
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("app_"))
 def process_app_decision(call):
@@ -2101,16 +2107,27 @@ def process_admin_action(call):
             f"👥 Пользователей всего: <b>{users_count}</b>\n"
             f"💎 VIP пользователей: <b>{premium_count}</b>\n"
             f"🚫 Заблокировано: <b>{banned_count}</b>\n\n"
-            f"📥 Активных скупок: <b>{buy_ads_count}</b>\n"
-            f"📤 Активных продаж: <b>{ads_count}</b>\n\n"
-            "🏆 <b>Топ 5 редакторов:</b>\n"
+            f"📤 Активных объявлений (продажа): <b>{ads_count}</b>\n"
+            f"📥 Активных скупок: <b>{buy_ads_count}</b>\n\n"
+            "🏆 <b>Топ редакторов:</b>\n"
         )
-        if top_editors:
-            for uname, cnt in top_editors:
-                stats_text += f"• @{html.escape(str(uname))}: {cnt} правок\n"
-        else:
-            stats_text += "• Пока нет данных\n"
-
+        for ed_name, cnt in top_editors:
+            stats_text += f"• @{html.escape(ed_name)} — отредактировано: {cnt}\n"
+        
+        try:
+            bot.answer_callback_query(call.id)
+        except Exception:
+            pass
         safe_send_message(call.message.chat.id, stats_text)
 
-bot.infinity_polling(skip_pending=True)
+# ==========================================
+# ЗАПУСК БОТА
+# ==========================================
+if __name__ == '__main__':
+    logger.info("Бот запущен и готов к работе...")
+    while True:
+        try:
+            bot.infinity_polling(timeout=60, long_polling_timeout=30)
+        except Exception as e:
+            logger.error(f"Ошибка в polling: {e}")
+            time.sleep(5)

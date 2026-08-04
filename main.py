@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 TOKEN = "8916669266:AAFbIqOvrkdekhVkh1NTmMvpxSI_neTyN9I"
 MANAGER_USERNAME = "bounqy31"
+BOT_USERNAME = "arizona_coin_bot"  # Установлен ваш основной юзернейм бота
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
@@ -604,11 +605,11 @@ def cb_fav_toggle(call):
       is_fav = True
       msg = "❤️ Добавлено в избранное!"
 
+    cur.execute("SELECT 1 FROM active_buy_ads WHERE id = ?", (aid,))
+    is_buy = bool(cur.fetchone())
+
   try:
     bot.answer_callback_query(call.id, msg)
-    # Определяем тип объявления для перестройки клавиатуры
-    cur = get_db().__enter__().cursor()  # упрощенный поиск типа
-    is_buy = False
     bot.edit_message_reply_markup(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -647,7 +648,6 @@ def cb_admin_delete_ad(call):
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ УВЕДОМЛЕНИЙ ПОИСКА
 # ==========================================
 def notify_subscribers(server: str, text: str, ad_id: int, is_buy: bool):
-  """Уведомляет пользователей, подписанных на ключевые слова."""
   try:
     with db_lock, get_db() as conn:
       cur = conn.cursor()
@@ -1025,11 +1025,13 @@ def process_ad_text_or_photo(m):
         m.chat.id, "⚠️ Обязательно укажите текст (или описание с фото)."
     )
 
+  # Проверка на мат и запрещенные слова
   if not check_auto_moderation(text):
+    clear_state(uid)
     return safe_send_message(
         m.chat.id,
-        "🤬 В вашем тексте обнаружены запрещенные слова или сторонние"
-        " проекты. Исправьте текст.",
+        "🤬 Нельзя общаться матом и т.д.! В вашем тексте обнаружены запрещенные слова или сторонние проекты. Подача отменена, исправьте текст.",
+        reply_markup=kb_main_menu(),
     )
 
   photo_id = None
@@ -1162,7 +1164,7 @@ def cb_contact_seller(call):
       uid,
       "💬 <b>Защищенный чат по сделке открыт!</b>\nВсе сообщения, отправленные"
       " сюда, будут пересылаться автору объявления. Соблюдайте правила"
-      " безопасности.",
+      " безопасности. Общение матом строго запрещено!",
       reply_markup=markup,
   )
   safe_send_message(
@@ -1237,6 +1239,16 @@ def handle_internal_chat_messages(m):
   if not chat_info:
     return
 
+  text = m.text or m.caption or "[Медиа/Фото]"
+
+  # Проверка текста сообщения в чате на наличие мата
+  if m.text and not check_auto_moderation(m.text):
+    return safe_send_message(
+        m.chat.id,
+        "⚠️ Нельзя общаться матом! Ваше сообщение не было отправлено собеседнику.",
+        parse_mode=None,
+    )
+
   target_id = (
       chat_info.get("seller_id")
       if chat_info.get("seller_id")
@@ -1259,7 +1271,6 @@ def handle_internal_chat_messages(m):
         "⚠️ Этот диалог был завершен. Вы не можете отправлять сообщения.",
     )
 
-  text = m.text or m.caption or "[Медиа/Фото]"
   forward_text = (
       f"✉️ <b>Сообщение по объявлению #{aid}</b>\n"
       f"От @{m.from_user.username or 'Пользователя'}:\n\n{html.escape(text)}"
@@ -1315,7 +1326,7 @@ def background_cleanup_ads():
 
       if (
           current_time.hour == 7
-          and current_time.minute == 58
+          and current_time.minute >= 58
           and current_time.second < 20
       ):
         if last_cleaned_date != current_date:
@@ -1326,8 +1337,7 @@ def background_cleanup_ads():
             cur.execute("DELETE FROM pending_posts")
             cur.execute("DELETE FROM pending_buy_posts")
           logger.info(
-              f"Утренняя авто-очистка объявлений выполнена ровно в {current_time}"
-              " МСК."
+              f"Утренняя авто-очистка объявлений выполнена в {current_time} МСК."
           )
           last_cleaned_date = current_date
     except Exception as e:
@@ -1640,7 +1650,7 @@ def blocked_user_callback(c):
 
 
 # ==========================================
-# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ (ИСПРАВЛЕННЫЙ)
+# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ
 # ==========================================
 def should_override_nav(msg):
   if not msg.text:
@@ -1752,8 +1762,8 @@ def cmd_start(m):
 
   update_state(m.from_user.id, changing_server=True)
   caption_text = (
-      "🌟 <b>Привет! Обратите внимание: мы не официальный бот</b>, а независимый"
-      " помощник для игроков Arizona RP. Мы помогаем игрокам находить"
+      f"🌟 <b>Привет! Вы пользуетесь ботом @{BOT_USERNAME}</b> — независимым"
+      " помощником для игроков Arizona RP. Мы помогаем игрокам находить"
       " аксессуары, транспорт, недвижимость и другие ценные вещи, а также"
       " следить за экономикой и курсами.\n\n🔒 <b>Безопасность:</b> Мы"
       " <b>никогда</b> не просим пароли от игровых аккаунтов или личные"
@@ -1767,7 +1777,7 @@ def cmd_start(m):
 @bot.message_handler(commands=["help"])
 def cmd_help(m):
   help_text = (
-      "🛠 <b>Помощь, правила и расширенный FAQ</b>\n\n❓ <b>1. Как подать"
+      f"🛠 <b>Помощь, правила и FAQ @{BOT_USERNAME}</b>\n\n❓ <b>1. Как подать"
       " объявление о продаже или скупке?</b>\n💡 <i>Выберите нужный игровой"
       " сервер в главном меню -> Нажмите «📤 Продать товар» или «📥 Скупить"
       " товар» -> Выберите категорию -> Введите товар, цену и условия ->"
@@ -1805,7 +1815,7 @@ def select_srv(m):
 
 def how_bot_works(m):
   text = (
-      "📖 <b>Справочник: Как работает бот и радиоцентр</b>\n\n1. <b>Подача"
+      f"📖 <b>Справочник: Как работает @{BOT_USERNAME} и радиоцентр</b>\n\n1. <b>Подача"
       " объявления:</b> Выбирается тип (продажа/скупка), сервер, категория и"
       " текст.\n2. <b>Проверка редакторами:</b> Редакторы проверяют материалы"
       " с 08:00:01 до 22:00:01 МСК.\n3. <b>Публикация:</b> Одобренное"
@@ -2052,11 +2062,16 @@ def admin_panel(m):
     )
     markup.add(
         types.InlineKeyboardButton(
-            "🔨 Забанить / Разбанить", callback_data="owner_manage_ban"
+            "💬 Логи чатов (Файл)", callback_data="owner_get_chat_logs"
         ),
         types.InlineKeyboardButton(
-            "👑 Управление админами", callback_data="owner_manage_admins"
+            "🔨 Забанить / Разбанить", callback_data="owner_manage_ban"
         ),
+    )
+    markup.add(
+        types.InlineKeyboardButton(
+            "👑 Управление админами", callback_data="owner_manage_admins"
+        )
     )
 
   safe_send_message(
@@ -2339,6 +2354,43 @@ def cb_owner_get_logs(call):
     )
   except Exception as e:
     safe_send_message(call.message.chat.id, f"Ошибка отправки файла логов: {e}")
+
+
+@bot.callback_query_handler(
+    func=lambda c: c.data == "owner_get_chat_logs" and is_owner(c.from_user)
+)
+def cb_owner_get_chat_logs(call):
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT sender_id, receiver_id, text, timestamp FROM"
+        " chat_logs_history ORDER BY id DESC LIMIT 500"
+    )
+    logs = cur.fetchall()
+
+  log_text = "=== ЖУРНАЛ ДИАЛОГОВ ИГРОКОВ (ПОСЛЕДНИЕ 500) ===\n\n"
+  for row in logs:
+    dt = datetime.fromtimestamp(row["timestamp"]).strftime("%Y-%m-%d %H:%M:%S")
+    log_text += (
+        f"[{dt}] От ID: {row['sender_id']} -> Получателю ID: {row['receiver_id']}\n"
+        f"Текст: {row['text']}\n"
+        f"{'-'*40}\n"
+    )
+
+  if not logs:
+    log_text += "История чатов пока пуста."
+
+  file_bytes = io.BytesIO(log_text.encode("utf-8"))
+  file_bytes.name = "chat_history_logs.txt"
+
+  try:
+    bot.send_document(
+        call.message.chat.id,
+        file_bytes,
+        caption="💬 Файл логов переписки игроков",
+    )
+  except Exception as e:
+    safe_send_message(call.message.chat.id, f"Ошибка отправки файла логов чатов: {e}")
 
 
 @bot.callback_query_handler(

@@ -108,14 +108,45 @@ def get_db():
   return conn
 
 
+def set_user_server(user_id: int, server: str):
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE user_data SET server = ? WHERE user_id = ?", (server, user_id)
+    )
+    conn.commit()
+  update_state(user_id, server=server)
+
+
+def get_user_server(user_id: int) -> str:
+  with state_lock:
+    srv = user_states.get(user_id, {}).get("server")
+    if srv:
+      return srv
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT server FROM user_data WHERE user_id = ?", (user_id,))
+    row = cur.fetchone()
+    if row and row["server"]:
+      srv = row["server"]
+      update_state(user_id, server=srv)
+      return srv
+  default_srv = SERVERS[0]
+  update_state(user_id, server=default_srv)
+  return default_srv
+
+
 def get_state(uid: int) -> dict:
   with state_lock:
-    return user_states.get(uid, {}).copy()
+    st = user_states.get(uid, {}).copy()
+  if "server" not in st:
+    st["server"] = get_user_server(uid)
+  return st
 
 
 def set_state(uid: int, data: dict):
   with state_lock:
-    srv = user_states.get(uid, {}).get("server")
+    srv = user_states.get(uid, {}).get("server") or get_user_server(uid)
     user_states[uid] = data
     if srv and "server" not in user_states[uid]:
       user_states[uid]["server"] = srv
@@ -130,9 +161,8 @@ def update_state(uid: int, **kwargs):
 
 def clear_state(uid: int):
   with state_lock:
-    if uid in user_states:
-      srv = user_states[uid].get("server")
-      user_states[uid] = {"server": srv} if srv else {}
+    srv = user_states.get(uid, {}).get("server") or get_user_server(uid)
+    user_states[uid] = {"server": srv} if srv else {}
 
 
 # ==========================================
@@ -285,9 +315,14 @@ def init_db():
             CREATE TABLE IF NOT EXISTS user_data (
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
-                last_ad_time REAL
+                last_ad_time REAL,
+                server TEXT
             )
         """)
+    try:
+      cursor.execute("ALTER TABLE user_data ADD COLUMN server TEXT")
+    except sqlite3.OperationalError:
+      pass
 
     cursor.execute("""
             CREATE TABLE IF NOT EXISTS active_dialogs (
@@ -385,7 +420,11 @@ def background_cleanup_ads():
       current_time = now_msk.time()
       current_date = now_msk.date()
 
-      if current_time.hour == 7 and current_time.minute == 58 and current_time.second < 20:
+      if (
+          current_time.hour == 7
+          and current_time.minute == 58
+          and current_time.second < 20
+      ):
         if last_cleaned_date != current_date:
           with db_lock, get_db() as conn:
             cur = conn.cursor()
@@ -531,7 +570,8 @@ def is_admin_or_owner(user) -> bool:
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "SELECT 1 FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?",
+        "SELECT 1 FROM approved_admins WHERE user_id = ? OR LOWER(username) ="
+        " ?",
         (user.id, uname),
     )
     if cur.fetchone():
@@ -573,8 +613,8 @@ def get_seller_rating_info(seller_id: int) -> str:
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "SELECT AVG(rating) as avg_r, COUNT(rating) as cnt FROM seller_reviews WHERE seller_id"
-        " = ?",
+        "SELECT AVG(rating) as avg_r, COUNT(rating) as cnt FROM seller_reviews"
+        " WHERE seller_id = ?",
         (seller_id,),
     )
     row = cur.fetchone()
@@ -619,9 +659,9 @@ def register_user(user_id, username=None):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "INSERT OR IGNORE INTO user_data (user_id, username, last_ad_time)"
-        " VALUES (?, ?, 0)",
-        (user_id, uname),
+        "INSERT OR IGNORE INTO user_data (user_id, username, last_ad_time,"
+        " server) VALUES (?, ?, 0, ?)",
+        (user_id, uname, SERVERS[0]),
     )
     if uname:
       cur.execute(
@@ -749,7 +789,9 @@ def blocked_user_message(m):
 def blocked_user_callback(c):
   try:
     bot.answer_callback_query(
-        c.id, "⛔ Вы заблокированы в системе и не можете использовать бота!", show_alert=True
+        c.id,
+        "⛔ Вы заблокированы в системе и не можете использовать бота!",
+        show_alert=True,
     )
   except Exception:
     pass
@@ -760,6 +802,29 @@ def blocked_user_callback(c):
 # ==========================================
 def should_override_nav(msg):
   if not msg.text:
+    return False
+
+  if msg.text == "❌ Отменить действие" or msg.text.startswith("/"):
+    return True
+
+  uid = msg.from_user.id
+  st = get_state(uid)
+
+  # Если пользователь находится на этапе активного ввода, навигация не должна перехватывать текст
+  is_in_active_input = (
+      st.get("posting_ad", {}).get("step") in ["category", "text_or_photo"]
+      or st.get("posting_buy_ad", {}).get("step") in ["category", "text_or_photo"]
+      or st.get("searching_keyword")
+      or st.get("adding_subscription")
+      or st.get("vc_setting_rate")
+      or st.get("vc_conv_input")
+      or st.get("vc_calc_step")
+      or st.get("applying_admin")
+      or st.get("admin_editing_pid")
+      or st.get("admin_editing_buy_pid")
+  )
+
+  if is_in_active_input:
     return False
 
   nav_buttons = [
@@ -776,23 +841,15 @@ def should_override_nav(msg):
       "🌐 Сменить игровой сервер",
       "👑 Админ-панель",
       "📝 Стать редактором / админом",
-      "❌ Отменить действие",
   ] + CATEGORIES
 
-  if (
-      msg.text == "❌ Отменить действие"
-      or msg.text.startswith("/")
-      or msg.text in nav_buttons
-      or msg.text in SERVERS
-  ):
-    return True
-
-  return False
+  return msg.text in nav_buttons or msg.text in SERVERS
 
 
 @bot.message_handler(func=should_override_nav)
 def handle_navigation_override(m):
-  clear_state(m.from_user.id)
+  if m.text != "❌ Отменить действие":
+    clear_state(m.from_user.id)
 
   if m.text == "/start":
     cmd_start(m)
@@ -925,13 +982,14 @@ def change_server(m):
 def select_srv(m):
   srv = m.text
   uid = m.from_user.id
-  
-  # Просто обновляем ключ сервера напрямую
-  update_state(uid, server=srv)
-  
+
+  # Сохраняем выбранный сервер и в память, и в БД SQLite
+  set_user_server(uid, srv)
+
   safe_send_message(
       m.chat.id,
-      f"✅ Игровой сервер установлен: <b>{html.escape(srv)}</b>\nДобро пожаловать в панель управления!",
+      f"✅ Игровой сервер установлен: <b>{html.escape(srv)}</b>\nДобро"
+      " пожаловать в панель управления!",
       reply_markup=kb_main_menu(),
   )
 
@@ -961,8 +1019,7 @@ def show_buy_ads_category(m):
 
 def _show_ads(m, is_buy):
   uid = m.from_user.id
-  st = get_state(uid)
-  srv = st.get("server", "Phoenix")
+  srv = get_user_server(uid)
   cat = m.text
 
   table = "active_buy_ads" if is_buy else "active_ads"
@@ -1224,7 +1281,9 @@ def cb_my_del_ad(call):
     else:
       try:
         bot.answer_callback_query(
-            call.id, "⚠️ Ошибка или объявление не принадлежит вам!", show_alert=True
+            call.id,
+            "⚠️ Ошибка или объявление не принадлежит вам!",
+            show_alert=True,
         )
       except Exception:
         pass
@@ -1336,7 +1395,9 @@ def process_ad_content(m):
     time_str = f"{mins} мин. {secs} сек." if mins > 0 else f"{secs} сек."
     return safe_send_message(
         m.chat.id,
-        f"⏳ <b>Кулдаун!</b> Подавать объявления можно не чаще, чем раз в {'1 минуту' if is_vip_user else '2 минуты'}.\nПодождите еще <b>{time_str}</b>.",
+        f"⏳ <b>Кулдаун!</b> Подавать объявления можно не чаще, чем раз в"
+        f" {'1 минуту' if is_vip_user else '2 минуты'}.\nПодождите еще"
+        f" <b>{time_str}</b>.",
     )
 
   st = get_state(uid)
@@ -1464,10 +1525,7 @@ def finish_posting(chat_id, uid, username, photo_id, is_buy):
         chat_id, "⚠️ Ошибка: данные объявления не найдены. Попробуйте еще раз."
     )
 
-  server = p_data.get("server")
-  if not server:
-    server = st.get("server", "Phoenix")
-
+  server = p_data.get("server") or get_user_server(uid)
   category = p_data.get("category")
   text = p_data.get("text")
   is_vip = p_data.get("is_vip", 0)
@@ -1481,7 +1539,15 @@ def finish_posting(chat_id, uid, username, photo_id, is_buy):
             INSERT INTO {table} (user_id, username, server, category, text, photo, is_vip, editing_by, editing_since) 
             VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)
         """,
-        (uid, username or "Без юзернейма", server, category, text, photo_id, is_vip),
+        (
+            uid,
+            username or "Без юзернейма",
+            server,
+            category,
+            text,
+            photo_id,
+            is_vip,
+        ),
     )
     post_id = cur.lastrowid
     conn.commit()
@@ -1734,7 +1800,8 @@ def cb_moderate_action(call):
       pass
 
     safe_send_message(
-        user_id, f"❌ Ваше объявление на сервере {server} было отклонено редактором."
+        user_id,
+        f"❌ Ваше объявление на сервере {server} было отклонено редактором.",
     )
 
 
@@ -1969,8 +2036,7 @@ def cb_del_sub(call):
 @bot.callback_query_handler(func=lambda c: c.data == "add_sub_start")
 def cb_add_sub_start(call):
   uid = call.from_user.id
-  st = get_state(uid)
-  srv = st.get("server")
+  srv = get_user_server(uid)
   if not srv:
     try:
       bot.answer_callback_query(
@@ -1993,8 +2059,7 @@ def cb_add_sub_start(call):
 )
 def process_add_subscription(m):
   uid = m.from_user.id
-  st = get_state(uid)
-  srv = st.get("server")
+  srv = get_user_server(uid)
   kw = m.text.strip().lower()
 
   with db_lock, get_db() as conn:
@@ -2343,7 +2408,9 @@ def vc_set_rate_start(m):
   )
 
 
-@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("vc_setting_rate"))
+@bot.message_handler(
+    func=lambda m: get_state(m.from_user.id).get("vc_setting_rate")
+)
 def vc_set_rate_process(m):
   uid = m.from_user.id
   try:
@@ -2375,7 +2442,9 @@ def vc_convert_start(m):
   )
 
 
-@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("vc_conv_input"))
+@bot.message_handler(
+    func=lambda m: get_state(m.from_user.id).get("vc_conv_input")
+)
 def vc_convert_process(m):
   uid = m.from_user.id
   st = get_state(uid)
@@ -2414,7 +2483,9 @@ def vc_calc_profit_start(m):
   )
 
 
-@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("vc_calc_step"))
+@bot.message_handler(
+    func=lambda m: get_state(m.from_user.id).get("vc_calc_step")
+)
 def vc_calc_profit_process(m):
   uid = m.from_user.id
   st = get_state(uid)
@@ -2425,7 +2496,8 @@ def vc_calc_profit_process(m):
     if step == 1:
       update_state(uid, vc_calc_step=2, ticket_cost=val)
       safe_send_message(
-          m.chat.id, "2️⃣ Введите ожидаемую прибыль от продаж на Vice City (в VC$):"
+          m.chat.id,
+          "2️⃣ Введите ожидаемую прибыль от продаж на Vice City (в VC$):",
       )
     elif step == 2:
       ticket = st.get("ticket_cost")
@@ -2457,10 +2529,11 @@ def info_premium(m):
 
   text = (
       f"💎 <b>VIP-статус: {status_text}</b>\n\n<b>Преимущества:</b>\n- 👑"
-      " Уникальная иконка 💎 в ваших объявлениях\n- 📌 Отсутствие КД на подачу объявлений\n- 👑 Автоматические VIP-объявления\n- 🔔 Безлимитные подписки на ключевые"
-      " слова (обычно макс. 5)\n- 💬 Доступ к скрытым контактным данным в"
-      " VIP-объявлениях\n\n<i>Нажмите кнопку ниже для оплаты через Telegram"
-      " Stars.</i>"
+      " Уникальная иконка 💎 в ваших объявлениях\n- 📌 Отсутствие КД на подачу"
+      " объявлений\n- 👑 Автоматические VIP-объявления\n- 🔔 Безлимитные"
+      " подписки на ключевые слова (обычно макс. 5)\n- 💬 Доступ к скрытым"
+      " контактным данным в VIP-объявлениях\n\n<i>Нажмите кнопку ниже для"
+      " оплаты через Telegram Stars.</i>"
   )
   markup = types.InlineKeyboardMarkup()
   if not is_prem:
@@ -2562,20 +2635,20 @@ def process_successful_payment(message):
 
 
 def show_average_prices(m):
-  st = get_state(m.from_user.id)
-  srv = st.get("server", "Phoenix")
+  uid = m.from_user.id
+  srv = get_user_server(uid)
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "SELECT category, COUNT(*) as cnt FROM active_ads WHERE server = ? GROUP BY"
-        " category",
+        "SELECT category, COUNT(*) as cnt FROM active_ads WHERE server = ? GROUP"
+        " BY category",
         (srv,),
     )
     sales_data = cur.fetchall()
     cur.execute(
-        "SELECT category, COUNT(*) as cnt FROM active_buy_ads WHERE server = ? GROUP"
-        " BY category",
+        "SELECT category, COUNT(*) as cnt FROM active_buy_ads WHERE server = ?"
+        " GROUP BY category",
         (srv,),
     )
     buys_data = cur.fetchall()
@@ -2589,7 +2662,10 @@ def show_average_prices(m):
   for row in buys_data:
     text += f"- {html.escape(row['category'])}: {row['cnt']} объявлений\n"
 
-  text += "\n<i>*Более точный анализ средних цен появится в следующих обновлениях.</i>"
+  text += (
+      "\n<i>*Более точный анализ средних цен появится в следующих"
+      " обновлениях.</i>"
+  )
   safe_send_message(m.chat.id, text)
 
 
@@ -2600,8 +2676,9 @@ def start_admin_application(m):
   update_state(m.from_user.id, applying_admin={"step": "server"})
   safe_send_message(
       m.chat.id,
-      "📝 <b>Заявка на пост редактора / администратора (Форумный формат)</b>\n\n"
-      "1️⃣ Укажите ваш игровой никнейм и сервер (например: <i>Alex_Bounty | Tucson</i>):",
+      "📝 <b>Заявка на пост редактора / администратора (Форумный"
+      " формат)</b>\n\n1️⃣ Укажите ваш игровой никнейм и сервер (например:"
+      " <i>Alex_Bounty | Tucson</i>):",
       reply_markup=kb_cancel(),
   )
 
@@ -2621,7 +2698,8 @@ def process_admin_application_steps(m):
     update_state(uid, applying_admin=app_data)
     safe_send_message(
         m.chat.id,
-        "2️⃣ Укажите ваш возраст и реальный опыт работы в СМИ / администрирования:",
+        "2️⃣ Укажите ваш возраст и реальный опыт работы в СМИ /"
+        " администрирования:",
         reply_markup=kb_cancel(),
     )
   elif step == "age_exp":
@@ -2640,9 +2718,11 @@ def process_admin_application_steps(m):
 
     preview_text = (
         "📋 <b>Ваша заявка (проверка перед отправкой):</b>\n\n"
-        f"👤 <b>Ник / Сервер:</b> {html.escape(app_data.get('server_info', ''))}\n"
+        f"👤 <b>Ник / Сервер:</b>"
+        f" {html.escape(app_data.get('server_info', ''))}\n"
         f"📈 <b>Возраст и опыт:</b> {html.escape(app_data.get('age_exp', ''))}\n"
-        f"💡 <b>О себе / мотивация:</b> {html.escape(app_data.get('reason', ''))}\n\n"
+        f"💡 <b>О себе / мотивация:</b>"
+        f" {html.escape(app_data.get('reason', ''))}\n\n"
         "Все заполнено верно? Нажмите кнопку ниже для отправки владельцу:"
     )
     markup = types.InlineKeyboardMarkup()
@@ -2650,13 +2730,16 @@ def process_admin_application_steps(m):
         types.InlineKeyboardButton(
             "📤 Отправить заявку", callback_data="submit_admin_app"
         ),
-        types.InlineKeyboardButton("❌ Отменить", callback_data="cancel_admin_app"),
+        types.InlineKeyboardButton(
+            "❌ Отменить", callback_data="cancel_admin_app"
+        ),
     )
     safe_send_message(m.chat.id, preview_text, reply_markup=markup)
   elif step == "preview":
     safe_send_message(
         m.chat.id,
-        "⚠️ Пожалуйста, используйте кнопки ниже («📤 Отправить заявку» или «❌ Отменить»), чтобы завершить подачу заявки.",
+        "⚠️ Пожалуйста, используйте кнопки ниже («📤 Отправить заявку» или «❌"
+        " Отменить»), чтобы завершить подачу заявки.",
     )
 
 
@@ -2688,8 +2771,8 @@ def cb_submit_admin_app(call):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "INSERT OR REPLACE INTO admin_apps (user_id, username, application_text)"
-        " VALUES (?, ?, ?)",
+        "INSERT OR REPLACE INTO admin_apps (user_id, username,"
+        " application_text) VALUES (?, ?, ?)",
         (uid, uname, full_text),
     )
     conn.commit()
@@ -2709,8 +2792,12 @@ def cb_submit_admin_app(call):
 
   markup = types.InlineKeyboardMarkup()
   markup.add(
-      types.InlineKeyboardButton("✅ Одобрить", callback_data=f"app_accept_{uid}"),
-      types.InlineKeyboardButton("❌ Отказать", callback_data=f"app_reject_{uid}"),
+      types.InlineKeyboardButton(
+          "✅ Одобрить", callback_data=f"app_accept_{uid}"
+      ),
+      types.InlineKeyboardButton(
+          "❌ Отказать", callback_data=f"app_reject_{uid}"
+      ),
   )
 
   owner_id = get_owner_user_id()
@@ -2722,8 +2809,8 @@ def cb_submit_admin_app(call):
     try:
       safe_send_message(
           adm,
-          f"📝 <b>Новая заявка на адм (Arizona RP формат)!</b>\nОт: @{uname} (ID:"
-          f" {uid})\n\n<i>{html.escape(full_text)}</i>",
+          f"📝 <b>Новая заявка на адм (Arizona RP формат)!</b>\nОт: @{uname}"
+          f" (ID: {uid})\n\n<i>{html.escape(full_text)}</i>",
           reply_markup=markup,
       )
     except Exception:
@@ -2785,7 +2872,9 @@ def cb_manage_admin_app(call):
         pass
     else:
       try:
-        bot.answer_callback_query(call.id, "Заявка не найдена.", show_alert=True)
+        bot.answer_callback_query(
+            call.id, "Заявка не найдена.", show_alert=True
+        )
       except Exception:
         pass
 
@@ -2795,3 +2884,11 @@ def admin_panel(m):
     return safe_send_message(
         m.chat.id, "⛔ Доступ запрещен.", reply_markup=kb_main_menu()
     )
+
+
+# ==========================================
+# ЗАПУСК БОТА
+# ==========================================
+if __name__ == "__main__":
+  logger.info("Бот запущен и готов к работе...")
+  bot.infinity_polling(skip_pending=True)

@@ -1729,334 +1729,328 @@ def cb_add_sub_start(call):
     safe_send_message(call.message.chat.id, "🔔 Введите ключевое слово для подписки:", reply_markup=kb_cancel())
 
 @bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("adding_sub"))
-def process_add_subscription(m):
+def process_add_sub(m):
     uid = m.from_user.id
-    kw = m.text.strip()
+    kw = m.text.lower().strip()
     srv = get_state(uid).get("server", "Phoenix")
     clear_state(uid)
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
+        cur.execute("SELECT count(*) FROM keyword_subscriptions WHERE user_id = ?", (uid,))
+        if cur.fetchone()[0] >= 3:
+            return safe_send_message(m.chat.id, "⚠️ Достигнут лимит (максимум 3 подписки).", reply_markup=kb_main_menu())
         cur.execute("INSERT INTO keyword_subscriptions (user_id, server, keyword) VALUES (?, ?, ?)", (uid, srv, kw))
         conn.commit()
 
-    safe_send_message(m.chat.id, f"✅ Подписка на слово «{html.escape(kw)}» создана!", reply_markup=kb_main_menu())
+    safe_send_message(m.chat.id, f"✅ Вы подписались на уведомления по слову «<b>{html.escape(kw)}</b>» на сервере {html.escape(srv)}.", reply_markup=kb_main_menu())
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("del_sub_"))
 def cb_del_sub(call):
-    sub_id = int(call.data.split("_")[2])
+    sub_id = int(call.data.replace("del_sub_", ""))
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM keyword_subscriptions WHERE id = ?", (sub_id,))
+        cur.execute("DELETE FROM keyword_subscriptions WHERE id = ? AND user_id = ?", (sub_id, call.from_user.id))
         conn.commit()
     try:
-        bot.answer_callback_query(call.id, "✅ Подписка удалена!")
+        bot.answer_callback_query(call.id, "❌ Подписка удалена!")
         bot.delete_message(call.message.chat.id, call.message.message_id)
     except Exception:
         pass
 
-def check_keyword_subscriptions(server: str, text: str):
-    lower_text = text.lower()
+def check_keyword_subscriptions(srv: str, text: str):
+    t_lower = text.lower()
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT user_id, keyword FROM keyword_subscriptions WHERE server = ?", (server,))
-        subs = cur.fetchall()
-
-    for uid, kw in subs:
-        if kw.lower() in lower_text:
-            safe_send_message(uid, f"🔔 <b>Найдено по вашей подписке «{html.escape(kw)}»!</b>\n\n{html.escape(text)}")
+        cur.execute("SELECT user_id, keyword FROM keyword_subscriptions WHERE server = ?", (srv,))
+        for uid, kw in cur.fetchall():
+            if kw in t_lower:
+                safe_send_message(uid, f"🔔 <b>Уведомление!</b>\nНа сервере {html.escape(srv)} появилось новое объявление с ключевым словом «<b>{html.escape(kw)}</b>». Проверьте последние обновления!")
 
 # ==========================================
-# ЧАТ МЕЖДУ ПОКУПАТЕЛЕМ И ПРОДАВЦОМ
+# ЧАТЫ И КОНТАКТЫ (ИСПРАВЛЕНО)
 # ==========================================
 @bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
 def cb_contact_seller(call):
-    aid = int(call.data.split("_")[2])
+    aid = int(call.data.replace("contact_seller_", ""))
     buyer_id = call.from_user.id
+    
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT user_id, text, server, photo FROM active_ads WHERE id = ?", (aid,))
+        seller = cur.fetchone()
+        
+    if not seller:
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT user_id, text, server, photo FROM active_buy_ads WHERE id = ?", (aid,))
+            seller = cur.fetchone()
+
+    if not seller:
+        return safe_send_message(call.message.chat.id, "⚠️ Объявление уже удалено или неактуально.")
+
+    seller_id, text, srv, photo_id = seller
+
+    if buyer_id == seller_id:
+        return safe_send_message(call.message.chat.id, "⚠️ Вы не можете начать диалог с самим собой.")
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT user_id, server, category, text FROM active_ads WHERE id = ?", (aid,))
-        ad = cur.fetchone()
-        if not ad:
-            cur.execute("SELECT user_id, server, category, text FROM active_buy_ads WHERE id = ?", (aid,))
-            ad = cur.fetchone()
+        cur.execute("SELECT is_active FROM active_dialogs WHERE (buyer_id = ? AND seller_id = ?) OR (buyer_id = ? AND seller_id = ?)", (buyer_id, seller_id, seller_id, buyer_id))
+        dialog = cur.fetchone()
 
-    try:
-        if not ad:
-            return bot.answer_callback_query(call.id, "❌ Объявление удалено или неактивно.", show_alert=True)
-
-        seller_id, server, category, ad_text = ad
-        if seller_id == buyer_id:
-            return bot.answer_callback_query(call.id, "⚠️ Вы не можете написать самому себе!", show_alert=True)
-
+    if dialog and dialog[0] == 1:
+        return safe_send_message(call.message.chat.id, "ℹ️ У вас уже есть активный диалог с этим пользователем. Напишите ему в чат!")
+    elif dialog and dialog[0] == 0:
         with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
             cur = conn.cursor()
-            cur.execute("INSERT OR REPLACE INTO active_dialogs (buyer_id, seller_id, ad_id, is_active) VALUES (?, ?, ?, 1)", (buyer_id, seller_id, aid))
+            cur.execute("UPDATE active_dialogs SET is_active = 1 WHERE (buyer_id = ? AND seller_id = ?) OR (buyer_id = ? AND seller_id = ?)", (buyer_id, seller_id, seller_id, buyer_id))
+            conn.commit()
+    else:
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("INSERT INTO active_dialogs (buyer_id, seller_id, ad_id, is_active) VALUES (?, ?, ?, 1)", (buyer_id, seller_id, aid))
             conn.commit()
 
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
+    buyer_uname = call.from_user.username or "Пользователь"
     
-    update_state(buyer_id, active_chat_with=seller_id, ad_id=aid)
-    safe_send_message(buyer_id, "✍️ <b>Связь с автором установлена.</b> Напишите ваше сообщение (можно прикрепить фото):", reply_markup=ikb_chat_controls(aid))
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("reply_buyer_"))
-def cb_reply_buyer(call):
-    parts = call.data.split("_")
-    buyer_id = int(parts[2])
-    aid = int(parts[3])
-    seller_id = call.from_user.id
-
-    update_state(seller_id, active_chat_with=buyer_id, ad_id=aid)
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
-    safe_send_message(seller_id, "✍️ <b>Режим ответа пользователю включен.</b> Введите ваше сообщение:", reply_markup=ikb_chat_controls(aid))
+    safe_send_message(call.message.chat.id, f"💬 Диалог начат! Все ваши следующие сообщения будут отправляться продавцу. Чтобы завершить, нажмите кнопку ниже.", reply_markup=ikb_chat_controls(aid))
+    
+    seller_msg = f"✉️ <b>Новый отклик!</b>\nПользователь @{buyer_uname} хочет обсудить ваше объявление:\n\n<i>{html.escape(text[:50])}...</i>\n\nТеперь вы находитесь в диалоге. Ответьте на это сообщение."
+    if photo_id:
+        safe_send_photo(seller_id, photo_id, caption=seller_msg, reply_markup=ikb_chat_controls(aid))
+    else:
+        safe_send_message(seller_id, seller_msg, reply_markup=ikb_chat_controls(aid))
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("stop_chat_"))
 def cb_stop_chat(call):
-    aid = int(call.data.split("_")[2])
+    aid = int(call.data.replace("stop_chat_", ""))
     uid = call.from_user.id
     
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("UPDATE active_dialogs SET is_active = 0 WHERE ad_id = ? AND (buyer_id = ? OR seller_id = ?)", (aid, uid, uid))
-        conn.commit()
+        cur.execute("SELECT buyer_id, seller_id FROM active_dialogs WHERE ad_id = ? AND (buyer_id = ? OR seller_id = ?)", (aid, uid, uid))
+        dialog = cur.fetchone()
+        
+    if not dialog:
+        return safe_send_message(call.message.chat.id, "⚠️ Активный диалог не найден.")
 
-    clear_state(uid)
-    try:
-        bot.answer_callback_query(call.id, "🛑 Диалог завершен!")
-    except Exception:
-        pass
-    safe_send_message(call.message.chat.id, "❌ Диалог приостановлен.", reply_markup=kb_main_menu())
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("resume_chat_"))
-def cb_resume_chat(call):
-    aid = int(call.data.split("_")[2])
-    try:
-        bot.answer_callback_query(call.id, "🔄 Диалог возобновлен!")
-    except Exception:
-        pass
-    safe_send_message(call.message.chat.id, "✅ Напишите ваше сообщение пользователю:")
-
-@bot.message_handler(content_types=['text', 'photo'], func=lambda msg: "active_chat_with" in get_state(msg.from_user.id))
-def process_dialog_message(m):
-    uid = m.from_user.id
-    st = get_state(uid)
-    target_id = st.get("active_chat_with")
-    aid = st.get("ad_id")
-
-    if not target_id:
-        clear_state(uid)
-        return
-
-    reply_markup = types.InlineKeyboardMarkup()
-    reply_markup.add(
-        types.InlineKeyboardButton("💬 Ответить", callback_data=f"reply_buyer_{uid}_{aid}"),
-        types.InlineKeyboardButton("🛑 Завершить", callback_data=f"stop_chat_{aid}")
-    )
-
-    header = f"📩 <b>Новое сообщение по объявлению #{aid}:</b>\n\n"
-    try:
-        if m.content_type == 'photo':
-            photo_id = m.photo[-1].file_id
-            caption = header + html.escape(m.caption if m.caption else "")
-            safe_send_photo(target_id, photo_id, caption=caption, reply_markup=reply_markup)
-        else:
-            safe_send_message(target_id, header + html.escape(m.text), reply_markup=reply_markup)
-            
-        safe_send_message(uid, "✅ Сообщение успешно отправлено!")
-    except Exception as e:
-        logger.error(f"Ошибка пересылки сообщения в чате: {e}")
-        safe_send_message(uid, "❌ Не удалось доставить сообщение. Возможно, пользователь заблокировал бота.")
-
-# ==========================================
-# ЗАЯВКА НА АДМИНА
-# ==========================================
-def start_admin_application(m):
-    register_user(m.from_user.id, m.from_user.username)
-    if is_banned(m.from_user):
-        return safe_send_message(m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove())
-    
-    if is_admin_or_owner(m.from_user):
-        return safe_send_message(m.chat.id, "👑 Вы уже являетесь администратором бота!", reply_markup=kb_main_menu())
+    buyer_id, seller_id = dialog
+    other_id = seller_id if uid == buyer_id else buyer_id
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT 1 FROM admin_apps WHERE user_id = ?", (m.from_user.id,))
-        if cur.fetchone():
-            return safe_send_message(m.chat.id, "⏳ Вы уже подали заявку на администратора. Ожидайте рассмотрения владельцем (@bounqy).", reply_markup=kb_main_menu())
+        cur.execute("UPDATE active_dialogs SET is_active = 0 WHERE ad_id = ?", (aid,))
+        conn.commit()
 
-    update_state(m.from_user.id, applying_admin=True)
-    safe_send_message(
-        m.chat.id, 
-        "📝 <b>Подача заявки на пост администратора:</b>\n\n"
-        "Расскажите о себе в свободной форме (укажите ваш возраст, игровой опыт, почему хотите стать редактором/админом и сколько времени готовы уделять):\n\n"
-        "👇 <i>Отправьте ваш текст ответным сообщением:</i>", 
-        reply_markup=kb_cancel()
-    )
+    safe_send_message(uid, "🛑 Диалог завершен.", reply_markup=kb_main_menu())
+    safe_send_message(other_id, "🛑 Собеседник завершил диалог.", reply_markup=kb_main_menu())
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("resume_chat_"))
+def cb_resume_chat(call):
+    aid = int(call.data.replace("resume_chat_", ""))
+    uid = call.from_user.id
+    
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT buyer_id, seller_id FROM active_dialogs WHERE ad_id = ? AND (buyer_id = ? OR seller_id = ?)", (aid, uid, uid))
+        dialog = cur.fetchone()
+        
+    if not dialog:
+        return safe_send_message(call.message.chat.id, "⚠️ Диалог не найден.")
+
+    buyer_id, seller_id = dialog
+    other_id = seller_id if uid == buyer_id else buyer_id
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE active_dialogs SET is_active = 1 WHERE ad_id = ?", (aid,))
+        conn.commit()
+
+    safe_send_message(uid, "🔄 Диалог возобновлен. Ваши сообщения снова отправляются собеседнику.", reply_markup=ikb_chat_controls(aid))
+    safe_send_message(other_id, "🔄 Собеседник возобновил диалог с вами.", reply_markup=ikb_chat_controls(aid))
+
+@bot.message_handler(func=lambda msg: True, content_types=['text', 'photo'])
+def handle_chat_and_fallback(m):
+    uid = m.from_user.id
+    if is_banned(m.from_user):
+        return
+
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT buyer_id, seller_id, ad_id FROM active_dialogs WHERE (buyer_id = ? OR seller_id = ?) AND is_active = 1", (uid, uid))
+        dialog = cur.fetchone()
+
+    if dialog:
+        buyer_id, seller_id, aid = dialog
+        target_id = seller_id if uid == buyer_id else buyer_id
+        
+        sender_uname = m.from_user.username or "Пользователь"
+        msg_prefix = f"👤 <b>От @{sender_uname}:</b>\n\n"
+
+        if m.content_type == 'text':
+            safe_send_message(target_id, msg_prefix + html.escape(m.text), reply_markup=ikb_chat_controls(aid))
+        elif m.content_type == 'photo':
+            caption = msg_prefix + (html.escape(m.caption) if m.caption else "")
+            safe_send_photo(target_id, m.photo[-1].file_id, caption=caption, reply_markup=ikb_chat_controls(aid))
+        return
+
+    should_override_nav(m)
+
+# ==========================================
+# ЗАЯВКИ НА АДМИНА
+# ==========================================
+def start_admin_application(m):
+    uid = m.from_user.id
+    if is_admin_or_owner(m.from_user):
+        return safe_send_message(m.chat.id, "ℹ️ Вы уже являетесь администратором/редактором!")
+    update_state(uid, applying_admin=True)
+    safe_send_message(m.chat.id, "📝 <b>Подача заявки на пост Редактора СМИ:</b>\n\nПожалуйста, напишите о себе: ваш опыт, возраст, сколько времени готовы уделять боту и почему хотите стать редактором:", reply_markup=kb_cancel())
 
 @bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("applying_admin"))
-def process_admin_application_text(m):
+def process_admin_application(m):
     uid = m.from_user.id
-    clear_state(uid)
     text = m.text.strip()
     uname = m.from_user.username or "Без юзернейма"
+    clear_state(uid)
+
+    if len(text) < 10:
+        return safe_send_message(m.chat.id, "⚠️ Заявка слишком короткая. Пожалуйста, распишите подробнее.", reply_markup=kb_main_menu())
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute("INSERT OR REPLACE INTO admin_apps (user_id, username, application_text) VALUES (?, ?, ?)", (uid, uname, text))
         conn.commit()
 
-    safe_send_message(m.chat.id, "✅ Ваша заявка на администратора успешно отправлена владельцу (@bounqy) на рассмотрение!", reply_markup=kb_main_menu())
+    safe_send_message(m.chat.id, "✅ Ваша заявка успешно отправлена Владельцу на рассмотрение!", reply_markup=kb_main_menu())
 
+    app_msg = f"📝 <b>Новая заявка на пост Редактора!</b>\n\n👤 <b>Пользователь:</b> @{uname} (ID: {uid})\n\n<b>Текст заявки:</b>\n<i>{html.escape(text)}</i>"
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("✅ Принять заявку", callback_data=f"app_accept_{uid}"),
+        types.InlineKeyboardButton("✅ Принять", callback_data=f"app_accept_{uid}"),
         types.InlineKeyboardButton("❌ Отклонить", callback_data=f"app_reject_{uid}")
     )
-
-    app_msg = (
-        f"🚨 <b>Новая заявка на администратора!</b>\n\n"
-        f"👤 <b>Кандидат:</b> @{html.escape(uname)} (ID: <code>{uid}</code>)\n\n"
-        f"💬 <b>Текст заявки:</b>\n{html.escape(text)}"
-    )
-
+    
     admin_chats = get_admin_chat_ids()
-    for chat_id in admin_chats:
-        safe_send_message(chat_id, app_msg, reply_markup=markup)
+    for chat in admin_chats:
+        safe_send_message(chat, app_msg, reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("app_accept_") or c.data.startswith("app_reject_"))
-def callback_admin_app_decision(call):
+@bot.callback_query_handler(func=lambda c: c.data.startswith("app_"))
+def process_app_decision(call):
     if not is_owner(call.from_user):
         try:
-            return bot.answer_callback_query(call.id, "⛔ Принимать или отклонять заявки на администратора может исключительно владелец бота (@bounqy)!", show_alert=True)
+            bot.answer_callback_query(call.id, "⛔ Только Владелец может рассматривать заявки!", show_alert=True)
         except Exception:
-            return
+            pass
+        return
 
-    parts = call.data.split("_")
-    action = parts[1] 
-    target_uid = int(parts[2])
-
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
+    action, uid_str = call.data.split("_")[1], call.data.split("_")[2]
+    uid = int(uid_str)
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT username FROM admin_apps WHERE user_id = ?", (target_uid,))
-        row = cur.fetchone()
-        target_uname = row[0] if row else ""
-        cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (target_uid,))
+        cur.execute("SELECT username FROM admin_apps WHERE user_id = ?", (uid,))
+        app = cur.fetchone()
         
+        if not app:
+            return safe_send_message(call.message.chat.id, "⚠️ Заявка не найдена или уже рассмотрена.")
+        
+        uname = app[0]
+        cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (uid,))
+
         if action == "accept":
-            cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (target_uid, target_uname))
+            cur.execute("INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES (?, ?)", (uid, uname.lower()))
+            msg = "✅ Заявка одобрена!"
+            user_msg = "🎉 Поздравляем! Ваша заявка на пост Редактора СМИ одобрена Владельцем. Доступ к админ-панели открыт."
+        else:
+            msg = "❌ Заявка отклонена."
+            user_msg = "😔 К сожалению, ваша заявка на пост Редактора СМИ была отклонена."
+        
         conn.commit()
 
-    if action == "accept":
-        try:
-            safe_send_message(
-                target_uid, 
-                "🎉 <b>Поздравляем! Ваша заявка на администратора была принята владельцем (@bounqy)!</b>\n\n"
-                "Вам открыт доступ к панели управления и функциям модерации.", 
-                reply_markup=kb_main_menu()
-            )
-        except Exception as e:
-            logger.error(f"Не удалось отправить уведомление пользователю {target_uid}: {e}")
-
-        safe_send_message(call.message.chat.id, f"✅ Вы успешно приняли заявку пользователя ID: <code>{target_uid}</code>. Права администратора выданы.")
-    else:
-        try:
-            safe_send_message(target_uid, "❌ К сожалению, ваша заявка на пост администратора была отклонена владельцем.")
-        except Exception as e:
-            logger.error(f"Не удалось отправить уведомление пользователю {target_uid}: {e}")
-
-        safe_send_message(call.message.chat.id, f"❌ Заявка пользователя ID: <code>{target_uid}</code> отклонена.")
-
     try:
+        bot.answer_callback_query(call.id, msg)
         bot.delete_message(call.message.chat.id, call.message.message_id)
     except Exception:
         pass
+    
+    safe_send_message(uid, user_msg)
 
 # ==========================================
-# АДМИН-ПАНЕЛЬ
+# АДМИН ПАНЕЛЬ
 # ==========================================
 def admin_panel(m):
     if not is_admin_or_owner(m.from_user):
-        return safe_send_message(m.chat.id, "⛔ У вас нет доступа к админ-панели.")
-
-    register_admin_chat(m.chat.id)
-
+        return safe_send_message(m.chat.id, "⛔ У вас нет доступа к панели администратора!")
+    
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("📊 Статистика редакторов", callback_data="admin_stats"),
+        types.InlineKeyboardButton("📊 Статистика", callback_data="admin_stats"),
         types.InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast"),
-        types.InlineKeyboardButton("🛠 Управление объявлениями", callback_data="admin_manage_ad")
+        types.InlineKeyboardButton("🚫 Заблокировать", callback_data="admin_ban"),
+        types.InlineKeyboardButton("🟢 Разблокировать", callback_data="admin_unban")
     )
-    
     if is_owner(m.from_user):
-        markup.add(
-            types.InlineKeyboardButton("🚫 Забанить", callback_data="admin_ban"),
-            types.InlineKeyboardButton("🟢 Назначить", callback_data="admin_unban"),
-            types.InlineKeyboardButton("❌ Снять с админа", callback_data="admin_demote")
+        markup.add(types.InlineKeyboardButton("❌ Снять админа", callback_data="admin_demote"))
+
+    safe_send_message(m.chat.id, "👑 <b>Панель управления СМИ</b>\nВыберите действие:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("admin_"))
+def process_admin_action(call):
+    if not is_admin_or_owner(call.from_user):
+        return
+    
+    action = call.data.replace("admin_", "")
+    
+    if action == "stats":
+        with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM active_ads")
+            ads_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM active_buy_ads")
+            buy_ads_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM user_data")
+            users_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM premium_users WHERE expires_at > ?", (time.time(),))
+            premium_count = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM bans")
+            banned_count = cur.fetchone()[0]
+            cur.execute("SELECT username, count FROM editor_stats ORDER BY count DESC LIMIT 5")
+            top_editors = cur.fetchall()
+
+        stats_text = (
+            "📊 <b>Статистика бота СМИ:</b>\n\n"
+            f"👥 Пользователей всего: <b>{users_count}</b>\n"
+            f"💎 VIP пользователей: <b>{premium_count}</b>\n"
+            f"🚫 Заблокировано: <b>{banned_count}</b>\n\n"
+            f"📥 Активных скупок: <b>{buy_ads_count}</b>\n"
+            f"📤 Активных продаж: <b>{ads_count}</b>\n\n"
+            "🏆 <b>Топ 5 редакторов:</b>\n"
         )
+        if top_editors:
+            for i, (uname, cnt) in enumerate(top_editors, 1):
+                stats_text += f"{i}. @{uname} - {cnt} объявлений\n"
+        else:
+            stats_text += "Пока нет данных.\n"
         
-    safe_send_message(m.chat.id, "👑 <b>Панель управления администратора:</b>", reply_markup=markup)
+        safe_send_message(call.message.chat.id, stats_text)
+        
+    elif action in ["broadcast", "ban", "unban", "demote"]:
+        if action == "demote" and not is_owner(call.from_user):
+            try:
+                bot.answer_callback_query(call.id, "⛔ Только Владелец может снимать администраторов!", show_alert=True)
+            except Exception:
+                pass
+            return
 
-@bot.callback_query_handler(func=lambda c: c.data == "admin_stats")
-def cb_admin_stats(call):
-    if not verify_admin_callback(call): return
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT username, count FROM editor_stats ORDER BY count DESC LIMIT 10")
-        stats = cur.fetchall()
-
-    text = "📊 <b>Статистика работы редакторов:</b>\n\n" + ("Пока нет данных." if not stats else "\n".join([f"• @{html.escape(uname)}: отредактировано постов — <b>{cnt}</b>" for uname, cnt in stats]))
-    try: bot.answer_callback_query(call.id)
-    except: pass
-    safe_send_message(call.message.chat.id, text)
-
-@bot.callback_query_handler(func=lambda c: c.data == "admin_ban")
-def cb_admin_ban(call):
-    if not is_owner(call.from_user):
-        try: return bot.answer_callback_query(call.id, "⛔ Это действие доступно исключительно владельцу бота (@bounqy)!", show_alert=True)
-        except: return
-    update_state(call.from_user.id, admin_action="ban")
-    try: bot.answer_callback_query(call.id)
-    except: pass
-    safe_send_message(call.message.chat.id, "🚫 Введите username (без @) или ID пользователя для блокировки:", reply_markup=kb_cancel())
-
-@bot.callback_query_handler(func=lambda c: c.data == "admin_unban")
-def cb_admin_unban(call):
-    if not is_owner(call.from_user):
-        try: return bot.answer_callback_query(call.id, "⛔ Назначать на админку и разблокировать может исключительно владелец бота (@bounqy)!", show_alert=True)
-        except: return
-    update_state(call.from_user.id, admin_action="unban")
-    try: bot.answer_callback_query(call.id)
-    except: pass
-    safe_send_message(call.message.chat.id, "🟢 Введите username (без @) или ID для разблокировки / приема на админку:", reply_markup=kb_cancel())
-
-@bot.callback_query_handler(func=lambda c: c.data == "admin_demote")
-def cb_admin_demote(call):
-    if not is_owner(call.from_user):
-        try: return bot.answer_callback_query(call.id, "⛔ Снимать с админки может исключительно владелец бота (@bounqy)!", show_alert=True)
-        except: return
-    update_state(call.from_user.id, admin_action="demote_admin")
-    try: bot.answer_callback_query(call.id)
-    except: pass
-    safe_send_message(call.message.chat.id, "❌ Введите username (без @) или ID администратора, которого нужно снять с должности:", reply_markup=kb_cancel())
-
-@bot.callback_query_handler(func=lambda c: c.data == "admin_broadcast")
-def cb_admin_broadcast(call):
-    if not verify_admin_callback(call): return
-    update_state(call.from_user.id, admin_action="broadcast")
-    try: bot.answer_callback_query(call.id)
-    except: pass
-    safe_send_message(call.message.chat.id, "📢 Введите текст массовой рассылки:", reply_markup=kb_cancel())
+        update_state(call.from_user.id, admin_action=action)
+        prompts = {
+            "broadcast": "📢 Введите текст для глобальной рассылки всем пользователям бота:",
+            "ban": "🚫 Введите ID пользователя или @username (без @) для блокировки:",
+            "unban": "🟢 Введите ID пользователя или @username (без @) для разблокировки:",
+            "demote": "❌ Введите ID или @username (без @) администратора для снятия:"
+        }
+        safe_send_message(call.message.chat.id, prompts[action], reply_markup=kb_cancel())
 
 @bot.message_handler(func=lambda msg: "admin_action" in get_state(msg.from_user.id))
 def process_admin_action_input(m):
@@ -2093,25 +2087,17 @@ def process_admin_action_input(m):
             cur = conn.cursor()
             cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)", (target, is_id))
             conn.commit()
-        safe_send_message(m.chat.id, f"✅ Пользователь <code>{html.escape(target)}</code> заблокирован в боте.", reply_markup=kb_main_menu())
+        safe_send_message(m.chat.id, f"🚫 Пользователь {text} успешно заблокирован.", reply_markup=kb_main_menu())
 
     elif action == "unban":
-        if not is_owner(m.from_user):
-            return safe_send_message(m.chat.id, "⛔ Недостаточно прав.", reply_markup=kb_main_menu())
         target = text.lstrip('@').lower()
         with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
             cur = conn.cursor()
             cur.execute("DELETE FROM bans WHERE target = ?", (target,))
-            if target.isdigit():
-                cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) VALUES (?, ?)", (int(target), ""))
-            else:
-                cur.execute("INSERT OR IGNORE INTO approved_admins (user_id, username) SELECT user_id, username FROM user_data WHERE LOWER(username) = ?", (target,))
             conn.commit()
-        safe_send_message(m.chat.id, f"✅ Пользователь <code>{html.escape(target)}</code> разблокирован / назначен администратором.", reply_markup=kb_main_menu())
+        safe_send_message(m.chat.id, f"🟢 Пользователь {text} разблокирован.", reply_markup=kb_main_menu())
 
-    elif action == "demote_admin":
-        if not is_owner(m.from_user):
-            return safe_send_message(m.chat.id, "⛔ Недостаточно прав.", reply_markup=kb_main_menu())
+    elif action == "demote":
         target = text.lstrip('@').lower()
         with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
             cur = conn.cursor()
@@ -2120,60 +2106,14 @@ def process_admin_action_input(m):
             else:
                 cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (target,))
             conn.commit()
-        safe_send_message(m.chat.id, f"✅ Пользователь <code>{html.escape(target)}</code> снят с поста администратора.", reply_markup=kb_main_menu())
-
-@bot.callback_query_handler(func=lambda c: c.data == "admin_manage_ad")
-def cb_admin_manage_ad(call):
-    if not verify_admin_callback(call): 
-        return
-    try: 
-        bot.answer_callback_query(call.id)
-    except Exception: 
-        pass
-    
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT id, server, category, text, photo FROM active_ads ORDER BY id DESC LIMIT 5")
-        ads = cur.fetchall()
-        cur.execute("SELECT id, server, category, text, photo FROM active_buy_ads ORDER BY id DESC LIMIT 5")
-        buy_ads = cur.fetchall()
-
-    text_msg = "🛠 <b>Управление активными объявлениями (последние 5):</b>\n\n"
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    
-    for aid, srv, cat, txt, photo in ads:
-        markup.add(types.InlineKeyboardButton(f"🗑 Удалить продажу #{aid} [{srv}]", callback_data=f"admin_del_sale_{aid}"))
-    for aid, srv, cat, txt, photo in buy_ads:
-        markup.add(types.InlineKeyboardButton(f"🗑 Удалить скупку #{aid} [{srv}]", callback_data=f"admin_del_buy_{aid}"))
-        
-    if not ads and not buy_ads:
-        text_msg += "Нет активных объявлений."
-        
-    safe_send_message(call.message.chat.id, text_msg, reply_markup=markup if (ads or buy_ads) else None)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("admin_del_sale_") or c.data.startswith("admin_del_buy_"))
-def cb_admin_delete_ad(call):
-    if not verify_admin_callback(call):
-        return
-    is_buy = "admin_del_buy_" in call.data
-    prefix = "admin_del_buy_" if is_buy else "admin_del_sale_"
-    aid = int(call.data.replace(prefix, ""))
-    table = "active_buy_ads" if is_buy else "active_ads"
-    
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
-        conn.commit()
-        
-    try:
-        bot.answer_callback_query(call.id, "✅ Объявление удалено!")
-        bot.delete_message(call.message.chat.id, call.message.message_id)
-    except Exception:
-        pass
+        safe_send_message(m.chat.id, f"❌ Пользователь {text} снят с поста администратора.", reply_markup=kb_main_menu())
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-    logger.info("Бот СМИ запущен и работает...")
-    bot.infinity_polling(skip_pending=True)
+    logger.info("Бот СМИ успешно запущен и готов к работе!")
+    try:
+        bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    except Exception as e:
+        logger.error(f"Ошибка при запуске бота: {e}")

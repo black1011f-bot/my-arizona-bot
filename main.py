@@ -386,7 +386,44 @@ def get_all_admin_ids():
             admin_ids.add(row[0])
     return list(admin_ids)
 
+def is_owner(user) -> bool:
+    return bool(user and user.username and user.username.lower() == OWNER_USERNAME.lower())
+
+def is_admin_or_owner(user) -> bool:
+    if not user: 
+        return False
+    if is_owner(user): 
+        return True
+    uname = user.username.lower().lstrip('@') if user.username else ""
+    if uname in ADMIN_USERNAMES:
+        return True
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (user.id, uname))
+        if cur.fetchone():
+            return True
+    return False
+
+def is_admin_or_owner_id(user_id: int) -> bool:
+    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ?", (user_id,))
+        if cur.fetchone():
+            return True
+        cur.execute("SELECT username FROM user_data WHERE user_id = ?", (user_id,))
+        row = cur.fetchone()
+        if row and row[0]:
+            uname = row[0].lower().lstrip('@')
+            if uname == OWNER_USERNAME.lower() or uname in ADMIN_USERNAMES:
+                return True
+        cur.execute("SELECT 1 FROM admin_chats WHERE chat_id = ?", (user_id,))
+        if cur.fetchone():
+            return True
+    return False
+
 def is_user_premium(user_id: int) -> bool:
+    if is_admin_or_owner_id(user_id):
+        return True
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
         cur.execute("SELECT expires_at FROM premium_users WHERE user_id = ?", (user_id,))
@@ -444,39 +481,6 @@ def is_banned(user) -> bool:
         res = cur.fetchone()
     return bool(res)
 
-def is_owner(user) -> bool:
-    return bool(user and user.username and user.username.lower() == OWNER_USERNAME.lower())
-
-def is_admin_or_owner(user) -> bool:
-    if not user: 
-        return False
-    if is_owner(user): 
-        return True
-    uname = user.username.lower().lstrip('@') if user.username else ""
-    if uname in ADMIN_USERNAMES:
-        return True
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (user.id, uname))
-        if cur.fetchone():
-            return True
-    return False
-
-def is_admin_or_owner_id(user_id: int) -> bool:
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ?", (user_id,))
-        if cur.fetchone():
-            return True
-        cur.execute("SELECT username FROM user_data WHERE user_id = ?", (user_id,))
-        row = cur.fetchone()
-        if row and row[0] and row[0].lower() == OWNER_USERNAME.lower():
-            return True
-        cur.execute("SELECT 1 FROM admin_chats WHERE chat_id = ?", (user_id,))
-        if cur.fetchone():
-            return True
-    return False
-
 def verify_admin_callback(call) -> bool:
     if not is_admin_or_owner(call.from_user):
         try:
@@ -520,7 +524,7 @@ def format_smi_post(server: str, category: str, text: str, player_username: str,
     )
 
 # ==========================================
-# КЛАВИАТУРЫ (ИСПРАВЛЕНО: УБРАНЫ СКУПКА/ПРОДАЖА С ЭКРАНА ВЫБОРА СЕРВЕРА)
+# КЛАВИАТУРЫ
 # ==========================================
 def kb_servers():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -762,7 +766,7 @@ def cb_admin_manage_active_ads(call):
     safe_send_message(call.message.chat.id, "📋 <b>Управление активными объявлениями:</b>\nНажмите на объявление, чтобы удалить/отменить его:", reply_markup=markup)
 
 # ==========================================
-# ПОДАЧА ЗАЯВКИ НА ПОСТ РЕДАКТОРА (ARIZONA RP STYLE)
+# ПОДАЧА ЗАЯВКИ НА ПОСТ РЕДАКТОРА
 # ==========================================
 def start_admin_application(m):
     uid = m.from_user.id
@@ -1585,7 +1589,7 @@ def callback_moderation(call):
             pass
 
 # ==========================================
-# ОБРАБОТЧИК СОХРАНЕНИЯ ОТРЕДАКТИРОВАННОГО ОБЪЯВЛЕНИЯ (ИСПРАВЛЕНО: СБРОС СТЕЙТА)
+# ОБРАБОТЧИК СОХРАНЕНИЯ ОТРЕДАКТИРОВАННОГО ОБЪЯВЛЕНИЯ
 # ==========================================
 @bot.message_handler(func=lambda msg: "admin_editing_pid" in get_state(msg.from_user.id) or "admin_editing_buy_pid" in get_state(msg.from_user.id))
 def process_admin_edit_text(m):
@@ -1604,7 +1608,6 @@ def process_admin_edit_text(m):
     pid = st.get("admin_editing_buy_pid") if is_buy else st.get("admin_editing_pid")
     new_text = m.text.strip()
     
-    # Сбрасываем состояние, чтобы убрать кнопку «Отменить действие» и вернуть главную клавиатуру
     clear_state(uid)
 
     table_name = "pending_buy_posts" if is_buy else "pending_posts"
@@ -2019,14 +2022,14 @@ def process_add_sub(m):
         cur.execute("INSERT INTO keyword_subscriptions (user_id, server, keyword) VALUES (?, ?, ?)", (uid, srv, kw))
         conn.commit()
 
-    safe_send_message(m.chat.id, f"✅ Вы подписались на уведомления по слову «<b>{html.escape(kw)}</b>» на сервере {html.escape(srv)}.", reply_markup=kb_main_menu())
+    safe_send_message(m.chat.id, f"✅ Подписка на ключевое слово «{html.escape(kw)}» для сервера {html.escape(srv)} успешно добавлена!", reply_markup=kb_main_menu())
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("del_sub_"))
 def cb_del_sub(call):
     sub_id = int(call.data.replace("del_sub_", ""))
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM keyword_subscriptions WHERE id = ? AND user_id = ?", (sub_id, call.from_user.id))
+        cur.execute("DELETE FROM keyword_subscriptions WHERE id = ?", (sub_id,))
         conn.commit()
     try:
         bot.answer_callback_query(call.id, "❌ Подписка удалена!")
@@ -2034,73 +2037,28 @@ def cb_del_sub(call):
     except Exception:
         pass
 
-def check_keyword_subscriptions(srv: str, text: str):
-    t_lower = text.lower()
+def check_keyword_subscriptions(server: str, text: str):
+    lower_text = text.lower()
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT user_id, keyword FROM keyword_subscriptions WHERE server = ?", (srv,))
-        for uid, kw in cur.fetchall():
-            if kw in t_lower:
-                safe_send_message(uid, f"🔔 <b>Уведомление!</b>\nНа сервере {html.escape(srv)} появилось новое объявление с ключевым словом «<b>{html.escape(kw)}</b>». Проверьте последние обновления!")
+        cur.execute("SELECT user_id, keyword FROM keyword_subscriptions WHERE server = ?", (server,))
+        subs = cur.fetchall()
 
-# ==========================================
-# ЧАТЫ И КОНТАКТЫ
-# ==========================================
-@bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
-def cb_contact_seller(call):
-    aid = int(call.data.replace("contact_seller_", ""))
-    buyer_id = call.from_user.id
-    
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("SELECT user_id, text, server, photo FROM active_ads WHERE id = ?", (aid,))
-        seller = cur.fetchone()
-        if not seller:
-            cur.execute("SELECT user_id, text, server, photo FROM active_buy_ads WHERE id = ?", (aid,))
-            seller = cur.fetchone()
-            
-    if not seller:
-        try:
-            bot.answer_callback_query(call.id, "⚠️ Объявление не найдено или уже удалено.", show_alert=True)
-        except Exception:
-            pass
-        return
-
-    seller_id, ad_text, srv, photo = seller
-    if seller_id == buyer_id:
-        try:
-            bot.answer_callback_query(call.id, "⚠️ Вы не можете написать сами себе!", show_alert=True)
-        except Exception:
-            pass
-        return
-
-    with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
-        cur = conn.cursor()
-        cur.execute("INSERT OR IGNORE INTO active_dialogs (buyer_id, seller_id, ad_id, is_active) VALUES (?, ?, ?, 1)", (buyer_id, seller_id, aid))
-        conn.commit()
-
-    try:
-        bot.answer_callback_query(call.id, "✅ Чат с автором открыт!")
-    except Exception:
-        pass
-
-    update_state(buyer_id, active_chat_with=seller_id, active_chat_ad=aid)
-    safe_send_message(
-        buyer_id, 
-        f"✉️ <b>Внутренний чат сделки (Сервер: {html.escape(srv)})</b>\n\n"
-        f"Объявление: <i>{html.escape(ad_text[:60])}...</i>\n\n"
-        "💬 Напишите ваше сообщение продавцу. Все последующие сообщения будут пересылаться до завершения диалога.",
-        reply_markup=kb_cancel()
-    )
+    for user_id, kw in subs:
+        if kw in lower_text:
+            try:
+                safe_send_message(user_id, f"🔔 <b>Найдено объявление по вашей подписке («{html.escape(kw)}»):</b>\n\n{html.escape(text)}")
+            except Exception as e:
+                logger.error(f"Не удалось отправить уведомление по подписке пользователю {user_id}: {e}")
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
-if __name__ == '__main__':
+if __name__ == "__main__":
     logger.info("Бот успешно запущен и готов к работе...")
     while True:
         try:
             bot.polling(none_stop=True, interval=0, timeout=20)
         except Exception as e:
-            logger.error(f"Ошибка в цикле поллинга: {e}")
+            logger.error(f"Ошибка в polling: {e}")
             time.sleep(5)

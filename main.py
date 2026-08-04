@@ -2739,7 +2739,6 @@ def cb_app_actions(call):
         reply_markup=kb_main_menu(),
     )
 
-    # Отправка заявки Владельцу @bounqy и в админ-чаты
     owner_id = get_owner_user_id()
     admin_chats = get_all_admin_ids()
     recipients = set(admin_chats)
@@ -2761,218 +2760,73 @@ def cb_app_actions(call):
 
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("✅ Одобрить", callback_data=f"admin_app_acc_{uid}"),
-        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"admin_app_rej_{uid}"),
+        types.InlineKeyboardButton("✅ Принять", callback_data=f"app_acc_{uid}"),
+        types.InlineKeyboardButton("❌ Отклонить", callback_data=f"app_rej_{uid}"),
     )
 
-    for adm in recipients:
+    for adm_id in recipients:
       try:
-        safe_send_message(adm, full_text, reply_markup=markup)
+        safe_send_message(adm_id, full_text, reply_markup=markup)
       except Exception:
         pass
 
 
-@bot.callback_query_handler(
-    func=lambda c: c.data.startswith("admin_app_acc_")
-    or c.data.startswith("admin_app_rej_")
-)
-def cb_admin_app_decision(call):
+@bot.callback_query_handler(func=lambda c: c.data.startswith("app_acc_") or c.data.startswith("app_rej_"))
+def cb_app_decision(call):
   if not verify_admin_callback(call):
     return
-
-  is_acc = call.data.startswith("admin_app_acc_")
-  target_uid = int(
-      call.data.replace("admin_app_acc_", "").replace("admin_app_rej_", "")
-  )
+  is_acc = c.data.startswith("app_acc_")
+  target_uid = int(c.data.replace("app_acc_" if is_acc else "app_rej_", ""))
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute(
-        "SELECT username, application_text FROM admin_apps WHERE user_id = ?",
-        (target_uid,),
-    )
+    cur.execute("SELECT username FROM admin_apps WHERE user_id = ?", (target_uid,))
     row = cur.fetchone()
+    uname = row["username"] if row else str(target_uid)
     cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (target_uid,))
 
-    if is_acc and row:
-      uname = row["username"].lstrip("@").lower() if row["username"] else ""
-      cur.execute(
-          "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES"
-          " (?, ?)",
-          (target_uid, uname),
-      )
-      log_admin_action(
-          call.from_user.username or "admin",
-          "APPROVE_ADMIN_APP",
-          str(target_uid),
-      )
-
-  try:
-    bot.answer_callback_query(
-        call.id,
-        (
-            "✅ Заявка одобрена, пользователь назначен редактором/админом!"
-            if is_acc
-            else "❌ Заявка отклонена."
-        ),
-    )
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-
   if is_acc:
-    safe_send_message(
-        target_uid,
-        "🎉 <b>Поздравляем!</b> Ваша заявка на пост редактора / администратора"
-        " была одобрена. Вам доступны административные функции.",
-        reply_markup=kb_main_menu(),
-    )
-  else:
-    safe_send_message(
-        target_uid,
-        "❌ К сожалению, ваша заявка на пост редактора / администратора была"
-        " отклонена.",
-        reply_markup=kb_main_menu(),
-    )
-
-
-# ==========================================
-# ОТОБРАЖЕНИЕ ОБЪЯВЛЕНИЙ ПО КАТЕГОРИЯМ
-# ==========================================
-def show_ads_category(m):
-  _show_ads(m, is_buy=False)
-
-
-def show_buy_ads_category(m):
-  _show_ads(m, is_buy=True)
-
-
-def _show_ads(m, is_buy):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  cat = m.text
-
-  table = "active_buy_ads" if is_buy else "active_ads"
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        f"SELECT id, user_id, text, photo, is_vip, edit_count FROM {table} WHERE"
-        " server = ? AND category = ? ORDER BY is_vip DESC, id DESC LIMIT 10",
-        (srv, cat),
-    )
-    ads = cur.fetchall()
-
-  if not ads:
-    type_str = "скупке" if is_buy else "продаже"
-    return safe_send_message(
-        m.chat.id,
-        f"📭 В категории «{cat}» на сервере <b>{srv}</b> пока нет объявлений о"
-        f" {type_str}.",
-        reply_markup=kb_main_menu(),
-    )
-
-  type_str = "📥 Скупка" if is_buy else "📤 Продажа"
-  safe_send_message(
-      m.chat.id, f"📂 <b>{cat}</b> | {srv} | {type_str}\nПоследние 10 объявлений:"
-  )
-
-  for row in ads:
-    aid, owner_id, text, photo, is_vip, edit_count = (
-        row["id"],
-        row["user_id"],
-        row["text"],
-        row["photo"],
-        row["is_vip"],
-        row["edit_count"],
-    )
     with db_lock, get_db() as conn:
       cur = conn.cursor()
       cur.execute(
-          "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
+          "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES (?, ?)",
+          (target_uid, uname),
       )
-      is_fav = bool(cur.fetchone())
-
-    if uid == owner_id:
-      markup = ikb_user_ad_actions(
-          aid, is_fav=is_fav, is_buy=is_buy, edit_count=edit_count
-      )
-    else:
-      markup = ikb_ad_actions(
-          aid,
-          is_fav=is_fav,
-          user_id=uid,
-          is_buy=is_buy,
-          edit_count=edit_count,
-      )
-
-    fmt_text = html.escape(text)
-    if is_vip:
-      fmt_text = f"👑 <b>[VIP ОБЪЯВЛЕНИЕ]</b>\n{fmt_text}"
-
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
-
-
-# ==========================================
-# РЕДАКТИРОВАНИЕ И УПРАВЛЕНИЕ СВОИМИ ОБЪЯВЛЕНИЯМИ
-# ==========================================
-@bot.callback_query_handler(
-    func=lambda c: c.data.startswith("edit_my_sale_")
-    or c.data.startswith("edit_my_buy_")
-)
-def cb_edit_my_ad(call):
-  is_buy = "edit_my_buy_" in call.data
-  prefix = "edit_my_buy_" if is_buy else "edit_my_sale_"
-  aid = int(call.data.replace(prefix, ""))
-  table = "active_buy_ads" if is_buy else "active_ads"
-  uid = call.from_user.id
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        f"SELECT * FROM {table} WHERE id = ? AND user_id = ?", (aid, uid)
-    )
-    ad = cur.fetchone()
-
-  if not ad:
+    log_admin_action(call.from_user.username or "admin", "APPROVE_ADMIN_APP", str(target_uid))
     try:
-      return bot.answer_callback_query(
-          call.id,
-          "⚠️ Объявление не найдено или вы не являетесь его автором.",
-          show_alert=True,
+      safe_send_message(
+          target_uid,
+          "🎉 <b>Поздравляем!</b> Ваша заявка на пост редактора / администратора была <b>одобрена</b>!",
+          reply_markup=kb_main_menu(),
+      )
+    except Exception:
+      pass
+  else:
+    log_admin_action(call.from_user.username or "admin", "REJECT_ADMIN_APP", str(target_uid))
+    try:
+      safe_send_message(
+          target_uid,
+          "❌ К сожалению, ваша заявка на пост редактора / администратора была отклонена.",
+          reply_markup=kb_main_menu(),
       )
     except Exception:
       pass
 
-  if ad["edit_count"] >= 1:
-    try:
-      return bot.answer_callback_query(
-          call.id,
-          "⚠️ Вы уже использовали лимит редактирования для этого объявления.",
-          show_alert=True,
-      )
-    except Exception:
-      pass
-
-  state_key = "admin_editing_buy_pid" if is_buy else "admin_editing_pid"
-  update_state(uid, **{state_key: aid, "editing_user_ad_id": aid})
-  safe_send_message(
-      call.message.chat.id,
-      f"✏️ <b>Редактирование объявления #{aid}</b>\n\nТекущий текст:\n<i>{html.escape(ad['text'])}</i>\n\nОтправьте новый текст для объявления:",
-      reply_markup=kb_cancel(),
-  )
+  try:
+    bot.answer_callback_query(call.id, "✅ Решение по заявке зафиксировано!")
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+  except Exception:
+    pass
 
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-  logger.info("Бот запущен и успешно работает...")
+  logger.info("Бот запущен и готов к работе...")
   while True:
     try:
       bot.infinity_polling(timeout=60, long_polling_timeout=30)
     except Exception as e:
-      logger.error(f"Ошибка в боте: {e}")
+      logger.error(f"Ошибка в polling: {e}")
       time.sleep(5)

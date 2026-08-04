@@ -450,7 +450,8 @@ def show_category_ads(m):
         "SELECT id, user_id, text, photo, is_vip, 'sale' as ad_type FROM"
         " active_ads WHERE server = ? AND category = ? UNION ALL SELECT id,"
         " user_id, text, photo, is_vip, 'buy' as ad_type FROM active_buy_ads"
-        " WHERE server = ? AND category = ? LIMIT 15",
+        " WHERE server = ? AND category = ? ORDER BY is_vip DESC, id DESC LIMIT"
+        " 15",
         (srv, category, srv, category),
     )
     results = cur.fetchall()
@@ -487,7 +488,7 @@ def show_category_ads(m):
     type_badge = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
     fmt_text = f"{type_badge}\n{html.escape(text)}"
     if is_vip:
-      fmt_text = f"👑 <b>[VIP]</b>\n{fmt_text}"
+      fmt_text = f"👑 <b>[VIP ОБЪЯВЛЕНИЕ]</b>\n{fmt_text}"
 
     if photo:
       safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
@@ -533,6 +534,8 @@ def show_favorites(m):
         f"{type_badge} <b>{row['category']}</b> (Сервер: {row['server']})\n"
         f"{html.escape(row['text'])}"
     )
+    if row["is_vip"]:
+      fmt_text = f"👑 <b>[VIP ОБЪЯВЛЕНИЕ]</b>\n{fmt_text}"
 
     if row["photo"]:
       safe_send_photo(m.chat.id, row["photo"], caption=fmt_text, reply_markup=markup)
@@ -865,7 +868,8 @@ def process_search_keyword(m):
         " ad_type FROM active_ads WHERE server = ? AND LOWER(text) LIKE ? "
         "UNION ALL "
         "SELECT id, user_id, category, text, photo, is_vip, 'buy' as ad_type"
-        " FROM active_buy_ads WHERE server = ? AND LOWER(text) LIKE ? LIMIT 15",
+        " FROM active_buy_ads WHERE server = ? AND LOWER(text) LIKE ? ORDER BY"
+        " is_vip DESC LIMIT 15",
         (srv, f"%{query}%", srv, f"%{query}%"),
     )
     results = cur.fetchall()
@@ -903,7 +907,7 @@ def process_search_keyword(m):
     type_badge = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
     fmt_text = f"{type_badge} <b>{category}</b>\n{html.escape(text)}"
     if is_vip:
-      fmt_text = f"👑 <b>[VIP]</b>\n{fmt_text}"
+      fmt_text = f"👑 <b>[VIP ОБЪЯВЛЕНИЕ]</b>\n{fmt_text}"
 
     if photo:
       safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
@@ -917,6 +921,16 @@ def process_search_keyword(m):
 def start_add_ad(m):
   uid = m.from_user.id
   srv = get_user_server(uid)
+
+  # Проверка рабочего времени (08:00:01 - 22:00:01 МСК)
+  if not check_working_hours() and not is_admin_or_owner(m.from_user):
+    return safe_send_message(
+        m.chat.id,
+        "🌙 Радиоцентр закрыт! Время работы: с 08:00:01 до 22:00:01 МСК.",
+        reply_markup=kb_main_menu(),
+    )
+
+  # Проверка кулдауна (2 минуты для обычных, 1 минута для VIP)
   last_time = get_user_last_ad_time(uid)
   cooldown = 60 if is_user_premium(uid) else 120
   if time.time() - last_time < cooldown and not is_admin_or_owner(m.from_user):
@@ -924,13 +938,6 @@ def start_add_ad(m):
     return safe_send_message(
         m.chat.id,
         f"⏳ Подождите. Кулдаун на подачу объявлений: еще {rem} сек.",
-        reply_markup=kb_main_menu(),
-    )
-
-  if not check_working_hours() and not is_admin_or_owner(m.from_user):
-    return safe_send_message(
-        m.chat.id,
-        "🌙 Радиоцентр закрыт! Время работы: с 08:00:01 до 22:00:01 МСК.",
         reply_markup=kb_main_menu(),
     )
 
@@ -950,6 +957,16 @@ def start_add_ad(m):
 def start_add_buy_ad(m):
   uid = m.from_user.id
   srv = get_user_server(uid)
+
+  # Проверка рабочего времени (08:00:01 - 22:00:01 МСК)
+  if not check_working_hours() and not is_admin_or_owner(m.from_user):
+    return safe_send_message(
+        m.chat.id,
+        "🌙 Радиоцентр закрыт! Время работы: с 08:00:01 до 22:00:01 МСК.",
+        reply_markup=kb_main_menu(),
+    )
+
+  # Проверка кулдауна (2 минуты для обычных, 1 минута для VIP)
   last_time = get_user_last_ad_time(uid)
   cooldown = 60 if is_user_premium(uid) else 120
   if time.time() - last_time < cooldown and not is_admin_or_owner(m.from_user):
@@ -957,13 +974,6 @@ def start_add_buy_ad(m):
     return safe_send_message(
         m.chat.id,
         f"⏳ Подождите. Кулдаун на подачу объявлений: еще {rem} сек.",
-        reply_markup=kb_main_menu(),
-    )
-
-  if not check_working_hours() and not is_admin_or_owner(m.from_user):
-    return safe_send_message(
-        m.chat.id,
-        "🌙 Радиоцентр закрыт! Время работы: с 08:00:01 до 22:00:01 МСК.",
         reply_markup=kb_main_menu(),
     )
 
@@ -995,16 +1005,31 @@ def process_ad_category(m):
 
   st = get_state(uid)
   st["posting_ad"]["category"] = cat
-  st["posting_ad"]["step"] = "text_or_photo"
-  update_state(uid, posting_ad=st["posting_ad"])
 
-  safe_send_message(
-      m.chat.id,
-      f"✍️ Вы выбрали категорию: <b>{cat}</b>\n\nТеперь введите текст"
-      " объявления (укажите название товара, цену и условия связи). Можно"
-      " прикрепить фото:",
-      reply_markup=kb_cancel(),
-  )
+  # Если у пользователя есть VIP-статус, автоматически отправляем VIP-объявление
+  if is_user_premium(uid):
+    st["posting_ad"]["is_vip"] = 1
+    st["posting_ad"]["step"] = "text_or_photo"
+    update_state(uid, posting_ad=st["posting_ad"])
+
+    safe_send_message(
+        m.chat.id,
+        f"👑 У вас активен VIP-статус. Категория: <b>{cat}</b>\n\n"
+        "Ваше объявление автоматически будет отправлено как <b>VIP-объявление</b> (стоимость 1 звезда).\n"
+        "Теперь введите текст объявления (укажите название товара, цену и условия связи). Можно прикрепить фото:",
+        reply_markup=kb_cancel(),
+    )
+  else:
+    st["posting_ad"]["is_vip"] = 0
+    st["posting_ad"]["step"] = "text_or_photo"
+    update_state(uid, posting_ad=st["posting_ad"])
+
+    safe_send_message(
+        m.chat.id,
+        f"✍️ Категория: <b>{cat}</b>\n\nТеперь введите текст объявления (укажите"
+        " название товара, цену и условия связи). Можно прикрепить фото:",
+        reply_markup=kb_cancel(),
+    )
 
 
 @bot.message_handler(
@@ -1018,6 +1043,7 @@ def process_ad_text_or_photo(m):
   post_data = st.get("posting_ad", {})
   is_buy = post_data.get("is_buy", False)
   category = post_data.get("category", CATEGORIES[0])
+  is_vip = post_data.get("is_vip", 1 if is_user_premium(uid) else 0)
 
   text = m.text or m.caption
   if not text:
@@ -1030,7 +1056,8 @@ def process_ad_text_or_photo(m):
     clear_state(uid)
     return safe_send_message(
         m.chat.id,
-        "🤬 Нельзя общаться матом и т.д.! В вашем тексте обнаружены запрещенные слова или сторонние проекты. Подача отменена, исправьте текст.",
+        "🤬 Нельзя общаться матом и т.д.! В вашем тексте обнаружены запрещенные"
+        " слова или сторонние проекты. Подача отменена, исправьте текст.",
         reply_markup=kb_main_menu(),
     )
 
@@ -1039,7 +1066,6 @@ def process_ad_text_or_photo(m):
     photo_id = m.photo[-1].file_id
 
   srv = get_user_server(uid)
-  is_vip = 1 if is_user_premium(uid) else 0
 
   table = "pending_buy_posts" if is_buy else "pending_posts"
   with db_lock, get_db() as conn:
@@ -1083,7 +1109,8 @@ def process_ad_text_or_photo(m):
   notif_text = (
       f"📋 <b>Новый пост на модерацию #{pid}</b>"
       f" ({'Скупка' if is_buy else 'Продажа'})\n"
-      f"🌐 Сервер: {srv}\n📂 Категория: {category}\n👤 Автор ID: {uid}\n\n{text}"
+      f"🌐 Сервер: {srv}\n📂 Категория: {category}\n👤 Автор ID: {uid}\n👑 Тип:"
+      f" {'VIP (1 ⭐)' if is_vip else 'Обычное'}\n\n{text}"
   )
 
   admin_chats = get_all_admin_ids()
@@ -1663,7 +1690,8 @@ def should_override_nav(msg):
   st = get_state(uid)
 
   is_in_active_input = (
-      st.get("posting_ad", {}).get("step") in ["category", "text_or_photo"]
+      st.get("posting_ad", {}).get("step")
+      in ["category", "text_or_photo"]
       or st.get("searching_keyword")
       or st.get("adding_subscription")
       or st.get("vc_setting_rate")
@@ -1831,13 +1859,13 @@ def info_premium(m):
       "Привилегии владельца VIP-статуса:\n"
       "• Кулдаун на подачу объявлений сокращен в 2 раза (1 минута вместо 2х).\n"
       "• Возможность добавлять до 20 уведомлений по поиску.\n"
-      "• Увеличенные лимиты и приоритетный показ.\n\n"
-      "Оформить подписку можно через Telegram Stars."
+      "• Автоматическая отправка объявлений как VIP (стоимость 1 звезда).\n\n"
+      "Оформить подписку (100 звезд) можно через Telegram Stars."
   )
   markup = types.InlineKeyboardMarkup()
   markup.add(
       types.InlineKeyboardButton(
-          "💎 Купить VIP на 30 дней (150 ⭐)", callback_data="buy_premium_30"
+          "💎 Купить VIP на 30 дней (100 ⭐)", callback_data="buy_premium_30"
       )
   )
   safe_send_message(m.chat.id, text, reply_markup=markup)
@@ -1845,7 +1873,7 @@ def info_premium(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "buy_premium_30")
 def cb_buy_premium_30(call):
-  prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=150)]
+  prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=100)]
   try:
     bot.send_invoice(
         chat_id=call.message.chat.id,
@@ -2163,7 +2191,8 @@ def cb_mod_open(call):
       f"🔍 <b>Модерация поста #{pid}</b> ({'Скупка' if is_buy else 'Продажа'})\n"
       f"🌐 Сервер: {post['server']}\n"
       f"📂 Категория: {post['category']}\n"
-      f"👤 Автор ID: {post['user_id']}\n\n{post['text']}"
+      f"👤 Автор ID: {post['user_id']}\n"
+      f"👑 Тип: {'VIP (1 ⭐)' if post['is_vip'] else 'Обычное'}\n\n{post['text']}"
   )
   if post["photo"]:
     safe_send_photo(

@@ -26,6 +26,9 @@ TOKEN = "8916669266:AAFbIqOvrkdekhVkh1NTmMvpxSI_neTyN9I"
 MANAGER_USERNAME = "bounqy31"
 BOT_USERNAME = "arizona_coin_bot"  # Основной юзернейм бота
 
+# Конфигурация Gemini API (Flash-Lite)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "ВАШ_GEMINI_API_KEY")
+
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
 OWNER_USERNAME = "bounqy"
@@ -34,6 +37,48 @@ ADMIN_USERNAMES = {"bounqy31", "bounqy"}
 DB_NAME = "smi_bot.db"
 db_lock = threading.Lock()
 state_lock = threading.Lock()
+
+# ==========================================
+# ФУНКЦИИ ГЕМINI (FLASH-LITE)
+# ==========================================
+def call_gemini_flash_lite(prompt: str) -> str:
+  try:
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={GEMINI_API_KEY}"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    response = requests.post(url, headers=headers, json=data, timeout=12)
+    if response.status_code == 200:
+      res_json = response.json()
+      return res_json["candidates"][0]["content"]["parts"][0]["text"].strip()
+    else:
+      logger.error(f"Ошибка Gemini API: {response.text}")
+      return "⚠️ Временная ошибка обработки запроса ИИ."
+  except Exception as e:
+    logger.error(f"Исключение при запросе к Gemini: {e}")
+    return "⚠️ Ошибка связи с нейросетью."
+
+def polish_ad_text_with_ai(raw_text: str, category: str) -> str:
+  prompt = (
+      f"Отредактируй и профессионально улучши текст объявления для радиоцентра Arizona RP в категории '{category}'. "
+      f"Сделай текст грамотным, привлекательным, структурированным, убеди лишний мусор, но сохрани суть товара, цену и контакты. "
+      f"Верни ТОЛЬКО готовый текст объявления без лишних вводных фраз:\n\n{raw_text}"
+  )
+  polished = call_gemini_flash_lite(prompt)
+  return polished if polished and len(polished) > 5 else raw_text
+
+def check_scam_with_ai(text: str) -> bool:
+  if not text:
+    return False
+  prompt = (
+      f"Проанализируй текст на предмет мошенничества, скама, попытки выманивания пароля от аккаунта, "
+      f"продажи игровой валюты за реальные деньги или фишинга в игре Arizona RP. "
+      f"Ответь СТРОГО одним словом: SCAM если это мошенничество или CLEAN если текст безопасен.\nТекст: {text}"
+  )
+  res = call_gemini_flash_lite(prompt).upper()
+  return "SCAM" in res
+
 
 # ==========================================
 # ЗАЩИТА ОТ ФЛУДА (RATE LIMITING)
@@ -1072,6 +1117,16 @@ def process_ad_text_or_photo(m):
         m.chat.id, "⚠️ Обязательно укажите текст (или описание с фото)."
     )
 
+  # Проверка на скам через ИИ
+  if check_scam_with_ai(text):
+    auto_ban_scammer(uid, m.from_user.username, "Попытка отправки скам-объявления")
+    clear_state(uid)
+    return safe_send_message(
+        m.chat.id,
+        "⛔ <b>Обнаружена попытка мошенничества!</b> Вы заблокированы.",
+        reply_markup=types.ReplyKeyboardRemove(),
+    )
+
   if not check_auto_moderation(text):
     clear_state(uid)
     return safe_send_message(
@@ -1079,6 +1134,9 @@ def process_ad_text_or_photo(m):
         "🤬 Нельзя общаться матом и т.д.! В вашем тексте обнаружены запрещенные слова или сторонние проекты. Подача отменена, исправьте текст.",
         reply_markup=kb_main_menu(),
     )
+
+  # Авто-улучшение текста объявления с помощью Gemini Flash-Lite
+  polished_text = polish_ad_text_with_ai(text, category)
 
   photo_id = None
   if m.photo:
@@ -1098,7 +1156,7 @@ def process_ad_text_or_photo(m):
             m.from_user.username or "",
             srv,
             category,
-            text,
+            polished_text,
             photo_id,
             is_vip,
         ),
@@ -1110,14 +1168,15 @@ def process_ad_text_or_photo(m):
 
   safe_send_message(
       m.chat.id,
-      "✅ Ваше объявление успешно отправлено на модерацию редакторам! Как"
-      " только оно будет проверено, вы получите уведомление.",
+      "✅ Ваше объявление (отформатированное с помощью ИИ) успешно отправлено на модерацию редакторам!",
       reply_markup=kb_main_menu(),
   )
 
   markup = types.InlineKeyboardMarkup(row_width=2)
   acc_prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
   rej_prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
+  bad_prefix = "mod_bad_buy_" if is_buy else "mod_bad_"
+  
   markup.add(
       types.InlineKeyboardButton(
           "✅ Одобрить", callback_data=f"{acc_prefix}{pid}"
@@ -1126,10 +1185,16 @@ def process_ad_text_or_photo(m):
           "❌ Отклонить", callback_data=f"{rej_prefix}{pid}"
       ),
   )
+  markup.add(
+      types.InlineKeyboardButton(
+          "⚠️ Плохой текст (Штраф админу)", callback_data=f"{bad_prefix}{pid}"
+      )
+  )
+
   notif_text = (
       f"📋 <b>Новый пост на модерацию #{pid}</b>"
       f" ({'Скупка' if is_buy else 'Продажа'})\n"
-      f"🌐 Сервер: {srv}\n📂 Категория: {category}\n👤 Автор ID: {uid}\n\n{text}"
+      f"🌐 Сервер: {srv}\n📂 Категория: {category}\n👤 Автор ID: {uid}\n\n{polished_text}"
   )
 
   admin_chats = get_all_admin_ids()
@@ -1287,6 +1352,15 @@ def handle_internal_chat_messages(m):
 
   text = m.text or m.caption or "[Медиа/Фото]"
 
+  # Проверка скама в личных чатах через ИИ
+  if m.text and check_scam_with_ai(m.text):
+    auto_ban_scammer(uid, m.from_user.username, "Попытка скама в защищенном чате")
+    return safe_send_message(
+        m.chat.id,
+        "⛔ <b>Внимание!</b> ИИ обнаружил попытку мошенничества в вашем сообщении. Вы заблокированы.",
+        parse_mode=None,
+    )
+
   if m.text and not check_auto_moderation(m.text):
     return safe_send_message(
         m.chat.id,
@@ -1346,6 +1420,115 @@ def handle_internal_chat_messages(m):
 
 
 # ==========================================
+# ИИ-ПОМОЩНИК (ОТДЕЛЬНАЯ КНОПКА)
+# ==========================================
+def start_ai_assistant(m):
+  update_state(m.from_user.id, ai_assistant_active=True)
+  safe_send_message(
+      m.chat.id,
+      "🤖 <b>ИИ-помощник (Gemini Flash-Lite) активирован!</b>\n\n"
+      "Задайте любой интересующий вас вопрос по игре Arizona RP, игровым механикам, ценам или работе бота:",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("ai_assistant_active")
+)
+def process_ai_assistant(m):
+  uid = m.from_user.id
+  query = m.text.strip()
+  clear_state(uid)
+
+  if not query:
+    return safe_send_message(m.chat.id, "⚠️ Вопрос не может быть пустым.")
+
+  prompt = (
+      f"Ты опытный помощник и эксперт по игре Arizona RP и экономике серверов. "
+      f"Ответь игроку на его вопрос полезно, вежливо и понятно:\n\nВопрос: {query}"
+  )
+  answer = call_gemini_flash_lite(prompt)
+  safe_send_message(
+      m.chat.id,
+      f"🤖 <b>Ответ ИИ-помощника:</b>\n\n{answer}",
+      reply_markup=kb_main_menu(),
+  )
+
+
+# ==========================================
+# АВТО-БАН СКЕМЕРОВ И УПРАВЛЕНИЕ АДМИНАМИ
+# ==========================================
+def auto_ban_scammer(user_id: int, username: str, reason: str):
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, 1)",
+        (str(user_id),),
+    )
+    if username:
+      cur.execute(
+          "INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, 0)",
+          (username.lower().lstrip("@"), 0),
+      )
+  try:
+    safe_send_message(
+        user_id,
+        "⛔ <b>Вы заблокированы системой безопасности ИИ за попытку мошенничества (скаминг)!</b>",
+    )
+  except Exception:
+    pass
+  logger.warning(
+      f"АВТО-БАН СКЕМЕРА: ID {user_id} (@{username}) по причине: {reason}"
+  )
+
+
+def record_admin_error(admin_username: str, admin_id: int):
+  if not admin_username or admin_username.lower() == OWNER_USERNAME.lower():
+    return
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO editor_stats (username, count) VALUES (?, 1) ON"
+        " CONFLICT(username) DO UPDATE SET count = count + 1",
+        (admin_username.lower(),),
+    )
+    cur.execute(
+        "SELECT count FROM editor_stats WHERE username = ?",
+        (admin_username.lower(),),
+    )
+    row = cur.fetchone()
+    if row and row["count"] >= 3:
+      # Снимаем админа (кроме владельца)
+      cur.execute(
+          "DELETE FROM approved_admins WHERE user_id = ? OR LOWER(username) ="
+          " ?",
+          (admin_id, admin_username.lower()),
+      )
+      cur.execute(
+          "DELETE FROM editor_stats WHERE username = ?",
+          (admin_username.lower(),),
+      )
+      owner_id = get_owner_user_id()
+      demote_msg = (
+          f"⚠️ Администратор @{admin_username} снят с поста автоматически за 3"
+          " некачественных редактирования / плохих текста!"
+      )
+      if owner_id:
+        try:
+          safe_send_message(owner_id, demote_msg)
+        except Exception:
+          pass
+      try:
+        safe_send_message(
+            admin_id,
+            "⛔ Вы были сняты с поста администратора за 3 ошибки при модерации"
+            " текста.",
+        )
+      except Exception:
+        pass
+
+
+# ==========================================
 # ВРЕМЯ И АВТО-ОЧИСТКА (07:50)
 # ==========================================
 def get_msk_time():
@@ -1357,7 +1540,7 @@ def get_msk_time():
 
 def check_working_hours() -> bool:
   now_time = get_msk_time().time()
-  # Работа радиоцентра: строго после 08:00:01 до 22:00:01 включительно
+  # Работа радиоцентра: строго с 08:00:01 до 22:00:01 включительно
   return dtime(8, 0, 1) <= now_time <= dtime(22, 0, 1)
 
 
@@ -1370,7 +1553,7 @@ def background_cleanup_ads():
       current_time = now_msk.time()
       current_date = now_msk.date()
 
-      # Ежедневная очистка ровно в 07:50:00 МСК (удаляются только старые объявления и посты, данные игроков и админов сохраняются)
+      # Ежедневная очистка ровно в 07:50:00 МСК
       if (
           current_time.hour == 7
           and current_time.minute == 50
@@ -1384,7 +1567,7 @@ def background_cleanup_ads():
             cur.execute("DELETE FROM pending_posts")
             cur.execute("DELETE FROM pending_buy_posts")
           logger.info(
-              f"Утренняя авто-очистка объявлений выполнена в {current_time} МСК. Пользователи и администраторы сохранены."
+              f"Утренняя авто-очистка объявлений выполнена в {current_time} МСК."
           )
           last_cleaned_date = current_date
     except Exception as e:
@@ -1590,7 +1773,7 @@ def kb_servers():
       types.KeyboardButton("💎 VIP-статус"),
       types.KeyboardButton("👑 Админ-панель"),
   )
-  m.row(types.KeyboardButton("💬 Связаться с менеджером"))
+  m.row(types.KeyboardButton("🤖 ИИ-помощник"), types.KeyboardButton("💬 Связаться с менеджером"))
   return m
 
 
@@ -1620,7 +1803,7 @@ def kb_main_menu():
       types.KeyboardButton("📋 Мои публикации"),
   )
   m.row(types.KeyboardButton("📊 Анализ цен на сервере"))
-  m.row(types.KeyboardButton("💎 VIP-статус"))
+  m.row(types.KeyboardButton("💎 VIP-статус"), types.KeyboardButton("🤖 ИИ-помощник"))
   m.row(
       types.KeyboardButton("👑 Админ-панель"),
       types.KeyboardButton("💬 Связаться с менеджером"),
@@ -1715,6 +1898,7 @@ def should_override_nav(msg):
       or st.get("vc_calc_step")
       or st.get("owner_broadcast_input")
       or st.get("admin_action_input")
+      or st.get("ai_assistant_active")
   )
 
   nav_buttons = [
@@ -1731,6 +1915,7 @@ def should_override_nav(msg):
       "🌐 Сменить игровой сервер",
       "👑 Админ-панель",
       "💬 Связаться с менеджером",
+      "🤖 ИИ-помощник",
   ] + CATEGORIES
 
   if is_in_active_input and msg.text not in nav_buttons and msg.text not in SERVERS:
@@ -1772,6 +1957,8 @@ def handle_navigation_override(m):
     admin_panel(m)
   elif m.text == "💬 Связаться с менеджером":
     contact_manager(m)
+  elif m.text == "🤖 ИИ-помощник":
+    start_ai_assistant(m)
   elif m.text in CATEGORIES:
     show_category_ads(m)
   elif m.text in SERVERS:
@@ -1822,17 +2009,16 @@ def cmd_start(m):
 @bot.message_handler(commands=["help"])
 def cmd_help(m):
   help_text = (
-      f"🛠 <b>Помощь, правила и FAQ @{BOT_USERNAME}</b>\n\n❓ <b>1. Как подать"
-      " объявление о продаже или скупке?</b>\n💡 <i>Выберите нужный игровой"
-      " сервер в главном меню -> Нажмите «📤 Продать товар» или «📥 Скупить"
-      " товар» -> Выберите категорию -> Введите товар, цену и условия ->"
-      " Отправьте на модерацию редакторам.</i>\n\n❓ <b>2. Сколько времени"
-      " модераторы проверяют заявки?</b>\n💡 <i>Обычно проверка занимает от"
-      " силы пару минут, если редактора находятся в сети. Вы получите"
-      " уведомление в чат сразу после публикации или отклонения"
-      " объявления.</i>\n\n⏱ <b>Дополнительная"
-      " информация:</b> Радиоцентр и редакция работают ежедневно с"
-      " <b>08:00:01 до 22:00:01 МСК</b>."
+      f"🛠 <b>Помощь, правила и FAQ @{BOT_USERNAME}</b>\n\n"
+      f"❓ <b>1. Как подать объявление о продаже или скупке?</b>\n"
+      f"💡 <i>Выберите нужный игровой сервер в главном меню -> Нажмите «📤 Продать товар» или «📥 Скупить товар» -> Выберите категорию -> Введите товар, цену и условия -> Отправьте на модерацию редакторам. Текст автоматически улучшается нейросетью Gemini!</i>\n\n"
+      f"❓ <b>2. Как работает ИИ-помощник?</b>\n"
+      f"💡 <i>Нажмите кнопку «🤖 ИИ-помощник» в меню, после чего вы сможете задать любой вопрос по игре Arizona RP, механикам или экономике.</i>\n\n"
+      f"❓ <b>3. Сколько времени модераторы проверяют заявки?</b>\n"
+      f"💡 <i>Обычно проверка занимает от силы пару минут. Вы получите уведомление в чат сразу после публикации или отклонения.</i>\n\n"
+      f"❓ <b>4. Что такое защита от скама?</b>\n"
+      f"💡 <i>Бот автоматически проверяет все объявления и личные чаты на наличие мошенничества с помощью ИИ. Скамеры блокируются мгновенно.</i>\n\n"
+      f"⏱ <b>Режим работы радиоцентра:</b> Строго с <b>08:00:01 до 22:00:01 МСК</b>."
   )
   safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu())
 
@@ -1860,12 +2046,11 @@ def select_srv(m):
 
 def how_bot_works(m):
   text = (
-      f"📖 <b>Справочник: Как работает @{BOT_USERNAME} и радиоцентр</b>\n\n1. <b>Подача"
-      " объявления:</b> Выбирается тип (продажа/скупка), сервер, категория и"
-      " текст.\n2. <b>Проверка редакторами:</b> Редакторы проверяют материалы"
-      " с 08:00:01 до 22:00:01 МСК.\n3. <b>Публикация:</b> Одобренное"
-      " объявление уходит в ленту.\n4. <b>Инструменты VC:</b> Полноценный курс,"
-      " конвертер и калькулятор прибыли для перекупщиков."
+      f"📖 <b>Справочник: Как работает @{BOT_USERNAME} и радиоцентр</b>\n\n"
+      f"1. <b>Подача объявления:</b> Выбирается тип, сервер, категория и текст. Gemini автоматически корректирует и полирует текст.\n"
+      f"2. <b>Проверка редакторами:</b> Редакторы проверяют материалы с 08:00:01 до 22:00:01 МСК.\n"
+      f"3. <b>ИИ-безопасность:</b> Защита от скама и спама работает в реальном времени.\n"
+      f"4. <b>Инструменты VC:</b> Курс, конвертер и калькулятор прибыли для перекупщиков."
   )
   safe_send_message(m.chat.id, text)
 
@@ -2095,7 +2280,7 @@ def admin_panel(m):
           "📤 Модерация продаж", callback_data="admin_mod_sales"
       ),
       types.InlineKeyboardButton(
-          "📥 Модерация скупке", callback_data="admin_mod_buys"
+          "📥 Модерация скупки", callback_data="admin_mod_buys"
       ),
   )
 
@@ -2198,6 +2383,8 @@ def cb_mod_open(call):
   markup = types.InlineKeyboardMarkup(row_width=2)
   acc_prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
   rej_prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
+  bad_prefix = "mod_bad_buy_" if is_buy else "mod_bad_"
+  
   markup.add(
       types.InlineKeyboardButton(
           "✅ Одобрить", callback_data=f"{acc_prefix}{pid}"
@@ -2205,6 +2392,11 @@ def cb_mod_open(call):
       types.InlineKeyboardButton(
           "❌ Отклонить", callback_data=f"{rej_prefix}{pid}"
       ),
+  )
+  markup.add(
+      types.InlineKeyboardButton(
+          "⚠️ Плохой текст (Штраф админу)", callback_data=f"{bad_prefix}{pid}"
+      )
   )
 
   text = (
@@ -2229,16 +2421,23 @@ def cb_mod_open(call):
     or c.data.startswith("mod_acc_buy_")
     or c.data.startswith("mod_rej_")
     or c.data.startswith("mod_rej_buy_")
+    or c.data.startswith("mod_bad_")
+    or c.data.startswith("mod_bad_buy_")
 )
 def cb_mod_decision(call):
   if not verify_admin_callback(call):
     return
   is_buy = "buy" in call.data
-  is_acc = "acc" in call.data
-  if is_buy:
-    prefix = "mod_acc_buy_" if is_acc else "mod_rej_buy_"
+  
+  if "acc" in call.data:
+    action = "acc"
+    prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
+  elif "bad" in call.data:
+    action = "bad"
+    prefix = "mod_bad_buy_" if is_buy else "mod_bad_"
   else:
-    prefix = "mod_acc_" if is_acc else "mod_rej_"
+    action = "rej"
+    prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
 
   pid = int(call.data.replace(prefix, ""))
   p_table = "pending_buy_posts" if is_buy else "pending_posts"
@@ -2259,7 +2458,7 @@ def cb_mod_decision(call):
     except Exception:
       pass
 
-  if is_acc:
+  if action == "acc":
     with db_lock, get_db() as conn:
       cur = conn.cursor()
       cur.execute(
@@ -2286,6 +2485,16 @@ def cb_mod_decision(call):
           post["user_id"],
           f"✅ Ваше объявление #{new_ad_id} успешно проверено и опубликовано в"
           " ленте!",
+      )
+    except Exception:
+      pass
+  elif action == "bad":
+    # Записываем штраф администратору (3 таких ошибки снимают с админки, кроме @bounqy)
+    record_admin_error(call.from_user.username, call.from_user.id)
+    try:
+      safe_send_message(
+          post["user_id"],
+          "❌ Ваше объявление было отклонено из-за некачественного текста. Пожалуйста, отредактируйте его и отправьте снова.",
       )
     except Exception:
       pass

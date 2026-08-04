@@ -436,6 +436,214 @@ init_db()
 
 
 # ==========================================
+# ПРОСМОТР КАТЕГОРИЙ, ИЗБРАННОГО И МОИХ ПОСТОВ
+# ==========================================
+def show_category_ads(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  category = m.text
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, user_id, text, photo, is_vip, 'sale' as ad_type FROM"
+        " active_ads WHERE server = ? AND category = ? UNION ALL SELECT id,"
+        " user_id, text, photo, is_vip, 'buy' as ad_type FROM active_buy_ads"
+        " WHERE server = ? AND category = ? LIMIT 15",
+        (srv, category, srv, category),
+    )
+    results = cur.fetchall()
+
+  if not results:
+    return safe_send_message(
+        m.chat.id,
+        f"📭 В категории <b>{html.escape(category)}</b> на сервере"
+        f" <b>{html.escape(srv)}</b> пока нет активных объявлений.",
+        reply_markup=kb_main_menu(),
+    )
+
+  safe_send_message(
+      m.chat.id,
+      f"📂 <b>Категория: {html.escape(category)}</b>\n🌐 Сервер: {srv}\nНайдено"
+      f" объявлений: {len(results)}",
+  )
+
+  for row in results:
+    aid = row["id"]
+    text = row["text"]
+    photo = row["photo"]
+    is_vip = row["is_vip"]
+    is_buy = row["ad_type"] == "buy"
+
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute(
+          "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
+      )
+      is_fav = bool(cur.fetchone())
+
+    markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=is_buy)
+    type_badge = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
+    fmt_text = f"{type_badge}\n{html.escape(text)}"
+    if is_vip:
+      fmt_text = f"👑 <b>[VIP]</b>\n{fmt_text}"
+
+    if photo:
+      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
+    else:
+      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
+
+
+def show_favorites(m):
+  uid = m.from_user.id
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT ad_id FROM favorites WHERE user_id = ?", (uid,))
+    favs = cur.fetchall()
+
+  if not favs:
+    return safe_send_message(
+        m.chat.id,
+        "❤️ У вас пока нет сохраненных объявлений в избранном.",
+        reply_markup=kb_main_menu(),
+    )
+
+  safe_send_message(m.chat.id, "❤️ <b>Ваши сохраненные объявления:</b>")
+  for f in favs:
+    aid = f["ad_id"]
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute(
+          "SELECT id, user_id, category, text, photo, is_vip, server, 'sale'"
+          " as ad_type FROM active_ads WHERE id = ? UNION ALL SELECT id,"
+          " user_id, category, text, photo, is_vip, server, 'buy' as ad_type"
+          " FROM active_buy_ads WHERE id = ?",
+          (aid, aid),
+      )
+      row = cur.fetchone()
+
+    if not row:
+      continue
+
+    is_buy = row["ad_type"] == "buy"
+    markup = ikb_ad_actions(aid, is_fav=True, user_id=uid, is_buy=is_buy)
+    type_badge = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
+    fmt_text = (
+        f"{type_badge} <b>{row['category']}</b> (Сервер: {row['server']})\n"
+        f"{html.escape(row['text'])}"
+    )
+
+    if row["photo"]:
+      safe_send_photo(m.chat.id, row["photo"], caption=fmt_text, reply_markup=markup)
+    else:
+      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
+
+
+def show_my_ads(m):
+  uid = m.from_user.id
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, server, category, text, 'active_sale' as status FROM"
+        " active_ads WHERE user_id = ? UNION ALL SELECT id, server, category,"
+        " text, 'active_buy' as status FROM active_buy_ads WHERE user_id = ?"
+        " UNION ALL SELECT id, server, category, text, 'pending_sale' as"
+        " status FROM pending_posts WHERE user_id = ? UNION ALL SELECT id,"
+        " server, category, text, 'pending_buy' as status FROM"
+        " pending_buy_posts WHERE user_id = ?",
+        (uid, uid, uid, uid),
+    )
+    ads = cur.fetchall()
+
+  if not ads:
+    return safe_send_message(
+        m.chat.id,
+        "📋 У вас нет активных или находящихся на модерации публикаций.",
+        reply_markup=kb_main_menu(),
+    )
+
+  text = "📋 <b>Ваши публикации:</b>\n\n"
+  for row in ads:
+    status_str = {
+        "active_sale": "🟢 Активна (Продажа)",
+        "active_buy": "🟢 Активна (Скупка)",
+        "pending_sale": "⏳ На модерации (Продажа)",
+        "pending_buy": "⏳ На модерации (Скупка)",
+    }.get(row["status"], "Неизвестно")
+
+    text += (
+        f"• ID: <code>{row['id']}</code> | {status_str}\n🌐 Сервер:"
+        f" <b>{row['server']}</b> | 📂 {row['category']}\n💬"
+        f" {html.escape(row['text'][:50])}...\n\n"
+    )
+
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("fav_toggle_"))
+def cb_fav_toggle(call):
+  aid = int(call.data.replace("fav_toggle_", ""))
+  uid = call.from_user.id
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
+    )
+    exists = cur.fetchone()
+    if exists:
+      cur.execute(
+          "DELETE FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
+      )
+      is_fav = False
+      msg = "❌ Удалено из избранного!"
+    else:
+      cur.execute(
+          "INSERT INTO favorites (user_id, ad_id) VALUES (?, ?)", (uid, aid)
+      )
+      is_fav = True
+      msg = "❤️ Добавлено в избранное!"
+
+  try:
+    bot.answer_callback_query(call.id, msg)
+    # Определяем тип объявления для перестройки клавиатуры
+    cur = get_db().__enter__().cursor()  # упрощенный поиск типа
+    is_buy = False
+    bot.edit_message_reply_markup(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        reply_markup=ikb_ad_actions(
+            aid, is_fav=is_fav, user_id=uid, is_buy=is_buy
+        ),
+    )
+  except Exception:
+    pass
+
+
+@bot.callback_query_handler(
+    func=lambda c: c.data.startswith("admin_del_")
+    or c.data.startswith("admin_del_buy_")
+)
+def cb_admin_delete_ad(call):
+  if not verify_admin_callback(call):
+    return
+  is_buy = "admin_del_buy_" in call.data
+  prefix = "admin_del_buy_" if is_buy else "admin_del_"
+  aid = int(call.data.replace(prefix, ""))
+  table = "active_buy_ads" if is_buy else "active_ads"
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
+
+  try:
+    bot.answer_callback_query(call.id, "🗑 Объявление удалено администратором!")
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+  except Exception:
+    pass
+
+
+# ==========================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ УВЕДОМЛЕНИЙ ПОИСКА
 # ==========================================
 def notify_subscribers(server: str, text: str, ad_id: int, is_buy: bool):
@@ -1511,7 +1719,7 @@ def handle_navigation_override(m):
   elif m.text == "💬 Связаться с менеджером":
     contact_manager(m)
   elif m.text in CATEGORIES:
-    pass
+    show_category_ads(m)
   elif m.text in SERVERS:
     select_srv(m)
 

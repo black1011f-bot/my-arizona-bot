@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from datetime import datetime, time as dtime
 import html
 import logging
@@ -20,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Новый токен бота
+# Токен бота
 TOKEN = "8916669266:AAFGS9RYMCHOp1yQfBe6kGCh6-V3CdRwOPc"
 YT_CHANNEL_URL = "https://youtube.com/@bounty_squad31"
 
@@ -103,10 +104,18 @@ BAD_WORDS = [
 user_states = {}
 
 
+@contextmanager
 def get_db():
   conn = sqlite3.connect(DB_NAME, timeout=10.0)
   conn.row_factory = sqlite3.Row
-  return conn
+  try:
+    yield conn
+    conn.commit()
+  except Exception:
+    conn.rollback()
+    raise
+  finally:
+    conn.close()
 
 
 def set_user_server(user_id: int, server: str):
@@ -115,7 +124,6 @@ def set_user_server(user_id: int, server: str):
     cur.execute(
         "UPDATE user_data SET server = ? WHERE user_id = ?", (server, user_id)
     )
-    conn.commit()
   update_state(user_id, server=server)
 
 
@@ -182,7 +190,7 @@ def safe_send_message(chat_id, text, parse_mode="HTML", reply_markup=None):
 
 
 def safe_send_photo(
-    chat_id, photo, caption, parse_mode="HTML", reply_markup=None
+    chat_id, photo, caption="", parse_mode="HTML", reply_markup=None
 ):
   try:
     return bot.send_photo(
@@ -390,8 +398,6 @@ def init_db():
             )
         """)
 
-    conn.commit()
-
 
 init_db()
 
@@ -433,7 +439,6 @@ def background_cleanup_ads():
             cur.execute("DELETE FROM active_buy_ads")
             cur.execute("DELETE FROM pending_posts")
             cur.execute("DELETE FROM pending_buy_posts")
-            conn.commit()
           logger.info(
               f"Утренняя авто-очистка объявлений выполнена ровно в {current_time} МСК."
           )
@@ -512,7 +517,6 @@ def set_vc_rate(rate: float):
         " ?)",
         (str(rate),),
     )
-    conn.commit()
 
 
 def register_admin_chat(chat_id: int):
@@ -521,7 +525,6 @@ def register_admin_chat(chat_id: int):
     cur.execute(
         "INSERT OR IGNORE INTO admin_chats (chat_id) VALUES (?)", (chat_id,)
     )
-    conn.commit()
 
 
 def get_admin_chat_ids():
@@ -652,7 +655,6 @@ def set_user_last_ad_time(user_id, t):
         " ?)",
         (user_id, t),
     )
-    conn.commit()
 
 
 def register_user(user_id, username=None):
@@ -668,7 +670,6 @@ def register_user(user_id, username=None):
       cur.execute(
           "UPDATE user_data SET username = ? WHERE user_id = ?", (uname, user_id)
       )
-    conn.commit()
 
 
 def is_banned(user) -> bool:
@@ -799,7 +800,7 @@ def blocked_user_callback(c):
 
 
 # ==========================================
-# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ (ИСПРАВЛЕНО)
+# УМНЫЙ МИДДЛВЕЙР НАВИГАЦИИ
 # ==========================================
 def should_override_nav(msg):
   if not msg.text:
@@ -1101,7 +1102,6 @@ def cb_fav_toggle(call):
         bot.answer_callback_query(call.id, "❤️ Добавлено в избранное")
       except Exception:
         pass
-    conn.commit()
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
@@ -1137,7 +1137,6 @@ def cb_admin_delete_ad(call):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
-    conn.commit()
 
   try:
     bot.answer_callback_query(
@@ -1269,7 +1268,6 @@ def cb_my_del_ad(call):
     row = cur.fetchone()
     if row and row["user_id"] == uid:
       cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
-      conn.commit()
       try:
         bot.answer_callback_query(call.id, "✅ Объявление удалено!")
         bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -1547,7 +1545,6 @@ def finish_posting(chat_id, uid, username, photo_id, is_buy):
         ),
     )
     post_id = cur.lastrowid
-    conn.commit()
 
   set_user_last_ad_time(uid, time.time())
   clear_state(uid)
@@ -1769,7 +1766,6 @@ def cb_moderate_action(call):
           " CONFLICT(username) DO UPDATE SET count = count + 1",
           (ed_uname,),
       )
-      conn.commit()
 
     try:
       bot.answer_callback_query(call.id, "✅ Объявление успешно опубликовано!")
@@ -1788,7 +1784,6 @@ def cb_moderate_action(call):
     with db_lock, get_db() as conn:
       cur = conn.cursor()
       cur.execute(f"DELETE FROM {pending_table} WHERE id = ?", (pid,))
-      conn.commit()
 
     try:
       bot.answer_callback_query(call.id, "❌ Объявление отклонено.")
@@ -1831,7 +1826,6 @@ def process_admin_edit_text(m):
         (pid,),
     )
     row = cur.fetchone()
-    conn.commit()
 
   if not row:
     return safe_send_message(m.chat.id, "⚠️ Объявление не найдено.")
@@ -2022,7 +2016,6 @@ def cb_del_sub(call):
         "DELETE FROM keyword_subscriptions WHERE id = ? AND user_id = ?",
         (sub_id, uid),
     )
-    conn.commit()
   try:
     bot.answer_callback_query(call.id, "✅ Подписка удалена")
   except Exception:
@@ -2078,7 +2071,6 @@ def process_add_subscription(m):
         " (?, ?, ?)",
         (uid, srv, kw),
     )
-    conn.commit()
 
   clear_state(uid)
   safe_send_message(
@@ -2183,7 +2175,6 @@ def start_dialog_with_seller(call):
         " is_active) VALUES (?, ?, ?, 1)",
         (buyer_id, seller_id, aid),
     )
-    conn.commit()
 
   ad_type_str = "скупке" if is_buy else "продаже"
   buyer_msg = (
@@ -2226,7 +2217,6 @@ def cb_stop_chat(call):
         " seller_id=?",
         (aid, buyer_id, seller_id),
     )
-    conn.commit()
 
   other_id = seller_id if uid == buyer_id else buyer_id
 
@@ -2269,7 +2259,6 @@ def cb_rate_seller(call):
         " VALUES (?, ?, ?, '')",
         (seller_id, buyer_id, rating),
     )
-    conn.commit()
 
   try:
     bot.answer_callback_query(call.id, f"✅ Спасибо! Вы поставили оценку {rating}.")
@@ -2310,7 +2299,6 @@ def cb_resume_chat(call):
         " seller_id=?",
         (aid, buyer_id, seller_id),
     )
-    conn.commit()
 
   safe_send_message(
       buyer_id,
@@ -2371,7 +2359,6 @@ def handle_chat_message(m):
               " timestamp) VALUES (?, ?, ?, ?)",
               (uid, target_id, m.text or "[ФОТО]", time.time()),
           )
-          conn.commit()
       except Exception as e:
         logger.error(f"Ошибка пересылки сообщения: {e}")
     return
@@ -2601,7 +2588,6 @@ def process_successful_payment(message):
           " (?, ?)",
           (uid, new_expiry),
       )
-      conn.commit()
 
     safe_send_message(
         message.chat.id,
@@ -2772,7 +2758,6 @@ def cb_submit_admin_app(call):
         " application_text) VALUES (?, ?, ?)",
         (uid, uname, full_text),
     )
-    conn.commit()
 
   clear_state(uid)
   try:
@@ -2856,7 +2841,6 @@ def cb_manage_admin_app(call):
         msg = "Отклонено"
 
       cur.execute("DELETE FROM admin_apps WHERE user_id = ?", (uid,))
-      conn.commit()
 
       try:
         bot.edit_message_text(
@@ -2897,31 +2881,6 @@ def admin_panel_cmd(m):
       "👑 <b>Панель администратора:</b>\nВыберите раздел для управления:",
       reply_markup=markup,
   )
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "back_to_admin")
-def cb_back_to_admin(call):
-  if not verify_admin_callback(call):
-    return
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  markup.add(
-      types.InlineKeyboardButton(
-          "📤 Модерация продаж", callback_data="admin_mod_sales"
-      ),
-      types.InlineKeyboardButton(
-          "📥 Модерация скупок", callback_data="admin_mod_buys"
-      ),
-  )
-  try:
-    bot.edit_message_text(
-        "👑 <b>Панель администратора:</b>\nВыберите раздел для управления:",
-        call.message.chat.id,
-        call.message.message_id,
-        reply_markup=markup,
-        parse_mode="HTML",
-    )
-  except Exception:
-    pass
 
 
 # ==========================================

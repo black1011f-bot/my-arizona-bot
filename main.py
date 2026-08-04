@@ -434,11 +434,477 @@ def init_db():
 
 init_db()
 
+
+# ==========================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ УВЕДОМЛЕНИЙ ПОИСКА
+# ==========================================
+def notify_subscribers(server: str, text: str, ad_id: int, is_buy: bool):
+  """Уведомляет пользователей, подписанных на ключевые слова."""
+  try:
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute(
+          "SELECT user_id, keyword FROM keyword_subscriptions WHERE server = ?",
+          (server,),
+      )
+      subs = cur.fetchall()
+
+    lower_text = text.lower()
+    notified_users = set()
+
+    for row in subs:
+      uid = row["user_id"]
+      kw = row["keyword"].lower()
+      if kw in lower_text and uid not in notified_users:
+        notified_users.add(uid)
+        type_str = "скупки" if is_buy else "продажи"
+        notif_msg = (
+            f"🔔 <b>Найдено совпадение по вашей подписке!</b>\n"
+            f"🌐 Сервер: {server} | Тип: {type_str}\n\n"
+            f"{text}"
+        )
+        markup = ikb_ad_actions(ad_id, user_id=uid, is_buy=is_buy)
+        try:
+          safe_send_message(uid, notif_msg, reply_markup=markup)
+        except Exception:
+          pass
+  except Exception as e:
+    logger.error(f"Ошибка отправки уведомлений по подпискам: {e}")
+
+
+def manage_subscriptions(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, keyword FROM keyword_subscriptions WHERE user_id = ? AND"
+        " server = ?",
+        (uid, srv),
+    )
+    subs = cur.fetchall()
+
+  text = (
+      f"🔔 <b>Уведомления о поиске (Ключевые слова)</b>\n🌐 Сервер:"
+      f" <b>{html.escape(srv)}</b>\n\n"
+  )
+  if subs:
+    text += "Ваши активные подписки на этом сервере:\n"
+    for row in subs:
+      text += f"• <code>{html.escape(row['keyword'])}</code> (ID: {row['id']})\n"
+  else:
+    text += "У вас нет активных подписок на ключевые слова для этого сервера.\n"
+
+  markup = types.InlineKeyboardMarkup(row_width=2)
+  markup.add(
+      types.InlineKeyboardButton(
+          "➕ Добавить ключевое слово", callback_data="sub_add_start"
+      ),
+      types.InlineKeyboardButton(
+          "🗑 Удалить подписку", callback_data="sub_del_start"
+      ),
+  )
+  safe_send_message(m.chat.id, text, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "sub_add_start")
+def cb_sub_add_start(call):
+  update_state(call.from_user.id, adding_subscription=True)
+  safe_send_message(
+      call.message.chat.id,
+      "➕ Введите ключевое слово или фразу, при появлении которой в новых"
+      " объявлениях вы хотите получать уведомления:",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("adding_subscription")
+)
+def process_add_subscription(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  kw = m.text.strip().lower()
+  clear_state(uid)
+
+  if not kw:
+    return safe_send_message(
+        m.chat.id, "⚠️ Ключевое слово не может быть пустым."
+    )
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT COUNT(*) as cnt FROM keyword_subscriptions WHERE user_id = ? AND"
+        " server = ?",
+        (uid, srv),
+    )
+    row = cur.fetchone()
+    limit = 20 if is_user_premium(uid) else 5
+    if row and row["cnt"] >= limit:
+      return safe_send_message(
+          m.chat.id,
+          f"⚠️ Достигнут лимит подписок для этого сервера ({limit} шт.).",
+          reply_markup=kb_main_menu(),
+      )
+
+    cur.execute(
+        "INSERT INTO keyword_subscriptions (user_id, server, keyword) VALUES"
+        " (?, ?, ?)",
+        (uid, srv, kw),
+    )
+
+  safe_send_message(
+      m.chat.id,
+      f"✅ Подписка на ключевое слово <code>{html.escape(kw)}</code> для сервера"
+      f" <b>{html.escape(srv)}</b> успешно добавлена!",
+      reply_markup=kb_main_menu(),
+  )
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "sub_del_start")
+def cb_sub_del_start(call):
+  uid = call.from_user.id
+  srv = get_user_server(uid)
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, keyword FROM keyword_subscriptions WHERE user_id = ? AND"
+        " server = ?",
+        (uid, srv),
+    )
+    subs = cur.fetchall()
+
+  if not subs:
+    try:
+      return bot.answer_callback_query(
+          call.id,
+          "⚠️ У вас нет подписок для удаления на этом сервере.",
+          show_alert=True,
+      )
+    except Exception:
+      pass
+
+  markup = types.InlineKeyboardMarkup(row_width=1)
+  for row in subs:
+    markup.add(
+        types.InlineKeyboardButton(
+            f"❌ Удалить: {row['keyword']}",
+            callback_data=f"sub_del_id_{row['id']}",
+        )
+    )
+  try:
+    bot.edit_message_text(
+        "🗑 Выберите подписку для удаления:",
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=markup,
+    )
+  except Exception:
+    pass
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("sub_del_id_"))
+def cb_sub_del_id(call):
+  sub_id = int(call.data.replace("sub_del_id_", ""))
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("DELETE FROM keyword_subscriptions WHERE id = ?", (sub_id,))
+
+  try:
+    bot.answer_callback_query(call.id, "✅ Подписка удалена!")
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+  except Exception:
+    pass
+  safe_send_message(
+      call.message.chat.id,
+      "✅ Выбранная подписка успешно удалена.",
+      reply_markup=kb_main_menu(),
+  )
+
+
+# ==========================================
+# ПОИСК ТОВАРА В БАЗЕ
+# ==========================================
+def start_search(m):
+  update_state(m.from_user.id, searching_keyword=True)
+  safe_send_message(
+      m.chat.id,
+      "🔍 <b>Поиск товара в базе</b>\n\nВведите ключевое слово или название"
+      " товара для поиска по активным объявлениям текущего сервера:",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("searching_keyword")
+)
+def process_search_keyword(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  query = m.text.strip().lower()
+  clear_state(uid)
+
+  if not query:
+    return safe_send_message(
+        m.chat.id, "⚠️ Поисковый запрос не может быть пустым."
+    )
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, user_id, category, text, photo, is_vip, 'sale' as"
+        " ad_type FROM active_ads WHERE server = ? AND LOWER(text) LIKE ? "
+        "UNION ALL "
+        "SELECT id, user_id, category, text, photo, is_vip, 'buy' as ad_type"
+        " FROM active_buy_ads WHERE server = ? AND LOWER(text) LIKE ? LIMIT 15",
+        (srv, f"%{query}%", srv, f"%{query}%"),
+    )
+    results = cur.fetchall()
+
+  if not results:
+    return safe_send_message(
+        m.chat.id,
+        f"📭 По запросу <code>{html.escape(query)}</code> на сервере"
+        f" <b>{html.escape(srv)}</b> ничего не найдено.",
+        reply_markup=kb_main_menu(),
+    )
+
+  safe_send_message(
+      m.chat.id,
+      f"🔎 <b>Результаты поиска по запросу:</b> <code>{html.escape(query)}</code>"
+      f" (Сервер: {srv})\nНайдено совпадений: {len(results)}",
+  )
+
+  for row in results:
+    aid = row["id"]
+    owner_id = row["user_id"]
+    category = row["category"]
+    text = row["text"]
+    photo = row["photo"]
+    is_vip = row["is_vip"]
+    is_buy = row["ad_type"] == "buy"
+
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute(
+          "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
+      )
+      is_fav = bool(cur.fetchone())
+
+    markup = ikb_ad_actions(
+        aid, is_fav=is_fav, user_id=uid, is_buy=is_buy
+    )
+    type_badge = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
+    fmt_text = (
+        f"{type_badge} <b>{category}</b>\n{html.escape(text)}"
+    )
+    if is_vip:
+      fmt_text = f"👑 <b>[VIP]</b>\n{fmt_text}"
+
+    if photo:
+      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
+    else:
+      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
+
+
+# ==========================================
+# ВНУТРЕННИЙ ЧАТ МЕЖДУ ПОКУПАТЕЛЕМ И ПРОДАВЦОМ
+# ==========================================
+@bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
+def cb_contact_seller(call):
+  aid = int(call.data.replace("contact_seller_", ""))
+  uid = call.from_user.id
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT user_id, server, category, text FROM active_ads WHERE id = ?",
+        (aid,),
+    )
+    row = cur.fetchone()
+    is_buy = False
+    if not row:
+      cur.execute(
+          "SELECT user_id, server, category, text FROM active_buy_ads WHERE id"
+          " = ?",
+          (aid,),
+      )
+      row = cur.fetchone()
+      is_buy = True
+
+  if not row:
+    try:
+      return bot.answer_callback_query(
+          call.id,
+          "⚠️ Объявление уже неактивно или удалено.",
+          show_alert=True,
+      )
+    except Exception:
+      pass
+
+  seller_id = row["user_id"]
+  if seller_id == uid:
+    try:
+      return bot.answer_callback_query(
+          call.id,
+          "⚠️ Вы не можете начать диалог сами с собой по своему объявлению!",
+          show_alert=True,
+      )
+    except Exception:
+      pass
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT OR REPLACE INTO active_dialogs (buyer_id, seller_id, ad_id,"
+        " is_active) VALUES (?, ?, ?, 1)",
+        (uid, seller_id, aid),
+    )
+
+  update_state(
+      uid, chat_with={"seller_id": seller_id, "ad_id": aid, "is_buy": is_buy}
+  )
+  update_state(
+      seller_id,
+      chat_with={"buyer_id": uid, "ad_id": aid, "is_buy": is_buy},
+  )
+
+  markup = ikb_chat_controls(aid)
+  safe_send_message(
+      uid,
+      "💬 <b>Защищенный чат по сделке открыт!</b>\nВсе сообщения, отправленные"
+      " сюда, будут пересылаться автору объявления. Соблюдайте правила"
+      " безопасности.",
+      reply_markup=markup,
+  )
+  safe_send_message(
+      seller_id,
+      f"💬 <b>С вами хотят связаться по объявлению #{aid}!</b>\nПользователь"
+      " начал диалог. Напишите ответное сообщение прямо сюда:",
+      reply_markup=markup,
+  )
+  try:
+    bot.answer_callback_query(call.id, "✅ Чат инициализирован!")
+  except Exception:
+    pass
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("stop_chat_"))
+def cb_stop_chat(call):
+  aid = int(call.data.replace("stop_chat_", ""))
+  uid = call.from_user.id
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE active_dialogs SET is_active = 0 WHERE (buyer_id = ? OR"
+        " seller_id = ?) AND ad_id = ?",
+        (uid, uid, aid),
+    )
+  clear_state(uid)
+  try:
+    bot.answer_callback_query(call.id, "🛑 Диалог завершен.")
+    bot.edit_message_reply_markup(
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id,
+        reply_markup=None,
+    )
+  except Exception:
+    pass
+  safe_send_message(
+      call.message.chat.id,
+      "🛑 Диалог по объявлению завершен.",
+      reply_markup=kb_main_menu(),
+  )
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("resume_chat_"))
+def cb_resume_chat(call):
+  aid = int(call.data.replace("resume_chat_", ""))
+  uid = call.from_user.id
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE active_dialogs SET is_active = 1 WHERE (buyer_id = ? OR"
+        " seller_id = ?) AND ad_id = ?",
+        (uid, uid, aid),
+    )
+  try:
+    bot.answer_callback_query(call.id, "🔄 Диалог возобновлен!")
+  except Exception:
+    pass
+  safe_send_message(
+      call.message.chat.id,
+      "🔄 Диалог возобновлен. Можете продолжить общение.",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda msg: get_state(msg.from_user.id).get("chat_with") is not None
+)
+def handle_internal_chat_messages(m):
+  uid = m.from_user.id
+  st = get_state(uid)
+  chat_info = st.get("chat_with")
+  if not chat_info:
+    return
+
+  target_id = (
+      chat_info.get("seller_id")
+      if chat_info.get("seller_id")
+      else chat_info.get("buyer_id")
+  )
+  aid = chat_info.get("ad_id")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT is_active FROM active_dialogs WHERE ((buyer_id = ? AND"
+        " seller_id = ?) OR (buyer_id = ? AND seller_id = ?)) AND ad_id = ?",
+        (uid, target_id, target_id, uid, aid),
+    )
+    row = cur.fetchone()
+
+  if not row or not row["is_active"]:
+    return safe_send_message(
+        m.chat.id,
+        "⚠️ Этот диалог был завершен. Вы не можете отправлять сообщения.",
+    )
+
+  text = m.text or m.caption or "[Медиа/Фото]"
+  forward_text = (
+      f"✉️ <b>Сообщение по объявлению #{aid}</b>\n"
+      f"От @{m.from_user.username or 'Пользователя'}:\n\n{html.escape(text)}"
+  )
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO chat_logs_history (sender_id, receiver_id, text,"
+        " timestamp) VALUES (?, ?, ?, ?)",
+        (uid, target_id, text, time.time()),
+    )
+
+  try:
+    if m.photo:
+      safe_send_photo(target_id, m.photo[-1].file_id, caption=forward_text)
+    else:
+      safe_send_message(target_id, forward_text)
+    safe_send_message(
+        m.chat.id, "✔️ Сообщение доставлено собеседнику.", parse_mode=None
+    )
+  except Exception as e:
+    safe_send_message(
+        m.chat.id,
+        f"⚠️ Не удалось доставить сообщение пользователю: {e}",
+        parse_mode=None,
+    )
+
+
 # ==========================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ И ВРЕМЯ ПО МСК
 # ==========================================
-
-
 def get_msk_time():
   try:
     return datetime.now(ZoneInfo("Europe/Moscow"))
@@ -483,11 +949,10 @@ def background_cleanup_ads():
 
 threading.Thread(target=background_cleanup_ads, daemon=True).start()
 
+
 # ==========================================
 # ФОНОВАЯ ПРОВЕРКА YOUTUBE СТРИМОВ
 # ==========================================
-
-
 def background_youtube_stream_checker():
   last_live_id = None
   time.sleep(15)
@@ -2912,12 +3377,14 @@ def process_admin_edit_text(m):
           "❌ Отклонить", callback_data=f"{prefix_cb}rej_{pid}"
       ),
   )
+
   notif_text = (
-      f"🔔 <b>Объявление отредактировано админом!</b>\n"
+      f"🔔 <b>Отредактированное объявление #{pid}!</b>\n"
       f"🌐 Сервер: {server} | 📂 {category}\n"
       f"👤 Автор: @{username or 'Без юзернейма'} (ID: {user_id})\n\n"
       f"{new_text}"
   )
+
   for adm in get_all_admin_ids():
     try:
       if photo:
@@ -2929,247 +3396,8 @@ def process_admin_edit_text(m):
 
 
 # ==========================================
-# ПОИСК ТОВАРОВ И УВЕДОМЛЕНИЯ ПО ПОДПИСКАМ
-# ==========================================
-def start_search(m):
-  uid = m.from_user.id
-  update_state(uid, searching_keyword=True)
-  safe_send_message(
-      m.chat.id,
-      "🔍 <b>Поиск товара в базе объявлений:</b>\n\nОтправьте ключевое слово"
-      " или название предмета для поиска (например: <code>аксессуар</code>,"
-      " <code>нимб</code>, <code>дом</code>):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id).get("searching_keyword")
-)
-def process_search_keyword(m):
-  uid = m.from_user.id
-  clear_state(uid)
-  query = m.text.strip().lower()
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, server, category, text, photo, is_vip FROM active_ads WHERE"
-        " LOWER(text) LIKE ? OR LOWER(category) LIKE ? ORDER BY id DESC LIMIT 10",
-        (f"%{query}%", f"%{query}%"),
-    )
-    sales = cur.fetchall()
-    cur.execute(
-        "SELECT id, server, category, text, photo, is_vip FROM active_buy_ads"
-        " WHERE LOWER(text) LIKE ? OR LOWER(category) LIKE ? ORDER BY id DESC"
-        " LIMIT 10",
-        (f"%{query}%", f"%{query}%"),
-    )
-    buys = cur.fetchall()
-
-  if not sales and not buys:
-    return safe_send_message(
-        m.chat.id,
-        f"🔍 По запросу «<b>{html.escape(query)}</b>» ничего не найдено.",
-        reply_markup=kb_main_menu(),
-    )
-
-  safe_send_message(
-      m.chat.id,
-      f"🔍 <b>Результаты поиска по запросу:</b> «{html.escape(query)}»",
-  )
-
-  for row in sales:
-    aid, srv, cat, text, photo, is_vip = (
-        row["id"],
-        row["server"],
-        row["category"],
-        row["text"],
-        row["photo"],
-        row["is_vip"],
-    )
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
-      )
-      is_fav = bool(cur.fetchone())
-    markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=False)
-    fmt_text = f"📤 <b>[Продажа | {srv}]</b>\n{html.escape(text)}"
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
-
-  for row in buys:
-    aid, srv, cat, text, photo, is_vip = (
-        row["id"],
-        row["server"],
-        row["category"],
-        row["text"],
-        row["photo"],
-        row["is_vip"],
-    )
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
-      )
-      is_fav = bool(cur.fetchone())
-    markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=True)
-    fmt_text = f"📥 <b>[Скупка | {srv}]</b>\n{html.escape(text)}"
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
-
-
-def manage_subscriptions(m):
-  uid = m.from_user.id
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, server, keyword FROM keyword_subscriptions WHERE user_id ="
-        " ?",
-        (uid,),
-    )
-    subs = cur.fetchall()
-
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  if subs:
-    for row in subs:
-      sub_id, srv, kw = row["id"], row["server"], row["keyword"]
-      markup.add(
-          types.InlineKeyboardButton(
-              f"🗑 Удалить: {kw} ({srv})", callback_data=f"del_sub_{sub_id}"
-          )
-      )
-  markup.add(
-      types.InlineKeyboardButton(
-          "➕ Добавить уведомление", callback_data="add_sub_start"
-      )
-  )
-
-  text = (
-      "🔔 <b>Ваши уведомления о новых объявлениях:</b>\n\nВы будете получать"
-      " оповещения, когда появится объявление с нужным ключевым словом на"
-      " выбранном сервере."
-  )
-  if not subs:
-    text += "\n\n<i>У вас пока нет активных подписок.</i>"
-
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("del_sub_"))
-def cb_del_sub(call):
-  sub_id = int(call.data.replace("del_sub_", ""))
-  uid = call.from_user.id
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "DELETE FROM keyword_subscriptions WHERE id = ? AND user_id = ?",
-        (sub_id, uid),
-    )
-  try:
-    bot.answer_callback_query(call.id, "✅ Подписка удалена")
-  except Exception:
-    pass
-  manage_subscriptions(call.message)
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "add_sub_start")
-def cb_add_sub_start(call):
-  uid = call.from_user.id
-  srv = get_user_server(uid)
-  if not srv:
-    try:
-      bot.answer_callback_query(
-          call.id, "⚠️ Сначала выберите сервер в главном меню!", show_alert=True
-      )
-    except Exception:
-      pass
-    return
-  update_state(uid, adding_subscription=True)
-  safe_send_message(
-      call.message.chat.id,
-      f"🔔 Введите ключевое слово для сервера <b>{html.escape(srv)}</b>"
-      " (например, <i>Premium VIP</i>):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id).get("adding_subscription")
-)
-def process_add_subscription(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  kw = m.text.strip().lower()
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT COUNT(*) as cnt FROM keyword_subscriptions WHERE user_id = ?",
-        (uid,),
-    )
-    if cur.fetchone()["cnt"] >= 5 and not is_user_premium(uid):
-      return safe_send_message(
-          m.chat.id,
-          "⚠️ Максимум 5 подписок для обычных пользователей. Приобретите"
-          " VIP-статус для увеличения лимита.",
-          reply_markup=kb_main_menu(),
-      )
-
-    cur.execute(
-        "INSERT INTO keyword_subscriptions (user_id, server, keyword) VALUES"
-        " (?, ?, ?)",
-        (uid, srv, kw),
-    )
-
-  clear_state(uid)
-  safe_send_message(
-      m.chat.id,
-      f"✅ Вы подписались на уведомления по запросу «<b>{html.escape(kw)}</b>»"
-      f" на сервере {html.escape(srv)}.",
-      reply_markup=kb_main_menu(),
-  )
-
-
-def notify_subscribers(server: str, text: str, aid: int, is_buy: bool):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT user_id, keyword FROM keyword_subscriptions WHERE server = ?",
-        (server,),
-    )
-    subs = cur.fetchall()
-
-  low_text = text.lower()
-  ad_type = "СКУПКУ" if is_buy else "ПРОДАЖУ"
-
-  for row in subs:
-    uid, kw = row["user_id"], row["keyword"]
-    if kw in low_text:
-      notif = (
-          "🔔 <b>Уведомление по подписке!</b>\nПоявилось новое объявление на"
-          f" {ad_type} (Сервер: {server}) с ключевым словом"
-          f" «<b>{html.escape(kw)}</b>»:\n\n{html.escape(text)}"
-      )
-      try:
-        safe_send_message(uid, notif)
-      except Exception:
-        pass
-
-
-# ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-  logger.info("🤖 Бот успешно запущен и работает в многопоточном режиме...")
-  while True:
-    try:
-      bot.infinity_polling(timeout=60, long_polling_timeout=30)
-    except Exception as e:
-      logger.error(f"Ошибка в polling: {e}")
-      time.sleep(5)
+  logger.info("🤖 Бот успешно запущен и ожидает сообщения...")
+  bot.infinity_polling(skip_pending=True)

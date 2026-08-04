@@ -30,9 +30,6 @@ BOT_USERNAME = "arizona_coin_bot"
 # URL вашего сайта/хостинга (например, https://your-app.onrender.com) для 24/7 вебхука
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 
-# Конфигурация Gemini API
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "ВАШ_GEMINI_API_KEY")
-
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 app = Flask(__name__)
 
@@ -42,47 +39,6 @@ ADMIN_USERNAMES = {"bounqy31", "bounqy"}
 DB_NAME = "smi_bot.db"
 db_lock = threading.Lock()
 state_lock = threading.Lock()
-
-# ==========================================
-# ФУНКЦИИ GEMINI И ИИ
-# ==========================================
-def call_gemini_flash_lite(prompt: str) -> str:
-  try:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "contents": [{"parts": [{"text": prompt}]}]
-    }
-    response = requests.post(url, headers=headers, json=data, timeout=12)
-    if response.status_code == 200:
-      res_json = response.json()
-      return res_json["candidates"][0]["content"]["parts"][0]["text"].strip()
-    else:
-      logger.error(f"Ошибка Gemini API: {response.text}")
-      return "⚠️ Временная ошибка обработки запроса ИИ."
-  except Exception as e:
-    logger.error(f"Исключение при запросе к Gemini: {e}")
-    return "⚠️ Ошибка связи с нейросетью."
-
-def polish_ad_text_with_ai(raw_text: str, category: str) -> str:
-  prompt = (
-      f"Отредактируй текст объявления для радиоцентра Arizona RP в категории '{category}'. "
-      f"Формат должен быть строго в стиле: 'Продам [название товара] цена [сумма]' или 'Скуплю [название товара] цена [сумма]', с указанием контактов/условий, если они есть. Убери лишний мусор, сделай грамотно. "
-      f"Верни ТОЛЬКО готовый текст объявления без лишних вводных фраз:\n\n{raw_text}"
-  )
-  polished = call_gemini_flash_lite(prompt)
-  return polished if polished and len(polished) > 5 else raw_text
-
-def check_scam_with_ai(text: str) -> bool:
-  if not text:
-    return False
-  prompt = (
-      f"Проанализируй текст на предмет мошенничества, скама, попытки выманивания пароля от аккаунта, "
-      f"продажи игровой валюты за реальные деньги или фишинга в игре Arizona RP. "
-      f"Ответь СТРОГО одним словом: SCAM если это мошенничество или CLEAN если текст безопасен.\nТекст: {text}"
-  )
-  res = call_gemini_flash_lite(prompt).upper()
-  return "SCAM" in res
 
 
 # ==========================================
@@ -1113,22 +1069,12 @@ def process_ad_text_or_photo(m):
 
   st = get_state(uid)
   post_data = st.get("posting_ad", {})
-  is_buy = post_data.get("is_buy", False)
   category = post_data.get("category", CATEGORIES[0])
 
   text = m.text or m.caption
   if not text:
     return safe_send_message(
         m.chat.id, "⚠️ Обязательно укажите текст (или описание с фото)."
-    )
-
-  if check_scam_with_ai(text):
-    auto_ban_scammer(uid, m.from_user.username, "Попытка отправки скам-объявления")
-    clear_state(uid)
-    return safe_send_message(
-        m.chat.id,
-        "⛔ <b>Обнаружена попытка мошенничества!</b> Вы заблокированы.",
-        reply_markup=types.ReplyKeyboardRemove(),
     )
 
   if not check_auto_moderation(text):
@@ -1139,7 +1085,7 @@ def process_ad_text_or_photo(m):
         reply_markup=kb_main_menu(),
     )
 
-  polished_text = polish_ad_text_with_ai(text, category)
+  polished_text = text
   photo_id = m.photo[-1].file_id if m.photo else None
 
   st["posting_ad"]["polished_text"] = polished_text
@@ -1163,7 +1109,7 @@ def process_ad_text_or_photo(m):
 
   safe_send_message(
       m.chat.id,
-      f"📝 <b>Текст после обработки ИИ:</b>\n\n{polished_text}\n\nВыберите тип объявления:",
+      f"📝 <b>Текст объявления:</b>\n\n{polished_text}\n\nВыберите тип объявления:",
       reply_markup=markup
   )
 
@@ -1450,14 +1396,6 @@ def handle_internal_chat_messages(m):
 
   text = m.text or m.caption or "[Медиа/Фото]"
 
-  if m.text and check_scam_with_ai(m.text):
-    auto_ban_scammer(uid, m.from_user.username, "Попытка скама в чате")
-    return safe_send_message(
-        m.chat.id,
-        "⛔ <b>Внимание!</b> ИИ обнаружил попытку мошенничества. Вы заблокированы.",
-        parse_mode=None,
-    )
-
   if m.text and not check_auto_moderation(m.text):
     return safe_send_message(
         m.chat.id,
@@ -1509,62 +1447,8 @@ def handle_internal_chat_messages(m):
 
 
 # ==========================================
-# ИИ-ПОМОЩНИК
-# ==========================================
-def start_ai_assistant(m):
-  update_state(m.from_user.id, ai_assistant_active=True)
-  safe_send_message(
-      m.chat.id,
-      "🤖 <b>ИИ-помощник (Gemini) активирован!</b>\n\n"
-      "Задайте любой интересующий вас вопрос по игре Arizona RP, механикам или ценам:",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id).get("ai_assistant_active")
-)
-def process_ai_assistant(m):
-  uid = m.from_user.id
-  query = m.text.strip()
-  clear_state(uid)
-
-  if not query:
-    return safe_send_message(m.chat.id, "⚠️ Вопрос не может быть пустым.")
-
-  prompt = (
-      f"Ты опытный помощник и эксперт по игре Arizona RP и экономике серверов. "
-      f"Ответь игроку на его вопрос полезно, вежливо и понятно:\n\nВопрос: {query}"
-  )
-  answer = call_gemini_flash_lite(prompt)
-  safe_send_message(
-      m.chat.id,
-      f"🤖 <b>Ответ ИИ-помощника:</b>\n\n{answer}",
-      reply_markup=kb_main_menu(),
-  )
-
-
-# ==========================================
 # БАНЫ И МОДЕРАЦИЯ АДМИНОВ
 # ==========================================
-def auto_ban_scammer(user_id: int, username: str, reason: str):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, 1)",
-        (str(user_id),),
-    )
-    if username:
-      cur.execute(
-          "INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, 0)",
-          (username.lower().lstrip("@"), 0),
-      )
-  try:
-    safe_send_message(user_id, "⛔ <b>Вы заблокированы системой за мошенничество!</b>")
-  except Exception:
-    pass
-
-
 def record_admin_error(admin_username: str, admin_id: int):
   if not admin_username or admin_username.lower() == OWNER_USERNAME.lower():
     return
@@ -1794,7 +1678,7 @@ def kb_servers():
       types.KeyboardButton("💎 VIP-статус"),
       types.KeyboardButton("👑 Админ-панель"),
   )
-  m.row(types.KeyboardButton("🤖 ИИ-помощник"), types.KeyboardButton("💬 Связаться с менеджером"))
+  m.row(types.KeyboardButton("💬 Связаться с менеджером"))
   return m
 
 
@@ -1824,7 +1708,7 @@ def kb_main_menu():
       types.KeyboardButton("📋 Мои публикации"),
   )
   m.row(types.KeyboardButton("📊 Анализ цен на сервере"))
-  m.row(types.KeyboardButton("💎 VIP-статус"), types.KeyboardButton("🤖 ИИ-помощник"))
+  m.row(types.KeyboardButton("💎 VIP-статус"))
   m.row(
       types.KeyboardButton("👑 Админ-панель"),
       types.KeyboardButton("💬 Связаться с менеджером"),
@@ -1900,7 +1784,6 @@ def should_override_nav(msg):
       or st.get("vc_calc_step")
       or st.get("owner_broadcast_input")
       or st.get("admin_action_input")
-      or st.get("ai_assistant_active")
   )
 
   nav_buttons = [
@@ -1917,7 +1800,6 @@ def should_override_nav(msg):
       "🌐 Сменить игровой сервер",
       "👑 Админ-панель",
       "💬 Связаться с менеджером",
-      "🤖 ИИ-помощник",
   ] + CATEGORIES
 
   if is_in_active_input and msg.text not in nav_buttons and msg.text not in SERVERS:
@@ -1959,8 +1841,6 @@ def handle_navigation_override(m):
     admin_panel(m)
   elif m.text == "💬 Связаться с менеджером":
     contact_manager(m)
-  elif m.text == "🤖 ИИ-помощник":
-    start_ai_assistant(m)
   elif m.text in CATEGORIES:
     show_category_ads(m)
   elif m.text in SERVERS:
@@ -2004,7 +1884,6 @@ def cmd_start(m):
       "Цена/бюджет:\n"
       "Какая лавка/нету:\n\n"
       "• Подача и модерация объявлений на всех серверах\n"
-      "• Автоматическая защита ИИ (Gemini) от скамеров и мошенников\n"
       "• Удобный поиск, избранное и система подписок на ключевые слова\n"
       "• Встроенный калькулятор валюты Vice City\n\n"
       "👇 <b>Выберите свой игровой сервер в меню ниже, чтобы начать работу:</b>"
@@ -2026,8 +1905,8 @@ def cmd_help(m):
       "Цена/бюджет: [Сумма]\n"
       "Какая лавка/нету: [Номер или нет]\n\n"
       "1️⃣ <b>Время работы:</b> Отправка разрешена строго с 08:00:01 до 22:00:01 МСК. Ночной режим блокирует подачу.\n"
-      "2️⃣ <b>Модерация ИИ:</b> Все тексты автоматически проверяются на мат и мошенничество.\n"
-      "3️⃣ <b>Безопасность:</b> Бот защищает игроков от скама, а владелец (@bounqy) защищен от банов.\n"
+      "2️⃣ <b>Модерация:</b> Все тексты автоматически проверяются на наличие запрещенных слов.\n"
+      "3️⃣ <b>Безопасность:</b> Бот защищает игроков, а владелец (@bounqy) защищен от банов.\n"
       "4️⃣ <b>Функционал:</b> Используйте кнопки меню для управления серверами, поиска товаров, настроек подписок и калькулятора VC."
   )
   safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu(), parse_mode="HTML")
@@ -2053,9 +1932,9 @@ def how_bot_works(m):
   text = (
       f"📖 <b>О работе радиоцентра @{BOT_USERNAME}</b>\n\n"
       f"• Режим работы: с <b>08:00:01 до 22:00:01 МСК</b> ежедневно.\n"
-      f"• Модерация: все объявления проходят проверку редакторами и искусственным интеллектом.\n"
+      f"• Модерация: все объявления проходят проверку редакторами.\n"
       f"• Запрещено: оскорбления, мат, продажа виртуальной валюты за реальные деньги (реал) и любые мошеннические схемы.\n"
-      f"• При нарушении правил система автоматически выдает перманентный бан."
+      f"• При нарушении правил система может заблокировать доступ."
   )
   safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
 

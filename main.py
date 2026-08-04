@@ -20,8 +20,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Установка токена бота
-TOKEN = "8916669266:AAHjJmiPnoqyQCy59r3OxO2DtyoI2qND5Z4"
+# Установка нового токена бота
+TOKEN = "8916669266:AAFall7GhTxs_ZAlMr4_d4W_XMZnunkY2NA"
 
 bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
 
@@ -1768,7 +1768,7 @@ def check_keyword_subscriptions(srv: str, text: str):
                 safe_send_message(uid, f"🔔 <b>Уведомление!</b>\nНа сервере {html.escape(srv)} появилось новое объявление с ключевым словом «<b>{html.escape(kw)}</b>». Проверьте последние обновления!")
 
 # ==========================================
-# ЧАТЫ И КОНТАКТЫ (ИСПРАВЛЕНО)
+# ЧАТЫ И КОНТАКТЫ
 # ==========================================
 @bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
 def cb_contact_seller(call):
@@ -2101,19 +2101,18 @@ def process_admin_action_input(m):
         target = text.lstrip('@').lower()
         with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
             cur = conn.cursor()
-            if target.isdigit():
-                cur.execute("DELETE FROM approved_admins WHERE user_id = ?", (int(target),))
-            else:
-                cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (target,))
+            cur.execute("DELETE FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?", (target, target))
             conn.commit()
-        safe_send_message(m.chat.id, f"❌ Пользователь {text} снят с поста администратора.", reply_markup=kb_main_menu())
+        safe_send_message(m.chat.id, f"❌ Администратор {text} снят с должности.", reply_markup=kb_main_menu())
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-    logger.info("Бот СМИ успешно запущен и готов к работе!")
-    try:
-        bot.infinity_polling(timeout=10, long_polling_timeout=5)
-    except Exception as e:
-        logger.error(f"Ошибка при запуске бота: {e}")
+    logger.info("Бот успешно запущен и ожидает сообщения...")
+    while True:
+        try:
+            bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            logger.error(f"Ошибка в polling: {e}")
+            time.sleep(5)

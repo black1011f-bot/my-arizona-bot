@@ -45,19 +45,19 @@ SERVERS = [
 ]
 
 CATEGORIES = [
-    "💍 Аксессуары",
-    "🏎 Транспорт и Тюнинг",
-    "🥼 Скины и Охранники",
-    "🏡 Недвижимость и Бизнес",
-    "📦 Ресурсы и Оружие"
+    "💍 Аксессуары и вещи",
+    "🚗 Транспорт и тюнинг",
+    "👕 Скины и охранники",
+    "🏠 Недвижимость и бизнесы",
+    "📦 Ресурсы и материалы"
 ]
 
 SYSTEM_NAV_BUTTONS = [
-    "🔍 Поиск по товарам", "❤️ Избранное", "🔔 Подписки на поиск",
-    "📋 Мои объявления", "📊 Средние цены", "📊 Как работает бот",
-    "🛒 Подать объявление о продаже", "🛒 Подать объявление о скупке",
-    "📥 Скупка товаров", "💱 Курс и калькулятор VC", "💎 Премиум (VIP)", 
-    "🔄 Сменить сервер", "👑 Админ", "📝 Подать заявку на админа", "🚫 Отмена"
+    "🔍 Найти товар в базе", "❤️ Сохраненные", "🔔 Уведомления о поиске",
+    "📋 Мои публикации", "📊 Анализ цен на сервере", "📖 Справка и правила",
+    "📤 Продать товар", "📥 Скупить товар", "💱 Курс VC и калькулятор", 
+    "💎 VIP-статус", "🌐 Сменить игровой сервер", "👑 Админ-панель", 
+    "📝 Стать редактором / админом", "❌ Отменить действие"
 ] + CATEGORIES + SERVERS
 
 BAD_WORDS = [
@@ -173,12 +173,11 @@ def init_db():
             )
         ''')
 
-        # Миграция: добавление колонки is_edited для существующих таблиц
         for tbl in ["active_ads", "pending_posts", "active_buy_ads", "pending_buy_posts"]:
             try:
                 cursor.execute(f"ALTER TABLE {tbl} ADD COLUMN is_edited INTEGER DEFAULT 0")
             except sqlite3.OperationalError:
-                pass # Колонка уже существует
+                pass
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS bot_settings (
@@ -512,28 +511,29 @@ def kb_servers():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     for i in range(0, len(SERVERS), 2): 
         m.add(*[types.KeyboardButton(s) for s in SERVERS[i:i+2]])
-    m.add(types.KeyboardButton("📊 Как работает бот"), types.KeyboardButton("🛒 Подать объявление о продаже"))
-    m.add(types.KeyboardButton("🛒 Подать объявление о скупке"), types.KeyboardButton("💱 Курс и калькулятор VC"))
-    m.add(types.KeyboardButton("💎 Премиум (VIP)"), types.KeyboardButton("👑 Админ"))
-    m.add(types.KeyboardButton("📝 Подать заявку на админа"))
+    m.add(types.KeyboardButton("📖 Справка и правила"), types.KeyboardButton("📤 Продать товар"))
+    m.add(types.KeyboardButton("📥 Скупить товар"), types.KeyboardButton("💱 Курс VC и калькулятор"))
+    m.add(types.KeyboardButton("💎 VIP-статус"), types.KeyboardButton("👑 Админ-панель"))
+    m.add(types.KeyboardButton("📝 Стать редактором / админом"))
     return m
 
 def kb_main_menu():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    m.add("💍 Аксессуары", "🏎 Транспорт и Тюнинг")
-    m.add("🥼 Скины и Охранники", "🏡 Недвижимость и Бизнес")
-    m.add("📦 Ресурсы и Оружие")
-    m.add("🛒 Подать объявление о продаже", "🛒 Подать объявление о скупке")
-    m.add("📥 Скупка товаров", "💱 Курс и калькулятор VC")
-    m.add("🔍 Поиск по товарам", "❤️ Избранное")
-    m.add("🔔 Подписки на поиск", "📋 Мои объявления")
-    m.add("📊 Средние цены", "📊 Как работает бот")
-    m.add("💎 Премиум (VIP)", "🔄 Сменить сервер")
-    m.add("👑 Админ", "📝 Подать заявку на админа")
+    m.add("🌐 Сменить игровой сервер")
+    m.add("💍 Аксессуары и вещи", "🚗 Транспорт и тюнинг")
+    m.add("👕 Скины и охранники", "🏠 Недвижимость и бизнесы")
+    m.add("📦 Ресурсы и материалы")
+    m.add("📤 Продать товар", "📥 Скупить товар")
+    m.add("💱 Курс VC и калькулятор")
+    m.add("🔍 Найти товар в базе", "❤️ Сохраненные")
+    m.add("🔔 Уведомления о поиске", "📋 Мои публикации")
+    m.add("📊 Анализ цен на сервере")
+    m.add("💎 VIP-статус")
+    m.add("👑 Админ-панель", "📝 Стать редактором / админом")
     return m
 
 def kb_cancel():
-    return types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("🚫 Отмена"))
+    return types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("❌ Отменить действие"))
 
 def ikb_chat_controls(aid: int):
     markup = types.InlineKeyboardMarkup(row_width=1)
@@ -580,7 +580,7 @@ def should_override_nav(msg):
     uid = msg.from_user.id
     st = get_state(uid)
 
-    if msg.text == "🚫 Отмена" or msg.text.startswith('/'):
+    if msg.text == "❌ Отменить действие" or msg.text.startswith('/'):
         return True
 
     if "admin_editing_pid" in st or "admin_editing_buy_pid" in st or "admin_editing_active_aid" in st or "applying_admin" in st or "vc_setting_rate" in st or "vc_calc_step" in st or "vc_conv_input" in st or "admin_action" in st or "editing_active_ad_id" in st:
@@ -602,35 +602,33 @@ def handle_navigation_override(m):
         cmd_start(m)
     elif m.text == '/help':
         cmd_help(m)
-    elif m.text == "🔄 Сменить сервер":
+    elif m.text == "🌐 Сменить игровой сервер":
         change_server(m)
-    elif m.text == "📊 Как работает бот":
+    elif m.text == "📖 Справка и правила":
         how_bot_works(m)
-    elif m.text == "💎 Премиум (VIP)":
+    elif m.text == "💎 VIP-статус":
         info_premium(m)
-    elif m.text == "📊 Средние цены":
+    elif m.text == "📊 Анализ цен на сервере":
         show_average_prices(m)
-    elif m.text == "🛒 Подать объявление о продаже":
+    elif m.text == "📤 Продать товар":
         start_add_ad(m)
-    elif m.text == "🛒 Подать объявление о скупке":
+    elif m.text == "📥 Скупить товар":
         start_add_buy_ad(m)
-    elif m.text == "📥 Скупка товаров":
-        show_buy_categories_menu(m)
-    elif m.text == "💱 Курс и калькулятор VC":
+    elif m.text == "💱 Курс VC и калькулятор":
         show_vc_menu(m)
-    elif m.text == "🚫 Отмена":
+    elif m.text == "❌ Отменить действие":
         cancel_action(m)
-    elif m.text == "📋 Мои объявления":
+    elif m.text == "📋 Мои публикации":
         show_my_ads(m)
-    elif m.text == "❤️ Избранное":
+    elif m.text == "❤️ Сохраненные":
         show_favorites(m)
-    elif m.text == "🔍 Поиск по товарам":
+    elif m.text == "🔍 Найти товар в базе":
         start_search(m)
-    elif m.text == "🔔 Подписки на поиск":
+    elif m.text == "🔔 Уведомления о поиске":
         manage_subscriptions(m)
-    elif m.text == "👑 Админ":
+    elif m.text == "👑 Админ-панель":
         admin_panel(m)
-    elif m.text == "📝 Подать заявку на админа":
+    elif m.text == "📝 Стать редактором / админом":
         start_admin_application(m)
     elif m.text in CATEGORIES:
         if get_state(m.from_user.id).get("viewing_buy_categories"):
@@ -654,12 +652,11 @@ def cmd_start(m):
         register_admin_chat(m.chat.id)
     
     caption_text = (
-        "🌟 <b>Приветствую тебя в официальном центре СМИ Arizona RP!</b> 📻\n\n"
-        "Здесь ты сможешь быстро и безопасно подать объявление о покупке или продаже транспорта, "
-        "аксессуаров, недвижимости, скинов и других ценных вещей, а также рассчитывать курсы Vice City.\n\n"
-        "⚠️ <b>Безопасность:</b> Бот и редакция <b>никогда</b> не запрашивают пароли от игровых аккаунтов!\n\n"
+        "🌟 <b>Привет! Обратите внимание: мы не официальный бот</b>, а независимый помощник для игроков Arizona RP. "
+        "Мы помогаем игрокам находить аксессуары, транспорт, недвижимость и другие ценные вещи, а также следить за экономикой и курсами.\n\n"
+        "🔒 <b>Безопасность:</b> Мы <b>никогда</b> не просим пароли от игровых аккаунтов или личные данные!\n\n"
         "⏱ <b>Режим работы радиоцентра:</b> ежедневно с <b>08:00:01 до 22:00:01 МСК</b>.\n\n"
-        "👇 <b>Для начала работы выбери свой игровой сервер ниже:</b>"
+        "👇 <b>Для начала работы выберите свой игровой сервер ниже:</b>"
     )
     safe_send_message(m.chat.id, caption_text, reply_markup=kb_servers())
 
@@ -668,13 +665,13 @@ def cmd_help(m):
     help_text = (
         "🛠 <b>Помощь, правила и расширенный FAQ</b>\n\n"
         "❓ <b>1. Как подать объявление о продаже или скупке?</b>\n"
-        "💡 <i>Выберите нужный игровой сервер в главном меню -> Нажмите «🛒 Подать объявление о продаже» или «скупке» -> Выберите категорию -> Введите товар, цену и условия -> Отправьте на модерацию редакторам.</i>\n\n"
+        "💡 <i>Выберите нужный игровой сервер в главном меню -> Нажмите «📤 Продать товар» или «📥 Скупить товар» -> Выберите категорию -> Введите товар, цену и условия -> Отправьте на модерацию редакторам.</i>\n\n"
         "❓ <b>2. Сколько времени модераторы проверяют заявки?</b>\n"
         "💡 <i>Обычно проверка занимает от силы пару минут, если редактора находятся в сети. Вы получите уведомление в чат сразу после публикации или отклонения объявления.</i>\n\n"
         "❓ <b>3. Как изменить или удалить уже опубликованное объявление?</b>\n"
         "💡 <i>В личном кабинете или разделе управления объявлениями вы можете в любой момент снять товар с публикации, изменить цену или обновить описание.</i>\n\n"
         "❓ <b>4. Как работает калькулятор Vice City и конвертер валют?</b>\n"
-        "💡 <i>В разделе «💱 Курс и калькулятор VC» можно мгновенно переводить вирты в VC-баксы по актуальному курсу, а также рассчитывать выгоду перелетов и чистую прибыль с учетом комиссий.</i>\n\n"
+        "💡 <i>В разделе «💱 Курс VC и калькулятор» можно мгновенно переводить вирты в VC-баксы по актуальному курсу, а также рассчитывать выгоду перелетов и чистую прибыль с учетом комиссий.</i>\n\n"
         "❓ <b>5. Как безопасно связаться с продавцом или покупателем?</b>\n"
         "💡 <i>Под карточкой каждого активного объявления есть кнопка «✉️ Написать автору». Она открывает защищенный внутренний чат для обсуждения всех деталей сделки.</i>\n\n"
         "❓ <b>6. Каковы главные правила подачи объявлений и модерации?</b>\n"
@@ -704,6 +701,13 @@ def how_bot_works(m):
         "4. <b>Инструменты VC:</b> Полноценный курс, конвертер и калькулятор прибыли для перекупщиков."
     )
     safe_send_message(m.chat.id, text)
+
+def start_admin_application(m):
+    safe_send_message(
+        m.chat.id,
+        "📝 Чтобы подать заявку на должность редактора/администратора, обратитесь к администраторам проекта или заполните форму в нашем сообществе.",
+        reply_markup=kb_main_menu()
+    )
 
 def info_premium(m):
     is_prem = is_user_premium(m.from_user.id)
@@ -1041,7 +1045,7 @@ def _start_posting_flow(m, is_buy: bool):
     m_kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     for c in CATEGORIES:
         m_kb.add(types.KeyboardButton(c))
-    m_kb.add(types.KeyboardButton("🚫 Отмена"))
+    m_kb.add(types.KeyboardButton("❌ Отменить действие"))
     
     ad_type_str = "скупку" if is_buy else "продажу"
     safe_send_message(m.chat.id, f"📂 Выберите категорию товара для объявления на <b>{ad_type_str}</b> (сервер: <b>{html.escape(srv)}</b>):", reply_markup=m_kb)
@@ -1215,7 +1219,7 @@ def finish_posting(chat_id: int, user_id: int, username: str, photo_id: str, is_
             logger.error(f"Не удалось отправить уведомление админу {admin_chat_id}: {e}")
 
 # ==========================================
-# ОБРАБОТЧИКИ МОДЕРАЦИИ (С ИНТЕГРАЦИЕЙ 1-4 СКРИПТОВ)
+# ОБРАБОТЧИКИ МОДЕРАЦИИ
 # ==========================================
 @bot.callback_query_handler(func=lambda c: c.data == "admin_edit_ads_menu")
 def cb_admin_edit_ads_menu(call):
@@ -1448,7 +1452,6 @@ def process_admin_edit_text(m):
 
     with db_lock, sqlite3.connect(DB_NAME, timeout=10.0) as conn:
         cur = conn.cursor()
-        # Устанавливаем текст и флаг is_edited = 1
         cur.execute(f"UPDATE {table_name} SET text = ?, is_edited = 1, editing_by = 0, editing_since = 0 WHERE id = ?", (new_text, pid))
         cur.execute(f"SELECT user_id, username, server, category, text, photo, is_vip FROM {table_name} WHERE id = ?", (pid,))
         post = cur.fetchone()
@@ -1459,7 +1462,6 @@ def process_admin_edit_text(m):
 
     user_id, uname, srv, cat, text, photo_id, is_vip = post
     
-    # Уведомляем игрока о том, что его объявление было отредактировано редактором
     try:
         safe_send_message(user_id, f"✏️ <b>Ваше объявление (ID: {pid}) было отредактировано редактором:</b>\n\n<i>{html.escape(new_text)}</i>\n\nОно ожидает финальной публикации.")
     except Exception:
@@ -1545,10 +1547,6 @@ def cb_sale_category_page(call):
         pass
     render_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
 
-def show_buy_categories_menu(m):
-    update_state(m.from_user.id, viewing_buy_categories=True)
-    safe_send_message(m.chat.id, "📥 <b>Лента Скупки товаров:</b>\nВыберите интересующую категорию:", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2).add(*CATEGORIES, "🚫 Отмена"))
-
 def show_buy_ads_category(m):
     update_state(m.from_user.id, viewing_buy_categories=True)
     cat_idx = CATEGORIES.index(m.text)
@@ -1612,7 +1610,7 @@ def cb_buy_category_page(call):
     render_buy_category_page(call.message.chat.id, call.from_user.id, cat_idx, page=page)
 
 # ==========================================
-# МОИ ОБЪЯВЛЕНИЯ (СКРИПТ 1 ИНТЕГРИРОВАН)
+# МОИ ОБЪЯВЛЕНИЯ
 # ==========================================
 def show_my_ads(m):
     uid = m.from_user.id
@@ -1864,7 +1862,7 @@ def check_keyword_subscriptions(srv: str, text: str):
                 safe_send_message(uid, f"🔔 <b>Уведомление!</b>\nНа сервере {html.escape(srv)} появилось новое объявление с ключевым словом «<b>{html.escape(kw)}</b>». Проверьте последние обновления!")
 
 # ==========================================
-# ЧАТЫ И КОНТАКТЫ (ЗАВЕРШЕННЫЕ)
+# ЧАТЫ И КОНТАКТЫ
 # ==========================================
 @bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
 def cb_contact_seller(call):
@@ -1998,5 +1996,5 @@ def cb_admin_stats(call):
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == '__main__':
-    logger.info("Бот успешно запущен и ожидает сообщения...")
+    logger.info("Бот успешно запущен и ожидает сообщения")
     bot.infinity_polling(skip_pending=True)

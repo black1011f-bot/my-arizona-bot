@@ -39,7 +39,7 @@ db_lock = threading.Lock()
 state_lock = threading.Lock()
 
 # ==========================================
-# ФУНКЦИИ ГЕМINI
+# ФУНКЦИИ GEMINI И ИИ
 # ==========================================
 def call_gemini_flash_lite(prompt: str) -> str:
   try:
@@ -1105,7 +1105,6 @@ def process_ad_text_or_photo(m):
   polished_text = polish_ad_text_with_ai(text, category)
   photo_id = m.photo[-1].file_id if m.photo else None
 
-  # Сохраняем в состояние и предлагаем выбрать тип объявления (VIP или обычное)
   st["posting_ad"]["polished_text"] = polished_text
   st["posting_ad"]["photo_id"] = photo_id
   st["posting_ad"]["step"] = "choose_ad_type"
@@ -1932,7 +1931,7 @@ def handle_navigation_override(m):
 
 
 # ==========================================
-# ОСНОВНЫЕ КОМАНДЫ
+# ОСНОВНЫЕ КОМАНДЫ И СПРАВКА
 # ==========================================
 def cancel_action(m):
   clear_state(m.from_user.id)
@@ -1957,9 +1956,11 @@ def cmd_start(m):
 
   update_state(m.from_user.id, changing_server=True)
   start_text = (
-      f"👋 Привет! Добро пожаловать в неофициальный бот <b>@{BOT_USERNAME}</b>.\n\n"
-      f"⏱ <b>Режим работы радиоцентра:</b> с <b>08:00:01 до 22:00:01 МСК</b>.\n\n"
-      f"👇 Выберите свой игровой сервер ниже:"
+      f"👋 <b>Добро пожаловать в официальный бот объявлений радиоцентра Arizona RP!</b>\n\n"
+      f"🤖 Этот бот создан для быстрой, удобной и безопасной публикации ваших объявлений о продаже и покупке игрового имущества.\n\n"
+      f"⏱ <b>Режим работы радиоцентра:</b> строго с <b>08:00:01 до 22:00:01 МСК</b>.\n"
+      f"🛡 Все тексты объявлений автоматически проверяются ИИ и системой модерации.\n\n"
+      f"👇 <b>Выберите свой игровой сервер в меню ниже, чтобы начать:</b>"
   )
   safe_send_message(m.chat.id, start_text, reply_markup=kb_servers())
 
@@ -1967,10 +1968,17 @@ def cmd_start(m):
 @bot.message_handler(commands=["help"])
 def cmd_help(m):
   help_text = (
-      f"🛠 <b>Помощь и правила @{BOT_USERNAME}</b>\n\n"
-      f"❓ <b>Как подать объявление?</b>\n"
-      f"💡 <i>Выберите сервер -> «📤 Продать товар» или «📥 Скупить товар» -> Выберите категорию -> Введите товар и цену -> Выберите тип (VIP или обычное) -> Отправьте редакторам.</i>\n\n"
-      f"⏱ <b>Время работы:</b> 08:00:01 — 22:00:01 МСК."
+      f"📖 <b>Справочник и правила работы @{BOT_USERNAME}</b>\n\n"
+      f"📋 <b>Как подать объявление?</b>\n"
+      f"1️⃣ Выберите свой игровой сервер.\n"
+      f"2️⃣ Нажмите кнопку <b>«📤 Продать товар»</b> или <b>«📥 Скупить товар»</b>.\n"
+      f"3️⃣ Выберите нужную категорию товара.\n"
+      f"4️⃣ Отправьте текст объявления (или прикрепите фото с описанием).\n"
+      f"5️⃣ ИИ автоматически отредактирует текст по стандартам СМИ, после чего вы сможете отправить его на модерацию.\n\n"
+      f"⏱ <b>Время работы:</b> объявления принимаются и публикуются с <b>08:00:01 до 22:00:01 МСК</b>.\n"
+      f"⏳ <b>Кулдаун:</b> между подачами объявлений действует интервал в 2 минуты (для VIP-пользователей — 1 минута).\n"
+      f"💎 <b>VIP-статус:</b> дает расширенные лимиты подписок на поиск, бесплатные VIP-объявления и уменьшенный кулдаун.\n"
+      f"💬 <b>Связь с нами:</b> если возникли вопросы, вы всегда можете написать менеджеру через главное меню."
   )
   safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu())
 
@@ -1992,8 +2000,14 @@ def select_srv(m):
 
 
 def how_bot_works(m):
-  text = f"📖 <b>Справочник @{BOT_USERNAME}</b>\n\nРежим работы радиоцентра: с 08:00:01 до 22:00:01 МСК."
-  safe_send_message(m.chat.id, text)
+  text = (
+      f"📖 <b>О работе радиоцентра @{BOT_USERNAME}</b>\n\n"
+      f"• Режим работы: с <b>08:00:01 до 22:00:01 МСК</b> ежедневно.\n"
+      f"• Модерация: все объявления проходят проверку редакторами и искусственным интеллектом.\n"
+      f"• Запрещено: оскорбления, мат, продажа виртуальной валюты за реальные деньги (реал) и любые мошеннические схемы.\n"
+      f"• При нарушении правил система автоматически выдает перманентный бан."
+  )
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
 
 
 def info_premium(m):
@@ -2145,7 +2159,7 @@ def process_calc_sell(m):
 
 
 # ==========================================
-# АДМИН-ПАНЕЛЬ И МОДЕРАЦИЯ
+# АДМИН-ПАНЕЛЬ И ФУНКЦИИ ВЛАДЕЛЬЦА
 # ==========================================
 def admin_panel(m):
   if not is_admin_or_owner(m.from_user):
@@ -2161,6 +2175,76 @@ def admin_panel(m):
         types.InlineKeyboardButton("📋 Логи админов", callback_data="owner_get_logs"),
     )
   safe_send_message(m.chat.id, "👑 <b>Панель администратора:</b>", reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_broadcast_start")
+def cb_owner_broadcast_start(call):
+  if not is_owner(call.from_user):
+    try:
+      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
+    except Exception:
+      pass
+    return
+  update_state(call.from_user.id, owner_broadcast_input=True)
+  safe_send_message(call.message.chat.id, "📢 Введите текст для рассылки всем пользователям бота:", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_broadcast_input"))
+def process_owner_broadcast(m):
+  uid = m.from_user.id
+  if not is_owner(m.from_user):
+    clear_state(uid)
+    return
+  text = m.text
+  clear_state(uid)
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM user_data")
+    users = cur.fetchall()
+
+  success = 0
+  fail = 0
+  safe_send_message(m.chat.id, f"🚀 Начинаю рассылку для {len(users)} пользователей...")
+
+  for row in users:
+    target_id = row["user_id"]
+    try:
+      safe_send_message(target_id, f"📢 <b>Объявление администрации:</b>\n\n{text}")
+      success += 1
+      time.sleep(0.05)
+    except Exception:
+      fail += 1
+
+  safe_send_message(m.chat.id, f"✅ <b>Рассылка завершена!</b>\n\n• Успешно: {success}\n• Ошибок: {fail}", reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_get_logs")
+def cb_owner_get_logs(call):
+  if not is_owner(call.from_user):
+    try:
+      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
+    except Exception:
+      pass
+    return
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT admin_username, action, target, timestamp FROM admin_action_logs ORDER BY id DESC LIMIT 20")
+    logs = cur.fetchall()
+
+  if not logs:
+    try:
+      return bot.answer_callback_query(call.id, "📭 Логи действий админов пусты.", show_alert=True)
+    except Exception:
+      pass
+
+  text = "📋 <b>Последние лог-записи действий админов:</b>\n\n"
+  for row in logs:
+    dt = datetime.fromtimestamp(row["timestamp"]).strftime("%d.%m.%Y %H:%M")
+    text += f"👤 <b>{row['admin_username']}</b> | {row['action']} ({row['target']}) — <i>{dt}</i>\n"
+
+  safe_send_message(call.message.chat.id, text, reply_markup=kb_main_menu())
 
 
 @bot.callback_query_handler(func=lambda c: c.data in ["admin_mod_sales", "admin_mod_buys"])
@@ -2273,6 +2357,8 @@ def cb_mod_decision(call):
       return bot.answer_callback_query(call.id, "⚠️ Пост уже обработан.", show_alert=True)
     except Exception:
       pass
+
+  log_admin_action(call.from_user.username or str(call.from_user.id), action, f"Post #{pid}")
 
   if action == "acc":
     with db_lock, get_db() as conn:

@@ -3030,19 +3030,18 @@ def cb_auc_bid(call):
     pass
 
   aid = int(call.data.replace("auc_bid_", ""))
-  update_state(call.from_user.id, auction_bid_input=aid)
+  update_state(call.from_user.id, auction_bid_id=aid)
   safe_send_message(
       call.message.chat.id,
-      f"💵 Введите сумму вашей ставки для аукциона #{aid} (например: 55кк,"
-      " 15000000):",
+      "💵 Введите сумму вашей ставки в долларах ($):",
       reply_markup=kb_cancel(),
   )
 
 
 @bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("auction_bid_input") is not None
+    func=lambda m: get_state(m.from_user.id).get("auction_bid_id") is not None
 )
-def process_auc_bid(m):
+def process_auction_bid(m):
   allowed, err_msg = check_working_hours()
   if not allowed:
     clear_state(m.from_user.id)
@@ -3052,7 +3051,7 @@ def process_auc_bid(m):
 
   uid = m.from_user.id
   st = get_state(uid)
-  aid = st.get("auction_bid_input")
+  aid = st.get("auction_bid_id")
   clear_state(uid)
 
   try:
@@ -3060,8 +3059,7 @@ def process_auc_bid(m):
   except ValueError:
     return safe_send_message(
         m.chat.id,
-        "⚠️ Не удалось распознать сумму ставки. Введите число (например: 15кк,"
-        " 500к).",
+        "⚠️ Не удалось распознать сумму ставки.",
         reply_markup=kb_main_menu(uid),
     )
 
@@ -3082,8 +3080,7 @@ def process_auc_bid(m):
     if bid_amount <= current_highest:
       return safe_send_message(
           m.chat.id,
-          f"⚠️ Ваша ставка должна быть больше текущей"
-          f" ({current_highest:,.0f} $).",
+          f"⚠️ Ставка должна быть больше текущей: <b>{current_highest:,.0f} $</b>",
           reply_markup=kb_main_menu(uid),
       )
 
@@ -3092,22 +3089,17 @@ def process_auc_bid(m):
         (bid_amount, uid, aid),
     )
     cur.execute(
-        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp)"
-        " VALUES (?, ?, ?, ?)",
-        (aid, uid, f"Сделана ставка {bid_amount}", time.time()),
+        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp) VALUES (?, ?, ?, ?)",
+        (aid, uid, f"Сделана ставка: {bid_amount}", time.time()),
     )
 
   safe_send_message(
       m.chat.id,
-      f"✅ Ваша ставка в размере <b>{bid_amount:,.0f} $</b> на аукцион #{aid}"
-      " успешно принята!",
+      f"✅ Ваша ставка <b>{bid_amount:,.0f} $</b> на аукцион #{aid} успешно принята!",
       reply_markup=kb_main_menu(uid),
   )
 
 
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
 if __name__ == "__main__":
-  print("Бот и Mini App сервер запущены...")
-  bot.infinity_polling()
+  logger.info("Бот запущен и работает...")
+  bot.infinity_polling(skip_pending=True)

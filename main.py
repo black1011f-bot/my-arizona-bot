@@ -1633,6 +1633,7 @@ def process_broadcast(m):
 
 # ==========================================
 # МОДУЛЬ УПРАВЛЕНИЯ ВЛАДЕЛЬЦА И АДМИН-ПАНЕЛИ
+# (ИСПРАВЛЕНО: ДОБАВЛЕНО ПОДТВЕРЖДЕНИЕ КНОПКАМИ)
 # ==========================================
 def owner_prompt_action(m, action_type):
   if not is_owner(m.from_user):
@@ -1666,12 +1667,82 @@ def process_owner_action_input(m):
   st = get_state(uid)
   action_type = st.get("owner_action_input")
   target_str = m.text.strip()
-  clear_state(uid)
+
+  if target_str == "❌ Отменить действие":
+    clear_state(uid)
+    return cancel_action(m)
 
   if not is_owner(m.from_user):
-    return safe_send_message(m.chat.id, f"⛔ Доступ запрещен.")
+    clear_state(uid)
+    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
 
-  admin_uname = m.from_user.username or str(uid)
+  update_state(
+      uid,
+      owner_action_target=target_str,
+      owner_action_input=None,
+      owner_action_confirm=action_type,
+  )
+
+  action_names = {
+      "ban": "блокировку игрока",
+      "unban": "разблокировку игрока",
+      "add_admin": "назначение администратором",
+      "remove_admin": "снятие с должности администратора",
+  }
+
+  markup = types.InlineKeyboardMarkup(row_width=2)
+  markup.add(
+      types.InlineKeyboardButton(
+          "✅ Подтвердить", callback_data=f"owner_conf_{action_type}"
+      ),
+      types.InlineKeyboardButton("❌ Отмена", callback_data="owner_conf_cancel"),
+  )
+
+  safe_send_message(
+      m.chat.id,
+      f"⚠️ <b>Подтверждение действия:</b>\n\nДействие:"
+      f" <b>{action_names.get(action_type, action_type)}</b>\nЦель:"
+      f" <b>{html.escape(target_str)}</b>\n\nПодтвердите выполнение:",
+      reply_markup=markup,
+  )
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("owner_conf_"))
+def cb_owner_confirmation(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+
+  uid = call.from_user.id
+  st = get_state(uid)
+  action_type = call.data.replace("owner_conf_", "")
+
+  if action_type == "cancel":
+    clear_state(uid)
+    try:
+      bot.edit_message_text(
+          "❌ Действие отменено.", call.message.chat.id, call.message.message_id
+      )
+    except Exception:
+      pass
+    return admin_panel(call.message)
+
+  target_str = st.get("owner_action_target")
+  clear_state(uid)
+
+  if not target_str or not is_owner(call.from_user):
+    try:
+      bot.edit_message_text(
+          "⛔ Ошибка или истекло время сессии.",
+          call.message.chat.id,
+          call.message.message_id,
+      )
+    except Exception:
+      pass
+    return admin_panel(call.message)
+
+  admin_uname = call.from_user.username or str(uid)
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
@@ -1706,16 +1777,19 @@ def process_owner_action_input(m):
             "INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)",
             (target_uname, 0),
         )
-      
-      cur.execute(
-          "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
-          (admin_uname, "Выдача бана", f"Игрок: {target_str} (ID: {target_uid})", time.time())
-      )
 
-      safe_send_message(
-          m.chat.id,
-          f"✅ Игрок <b>{html.escape(target_str)}</b> успешно заблокирован.",
-          reply_markup=kb_main_menu(uid),
+      cur.execute(
+          "INSERT INTO admin_action_logs (admin_username, action, target,"
+          " timestamp) VALUES (?, ?, ?, ?)",
+          (
+              admin_uname,
+              "Выдача бана",
+              f"Игрок: {target_str} (ID: {target_uid})",
+              time.time(),
+          ),
+      )
+      res_text = (
+          f"✅ Игрок <b>{html.escape(target_str)}</b> успешно заблокирован."
       )
       with contextlib.suppress(Exception):
         if target_uid:
@@ -1729,48 +1803,49 @@ def process_owner_action_input(m):
           "DELETE FROM bans WHERE target = ? OR target = ?",
           (b_target, target_uname),
       )
-
       cur.execute(
-          "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
-          (admin_uname, "Снятие бана", f"Игрок: {target_str} (ID: {target_uid})", time.time())
+          "INSERT INTO admin_action_logs (admin_username, action, target,"
+          " timestamp) VALUES (?, ?, ?, ?)",
+          (
+              admin_uname,
+              "Снятие бана",
+              f"Игрок: {target_str} (ID: {target_uid})",
+              time.time(),
+          ),
       )
-
-      safe_send_message(
-          m.chat.id,
-          f"✅ Игрок <b>{html.escape(target_str)}</b> разблокирован.",
-          reply_markup=kb_main_menu(uid),
-      )
+      res_text = f"✅ Игрок <b>{html.escape(target_str)}</b> разблокирован."
 
     elif action_type == "add_admin":
       if not target_uid:
-        return safe_send_message(
-            m.chat.id,
-            "⚠️ Пользователь не найден в базе данных бота. Пусть он сначала"
-            " запустит бота (/start).",
-            reply_markup=kb_main_menu(uid),
+        res_text = (
+            f"⚠️ Пользователь {target_str} не найден в базе данных бота. Пусть"
+            " он сначала запустит бота (/start)."
         )
-      cur.execute(
-          "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES"
-          " (?, ?)",
-          (target_uid, target_uname),
-      )
-
-      cur.execute(
-          "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
-          (admin_uname, "Назначение админа", f"@{target_uname} (ID: {target_uid})", time.time())
-      )
-
-      safe_send_message(
-          m.chat.id,
-          f"👑 Пользователь @{target_uname} (ID: {target_uid}) назначен"
-          " администратором!",
-          reply_markup=kb_main_menu(uid),
-      )
-      with contextlib.suppress(Exception):
-        safe_send_message(
-            target_uid,
-            "👑 Поздравляем! Вам назначены права администратора в боте.",
+      else:
+        cur.execute(
+            "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES"
+            " (?, ?)",
+            (target_uid, target_uname),
         )
+        cur.execute(
+            "INSERT INTO admin_action_logs (admin_username, action, target,"
+            " timestamp) VALUES (?, ?, ?, ?)",
+            (
+                admin_uname,
+                "Назначение админа",
+                f"@{target_uname} (ID: {target_uid})",
+                time.time(),
+            ),
+        )
+        res_text = (
+            f"👑 Пользователь @{target_uname} (ID: {target_uid}) назначен"
+            " администратором!"
+        )
+        with contextlib.suppress(Exception):
+          safe_send_message(
+              target_uid,
+              "👑 Поздравляем! Вам назначены права администратора в боте.",
+          )
 
     elif action_type == "remove_admin":
       if target_uid:
@@ -1781,16 +1856,18 @@ def process_owner_action_input(m):
         cur.execute(
             "DELETE FROM approved_admins WHERE username = ?", (target_uname,)
         )
-
       cur.execute(
-          "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
-          (admin_uname, "Снятие с адм", f"@{target_uname} (ID: {target_uid})", time.time())
+          "INSERT INTO admin_action_logs (admin_username, action, target,"
+          " timestamp) VALUES (?, ?, ?, ?)",
+          (
+              admin_uname,
+              "Снятие с адм",
+              f"@{target_uname} (ID: {target_uid})",
+              time.time(),
+          ),
       )
-
-      safe_send_message(
-          m.chat.id,
-          f"🚫 Администратор <b>{html.escape(target_str)}</b> снят с должности.",
-          reply_markup=kb_main_menu(uid),
+      res_text = (
+          f"🚫 Администратор <b>{html.escape(target_str)}</b> снят с должности."
       )
       with contextlib.suppress(Exception):
         if target_uid:
@@ -1798,6 +1875,15 @@ def process_owner_action_input(m):
               target_uid,
               "🚫 Вы были сняты с должности администратора.",
           )
+    else:
+      res_text = "✅ Действие выполнено."
+
+  try:
+    bot.edit_message_text(res_text, call.message.chat.id, call.message.message_id)
+  except Exception:
+    safe_send_message(call.message.chat.id, res_text)
+
+  admin_panel(call.message)
 
 
 # ==========================================
@@ -2997,62 +3083,51 @@ def cb_publish_ad_free(call):
   if not post_data:
     return
 
-  is_vip = 0
-  if call.data in ["ad_type_vip_sub", "ad_type_bonus_vip", "ad_type_vip_paid"]:
-    is_vip = 1
-    if call.data == "ad_type_bonus_vip":
-      with db_lock, get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE user_bonuses SET vip_ads_count = vip_ads_count - 1 WHERE user_id = ?",
-            (uid,),
-        )
+  is_vip = 1 if call.data in ["ad_type_vip_sub", "ad_type_bonus_vip", "ad_type_vip_paid"] else 0
 
-  server = get_user_server(uid)
-  category = post_data.get("category")
-  text = post_data.get("polished_text")
-  photo = post_data.get("photo_id")
-  is_buy = post_data.get("is_buy", False)
+  if call.data == "ad_type_bonus_vip":
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute("SELECT vip_ads_count FROM user_bonuses WHERE user_id = ?", (uid,))
+      row = cur.fetchone()
+      if row and row["vip_ads_count"] > 0:
+        cur.execute("UPDATE user_bonuses SET vip_ads_count = vip_ads_count - 1 WHERE user_id = ?", (uid,))
 
-  target_pending_table = "pending_buy_posts" if is_buy else "pending_posts"
+  srv = get_user_server(uid)
+  cat = post_data["category"]
+  text = post_data["polished_text"]
+  photo = post_data["photo_id"]
+  is_buy = post_data["is_buy"]
+
+  table = "pending_buy_posts" if is_buy else "pending_posts"
+  username = call.from_user.username or str(uid)
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        f"INSERT INTO {target_pending_table} (user_id, username, server, category, text, photo, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (uid, call.from_user.username or "", server, category, text, photo, is_vip),
+        f"INSERT INTO {table} (user_id, username, server, category, text, photo, is_vip, editing_by, editing_since) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)",
+        (uid, username, srv, cat, text, photo, is_vip),
     )
-    post_id = cur.lastrowid
 
   set_user_last_ad_time(uid, time.time())
   clear_state(uid)
 
-  safe_send_message(
-      call.message.chat.id,
-      f"✅ Ваше объявление отправлено на модерацию администраторам! (ID #{post_id})",
-      reply_markup=kb_main_menu(uid),
-  )
-
-  admin_chats = get_admin_chat_ids()
-  ad_type_str = "скупки" if is_buy else "продажи"
-  markup_mod = types.InlineKeyboardMarkup(row_width=2)
-  prefix = "buy_" if is_buy else ""
-  markup_mod.add(
-      types.InlineKeyboardButton("✅ Одобрить", callback_data=f"mod_acc_{prefix}{post_id}"),
-      types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_rej_{prefix}{post_id}"),
-  )
-  caption = f"📋 <b>Новый пост {ad_type_str} (#{post_id})</b>\n🌐 Сервер: {server}\n📂 Категория: {category}\n\n{text}"
-  
-  for chat_id in admin_chats:
-    try:
-      if photo:
-        bot.send_photo(chat_id, photo, caption=caption, parse_mode="HTML", reply_markup=markup_mod)
-      else:
-        bot.send_message(chat_id, caption, parse_mode="HTML", reply_markup=markup_mod)
-    except Exception:
-      pass
+  try:
+    bot.edit_message_text(
+        "✅ <b>Ваше объявление успешно отправлено на модерацию!</b>\n\nОно появится в ленте после проверки администратором.",
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=None,
+    )
+  except Exception:
+    pass
+  safe_send_message(call.message.chat.id, "Главное меню:", reply_markup=kb_main_menu(uid))
 
 
+# ==========================================
+# ЗАПУСК БОТА
+# ==========================================
 if __name__ == "__main__":
   logger.info("Бот запущен и готов к работе...")
   bot.infinity_polling(skip_pending=True)
+

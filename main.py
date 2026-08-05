@@ -355,6 +355,13 @@ def init_db():
         """)
 
     cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admin_ad_stats (
+                username TEXT PRIMARY KEY,
+                count INTEGER DEFAULT 0
+            )
+        """)
+
+    cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_data (
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
@@ -1779,6 +1786,10 @@ def should_override_nav(msg):
       or st.get("vc_calc_step")
       or st.get("owner_broadcast_input")
       or st.get("admin_action_input")
+      or st.get("owner_add_admin_input")
+      or st.get("owner_del_admin_input")
+      or st.get("owner_ban_input")
+      or st.get("owner_unban_input")
   )
 
   nav_buttons = [
@@ -2098,13 +2109,174 @@ def admin_panel(m):
   markup.add(
       types.InlineKeyboardButton("📤 Модерация продаж", callback_data="admin_mod_sales"),
       types.InlineKeyboardButton("📥 Модерация скупки", callback_data="admin_mod_buys"),
+      types.InlineKeyboardButton("📊 Статистика админов", callback_data="admin_stats_view"),
   )
   if is_owner(m.from_user):
     markup.add(
         types.InlineKeyboardButton("📢 Рассылка", callback_data="owner_broadcast_start"),
         types.InlineKeyboardButton("📋 Логи админов", callback_data="owner_get_logs"),
+        types.InlineKeyboardButton("➕ Добавить админа (юз)", callback_data="owner_add_admin_start"),
+        types.InlineKeyboardButton("➖ Снять админа (юз)", callback_data="owner_del_admin_start"),
+        types.InlineKeyboardButton("⛔ Забанить (юз)", callback_data="owner_ban_start"),
+        types.InlineKeyboardButton("✅ Разбанить (юз)", callback_data="owner_unban_start"),
     )
   safe_send_message(m.chat.id, "👑 <b>Панель администратора:</b>", reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "admin_stats_view")
+def cb_admin_stats_view(call):
+  if not verify_admin_callback(call):
+    return
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT username, count FROM admin_ad_stats ORDER BY count DESC")
+    stats = cur.fetchall()
+
+  if not stats:
+    try:
+      return bot.answer_callback_query(call.id, "📭 Статистика админов пуста.", show_alert=True)
+    except Exception:
+      pass
+
+  text = "📊 <b>Статистика администраторов (одобрено объявлений):</b>\n\n"
+  for row in stats:
+    text += f"👤 <b>@{row['username']}</b> — {row['count']} объявлений\n"
+
+  safe_send_message(call.message.chat.id, text, reply_markup=kb_main_menu())
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_add_admin_start")
+def cb_owner_add_admin_start(call):
+  if not is_owner(call.from_user):
+    try:
+      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
+    except Exception:
+      pass
+    return
+  update_state(call.from_user.id, owner_add_admin_input=True)
+  safe_send_message(call.message.chat.id, "➕ Введите юзернейм пользователя (с @ или без), чтобы назначить его администратором:", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_add_admin_input"))
+def process_owner_add_admin(m):
+  uid = m.from_user.id
+  if not is_owner(m.from_user):
+    clear_state(uid)
+    return
+  uname = m.text.strip().lstrip("@").lower()
+  clear_state(uid)
+
+  if not uname:
+    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM user_data WHERE LOWER(username) = ?", (uname,))
+    row = cur.fetchone()
+    target_id = row["user_id"] if row else 0
+    cur.execute(
+        "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES (?, ?)",
+        (target_id, uname),
+    )
+
+  safe_send_message(m.chat.id, f"✅ Пользователь <b>@{uname}</b> успешно назначен администратором!", reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_del_admin_start")
+def cb_owner_del_admin_start(call):
+  if not is_owner(call.from_user):
+    try:
+      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
+    except Exception:
+      pass
+    return
+  update_state(call.from_user.id, owner_del_admin_input=True)
+  safe_send_message(call.message.chat.id, "➖ Введите юзернейм администратора (с @ или без), чтобы снять с поста:", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_del_admin_input"))
+def process_owner_del_admin(m):
+  uid = m.from_user.id
+  if not is_owner(m.from_user):
+    clear_state(uid)
+    return
+  uname = m.text.strip().lstrip("@").lower()
+  clear_state(uid)
+
+  if not uname:
+    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (uname,))
+
+  safe_send_message(m.chat.id, f"✅ Администратор <b>@{uname}</b> снят с поста.", reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_ban_start")
+def cb_owner_ban_start(call):
+  if not is_owner(call.from_user):
+    try:
+      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
+    except Exception:
+      pass
+    return
+  update_state(call.from_user.id, owner_ban_input=True)
+  safe_send_message(call.message.chat.id, "⛔ Введите юзернейм пользователя (с @ или без), чтобы заблокировать его в боте:", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_ban_input"))
+def process_owner_ban(m):
+  uid = m.from_user.id
+  if not is_owner(m.from_user):
+    clear_state(uid)
+    return
+  uname = m.text.strip().lstrip("@").lower()
+  clear_state(uid)
+
+  if not uname:
+    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, 0)", (uname,))
+
+  safe_send_message(m.chat.id, f"⛔ Пользователь с юзернеймом <b>@{uname}</b> заблокирован в системе.", reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_unban_start")
+def cb_owner_unban_start(call):
+  if not is_owner(call.from_user):
+    try:
+      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
+    except Exception:
+      pass
+    return
+  update_state(call.from_user.id, owner_unban_input=True)
+  safe_send_message(call.message.chat.id, "✅ Введите юзернейм пользователя (с @ или без), чтобы разблокировать его:", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_unban_input"))
+def process_owner_unban(m):
+  uid = m.from_user.id
+  if not is_owner(m.from_user):
+    clear_state(uid)
+    return
+  uname = m.text.strip().lstrip("@").lower()
+  clear_state(uid)
+
+  if not uname:
+    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("DELETE FROM bans WHERE target = ? AND is_id = 0", (uname,))
+
+  safe_send_message(m.chat.id, f"✅ Пользователь с юзернеймом <b>@{uname}</b> разблокирован.", reply_markup=kb_main_menu())
 
 
 @bot.callback_query_handler(func=lambda c: c.data == "owner_broadcast_start")
@@ -2299,6 +2471,11 @@ def cb_mod_decision(call):
           (post["user_id"], post["server"], post["category"], post["text"], post["photo"], post["is_vip"], time.time()),
       )
       new_ad_id = cur.lastrowid
+      if call.from_user.username:
+        cur.execute(
+            "INSERT INTO admin_ad_stats (username, count) VALUES (?, 1) ON CONFLICT(username) DO UPDATE SET count = count + 1",
+            (call.from_user.username.lower(),),
+        )
     notify_subscribers(post["server"], post["text"], new_ad_id, is_buy=is_buy)
     safe_send_message(post["user_id"], f"✅ Ваше объявление #{new_ad_id} опубликовано!")
   elif action == "bad":

@@ -595,6 +595,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS user_bonuses (
                 user_id INTEGER PRIMARY KEY,
                 last_claim_date TEXT,
+                last_claim_timestamp REAL DEFAULT 0,
                 vip_ads_count INTEGER DEFAULT 0,
                 vip_ads_expiry REAL DEFAULT 0
             )
@@ -709,11 +710,24 @@ init_db()
 def background_maintenance_worker():
   last_ad_clean_date = ""
   last_log_clean_date = ""
+  last_bonus_check_hour = -1
+
   while True:
     try:
       now = get_msk_time()
       current_time_str = now.strftime("%H:%M:%S")
       current_date_str = now.strftime("%Y-%m-%d")
+      current_hour = now.hour
+
+      # Ежедневное удаление неиспользованных бонусных вип-объявлений по 1 шт каждые 24ч
+      if current_hour != last_bonus_check_hour:
+        with db_lock, get_db() as conn:
+          cur = conn.cursor()
+          cur.execute(
+              "UPDATE user_bonuses SET vip_ads_count = MAX(0, vip_ads_count - 1)"
+              " WHERE vip_ads_count > 0"
+          )
+        last_bonus_check_hour = current_hour
 
       if (
           "07:50:00" <= current_time_str <= "07:51:00"
@@ -903,7 +917,85 @@ def kb_owner_input():
 
 
 # ==========================================
-# РЕФЕРАЛЬНАЯ СИСТЕМА И БОНУСЫ
+# КОМАНДА /START И РЕФЕРАЛЬНАЯ СИСТЕМА
+# ==========================================
+@bot.message_handler(commands=["start"])
+def cmd_start(m):
+  uid = m.from_user.id
+  username = m.from_user.username or ""
+  register_user(uid, username)
+
+  if is_banned(m.from_user):
+    return safe_send_message(
+        m.chat.id,
+        "⛔ <b>Вы заблокированы в системе модерации.</b>",
+        reply_markup=types.ReplyKeyboardRemove(),
+    )
+
+  args = m.text.split()
+  if len(args) > 1 and args[1].startswith("ref_"):
+    try:
+      referrer_id = int(args[1].replace("ref_", ""))
+      if referrer_id != uid:
+        with db_lock, get_db() as conn:
+          cur = conn.cursor()
+          cur.execute(
+              "SELECT 1 FROM referrals WHERE referrer_id = ? AND referred_id"
+              " = ?",
+              (referrer_id, uid),
+          )
+          if not cur.fetchone():
+            cur.execute(
+                "INSERT OR IGNORE INTO referrals (referrer_id, referred_id,"
+                " last_active_date) VALUES (?, ?, ?)",
+                (referrer_id, uid, get_msk_time().strftime("%Y-%m-%d")),
+            )
+
+            # Выдаем VIP на 10 дней другу и тому, кто пригласил
+            now_ts = time.time()
+            for target_id in [referrer_id, uid]:
+              cur.execute(
+                  "SELECT expires_at FROM premium_users WHERE user_id = ?",
+                  (target_id,),
+              )
+              row = cur.fetchone()
+              existing_exp = (
+                  row["expires_at"]
+                  if row and row["expires_at"] > now_ts
+                  else now_ts
+              )
+              new_exp = existing_exp + 10 * 86400
+              cur.execute(
+                  "INSERT OR REPLACE INTO premium_users (user_id, expires_at)"
+                  " VALUES (?, ?)",
+                  (target_id, new_exp),
+              )
+
+            with contextlib.suppress(Exception):
+              safe_send_message(
+                  referrer_id,
+                  "🎉 <b>По вашей реферальной ссылке зарегистрировался новый"
+                  " друг!</b>\nВам и вашему другу начислен VIP-статус на 10"
+                  " дней!",
+              )
+              safe_send_message(
+                  uid,
+                  "🎁 <b>Вы успешно зарегистрировались по реферальной"
+                  " ссылке!</b>\nВам начислен VIP-статус на 10 дней!",
+              )
+    except Exception as e:
+      logger.error(f"Ошибка реферальной системы: {e}")
+
+  text = (
+      f"👋 Приветствую, <b>{html.escape(m.from_user.first_name)}</b>!\nДобро"
+      " пожаловать в официальный бот объявлений Arizona RP / СМИ.\n\nВыберите"
+      " нужный раздел в меню ниже:"
+  )
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
+
+
+# ==========================================
+# РЕФЕРАЛЫ И ЕЖЕДНЕВНЫЕ БОНУСЫ (С ВЕРОЯТНОСТЯМИ)
 # ==========================================
 def show_ref_bonus_menu(m):
   uid = m.from_user.id
@@ -917,28 +1009,40 @@ def show_ref_bonus_menu(m):
     )
     ref_count = cur.fetchone()["cnt"]
 
-    cur.execute(
-        "SELECT * FROM user_bonuses WHERE user_id = ?",
-        (uid,),
-    )
+    cur.execute("SELECT * FROM user_bonuses WHERE user_id = ?", (uid,))
     bonus_row = cur.fetchone()
-    last_claim = bonus_0 = None
-    if bonus_row:
-      last_claim = bonus_row["last_claim_date"]
 
-  today_str = get_msk_time().strftime("%Y-%m-%d")
-  can_claim_bonus = last_claim != today_str
+    last_claim_ts = (
+        bonus_row["last_claim_timestamp"]
+        if bonus_row and "last_claim_timestamp" in bonus_row.keys()
+        else 0.0
+    )
+    vip_ads = bonus_row["vip_ads_count"] if bonus_row else 0
+
+  current_ts = time.time()
+  cooldown = 86400
+  can_claim = (current_ts - last_claim_ts) >= cooldown
+  remaining_time = (
+      int(cooldown - (current_ts - last_claim_ts)) if not can_claim else 0
+  )
+
+  hours_rem = remaining_time // 3600
+  mins_rem = (remaining_time % 3600) // 60
 
   text = (
       f"👥 <b>Рефералы и Бонусы</b>\n\n"
-      f"Приглашайте друзей по вашей реферальной ссылке и получайте бонусы!\n\n"
+      f"Приглашайте друзей по вашей реферальной ссылке и получайте <b>VIP-статус"
+      f" на 10 дней</b> (и ваш друг тоже получает VIP на 10 дней)!\n\n"
       f"🔗 <b>Ваша реферальная ссылка:</b>\n<code>{ref_link}</code>\n\n"
-      f"📊 Приглашено пользователей: <b>{ref_count}</b>\n\n"
-      f"🎁 Также вы можете забирать ежедневный бонус раз в день!"
+      f"📊 Приглашено друзей: <b>{ref_count}</b>\n"
+      f"⭐ Доступно бонусных VIP-объявлений: <b>{vip_ads}</b> (⚠️"
+      " <i>Неиспользованные бонусные VIP-объявления удаляются автоматически"
+      " по 1 штуке каждые 24 часа!</i>)\n\n"
+      f"🎁 Ежедневный бонус обновляется каждые 24 часа!"
   )
 
   markup = types.InlineKeyboardMarkup(row_width=1)
-  if can_claim_bonus:
+  if can_claim:
     markup.add(
         types.InlineKeyboardButton(
             "🎁 Забрать ежедневный бонус", callback_data="claim_daily_bonus"
@@ -947,7 +1051,8 @@ def show_ref_bonus_menu(m):
   else:
     markup.add(
         types.InlineKeyboardButton(
-            "🎁 Бонус уже получен сегодня", callback_data="bonus_already_claimed"
+            f"⏳ Бонус будет доступен через {hours_rem}ч. {mins_rem}мин.",
+            callback_data="bonus_cooldown_alert",
         )
     )
 
@@ -955,46 +1060,116 @@ def show_ref_bonus_menu(m):
 
 
 @bot.callback_query_handler(
-    func=lambda c: c.data in ["claim_daily_bonus", "bonus_already_claimed"]
+    func=lambda c: c.data in ["claim_daily_bonus", "bonus_cooldown_alert"]
 )
 def cb_daily_bonus(call):
   uid = call.from_user.id
-  today_str = get_msk_time().strftime("%Y-%m-%d")
+  current_ts = time.time()
+  cooldown = 86400
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute(
-        "SELECT last_claim_date FROM user_bonuses WHERE user_id = ?", (uid,)
-    )
+    cur.execute("SELECT * FROM user_bonuses WHERE user_id = ?", (uid,))
     row = cur.fetchone()
+    last_claim_ts = (
+        row["last_claim_timestamp"]
+        if row and "last_claim_timestamp" in row.keys()
+        else 0.0
+    )
 
-    if row and row["last_claim_date"] == today_str:
+    if current_ts - last_claim_ts < cooldown:
+      remaining = int(cooldown - (current_ts - last_claim_ts))
+      h = remaining // 3600
+      m_min = (remaining % 3600) // 60
       try:
         bot.answer_callback_query(
             call.id,
-            "⚠️ Вы уже забирали бонус сегодня! Приходите завтра.",
+            f"⚠️ Ежедневный бонус можно забирать раз в 24 часа! Осталось: {h}ч."
+            f" {m_min}мин.",
             show_alert=True,
         )
       except Exception:
         pass
       return
 
+    # Розыгрыш бонуса по вероятностям (сумма = 100%)
+    # 5% - VIP подписка на 13 дней (шанс 1-5)
+    # 30% - 1 VIP объявление (шанс 6-35)
+    # 25% - 2 VIP объявления (шанс 36-60)
+    # 20% - 3 VIP объявления (шанс 61-80)
+    # 12% - 4 VIP объявления (шанс 81-92)
+    # 8% - 5 VIP объявлений (шанс 93-100)
+    roll = random.randint(1, 100)
+    today_str = get_msk_time().strftime("%Y-%m-%d")
+
+    if roll <= 5:
+      # VIP на 13 дней
+      cur.execute("SELECT expires_at FROM premium_users WHERE user_id = ?", (uid,))
+      p_row = cur.fetchone()
+      base_exp = (
+          p_row["expires_at"]
+          if p_row and p_row["expires_at"] > current_ts
+          else current_ts
+      )
+      new_exp = base_exp + 13 * 86400
+      cur.execute(
+          "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES"
+          " (?, ?)",
+          (uid, new_exp),
+      )
+      msg_reward = (
+          "🎉 <b>Поздравляем! Вы выбили VIP-подписку на 13 дней!</b>"
+      )
+    else:
+      if roll <= 35:
+        ads_won = 1
+      elif roll <= 60:
+        ads_won = 2
+      elif roll <= 80:
+        ads_won = 3
+      elif roll <= 92:
+        ads_won = 4
+      else:
+        ads_won = 5
+
+      current_ads = row["vip_ads_count"] if row else 0
+      new_ads = current_ads + ads_won
+      cur.execute(
+          "INSERT INTO user_bonuses (user_id, last_claim_date,"
+          " last_claim_timestamp, vip_ads_count, vip_ads_expiry) VALUES (?, ?,"
+          " ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET last_claim_date = ?,"
+          " last_claim_timestamp = ?, vip_ads_count = ?, vip_ads_expiry = ?",
+          (
+              uid,
+              today_str,
+              current_ts,
+              new_ads,
+              current_ts + 86400,
+              today_str,
+              current_ts,
+              new_ads,
+              current_ts + 86400,
+          ),
+      )
+      msg_reward = (
+          f"🎁 <b>Поздравляем! Вы выбили VIP-объявления в количестве:"
+          f" {ads_won} шт.</b>\n(⚠️ <i>Неиспользованные бонусные объявления"
+          " будут удаляться автоматически по 1 шт. каждый день, если их не"
+          " использовать!</i>)"
+      )
+
     cur.execute(
-        "INSERT INTO user_bonuses (user_id, last_claim_date) VALUES (?, ?)"
-        " ON CONFLICT(user_id) DO UPDATE SET last_claim_date = ?",
-        (uid, today_str, today_str),
+        "UPDATE user_bonuses SET last_claim_date = ?, last_claim_timestamp ="
+        " ? WHERE user_id = ?",
+        (today_str, current_ts, uid),
     )
 
   try:
-    bot.answer_callback_query(
-        call.id,
-        "🎉 Вы успешно забрали ежедневный бонус! (Вам начислен бонус к"
-        " активности)",
-        show_alert=True,
-    )
+    bot.answer_callback_query(call.id, "🎉 Ежедневный бонус получен!", show_alert=True)
   except Exception:
     pass
 
+  safe_send_message(call.message.chat.id, msg_reward)
   show_ref_bonus_menu(call.message)
 
 
@@ -1119,7 +1294,7 @@ def process_ad_content(m):
   admin_chats = get_admin_chat_ids()
   prefix = "скупки" if is_buy else "продажи"
   callback_acc = f"mod_acc_buy_{post_id}" if is_buy else f"mod_acc_{post_id}"
-  callback_rej = f"mod_rej_buy_{post_id}" if is_buy else f"mod_rej_buy_{post_id}"
+  callback_rej = f"mod_rej_buy_{post_id}" if is_buy else f"mod_rej_{post_id}"
 
   markup = types.InlineKeyboardMarkup(row_width=2)
   markup.add(
@@ -2803,7 +2978,7 @@ def process_custom_auc_bid(m):
 
 
 # ==========================================
-# МОДУЛЬ ОБЩЕНИЯ И ЖАЛОБ (ПОЛНОСТЬЮ ЗАВЕРШЕН)
+# МОДУЛЬ ОБЩЕНИЯ И ДИАЛОГОВ ПРОДАВЦОВ
 # ==========================================
 @bot.callback_query_handler(
     func=lambda c: c.data.startswith("contact_seller_")
@@ -2824,15 +2999,15 @@ def cb_start_dialog(call):
     if not row:
       cur.execute("SELECT user_id, text FROM active_ads WHERE id = ?", (ad_id,))
       row = cur.fetchone()
-    if not row:
-      cur.execute(
-          "SELECT user_id, text FROM active_buy_ads WHERE id = ?", (ad_id,)
-      )
-      row = cur.fetchone()
+      if not row:
+        cur.execute(
+            "SELECT user_id, text FROM active_buy_ads WHERE id = ?", (ad_id,)
+        )
+        row = cur.fetchone()
 
   if not row:
     return safe_send_message(
-        call.message.chat.id, "⚠️ Объявление или лот не найден."
+        call.message.chat.id, "⚠️ Объявление не найдено или уже удалено."
     )
 
   seller_id = row["user_id"]
@@ -2840,165 +3015,92 @@ def cb_start_dialog(call):
 
   if seller_id == buyer_id:
     return safe_send_message(
-        call.message.chat.id, "⚠️ Вы не можете писать сами себе."
+        call.message.chat.id, "⚠️ Вы не можете начать диалог с самим собой."
     )
 
   update_state(buyer_id, chat_with_seller_id=seller_id, chat_ad_id=ad_id)
-
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  markup.add(
-      types.InlineKeyboardButton(
-          "❌ Закончить диалог", callback_data=f"chat_end_{ad_id}_{seller_id}"
-      ),
-      types.InlineKeyboardButton(
-          "⚠️ Пожаловаться",
-          callback_data=f"chat_complaint_{ad_id}_{seller_id}",
-      ),
-  )
   safe_send_message(
       call.message.chat.id,
-      f"✉️ <b>Связь по объявлению/лоту #{ad_id}</b>\nНапишите ваше сообщение"
-      " продавцу. Переписка логируется.\n\n<i>Вы можете в любой момент выйти или"
-      " отменить действие кнопками ниже.</i>",
+      "💬 <b>Начало диалога по объявлению:</b>\nВведите ваше сообщение для"
+      " автора объявления (оно будет передано ему напрямую в бот):",
       reply_markup=kb_cancel(),
   )
-  safe_send_message(
-      call.message.chat.id,
-      "Управление диалогом:",
-      reply_markup=markup,
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("chat_end_"))
-def cb_chat_end(call):
-  try:
-    bot.answer_callback_query(call.id, "✅ Диалог завершен.")
-  except Exception:
-    pass
-  uid = call.from_user.id
-  clear_state(uid)
-  safe_send_message(
-      call.message.chat.id,
-      "❌ Диалог завершен.",
-      reply_markup=kb_main_menu(uid),
-  )
-  with contextlib.suppress(Exception):
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("chat_complaint_"))
-def cb_chat_complaint(call):
-  try:
-    bot.answer_callback_query(
-        call.id, "⚠️ Жалоба отправлена администрации.", show_alert=True
-    )
-  except Exception:
-    pass
-  uid = call.from_user.id
-  parts = call.data.split("_")
-  ad_id = parts[2]
-  target_id = parts[3]
-
-  admin_chats = get_admin_chat_ids()
-  complaint_text = (
-      f"⚠️ <b>Жалоба на пользователя в сделке!</b>\n"
-      f"👤 От кого: ID {uid} (@{call.from_user.username or 'нет'})\n"
-      f"🎯 На пользователя ID: {target_id}\n"
-      f"📦 По объявлению/лоту #{ad_id}"
-  )
-  for admin_id in admin_chats:
-    with contextlib.suppress(Exception):
-      bot.send_message(admin_id, complaint_text)
-
-  clear_state(uid)
-  safe_send_message(
-      call.message.chat.id,
-      "✅ Жалоба успешно отправлена администраторам. Диалог завершен.",
-      reply_markup=kb_main_menu(uid),
-  )
-  with contextlib.suppress(Exception):
-    bot.delete_message(call.message.chat.id, call.message.message_id)
 
 
 @bot.message_handler(
+    content_types=["text", "photo"],
     func=lambda m: get_state(m.from_user.id).get("chat_with_seller_id")
     is not None,
-    content_types=["text", "photo"],
 )
 def process_chat_message(m):
   uid = m.from_user.id
   st = get_state(uid)
-  target_id = st.get("chat_with_seller_id")
+  recipient_id = st.get("chat_with_seller_id")
   ad_id = st.get("chat_ad_id")
-  text = m.text or m.caption or "[Фото/Медиа]"
+  clear_state(uid)
+
+  text = m.text or m.caption
   photo = m.photo[-1].file_id if m.photo else None
 
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO chat_logs_history (sender_id, receiver_id, text,"
-        " timestamp) VALUES (?, ?, ?, ?)",
-        (uid, target_id, text, time.time()),
-    )
+  if not text:
+    return safe_send_message(m.chat.id, "⚠️ Сообщение не может быть пустым.")
 
-  markup = types.InlineKeyboardMarkup(row_width=2)
+  sender_name = m.from_user.username or str(uid)
+  forward_text = (
+      f"💬 <b>Сообщение от пользователя @{html.escape(sender_name)} (ID:"
+      f" {uid}) по объявлению #{ad_id}:</b>\n\n{html.escape(text)}"
+  )
+
+  markup = types.InlineKeyboardMarkup()
   markup.add(
       types.InlineKeyboardButton(
           "✉️ Ответить", callback_data=f"contact_seller_{ad_id}"
-      ),
-      types.InlineKeyboardButton(
-          "❌ Закончить диалог", callback_data=f"chat_end_{ad_id}_{uid}"
-      ),
-      types.InlineKeyboardButton(
-          "⚠️ Пожаловаться", callback_data=f"chat_complaint_{ad_id}_{uid}"
-      ),
+      )
   )
 
-  forward_text = f"💬 <b>Сообщение по сделке #{ad_id} от игрока:</b>\n\n{text}"
   try:
     if photo:
-      bot.send_photo(target_id, photo, caption=forward_text, reply_markup=markup)
+      bot.send_photo(
+          recipient_id,
+          photo,
+          caption=forward_text,
+          parse_mode="HTML",
+          reply_markup=markup,
+      )
     else:
-      bot.send_message(target_id, forward_text, reply_markup=markup)
-    safe_send_message(m.chat.id, "✅ Сообщение отправлено собеседнику.")
-  except Exception as e:
-    logger.error(f"Ошибка отправки сообщения собеседнику: {e}")
+      bot.send_message(
+          recipient_id,
+          forward_text,
+          parse_mode="HTML",
+          reply_markup=markup,
+      )
+
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute(
+          "INSERT INTO chat_logs_history (sender_id, receiver_id, text,"
+          " timestamp) VALUES (?, ?, ?, ?)",
+          (uid, recipient_id, text, time.time()),
+      )
+
     safe_send_message(
         m.chat.id,
-        "⚠️ Не удалось отправить сообщение (возможно, пользователь заблокировал"
+        "✅ Сообщение успешно отправлено!",
+        reply_markup=kb_main_menu(uid),
+    )
+  except Exception as e:
+    logger.error(f"Ошибка отправки сообщения пользователю: {e}")
+    safe_send_message(
+        m.chat.id,
+        "❌ Не удалось доставить сообщение (возможно, пользователь заблокировал"
         " бота).",
+        reply_markup=kb_main_menu(uid),
     )
 
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
-@bot.message_handler(commands=["start"])
-def cmd_start(m):
-  uid = m.from_user.id
-  uname = m.from_user.username or ""
-  register_user(uid, uname)
-  clear_state(uid)
-
-  if is_banned(m.from_user):
-    return safe_send_message(m.chat.id, "⛔ Вы заблокированы.")
-
-  welcome_text = (
-      f"👋 Приветствую, <b>{html.escape(m.from_user.first_name)}</b>!\n\n"
-      f"🤖 Это неофициальный торговый и информационный бот Arizona RP.\n"
-      f"Здесь вы можете подавать объявления о продаже, скупке, обмене, участвовать"
-      f" в аукционах и безопасно общаться с игроками.\n\n"
-      f"Выберите нужный пункт в меню ниже:"
-  )
-  safe_send_message(m.chat.id, welcome_text, reply_markup=kb_main_menu(uid))
-
-
 if __name__ == "__main__":
-  logger.info("Бот успешно запущен и работает по московскому времени (МСК)...")
-  while True:
-    try:
-      bot.infinity_polling(timeout=60, long_polling_timeout=30)
-    except Exception as e:
-      logger.error(f"Ошибка в polling: {e}")
-      time.sleep(5)
-
+  logger.info("Бот запущен и готов к работе...")
+  bot.infinity_polling(skip_pending=True)

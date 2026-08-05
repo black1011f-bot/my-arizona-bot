@@ -903,6 +903,102 @@ def kb_owner_input():
 
 
 # ==========================================
+# РЕФЕРАЛЬНАЯ СИСТЕМА И БОНУСЫ
+# ==========================================
+def show_ref_bonus_menu(m):
+  uid = m.from_user.id
+  bot_info = bot.get_me()
+  ref_link = f"https://t.me/{bot_info.username}?start=ref_{uid}"
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ?", (uid,)
+    )
+    ref_count = cur.fetchone()["cnt"]
+
+    cur.execute(
+        "SELECT * FROM user_bonuses WHERE user_id = ?",
+        (uid,),
+    )
+    bonus_row = cur.fetchone()
+    last_claim = bonus_0 = None
+    if bonus_row:
+      last_claim = bonus_row["last_claim_date"]
+
+  today_str = get_msk_time().strftime("%Y-%m-%d")
+  can_claim_bonus = last_claim != today_str
+
+  text = (
+      f"👥 <b>Рефералы и Бонусы</b>\n\n"
+      f"Приглашайте друзей по вашей реферальной ссылке и получайте бонусы!\n\n"
+      f"🔗 <b>Ваша реферальная ссылка:</b>\n<code>{ref_link}</code>\n\n"
+      f"📊 Приглашено пользователей: <b>{ref_count}</b>\n\n"
+      f"🎁 Также вы можете забирать ежедневный бонус раз в день!"
+  )
+
+  markup = types.InlineKeyboardMarkup(row_width=1)
+  if can_claim_bonus:
+    markup.add(
+        types.InlineKeyboardButton(
+            "🎁 Забрать ежедневный бонус", callback_data="claim_daily_bonus"
+        )
+    )
+  else:
+    markup.add(
+        types.InlineKeyboardButton(
+            "🎁 Бонус уже получен сегодня", callback_data="bonus_already_claimed"
+        )
+    )
+
+  safe_send_message(m.chat.id, text, reply_markup=markup)
+
+
+@bot.callback_query_handler(
+    func=lambda c: c.data in ["claim_daily_bonus", "bonus_already_claimed"]
+)
+def cb_daily_bonus(call):
+  uid = call.from_user.id
+  today_str = get_msk_time().strftime("%Y-%m-%d")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT last_claim_date FROM user_bonuses WHERE user_id = ?", (uid,)
+    )
+    row = cur.fetchone()
+
+    if row and row["last_claim_date"] == today_str:
+      try:
+        bot.answer_callback_query(
+            call.id,
+            "⚠️ Вы уже забирали бонус сегодня! Приходите завтра.",
+            show_alert=True,
+        )
+      except Exception:
+        pass
+      return
+
+    cur.execute(
+        "INSERT INTO user_bonuses (user_id, last_claim_date) VALUES (?, ?)"
+        " ON CONFLICT(user_id) DO UPDATE SET last_claim_date = ?",
+        (uid, today_str, today_str),
+    )
+
+  try:
+    bot.answer_callback_query(
+        call.id,
+        "🎉 Вы успешно забрали ежедневный бонус! (Вам начислен бонус к"
+        " активности)",
+        show_alert=True,
+    )
+  except Exception:
+    pass
+
+  show_ref_bonus_menu(call.message)
+
+
+# ==========================================
 # ИНИЦИАЦИЯ СОЗДАНИЯ ОБЪЯВЛЕНИЙ
 # ==========================================
 def start_add_ad(m):
@@ -1608,7 +1704,7 @@ def handle_navigation_override(m):
   elif m.text == "🏛 Аукционы":
     show_auctions_menu(m)
   elif m.text == "👥 Рефералы и Бонусы":
-    show_ref_bonus_menu(m) if "show_ref_bonus_menu" in globals() else None
+    show_ref_bonus_menu(m)
   elif m.text == "📋 Логи чатов":
     show_owner_logs_menu(m)
   elif m.text == "модерация продажи":
@@ -2889,7 +2985,7 @@ def cmd_start(m):
 
   welcome_text = (
       f"👋 Приветствую, <b>{html.escape(m.from_user.first_name)}</b>!\n\n"
-      f"🤖 Это официальный торговый и информационный бот Arizona RP.\n"
+      f"🤖 Это неофициальный торговый и информационный бот Arizona RP.\n"
       f"Здесь вы можете подавать объявления о продаже, скупке, обмене, участвовать"
       f" в аукционах и безопасно общаться с игроками.\n\n"
       f"Выберите нужный пункт в меню ниже:"
@@ -2905,3 +3001,4 @@ if __name__ == "__main__":
     except Exception as e:
       logger.error(f"Ошибка в polling: {e}")
       time.sleep(5)
+

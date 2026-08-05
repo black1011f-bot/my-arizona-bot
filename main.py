@@ -812,6 +812,20 @@ def validate_ad_submission(user_id: int) -> tuple[bool, str]:
   return True, ""
 
 
+def check_working_hours() -> tuple[bool, str]:
+  """Проверка временного окна с 08:00:00 до 22:00:00 МСК для аукционов и обмена."""
+  now_msk = get_msk_time()
+  current_time = now_msk.time()
+  start_window = dtime(8, 0, 0)
+  end_window = dtime(22, 0, 0)
+  if not (start_window <= current_time <= end_window):
+    return (
+        False,
+        "❌ Данное действие доступно только с <b>08:00:00 до 22:00:00 МСК</b>.",
+    )
+  return True, ""
+
+
 # ==========================================
 # ОБРАБОТЧИКИ АНТИФЛУДА И БАНОВ
 # ==========================================
@@ -924,6 +938,7 @@ def cmd_start(m):
   uid = m.from_user.id
   username = m.from_user.username or ""
   register_user(uid, username)
+  set_user_server(uid, SERVERS[0])  # Устанавливаем сервер по умолчанию Phoenix
 
   if is_banned(m.from_user):
     return safe_send_message(
@@ -988,6 +1003,8 @@ def cmd_start(m):
   text = (
       f"👋 Приветствую, <b>{html.escape(m.from_user.first_name)}</b>!\n\n"
       f"🤖 Мы — <b>неофициальный бот</b> объявлений Arizona RP, созданный игроком.\n\n"
+      f"🌐 <b>Игровой сервер по умолчанию:</b> {SERVERS[0]}.\n"
+      f"Если вам нужно его сменить, нажмите на кнопку <b>«🌐 Сменить игровой сервер»</b> в меню ниже.\n\n"
       f"⚠️ <b>Безопасность и ответственность:</b> Бот является фанатским проектом. Администрация <b>не несет никакой ответственности</b> за ваши сделки, обмены и договоренности. Все действия вы совершаете на свой страх и риск!\n\n"
       f"Выберите нужный раздел в меню ниже:"
   )
@@ -2592,7 +2609,7 @@ def cb_owner_view_admin_ads(call):
 
 
 # ==========================================
-# МОДУЛЬ 1: БАРТЕР / ОБМЕН
+# МОДУЛЬ 1: БАРТЕР / ОБМЕН (С ПРОВЕРКОЙ ВРЕМЕНИ)
 # ==========================================
 def show_barter_menu(m):
   uid = m.from_user.id
@@ -2665,6 +2682,17 @@ def cb_admin_del_barter(call):
 
 @bot.callback_query_handler(func=lambda c: c.data == "barter_add_start")
 def cb_barter_add_start(call):
+  allowed, err_msg = check_working_hours()
+  if not allowed:
+    try:
+      return bot.answer_callback_query(
+          call.id,
+          "❌ Создание обмена доступно только с 08:00 до 22:00 МСК!",
+          show_alert=True,
+      )
+    except Exception:
+      return
+
   try:
     bot.answer_callback_query(call.id)
   except Exception:
@@ -2692,6 +2720,11 @@ def cb_barter_add_start(call):
     func=lambda m: get_state(m.from_user.id).get("barter_input"),
 )
 def process_barter_create(m):
+  allowed, err_msg = check_working_hours()
+  if not allowed:
+    clear_state(m.from_user.id)
+    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(m.from_user.id))
+
   uid = m.from_user.id
   srv = get_user_server(uid)
   text = m.text or m.caption
@@ -2724,15 +2757,6 @@ def process_barter_create(m):
 # ==========================================
 # МОДУЛЬ 2: СИСТЕМА АУКЦИОНОВ (ВРЕМЯ ПО МСК)
 # ==========================================
-def check_auction_working_hours() -> bool:
-  now_time = get_msk_time().time()
-  start_t = dtime(8, 0, 0)
-  end_t = dtime(22, 0, 0)
-  if start_t <= now_time <= end_t:
-    return True
-  return False
-
-
 def show_auctions_menu(m):
   uid = m.from_user.id
   srv = get_user_server(uid)
@@ -2785,12 +2809,216 @@ def show_auctions_menu(m):
   safe_send_message(m.chat.id, "Хотите выставить лот?", reply_markup=markup_btn)
 
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("auc_remove_"))
-def cb_auc_remove(call):
+@bot.callback_query_handler(func=lambda c: c.data == "auc_create_start")
+def cb_auc_create_start(call):
+  allowed, err_msg = check_working_hours()
+  if not allowed:
+    try:
+      return bot.answer_callback_query(
+          call.id,
+          "❌ Создание аукционов доступно только с 08:00 до 22:00 МСК!",
+          show_alert=True,
+      )
+    except Exception:
+      return
+
   try:
     bot.answer_callback_query(call.id)
   except Exception:
     pass
+
+  update_state(call.from_user.id, auction_create_step="item_name")
+  safe_send_message(
+      call.message.chat.id,
+      "🏛 <b>Создание аукциона</b>\n\nВведите название выставляемого товара или имущества:",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda m: get_state(m.from_user.id).get("auction_create_step")
+    == "item_name"
+)
+def process_auc_item_name(m):
+  allowed, err_msg = check_working_hours()
+  if not allowed:
+    clear_state(m.from_user.id)
+    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(m.from_user.id))
+
+  uid = m.from_user.id
+  item_name = m.text.strip()
+  if not item_name:
+    return safe_send_message(m.chat.id, "⚠️ Название не может быть пустым.")
+
+  if not check_auto_moderation(item_name):
+    clear_state(uid)
+    return safe_send_message(
+        m.chat.id, "🤬 Название содержит запрещенные слова.", reply_markup=kb_main_menu(uid)
+    )
+
+  update_state(uid, auction_create_step="start_price", auc_item_name=item_name)
+  safe_send_message(
+      m.chat.id,
+      "💰 Введите стартовую цену аукциона в долларах ($) (например: 50кк, 1000000):",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda m: get_state(m.from_user.id).get("auction_create_step")
+    == "start_price"
+)
+def process_auc_start_price(m):
+  allowed, err_msg = check_working_hours()
+  if not allowed:
+    clear_state(m.from_user.id)
+    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(m.from_user.id))
+
+  uid = m.from_user.id
+  st = get_state(uid)
+  item_name = st.get("auc_item_name")
+  clear_state(uid)
+
+  try:
+    start_price = parse_flexible_price(m.text)
+  except ValueError:
+    return safe_send_message(
+        m.chat.id,
+        "⚠️ Не удалось распознать цену. Введите число (например: 10кк, 500к).",
+        reply_markup=kb_main_menu(uid),
+    )
+
+  srv = get_user_server(uid)
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO auctions (user_id, server, item_name, start_price,"
+        " current_bid, status, created_at) VALUES (?, ?, ?, ?, ?, 'active',"
+        " ?)",
+        (uid, srv, item_name, start_price, start_price, time.time()),
+    )
+    aid = cur.lastrowid
+    cur.execute(
+        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp)"
+        " VALUES (?, ?, ?, ?)",
+        (
+            aid,
+            uid,
+            f"Создан аукцион на товар '{item_name}' со старт. ценой {start_price}",
+            time.time(),
+        ),
+    )
+
+  safe_send_message(
+      m.chat.id,
+      f"✅ Аукцион <b>#{aid}</b> на товар <b>{html.escape(item_name)}"
+      f"</b> успешно создан!",
+      reply_markup=kb_main_menu(uid),
+  )
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("auc_bid_"))
+def cb_auc_bid_start(call):
+  allowed, err_msg = check_working_hours()
+  if not allowed:
+    try:
+      return bot.answer_callback_query(
+          call.id,
+          "❌ Ставки на аукционах доступны только с 08:00 до 22:00 МСК!",
+          show_alert=True,
+      )
+    except Exception:
+      return
+
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+
+  aid = int(call.data.replace("auc_bid_", ""))
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,))
+    auc = cur.fetchone()
+
+  if not auc:
+    return safe_send_message(
+        call.message.chat.id, "⚠️ Аукцион не найден или уже завершен."
+    )
+
+  update_state(call.from_user.id, auction_bid_input=aid)
+  current_p = auc["current_bid"] or auc["start_price"]
+  safe_send_message(
+      call.message.chat.id,
+      f"💵 <b>Сделать ставку на аукцион #{aid} ({html.escape(auc['item_name'])})</b>\n"
+      f"Текущая ставка: <b>{current_p:,.0f} $</b>\n\n"
+      f"Введите вашу сумму ставки (она должна быть выше текущей):",
+      reply_markup=kb_cancel(),
+  )
+
+
+@bot.message_handler(
+    func=lambda m: get_state(m.from_user.id).get("auction_bid_input") is not None
+)
+def process_auc_bid_input(m):
+  allowed, err_msg = check_working_hours()
+  if not allowed:
+    clear_state(m.from_user.id)
+    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(m.from_user.id))
+
+  uid = m.from_user.id
+  st = get_state(uid)
+  aid = st.get("auction_bid_input")
+  clear_state(uid)
+
+  try:
+    bid_amount = parse_flexible_price(m.text)
+  except ValueError:
+    return safe_send_message(
+        m.chat.id,
+        "⚠️ Не удалось распознать сумму ставки.",
+        reply_markup=kb_main_menu(uid),
+    )
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,))
+    auc = cur.fetchone()
+    if not auc:
+      return safe_send_message(
+          m.chat.id,
+          "⚠️ Аукцион не найден или уже завершен.",
+          reply_markup=kb_main_menu(uid),
+      )
+
+    current_p = auc["current_bid"] or auc["start_price"]
+    if bid_amount <= current_p:
+      return safe_send_message(
+          m.chat.id,
+          f"⚠️ Ставка должна быть больше текущей ({current_p:,.0f} $).",
+          reply_markup=kb_main_menu(uid),
+      )
+
+    cur.execute(
+        "UPDATE auctions SET current_bid = ?, highest_bidder = ? WHERE id = ?",
+        (bid_amount, uid, aid),
+    )
+    cur.execute(
+        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp)"
+        " VALUES (?, ?, ?, ?)",
+        (aid, uid, f"Сделана ставка: {bid_amount}", time.time()),
+    )
+
+  safe_send_message(
+      m.chat.id,
+      f"✅ Ваша ставка <b>{bid_amount:,.0f} $</b> на аукцион #{aid} успешно"
+      " принята!",
+      reply_markup=kb_main_menu(uid),
+  )
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("auc_remove_"))
+def cb_auc_remove(call):
   aid = int(call.data.replace("auc_remove_", ""))
   uid = call.from_user.id
 
@@ -2799,45 +3027,34 @@ def cb_auc_remove(call):
     cur.execute("SELECT * FROM auctions WHERE id = ?", (aid,))
     auc = cur.fetchone()
     if not auc:
-      return safe_send_message(call.message.chat.id, "⚠️ Аукцион не найден.")
+      try:
+        return bot.answer_callback_query(
+            call.id, "⚠️ Лот не найден.", show_alert=True
+        )
+      except Exception:
+        return
+
     if auc["user_id"] != uid and not is_admin_or_owner(call.from_user):
-      return safe_send_message(
-          call.message.chat.id, "⛔ Вы не можете удалить чужой лот."
-      )
+      try:
+        return bot.answer_callback_query(
+            call.id, "⛔ У вас нет прав удалять этот лот.", show_alert=True
+        )
+      except Exception:
+        return
 
     cur.execute("DELETE FROM auctions WHERE id = ?", (aid,))
     cur.execute("DELETE FROM auction_logs WHERE auction_id = ?", (aid,))
 
-  safe_send_message(
-      call.message.chat.id,
-      f"✅ Лот аукциона #{aid} ({auc['item_name']}) успешно удален.",
-      reply_markup=kb_main_menu(uid),
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "auc_create_start")
-def cb_auc_create_start(call):
   try:
-    bot.answer_callback_query(call.id)
+    bot.answer_callback_query(call.id, "✅ Аукционный лот успешно удален.")
+    bot.delete_message(call.message.chat.id, call.message.message_id)
   except Exception:
     pass
-  if not check_auction_working_hours() and not is_admin_or_owner(
-      call.from_user
-  ):
-    return safe_send_message(
-        call.message.chat.id,
-        "❌ Выставлять товары на аукцион можно строго с <b>08:00:00 до"
-        " 22:00:00 МСК</b>.",
-    )
-  update_state(call.from_user.id, auction_create_step="item_name")
-  safe_send_message(
-      call.message.chat.id,
-      "🏛 <b>Создание лота на аукционе</b>\n\nВведите название выставленного"
-      " предмета:",
-      reply_markup=kb_cancel(),
-  )
 
 
+# ==========================================
+# ЗАПУСК БОТА
+# ==========================================
 if __name__ == "__main__":
-  logger.info("Бот запущен...")
+  logger.info("Бот успешно запущен и работает...")
   bot.infinity_polling(skip_pending=True)

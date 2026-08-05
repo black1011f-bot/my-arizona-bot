@@ -3044,17 +3044,10 @@ def admin_panel(m):
         types.KeyboardButton("📋 Логи чатов"),
     )
   markup.add(types.KeyboardButton("❌ Отменить действие"))
-
-  safe_send_message(
-      m.chat.id,
-      "👑 <b>Админ-панель</b>\n\nВыберите нужное действие из меню ниже:",
-      reply_markup=markup,
-  )
+  safe_send_message(m.chat.id, "👑 <b>Админ-панель управления:</b>", reply_markup=markup)
 
 
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
 if __name__ == "__main__":
-  logger.info("Бот успешно запущен...")
+  logger.info("Бот успешно запущен и работает...")
   bot.infinity_polling(skip_pending=True)
+

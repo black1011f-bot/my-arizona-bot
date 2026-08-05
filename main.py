@@ -422,7 +422,7 @@ init_db()
 
 
 # ==========================================
-# ОБРАБОТЧИКИ АНТИФЛУДА
+# ОБРАБОТЧИКИ АНТИФЛУДА И БАНОВ
 # ==========================================
 @bot.message_handler(
     func=lambda m: is_flooding(m.from_user.id), content_types=["text", "photo"]
@@ -446,6 +446,112 @@ def handle_flood_callback(c):
     )
   except Exception:
     pass
+
+
+@bot.message_handler(func=lambda m: is_banned(m.from_user))
+def blocked_user_message(m):
+  safe_send_message(
+      m.chat.id,
+      "⛔ <b>Вы заблокированы в системе модерации.</b>",
+      reply_markup=types.ReplyKeyboardRemove(),
+  )
+
+
+@bot.callback_query_handler(func=lambda c: is_banned(c.from_user))
+def blocked_user_callback(c):
+  try:
+    bot.answer_callback_query(c.id, "⛔ Вы заблокированы!", show_alert=True)
+  except Exception:
+    pass
+
+
+# ==========================================
+# ПЕРЕХВАТЧИК НАВИГАЦИИ И ОТМЕНЫ (ПЕРЕД СОСТОЯНИЯМИ)
+# ==========================================
+def should_override_nav(msg):
+  if not msg.text:
+    return False
+  if msg.text == "❌ Отменить действие":
+    return True
+
+  uid = msg.from_user.id
+  st = get_state(uid)
+
+  is_in_active_input = (
+      st.get("posting_ad", {}).get("step") in ["category", "text_or_photo", "choose_ad_type"]
+      or st.get("searching_keyword")
+      or st.get("adding_subscription")
+      or st.get("vc_setting_rate")
+      or st.get("vc_conv_input")
+      or st.get("vc_calc_step")
+      or st.get("owner_broadcast_input")
+      or st.get("admin_action_input")
+      or st.get("owner_add_admin_input")
+      or st.get("owner_del_admin_input")
+      or st.get("owner_ban_input")
+      or st.get("owner_unban_input")
+      or st.get("owner_give_penalty_input")
+  )
+
+  nav_buttons = [
+      "🔍 Найти товар в базе",
+      "❤️ Сохраненные",
+      "🔔 Уведомления о поиске",
+      "📋 Мои публикации",
+      "📊 Анализ цен на сервере",
+      "📖 Справка и правила",
+      "📤 Продать товар",
+      "📥 Скупить товар",
+      "💱 Курс VC и калькулятор",
+      "💎 VIP-статус",
+      "🌐 Сменить игровой сервер",
+      "👑 Админ-панель",
+      "💬 Связаться с менеджером",
+  ] + CATEGORIES
+
+  if is_in_active_input and msg.text not in nav_buttons and msg.text not in SERVERS:
+    return False
+
+  return msg.text in nav_buttons or msg.text in SERVERS
+
+
+@bot.message_handler(func=should_override_nav)
+def handle_navigation_override(m):
+  if m.text != "❌ Отменить действие":
+    clear_state(m.from_user.id)
+
+  if m.text == "🌐 Сменить игровой сервер":
+    change_server(m)
+  elif m.text == "📖 Справка и правила":
+    how_bot_works(m)
+  elif m.text == "💎 VIP-статус":
+    info_premium(m)
+  elif m.text == "📊 Анализ цен на сервере":
+    show_average_prices(m)
+  elif m.text == "📤 Продать товар":
+    start_add_ad(m)
+  elif m.text == "📥 Скупить товар":
+    start_add_buy_ad(m)
+  elif m.text == "💱 Курс VC и калькулятор":
+    show_vc_menu(m)
+  elif m.text == "❌ Отменить действие":
+    cancel_action(m)
+  elif m.text == "📋 Мои публикации":
+    show_my_ads(m)
+  elif m.text == "❤️ Сохраненные":
+    show_favorites(m)
+  elif m.text == "🔍 Найти товар в базе":
+    start_search(m)
+  elif m.text == "🔔 Уведомления о поиске":
+    manage_subscriptions(m)
+  elif m.text == "👑 Админ-панель":
+    admin_panel(m)
+  elif m.text == "💬 Связаться с менеджером":
+    contact_manager(m)
+  elif m.text in CATEGORIES:
+    show_category_ads(m)
+  elif m.text in SERVERS:
+    select_srv(m)
 
 
 # ==========================================
@@ -1419,10 +1525,9 @@ def cb_contact_seller(call):
 
   markup = ikb_chat_controls(aid)
   
-  # ОБНОВЛЕННЫЙ ДИСКЛЕЙЕР О НЕЖЕЛАТЕЛЬНОЙ ОТВЕТСТВЕННОСТИ АДМИНИСТРАЦИИ
   disclaimer_text = (
       "\n\n⚠️ <b>Отказ от ответственности:</b> Администрация бота является исключительно "
-      "независимой рекламной площадкой. Мы **не несем никакой ответственности** за любые сделки, "
+      "независимой рекламной площадкой. Мы <b>не несем никакой ответственности</b> за любые сделки, "
       "договоренности, передачу имущества или возможные споры/жалобы между игроками. "
       "Вся ответственность за проведение сделок лежит полностью на вас!"
   )
@@ -1830,112 +1935,6 @@ def ikb_ad_actions(aid: int, is_fav: bool = False, user_id: int = 0, is_buy: boo
 
 
 # ==========================================
-# ПЕРЕХВАТЧИКИ И НАВИГАЦИЯ
-# ==========================================
-@bot.message_handler(func=lambda m: is_banned(m.from_user))
-def blocked_user_message(m):
-  safe_send_message(
-      m.chat.id,
-      "⛔ <b>Вы заблокированы в системе модерации.</b>",
-      reply_markup=types.ReplyKeyboardRemove(),
-  )
-
-
-@bot.callback_query_handler(func=lambda c: is_banned(c.from_user))
-def blocked_user_callback(c):
-  try:
-    bot.answer_callback_query(c.id, "⛔ Вы заблокированы!", show_alert=True)
-  except Exception:
-    pass
-
-
-def should_override_nav(msg):
-  if not msg.text:
-    return False
-  if msg.text == "❌ Отменить действие":
-    return True
-
-  uid = msg.from_user.id
-  st = get_state(uid)
-
-  is_in_active_input = (
-      st.get("posting_ad", {}).get("step") in ["category", "text_or_photo", "choose_ad_type"]
-      or st.get("searching_keyword")
-      or st.get("adding_subscription")
-      or st.get("vc_setting_rate")
-      or st.get("vc_conv_input")
-      or st.get("vc_calc_step")
-      or st.get("owner_broadcast_input")
-      or st.get("admin_action_input")
-      or st.get("owner_add_admin_input")
-      or st.get("owner_del_admin_input")
-      or st.get("owner_ban_input")
-      or st.get("owner_unban_input")
-      or st.get("owner_give_penalty_input")
-  )
-
-  nav_buttons = [
-      "🔍 Найти товар в базе",
-      "❤️ Сохраненные",
-      "🔔 Уведомления о поиске",
-      "📋 Мои публикации",
-      "📊 Анализ цен на сервере",
-      "📖 Справка и правила",
-      "📤 Продать товар",
-      "📥 Скупить товар",
-      "💱 Курс VC и калькулятор",
-      "💎 VIP-статус",
-      "🌐 Сменить игровой сервер",
-      "👑 Админ-панель",
-      "💬 Связаться с менеджером",
-  ] + CATEGORIES
-
-  if is_in_active_input and msg.text not in nav_buttons and msg.text not in SERVERS:
-    return False
-
-  return msg.text in nav_buttons or msg.text in SERVERS
-
-
-@bot.message_handler(func=should_override_nav)
-def handle_navigation_override(m):
-  if m.text != "❌ Отменить действие":
-    clear_state(m.from_user.id)
-
-  if m.text == "🌐 Сменить игровой сервер":
-    change_server(m)
-  elif m.text == "📖 Справка и правила":
-    how_bot_works(m)
-  elif m.text == "💎 VIP-статус":
-    info_premium(m)
-  elif m.text == "📊 Анализ цен на сервере":
-    show_average_prices(m)
-  elif m.text == "📤 Продать товар":
-    start_add_ad(m)
-  elif m.text == "📥 Скупить товар":
-    start_add_buy_ad(m)
-  elif m.text == "💱 Курс VC и калькулятор":
-    show_vc_menu(m)
-  elif m.text == "❌ Отменить действие":
-    cancel_action(m)
-  elif m.text == "📋 Мои публикации":
-    show_my_ads(m)
-  elif m.text == "❤️ Сохраненные":
-    show_favorites(m)
-  elif m.text == "🔍 Найти товар в базе":
-    start_search(m)
-  elif m.text == "🔔 Уведомления о поиске":
-    manage_subscriptions(m)
-  elif m.text == "👑 Админ-панель":
-    admin_panel(m)
-  elif m.text == "💬 Связаться с менеджером":
-    contact_manager(m)
-  elif m.text in CATEGORIES:
-    show_category_ads(m)
-  elif m.text in SERVERS:
-    select_srv(m)
-
-
-# ==========================================
 # ОСНОВНЫЕ КОМАНДЫ И СПРАВКА
 # ==========================================
 def cancel_action(m):
@@ -1966,7 +1965,6 @@ def cmd_start(m):
 
   update_state(m.from_user.id, changing_server=True)
   
-  # ОБНОВЛЕННЫЙ ПРИВЕТСТВЕННЫЙ ДИСКЛЕЙЕР
   welcome_text = (
       "👋 <b>Добро пожаловать! Обратите внимание: мы не являемся официальным ботом Arizona RP.</b>\n\n"
       "🔒 <b>Отказ от ответственности и безопасность:</b>\n"

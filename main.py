@@ -4,6 +4,7 @@ import html
 import io
 import logging
 import os
+import random
 import re
 import sqlite3
 import threading
@@ -139,22 +140,113 @@ def get_db():
     conn.close()
 
 
-def log_admin_action(admin_username: str, action: str, target: str):
+def is_banned(user) -> bool:
+  if not user:
+    return False
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM bans WHERE target = ? OR target = ?", (str(user.id), str(user.username) if user.username else ""))
+    return cur.fetchone() is not None
+
+
+def is_banned_id(user_id: int) -> bool:
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM bans WHERE target = ?", (str(user_id),))
+    return cur.fetchone() is not None
+
+
+def is_admin_or_owner_id(user_id: int) -> bool:
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT username FROM user_data WHERE user_id = ?", (user_id,))
+    row = cur.fetchone()
+    if row and row["username"] and row["username"].lstrip("@") in ADMIN_USERNAMES:
+      return True
+  return False
+
+
+def is_admin_or_owner(user) -> bool:
+  if not user:
+    return False
+  if user.username and user.username.lstrip("@") in ADMIN_USERNAMES:
+    return True
+  return is_admin_or_owner_id(user.id)
+
+
+def get_owner_id() -> int:
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM user_data WHERE username = ? OR username = ?", (OWNER_USERNAME, f"@{OWNER_USERNAME}"))
+    row = cur.fetchone()
+    if row:
+      return row["user_id"]
+  return 0
+
+
+def get_admin_chat_ids() -> list:
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT chat_id FROM admin_chats")
+    return [row["chat_id"] for row in cur.fetchall()]
+
+
+def register_admin_chat(chat_id: int):
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("INSERT OR IGNORE INTO admin_chats (chat_id) VALUES (?)", (chat_id,))
+
+
+def register_user(user_id: int, username: str):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO admin_action_logs (admin_username, action, target,"
-        " timestamp) VALUES (?, ?, ?, ?)",
-        (admin_username, action, target, time.time()),
+        "INSERT INTO user_data (user_id, username, last_ad_time) VALUES (?, ?, 0) ON CONFLICT(user_id) DO UPDATE SET username = ?",
+        (user_id, username or "", username or ""),
     )
+
+
+def get_user_last_ad_time(user_id: int) -> float:
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT last_ad_time FROM user_data WHERE user_id = ?", (user_id,))
+    row = cur.fetchone()
+    return row["last_ad_time"] if row and row["last_ad_time"] else 0.0
+
+
+def set_user_last_ad_time(user_id: int, t: float):
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("UPDATE user_data SET last_ad_time = ? WHERE user_id = ?", (t, user_id))
+
+
+def is_user_premium(user_id: int) -> bool:
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT expires_at FROM premium_users WHERE user_id = ?", (user_id,))
+    row = cur.fetchone()
+    if row and row["expires_at"] > time.time():
+      return True
+  return False
+
+
+def check_auto_moderation(text: str) -> bool:
+  t_lower = text.lower()
+  for w in BAD_WORDS:
+    if w in t_lower:
+      return False
+  return True
+
+
+def get_msk_time():
+  return datetime.now(ZoneInfo("Europe/Moscow"))
 
 
 def set_user_server(user_id: int, server: str):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO user_data (user_id, server, last_ad_time) VALUES (?, ?,"
-        " 0) ON CONFLICT(user_id) DO UPDATE SET server = ?",
+        "INSERT INTO user_data (user_id, server, last_ad_time) VALUES (?, ?, 0) ON CONFLICT(user_id) DO UPDATE SET server = ?",
         (user_id, server, server),
     )
   update_state(user_id, server=server)
@@ -245,6 +337,25 @@ def safe_send_photo(
 
 
 # ==========================================
+# ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ ОТПРАВКИ ЛОГОВ ФАЙЛОМ
+# ==========================================
+def send_log_file(chat_id, filename, text_content, caption=None, reply_markup=None):
+  file_bytes = io.BytesIO(text_content.encode("utf-8"))
+  file_bytes.name = filename
+  try:
+    bot.send_document(
+        chat_id,
+        document=file_bytes,
+        caption=caption,
+        parse_mode="HTML",
+        reply_markup=reply_markup
+    )
+  except Exception as e:
+    logger.error(f"Ошибка отправки файла логов: {e}")
+    safe_send_message(chat_id, text_content[:4000], reply_markup=reply_markup)
+
+
+# ==========================================
 # ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ
 # ==========================================
 def init_db():
@@ -306,6 +417,73 @@ def init_db():
                 is_vip INTEGER,
                 editing_by INTEGER,
                 editing_since REAL
+            )
+        """)
+
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS barter_ads (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                server TEXT,
+                text TEXT,
+                photo TEXT,
+                last_updated REAL
+            )
+        """)
+
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS auctions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                server TEXT,
+                item_name TEXT,
+                start_price INTEGER,
+                current_bid INTEGER,
+                highest_bidder INTEGER,
+                status TEXT DEFAULT 'active',
+                created_at REAL
+            )
+        """)
+
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS auction_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                auction_id INTEGER,
+                user_id INTEGER,
+                action TEXT,
+                timestamp REAL
+            )
+        """)
+
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS auction_complaints (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                auction_id INTEGER,
+                owner_id INTEGER,
+                target_user_id INTEGER,
+                reason TEXT,
+                timestamp REAL
+            )
+        """)
+
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS referrals (
+                referrer_id INTEGER,
+                referred_id INTEGER,
+                qualified_days INTEGER DEFAULT 0,
+                last_active_date TEXT,
+                ads_today INTEGER DEFAULT 0,
+                completed INTEGER DEFAULT 0,
+                PRIMARY KEY (referrer_id, referred_id)
+            )
+        """)
+
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_bonuses (
+                user_id INTEGER PRIMARY KEY,
+                last_claim_date TEXT,
+                vip_ads_count INTEGER DEFAULT 0,
+                vip_ads_expiry REAL DEFAULT 0
             )
         """)
 
@@ -466,7 +644,7 @@ def blocked_user_callback(c):
 
 
 # ==========================================
-# ПЕРЕХВАТЧИК НАВИГАЦИИ И ОТМЕНЫ (ПЕРЕД СОСТОЯНИЯМИ)
+# ПЕРЕХВАТЧИК НАВИГАЦИИ И ОТМЕНЫ
 # ==========================================
 def should_override_nav(msg):
   if not msg.text:
@@ -484,13 +662,11 @@ def should_override_nav(msg):
       or st.get("vc_setting_rate")
       or st.get("vc_conv_input")
       or st.get("vc_calc_step")
-      or st.get("owner_broadcast_input")
-      or st.get("admin_action_input")
-      or st.get("owner_add_admin_input")
-      or st.get("owner_del_admin_input")
-      or st.get("owner_ban_input")
-      or st.get("owner_unban_input")
-      or st.get("owner_give_penalty_input")
+      or st.get("barter_input")
+      or st.get("auction_create_step")
+      or st.get("auction_complaint_step")
+      or st.get("ref_link_input")
+      or st.get("chat_with_seller_id")
   )
 
   nav_buttons = [
@@ -507,6 +683,10 @@ def should_override_nav(msg):
       "🌐 Сменить игровой сервер",
       "👑 Админ-панель",
       "💬 Связаться с менеджером",
+      "🔄 Бартер / Обмен",
+      "🏛 Аукционы",
+      "👥 Рефералы и Бонусы",
+      "📋 Логи аукционов и чатов (@bounqy)",
   ] + CATEGORIES
 
   if is_in_active_input and msg.text not in nav_buttons and msg.text not in SERVERS:
@@ -533,600 +713,703 @@ def handle_navigation_override(m):
   elif m.text == "📥 Скупить товар":
     start_add_buy_ad(m)
   elif m.text == "💱 Курс VC и калькулятор":
-    show_vc_menu(m)
+    show_vc_menu(m) if 'show_vc_menu' in globals() else None
   elif m.text == "❌ Отменить действие":
     cancel_action(m)
   elif m.text == "📋 Мои публикации":
-    show_my_ads(m)
+    show_my_ads(m) if 'show_my_ads' in globals() else None
   elif m.text == "❤️ Сохраненные":
-    show_favorites(m)
+    show_favorites(m) if 'show_favorites' in globals() else None
   elif m.text == "🔍 Найти товар в базе":
-    start_search(m)
+    start_search(m) if 'start_search' in globals() else None
   elif m.text == "🔔 Уведомления о поиске":
-    manage_subscriptions(m)
+    manage_subscriptions(m) if 'manage_subscriptions' in globals() else None
   elif m.text == "👑 Админ-панель":
     admin_panel(m)
   elif m.text == "💬 Связаться с менеджером":
     contact_manager(m)
+  elif m.text == "🔄 Бартер / Обмен":
+    show_barter_menu(m)
+  elif m.text == "🏛 Аукционы":
+    show_auctions_menu(m)
+  elif m.text == "👥 Рефералы и Бонусы":
+    show_ref_bonus_menu(m)
+  elif m.text == "📋 Логи аукционов и чатов (@bounqy)":
+    show_owner_logs_menu(m)
   elif m.text in CATEGORIES:
-    show_category_ads(m)
+    show_category_ads(m) if 'show_category_ads' in globals() else None
   elif m.text in SERVERS:
     select_srv(m)
 
 
 # ==========================================
-# ПРОСМОТР КАТЕГОРИЙ И ИЗБРАННОГО
+# СПЕЦИАЛЬНЫЙ МОДУЛЬ ЛОГОВ ДЛЯ ВЛАДЕЛЬЦА (@bounqy)
 # ==========================================
-def show_category_ads(m):
+def show_owner_logs_menu(m):
   uid = m.from_user.id
-  srv = get_user_server(uid)
-  category = m.text
+  if m.from_user.username and m.from_user.username.lstrip("@") != OWNER_USERNAME and not is_admin_or_owner_id(uid):
+    return safe_send_message(m.chat.id, f"⛔ Этот раздел доступен только владельцу (@{OWNER_USERNAME}).")
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute(
-        "SELECT id, user_id, text, photo, is_vip, 'sale' as ad_type FROM"
-        " active_ads WHERE server = ? AND category = ? UNION ALL SELECT id,"
-        " user_id, text, photo, is_vip, 'buy' as ad_type FROM active_buy_ads"
-        " WHERE server = ? AND category = ? LIMIT 15",
-        (srv, category, srv, category),
-    )
-    results = cur.fetchall()
+    cur.execute("SELECT * FROM auctions ORDER BY id DESC LIMIT 5")
+    auctions = cur.fetchall()
 
-  if not results:
-    return safe_send_message(
-        m.chat.id,
-        f"📭 В категории <b>{html.escape(category)}</b> на сервере"
-        f" <b>{html.escape(srv)}</b> пока нет активных объявлений.",
-        reply_markup=kb_main_menu(),
-    )
+  text = f"📋 <b>Панель логов владельца (@{OWNER_USERNAME})</b>\n\nВыберите категорию логов для выгрузки в виде файлов:"
+  safe_send_message(m.chat.id, text)
 
-  safe_send_message(
-      m.chat.id,
-      f"📂 <b>Категория: {html.escape(category)}</b>\n🌐 Сервер: {srv}\nНайдено"
-      f" объявлений: {len(results)}",
-  )
-
-  for row in results:
-    aid = row["id"]
-    text = row["text"]
-    photo = row["photo"]
-    is_vip = row["is_vip"]
-    is_buy = row["ad_type"] == "buy"
-
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
-      )
-      is_fav = bool(cur.fetchone())
-
-    markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=is_buy)
-    type_badge = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
-    fmt_text = f"{type_badge}\n{html.escape(text)}"
-    if is_vip:
-      fmt_text = f"👑 <b>[VIP]</b>\n{fmt_text}"
-
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
+  markup = types.InlineKeyboardMarkup(row_width=1)
+  for a in auctions:
+    markup.add(types.InlineKeyboardButton(f"🏛 Логи аукциона #{a['id']} ({a['item_name']})", callback_data=f"owner_view_auc_{a['id']}"))
+  
+  markup.add(types.InlineKeyboardButton("💬 Логи всех чатов/общения (файлом)", callback_data="owner_view_chats"))
+  markup.add(types.InlineKeyboardButton("📢 Логи отправки объявлений админами (файлом)", callback_data="owner_view_admin_ads"))
+  
+  safe_send_message(m.chat.id, "Доступные файлы логов системы:", reply_markup=markup)
 
 
-def show_favorites(m):
-  uid = m.from_user.id
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT ad_id FROM favorites WHERE user_id = ?", (uid,))
-    favs = cur.fetchall()
-
-  if not favs:
-    return safe_send_message(
-        m.chat.id,
-        "❤️ У вас пока нет сохраненных объявлений в избранном.",
-        reply_markup=kb_main_menu(),
-    )
-
-  safe_send_message(m.chat.id, "❤️ <b>Ваши сохраненные объявления:</b>")
-  for f in favs:
-    aid = f["ad_id"]
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          "SELECT id, user_id, category, text, photo, is_vip, server, 'sale'"
-          " as ad_type FROM active_ads WHERE id = ? UNION ALL SELECT id,"
-          " user_id, category, text, photo, is_vip, server, 'buy' as ad_type"
-          " FROM active_buy_ads WHERE id = ?",
-          (aid, aid),
-      )
-      row = cur.fetchone()
-
-    if not row:
-      continue
-
-    is_buy = row["ad_type"] == "buy"
-    markup = ikb_ad_actions(aid, is_fav=True, user_id=uid, is_buy=is_buy)
-    type_badge = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
-    fmt_text = (
-        f"{type_badge} <b>{row['category']}</b> (Сервер: {row['server']})\n"
-        f"{html.escape(row['text'])}"
-    )
-
-    if row["photo"]:
-      safe_send_photo(m.chat.id, row["photo"], caption=fmt_text, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
-
-
-def show_my_ads(m):
-  uid = m.from_user.id
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, server, category, text, photo, 'active_sale' as status FROM"
-        " active_ads WHERE user_id = ? UNION ALL SELECT id, server, category,"
-        " text, photo, 'active_buy' as status FROM active_buy_ads WHERE user_id = ?"
-        " UNION ALL SELECT id, server, category, text, photo, 'pending_sale' as"
-        " status FROM pending_posts WHERE user_id = ? UNION ALL SELECT id,"
-        " server, category, text, photo, 'pending_buy' as status FROM"
-        " pending_buy_posts WHERE user_id = ?",
-        (uid, uid, uid, uid),
-    )
-    ads = cur.fetchall()
-
-  if not ads:
-    return safe_send_message(
-        m.chat.id,
-        "📋 У вас нет активных или находящихся на модерации публикаций.",
-        reply_markup=kb_main_menu(),
-    )
-
-  safe_send_message(m.chat.id, "📋 <b>Ваши публикации:</b>")
-  for row in ads:
-    aid = row["id"]
-    status = row["status"]
-    srv = row["server"]
-    category = row["category"]
-    text = row["text"]
-    photo = row["photo"]
-
-    status_str = {
-        "active_sale": "🟢 Активна (Продажа)",
-        "active_buy": "🟢 Активна (Скупка)",
-        "pending_sale": "⏳ На модерации (Продажа)",
-        "pending_buy": "⏳ На модерации (Скупка)",
-    }.get(status, "Неизвестно")
-
-    fmt_text = (
-        f"• ID: <code>{aid}</code> | {status_str}\n"
-        f"🌐 Сервер: <b>{srv}</b> | 📂 {category}\n\n"
-        f"{html.escape(text)}"
-    )
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🗑 Удалить", callback_data=f"my_del_{status}_{aid}"))
-
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("my_del_"))
-def cb_my_delete_ad(call):
-  try:
-    bot.answer_callback_query(call.id, "⏳ Удаление...")
-  except Exception:
-    pass
-
-  uid = call.from_user.id
-  parts = call.data.replace("my_del_", "").split("_")
-  if len(parts) < 2:
-    return
-  status_type = "_".join(parts[:-1])
-  try:
-    aid = int(parts[-1])
-  except ValueError:
-    return
-
-  table_map = {
-      "active_sale": "active_ads",
-      "active_buy": "active_buy_ads",
-      "pending_sale": "pending_posts",
-      "pending_buy": "pending_buy_posts"
-  }
-  table = table_map.get(status_type)
-  if not table:
-    try:
-      bot.answer_callback_query(call.id, "⚠️ Ошибка категории.", show_alert=True)
-    except Exception:
-      pass
-    return
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(f"SELECT user_id FROM {table} WHERE id = ?", (aid,))
-    row = cur.fetchone()
-    if not row or row["user_id"] != uid:
-      try:
-        bot.answer_callback_query(call.id, "⚠️ Объявление не найдено или уже удалено.", show_alert=True)
-      except Exception:
-        pass
-      return
-    cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
-
-  try:
-    bot.answer_callback_query(call.id, "🗑 Объявление успешно удалено!")
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("fav_toggle_"))
-def cb_fav_toggle(call):
+@bot.callback_query_handler(func=lambda c: c.data.startswith("owner_view_auc_"))
+def cb_owner_view_auc(call):
   try:
     bot.answer_callback_query(call.id)
   except Exception:
     pass
-    
-  aid = int(call.data.replace("fav_toggle_", ""))
-  uid = call.from_user.id
+  aid = int(call.data.replace("owner_view_auc_", ""))
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute(
-        "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
-    )
-    exists = cur.fetchone()
-    if exists:
-      cur.execute(
-          "DELETE FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
-      )
-      is_fav = False
-      msg = "❌ Удалено из избранного!"
-    else:
-      cur.execute(
-          "INSERT INTO favorites (user_id, ad_id) VALUES (?, ?)", (uid, aid)
-      )
-      is_fav = True
-      msg = "❤️ Добавлено в избранное!"
+    cur.execute("SELECT * FROM auctions WHERE id = ?", (aid,))
+    auc = cur.fetchone()
+    if not auc:
+      return safe_send_message(call.message.chat.id, "⚠️ Аукцион не найден.")
+    cur.execute("SELECT * FROM auction_logs WHERE auction_id = ? ORDER BY timestamp ASC", (aid,))
+    logs = cur.fetchall()
 
-    cur.execute("SELECT 1 FROM active_buy_ads WHERE id = ?", (aid,))
-    is_buy = bool(cur.fetchone())
-
-  try:
-    bot.answer_callback_query(call.id, msg)
-    bot.edit_message_reply_markup(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        reply_markup=ikb_ad_actions(
-            aid, is_fav=is_fav, user_id=uid, is_buy=is_buy
-        ),
-    )
-  except Exception:
-    pass
-
-
-@bot.callback_query_handler(
-    func=lambda c: c.data.startswith("admin_del_")
-    or c.data.startswith("admin_del_buy_")
-)
-def cb_admin_delete_ad(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-    
-  if not verify_admin_callback(call):
-    return
-  is_buy = "admin_del_buy_" in call.data
-  prefix = "admin_del_buy_" if is_buy else "admin_del_"
-  aid = int(call.data.replace(prefix, ""))
-  table = "active_buy_ads" if is_buy else "active_ads"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(f"SELECT * FROM {table} WHERE id = ?", (aid,))
-    row = cur.fetchone()
-    if not row:
-      try:
-        return bot.answer_callback_query(
-            call.id, "⚠️ Этот пост уже обработан или удален.", show_alert=True
-        )
-      except Exception:
-        pass
-      return
-    cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
-
-  try:
-    bot.answer_callback_query(call.id, "🗑 Объявление удалено администратором!")
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-
-
-# ==========================================
-# ПОДПИСКИ И ПОИСК
-# ==========================================
-def notify_subscribers(server: str, text: str, ad_id: int, is_buy: bool):
-  try:
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          "SELECT user_id, keyword FROM keyword_subscriptions WHERE server = ?",
-          (server,),
-      )
-      subs = cur.fetchall()
-
-    lower_text = text.lower()
-    notified_users = set()
-
-    def send_sub_notif(uid, notif_msg, markup):
-      try:
-        safe_send_message(uid, notif_msg, reply_markup=markup)
-      except Exception:
-        pass
-
-    for row in subs:
-      uid = row["user_id"]
-      kw = row["keyword"].lower()
-      if kw in lower_text and uid not in notified_users:
-        notified_users.add(uid)
-        type_str = "скупки" if is_buy else "продажи"
-        notif_msg = (
-            f"🔔 <b>Найдено совпадение по вашей подписке!</b>\n"
-            f"🌐 Сервер: {server} | Тип: {type_str}\n\n"
-            f"{text}"
-        )
-        markup = ikb_ad_actions(ad_id, user_id=uid, is_buy=is_buy)
-        threading.Thread(target=send_sub_notif, args=(uid, notif_msg, markup), daemon=True).start()
-  except Exception as e:
-    logger.error(f"Ошибка отправки уведомлений по подпискам: {e}")
-
-
-def manage_subscriptions(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, keyword FROM keyword_subscriptions WHERE user_id = ? AND"
-        " server = ?",
-        (uid, srv),
-    )
-    subs = cur.fetchall()
-
-  text = (
-      f"🔔 <b>Уведомления о поиске (Ключевые слова)</b>\n🌐 Сервер:"
-      f" <b>{html.escape(srv)}</b>\n\n"
-  )
-  if subs:
-    text += "Ваши активные подписки на этом сервере:\n"
-    for row in subs:
-      text += f"• <code>{html.escape(row['keyword'])}</code> (ID: {row['id']})\n"
+  log_text = f"ЛОГИ АУКЦИОНА #{aid}\nТовар: {auc['item_name']}\nСтатус: {auc['status']}\n" + "="*40 + "\n\n"
+  if logs:
+    for l in logs:
+      dt = datetime.fromtimestamp(l["timestamp"]).strftime("%d.%m %H:%M:%S")
+      log_text += f"[{dt}] [User ID {l['user_id']}]: {l['action']}\n"
   else:
-    text += "У вас нет активных подписок на ключевые слова для этого сервера.\n"
+    log_text += "Логи аукциона пусты."
+
+  caption = f"📁 <b>Файл с логами аукциона #{aid}</b>\nТовар: <b>{html.escape(auc['item_name'])}</b>"
+  send_log_file(call.message.chat.id, f"auction_{aid}_logs.txt", log_text, caption=caption)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_view_chats")
+def cb_owner_view_chats(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM chat_logs_history ORDER BY id DESC LIMIT 100")
+    chats = cur.fetchall()
+
+  log_text = f"ИСТОРИЯ ОБЩЕНИЯ ИГРОКОВ В СДЕЛКАХ (Последние 100 сообщений)\n" + "="*50 + "\n\n"
+  if chats:
+    for c_row in chats:
+      dt = datetime.fromtimestamp(c_row["timestamp"]).strftime("%d.%m %H:%M:%S")
+      log_text += f"[{dt}] (От ID {c_row['sender_id']} -> К ID {c_row['receiver_id']}): {c_row['text']}\n"
+  else:
+    log_text += "История общения пуста."
+
+  send_log_file(call.message.chat.id, "chat_history_logs.txt", log_text, caption="📁 <b>Файл истории переписок игроков в сделках</b>")
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_view_admin_ads")
+def cb_owner_view_admin_ads(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    # Собираем статистику и логи отправленных/одобренных постов админами
+    cur.execute("SELECT * FROM admin_action_logs ORDER BY id DESC LIMIT 100")
+    logs = cur.fetchall()
+
+  log_text = f"ЛОГИ ДЕЙСТВИЙ И ОТПРАВКИ ОБЪЯВЛЕНИЙ АДМИНАМИ\n" + "="*50 + "\n\n"
+  if logs:
+    for l in logs:
+      dt = datetime.fromtimestamp(l["timestamp"]).strftime("%d.%m %H:%M:%S")
+      log_text += f"[{dt}] Администратор (@{l['admin_username']}): Действие: {l['action']} | Цель: {l['target']}\n"
+  else:
+    # Если логов админских действий еще мало, выгружаем общую статистику из editor_stats и admin_ad_stats
+    cur.execute("SELECT * FROM editor_stats")
+    editors = cur.fetchall()
+    log_text += "Статистика редакторов/админов по одобренным объявлениям:\n"
+    for ed in editors:
+      log_text += f"Админ/Редактор: @{ed['username']} — Одобрено: {ed['count']} объявлений\n"
+
+  send_log_file(call.message.chat.id, "admin_ads_action_logs.txt", log_text, caption="📁 <b>Файл логов отправки и модерации объявлений администраторами</b>")
+
+
+# ==========================================
+# МОДУЛЬ 1: РАЗДЕЛ «БАРТЕР / ОБМЕН»
+# ==========================================
+def show_barter_menu(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM barter_ads WHERE server = ? ORDER BY id DESC LIMIT 10", (srv,))
+    barters = cur.fetchall()
+
+  text = f"🔄 <b>Раздел «Бартер / Обмен»</b>\n🌐 Сервер: <b>{html.escape(srv)}</b>\n\n"
+  if barters:
+    text += "Актуальные предложения обмена:\n"
+  else:
+    text += "В этом разделе пока нет предложений обмена.\n"
+
+  safe_send_message(m.chat.id, text)
+
+  for b in barters:
+    bid = b["id"]
+    b_text = b["text"]
+    photo = b["photo"]
+    fmt = f"🔄 <b>Обмен #{bid}</b>\n{html.escape(b_text)}"
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("✉️ Предложить обмен", callback_data=f"contact_seller_{bid}"))
+    if photo:
+      safe_send_photo(m.chat.id, photo, caption=fmt, reply_markup=markup)
+    else:
+      safe_send_message(m.chat.id, fmt, reply_markup=markup)
+
+  markup_btn = types.InlineKeyboardMarkup()
+  markup_btn.add(types.InlineKeyboardButton("➕ Выставить предложение на обмен", callback_data="barter_add_start"))
+  safe_send_message(m.chat.id, "Хотите предложить свой товар/имущество на обмен?", reply_markup=markup_btn)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "barter_add_start")
+def cb_barter_add_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+  
+  warning_text = (
+      "⚠️ <b>Внимание! Уведомление безопасности:</b>\n"
+      "Администрация бота <b>не несет никакой ответственности</b> за проведение сделок, обмена имущества "
+      "или возможные договоренности между игроками. Вы совершаете все операции исключительно на свой страх и риск!"
+  )
+  safe_send_message(call.message.chat.id, warning_text)
+  
+  update_state(call.from_user.id, barter_input=True)
+  safe_send_message(call.message.chat.id, "🔄 Опишите, что вы отдаете и что хотите получить взамен (можно прикрепить фото):", reply_markup=kb_cancel())
+
+
+@bot.message_handler(content_types=["text", "photo"], func=lambda m: get_state(m.from_user.id).get("barter_input"))
+def process_barter_create(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  text = m.text or m.caption
+  photo = m.photo[-1].file_id if m.photo else None
+  clear_state(uid)
+
+  if not text:
+    return safe_send_message(m.chat.id, "⚠️ Описание не может быть пустым.")
+
+  if not check_auto_moderation(text):
+    return safe_send_message(m.chat.id, "🤬 Текст содержит запрещенные слова. Публикация отменена.")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO barter_ads (user_id, server, text, photo, last_updated) VALUES (?, ?, ?, ?, ?)",
+        (uid, srv, text, photo, time.time()),
+    )
+
+  safe_send_message(m.chat.id, "✅ Ваше предложение по обмену успешно опубликовано!", reply_markup=kb_main_menu())
+
+
+# ==========================================
+# МОДУЛЬ 2: СИСТЕМА АУКЦИОНОВ И ЖАЛОБ С БАНОМ
+# ==========================================
+def show_auctions_menu(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM auctions WHERE server = ? AND status = 'active'", (srv,))
+    auctions = cur.fetchall()
+
+  text = f"🏛 <b>Система аукционов</b>\n🌐 Сервер: <b>{html.escape(srv)}</b>\n\n"
+  if auctions:
+    text += "Активные аукционы:\n"
+  else:
+    text += "На данный момент нет активных аукционов.\n"
+
+  safe_send_message(m.chat.id, text)
+
+  for a in auctions:
+    aid = a["id"]
+    item = a["item_name"]
+    price = a["current_bid"] or a["start_price"]
+    fmt = (
+        f"🏛 <b>Аукцион #{aid}</b>\n"
+        f"📦 Товар: <b>{html.escape(item)}</b>\n"
+        f"💰 Текущая ставка: <b>{price:,.0f} $</b>\n"
+    )
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("💵 Сделать ставку", callback_data=f"auc_bid_{aid}"),
+        types.InlineKeyboardButton("⚠️ Пожаловаться (обман/тянет время)", callback_data=f"auc_complaint_{aid}"),
+    )
+    safe_send_message(m.chat.id, fmt, reply_markup=markup)
+
+  markup_btn = types.InlineKeyboardMarkup()
+  markup_btn.add(types.InlineKeyboardButton("➕ Выставить товар на аукцион", callback_data="auc_create_start"))
+  safe_send_message(m.chat.id, "Хотите выставить лот?", reply_markup=markup_btn)
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "auc_create_start")
+def cb_auc_create_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+  update_state(call.from_user.id, auction_create_step="item_name")
+  safe_send_message(call.message.chat.id, "🏛 Введите название товара для аукциона:", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("auction_create_step") == "item_name")
+def process_auc_item(m):
+  uid = m.from_user.id
+  update_state(uid, auc_item=m.text.strip(), auction_create_step="start_price")
+  safe_send_message(m.chat.id, "💰 Введите начальную цену лота (в $):", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("auction_create_step") == "start_price")
+def process_auc_price(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  try:
+    price = int(m.text.strip().replace(" ", ""))
+  except ValueError:
+    return safe_send_message(m.chat.id, "⚠️ Введите корректную сумму числом.")
+
+  st = get_state(uid)
+  item = st.get("auc_item")
+  clear_state(uid)
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO auctions (user_id, server, item_name, start_price, current_bid, status, created_at) VALUES (?, ?, ?, ?, ?, 'active', ?)",
+        (uid, srv, item, price, price, time.time()),
+    )
+    auc_id = cur.lastrowid
+    cur.execute(
+        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp) VALUES (?, ?, ?, ?)",
+        (auc_id, uid, f"Создан аукцион на лот '{item}' с ценой {price}", time.time()),
+    )
+
+  # Уведомляем владельца @bounqy файлом логов о создании лота
+  owner_id = get_owner_id()
+  if owner_id:
+    with contextlib.suppress(Exception):
+      log_content = f"ЛОГ АУКЦИОНА #{auc_id}\nСоздан новый лот: {item}\nID создателя: {uid}\nНачальная цена: {price}\n"
+      markup_log = types.InlineKeyboardMarkup()
+      markup_log.add(types.InlineKeyboardButton("📋 Посмотреть логи аукциона", callback_data=f"owner_view_auc_{auc_id}"))
+      send_log_file(owner_id, f"auction_{auc_id}_created.txt", log_content, caption=f"🔔 <b>Лог аукциона:</b> Пользователь (ID {uid}) выставил лот <b>{html.escape(item)}</b> на аукцион #{auc_id}.", reply_markup=markup_log)
+
+  safe_send_message(m.chat.id, f"✅ Аукцион на лот <b>{html.escape(item)}</b> успешно запущен!", reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("auc_bid_"))
+def cb_auc_bid(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+  aid = int(call.data.replace("auc_bid_", ""))
+  uid = call.from_user.id
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,))
+    auc = cur.fetchone()
+
+  if not auc:
+    return safe_send_message(call.message.chat.id, "⚠️ Аукцион не найден или завершен.")
+
+  if auc["user_id"] == uid:
+    return safe_send_message(call.message.chat.id, "⚠️ Вы не можете делать ставки на свой собственный аукцион.")
+
+  new_bid = (auc["current_bid"] or auc["start_price"]) + int((auc["current_bid"] or auc["start_price"]) * 0.05)
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("UPDATE auctions SET current_bid = ?, highest_bidder = ? WHERE id = ?", (new_bid, uid, aid))
+    cur.execute(
+        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp) VALUES (?, ?, ?, ?)",
+        (aid, uid, f"Сделана ставка: {new_bid}", time.time()),
+    )
+
+  # Отправляем лог ставки в виде файла владельцу @bounqy
+  owner_id = get_owner_id()
+  if owner_id:
+    with contextlib.suppress(Exception):
+      log_content = f"ЛОГ СТАВКИ В АУКЦИОНЕ #{aid}\nЛот: {auc['item_name']}\nПокупатель ID: {uid}\nСумма ставки: {new_bid}\n"
+      markup_log = types.InlineKeyboardMarkup()
+      markup_log.add(types.InlineKeyboardButton("📋 Посмотреть логи аукциона", callback_data=f"owner_view_auc_{aid}"))
+      send_log_file(owner_id, f"auction_{aid}_bid.txt", log_content, caption=f"🔔 <b>Лог ставки в аукционе #{aid}:</b>\nПокупатель (ID {uid}) сделал ставку <b>{new_bid:,.0f} $</b> на лот <i>{html.escape(auc['item_name'])}</i>.", reply_markup=markup_log)
+
+  safe_send_message(call.message.chat.id, f"✅ Вы успешно повысили ставку до <b>{new_bid:,.0f} $</b>!")
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("auc_complaint_"))
+def cb_auc_complaint(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+  aid = int(call.data.replace("auc_complaint_", ""))
+  update_state(call.from_user.id, auction_complaint_step=aid)
+  safe_send_message(call.message.chat.id, "⚠️ Опишите причину жалобы (игрок специально тянет время / обманул):", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("auction_complaint_step") is not None)
+def process_auction_complaint(m):
+  uid = m.from_user.id
+  st = get_state(uid)
+  aid = st.get("auction_complaint_step")
+  reason = m.text
+  clear_state(uid)
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM auctions WHERE id = ?", (aid,))
+    auc = cur.fetchone()
+    if not auc:
+      return safe_send_message(m.chat.id, "⚠️ Аукцион не найден.")
+    
+    owner_id = auc["user_id"]
+    target_user_id = auc["highest_bidder"] or uid
+    cur.execute(
+        "INSERT INTO auction_complaints (auction_id, owner_id, target_user_id, reason, timestamp) VALUES (?, ?, ?, ?, ?)",
+        (aid, owner_id, target_user_id, reason, time.time()),
+    )
+    cur.execute("SELECT * FROM auction_logs WHERE auction_id = ? ORDER BY timestamp ASC", (aid,))
+    logs = cur.fetchall()
+
+  log_text = f"ОФИЦИАЛЬНЫЙ ЛОГ АУКЦИОНА #{aid} ПО ЖАЛОБЕ\n" + "="*40 + "\n\n"
+  for l in logs:
+    dt = datetime.fromtimestamp(l["timestamp"]).strftime("%H:%M:%S")
+    log_text += f"[{dt}] Пользователь ID {l['user_id']}: {l['action']}\n"
+  log_text += f"\nПричина жалобы: {reason}\n"
 
   markup = types.InlineKeyboardMarkup(row_width=2)
   markup.add(
-      types.InlineKeyboardButton(
-          "➕ Добавить ключевое слово", callback_data="sub_add_start"
-      ),
-      types.InlineKeyboardButton(
-          "🗑 Удалить подписку", callback_data="sub_del_start"
-      ),
+      types.InlineKeyboardButton("🔨 Забанить игрока", callback_data=f"auc_ban_{target_user_id}_{aid}"),
+      types.InlineKeyboardButton("❌ Отклонить", callback_data=f"auc_reject_{aid}"),
+  )
+
+  send_log_file(owner_id, f"complaint_auction_{aid}.txt", log_text, caption=f"🚨 <b>Жалоба на аукционе #{aid}:</b>\nПользователь ID {uid} пожаловался на ID {target_user_id}.\nПричина: {html.escape(reason)}\n<i>Полная история логов во вложенном файле.</i>", reply_markup=markup)
+  
+  real_owner_id = get_owner_id()
+  if real_owner_id and real_owner_id != owner_id:
+    with contextlib.suppress(Exception):
+      send_log_file(real_owner_id, f"owner_complaint_auc_{aid}.txt", log_text, caption=f"🚨 <b>[Контроль] Жалоба на аукционе #{aid}:</b>\nПользователь ID {uid} пожаловался на ID {target_user_id}.", reply_markup=markup)
+
+  safe_send_message(m.chat.id, "✅ Жалоба отправлена владельцу аукциона вместе с файлом логов сделки.", reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("auc_ban_") or c.data.startswith("auc_reject_"))
+def cb_auc_action(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+  parts = call.data.split("_")
+  action_type = parts[1]
+
+  if action_type == "ban":
+    target_id = int(parts[2])
+    aid = int(parts[3])
+  else:
+    aid = int(parts[2])
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM auctions WHERE id = ?", (aid,))
+    auc = cur.fetchone()
+    if not auc:
+      return safe_send_message(call.message.chat.id, "⚠️ Аукцион не найден.")
+
+    if auc["user_id"] != call.from_user.id and not is_admin_or_owner_id(call.from_user.id) and call.from_user.username.lstrip("@") != OWNER_USERNAME:
+      return safe_send_message(call.message.chat.id, "⛔ У вас нет прав на это действие.")
+
+    if action_type == "ban":
+      cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, 1)", (str(target_id),))
+      safe_send_message(call.message.chat.id, f"🔨 Игрок с ID {target_id} заблокирован по итогам проверки аукциона #{aid}.")
+      with contextlib.suppress(Exception):
+        safe_send_message(target_id, f"⛔ Вы были заблокированы в боте владельцем аукциона #{aid} за затягивание времени / обман.")
+    else:
+      safe_send_message(call.message.chat.id, f"❌ Жалоба по аукциону #{aid} отклонена.")
+
+    try:
+      bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+    except Exception:
+      pass
+
+
+# ==========================================
+# МОДУЛЬ ОБЩЕНИЯ ПРОДАВЦА И ПОКУПАТЕЛЯ С ЛОГИРОВАНИЕМ
+# ==========================================
+@bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_") or c.data.startswith("reply_to_buyer_"))
+def cb_start_dialog(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+  parts = call.data.split("_")
+  ad_id = int(parts[-1])
+  
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT user_id, text FROM barter_ads WHERE id = ?", (ad_id,))
+    row = cur.fetchone()
+    if not row:
+      cur.execute("SELECT user_id, text FROM active_ads WHERE id = ?", (ad_id,))
+      row = cur.fetchone()
+    if not row:
+      cur.execute("SELECT user_id, text FROM active_buy_ads WHERE id = ?", (ad_id,))
+      row = cur.fetchone()
+
+  if not row:
+    return safe_send_message(call.message.chat.id, "⚠️ Объявление или лот не найден.")
+
+  seller_id = row["user_id"]
+  buyer_id = call.from_user.id
+
+  if seller_id == buyer_id:
+    return safe_send_message(call.message.chat.id, "⚠️ Вы не можете писать сами себе.")
+
+  update_state(buyer_id, chat_with_seller_id=seller_id, chat_ad_id=ad_id)
+  safe_send_message(call.message.chat.id, f"✉️ <b>Связь по объявлению/лоту #{ad_id}</b>\nНапишите ваше сообщение продавцу. Все сообщения пересылаются и логируются (владелец @bounqy имеет доступ к логам через файлы).", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("chat_with_seller_id") is not None, content_types=["text", "photo"])
+def process_chat_message(m):
+  uid = m.from_user.id
+  st = get_state(uid)
+  target_id = st.get("chat_with_seller_id")
+  ad_id = st.get("chat_ad_id")
+  text = m.text or m.caption or "[Фото/Медиа]"
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO chat_logs_history (sender_id, receiver_id, text, timestamp) VALUES (?, ?, ?, ?)",
+        (uid, target_id, text, time.time()),
+    )
+
+  markup = types.InlineKeyboardMarkup()
+  markup.add(types.InlineKeyboardButton("✉️ Ответить", callback_data=f"contact_seller_{ad_id}"))
+
+  update_state(target_id, chat_with_seller_id=uid, chat_ad_id=ad_id)
+
+  try:
+    if m.photo:
+      bot.send_photo(target_id, m.photo[-1].file_id, caption=f"💬 <b>Сообщение по сделке #{ad_id} от пользователя:</b>\n{html.escape(text)}", reply_markup=markup)
+    else:
+      safe_send_message(target_id, f"💬 <b>Сообщение по сделке #{ad_id} от пользователя:</b>\n{html.escape(text)}", reply_markup=markup)
+    safe_send_message(m.chat.id, "✅ Сообщение успешно отправлено собеседнику!")
+  except Exception as e:
+    safe_send_message(m.chat.id, "⚠️ Не удалось доставить сообщение пользователю.")
+    logger.error(f"Ошибка пересылки сообщения: {e}")
+
+
+# ==========================================
+# МОДУЛЬ 3 & 4: РЕФЕРАЛЫ И ЕЖЕДНЕВНЫЕ БОНУСЫ
+# ==========================================
+def show_ref_bonus_menu(m):
+  uid = m.from_user.id
+  bot_uname = BOT_USERNAME
+  ref_link = f"https://t.me/{bot_uname}?start=ref_{uid}"
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ? AND completed = 1", (uid,))
+    row = cur.fetchone()
+    ref_count = row["cnt"] if row else 0
+
+    cur.execute("SELECT * FROM user_bonuses WHERE user_id = ?", (uid,))
+    bonus_row = cur.fetchone()
+    vip_ads = bonus_row["vip_ads_count"] if bonus_row else 0
+
+  text = (
+      f"👥 <b>Реферальная система и ежедневные бонусы</b>\n\n"
+      f"🔗 Ваша реферальная ссылка:\n<code>{ref_link}</code>\n"
+      f"👥 Успешно приглашено друзей: <b>{ref_count}</b>\n"
+      f"👑 Доступно VIP-объявлений: <b>{vip_ads} шт.</b>\n\n"
+      f"📌 <b>Как работает реферальная система:</b>\n"
+      f"1. Поделитесь этой ссылкой с другом.\n"
+      f"2. Друг должен запустить бота и в течение <b>3 дней</b> активно отправлять не менее <b>3 объявлений в день</b>.\n"
+      f"3. Накрутка и саморефералы не засчитываются.\n"
+      f"4. После выполнения условий вы и ваш друг получите <b>VIP-статус на 10 дней</b>!"
+  )
+  markup = types.InlineKeyboardMarkup(row_width=1)
+  markup.add(
+      types.InlineKeyboardButton("📤 Поделиться ссылкой", url=f"https://t.me/share/url?url={ref_link}&text=Присоединяйся%20к%20лучшему%20боту%20для%20торговли%20и%20публикации%20объявлений%20Arizona%20RP!"),
+      types.InlineKeyboardButton("🎁 Получить ежедневный бонус", callback_data="claim_daily_bonus")
   )
   safe_send_message(m.chat.id, text, reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda c: c.data == "sub_add_start")
-def cb_sub_add_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  update_state(call.from_user.id, adding_subscription=True)
-  safe_send_message(
-      call.message.chat.id,
-      "➕ Введите ключевое слово или фразу, при появлении которой в новых"
-      " объявлениях вы хотите получать уведомления:",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id).get("adding_subscription")
-)
-def process_add_subscription(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  kw = m.text.strip().lower()
-  clear_state(uid)
-
-  if not kw:
-    return safe_send_message(
-        m.chat.id, "⚠️ Ключевое слово не может быть пустым."
-    )
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT COUNT(*) as cnt FROM keyword_subscriptions WHERE user_id = ? AND"
-        " server = ?",
-        (uid, srv),
-    )
-    row = cur.fetchone()
-    limit = 20 if is_user_premium(uid) else 5
-    if row and row["cnt"] >= limit:
-      return safe_send_message(
-          m.chat.id,
-          f"⚠️ Достигнут лимит подписок для этого сервера ({limit} шт.).",
-          reply_markup=kb_main_menu(),
-      )
-
-    cur.execute(
-        "INSERT INTO keyword_subscriptions (user_id, server, keyword) VALUES"
-        " (?, ?, ?)",
-        (uid, srv, kw),
-    )
-
-  safe_send_message(
-      m.chat.id,
-      f"✅ Подписка на ключевое слово <code>{html.escape(kw)}</code> для сервера"
-      f" <b>{html.escape(srv)}</b> успешно добавлена!",
-      reply_markup=kb_main_menu(),
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "sub_del_start")
-def cb_sub_del_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-    
+@bot.callback_query_handler(func=lambda c: c.data == "claim_daily_bonus")
+def cb_claim_daily_bonus(call):
   uid = call.from_user.id
-  srv = get_user_server(uid)
+  today = datetime.now().strftime("%Y-%m-%d")
+
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute(
-        "SELECT id, keyword FROM keyword_subscriptions WHERE user_id = ? AND"
-        " server = ?",
-        (uid, srv),
-    )
-    subs = cur.fetchall()
+    cur.execute("SELECT last_claim_date FROM user_bonuses WHERE user_id = ?", (uid,))
+    row = cur.fetchone()
+    if row and row["last_claim_date"] == today:
+      try:
+        return bot.answer_callback_query(call.id, "⚠️ Вы уже получали бонус сегодня! Приходите завтра.", show_alert=True)
+      except Exception:
+        pass
+      return
 
-  if not subs:
-    try:
-      return bot.answer_callback_query(
-          call.id,
-          "⚠️ У вас нет подписок для удаления на этом сервере.",
-          show_alert=True,
+    got_vip_sub = random.random() < 0.10
+    if got_vip_sub:
+      expires = time.time() + 10 * 86400
+      cur.execute("INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES (?, ?)", (uid, expires))
+      reward_msg = "💎 Поздравляем! Вам выпала <b>VIP-подписка на 10 дней</b>!"
+    else:
+      vip_ads_count = random.choices([1, 2, 3, 4, 5], weights=[40, 25, 18, 12, 5])[0]
+      expiry = time.time() + 3 * 86400
+      cur.execute(
+          "INSERT INTO user_bonuses (user_id, last_claim_date, vip_ads_count, vip_ads_expiry) VALUES (?, ?, ?, ?) "
+          "ON CONFLICT(user_id) DO UPDATE SET last_claim_date = ?, vip_ads_count = vip_ads_count + ?, vip_ads_expiry = ?",
+          (uid, today, vip_ads_count, expiry, today, vip_ads_count, expiry),
       )
+      reward_msg = f"🎁 В ежедневном бонусе вам выпало: <b>{vip_ads_count} VIP-объявлений</b> (действуют 3 дня)!"
+
+  try:
+    bot.answer_callback_query(call.id, "🎉 Бонус успешно получен!", show_alert=True)
+    bot.edit_message_text(f"🎉 <b>Ежедневный бонус открыт!</b>\n\n{reward_msg}", call.message.chat.id, call.message.message_id, reply_markup=kb_main_menu())
+  except Exception:
+    pass
+
+
+@bot.message_handler(commands=["start"])
+def cmd_start(m):
+  try:
+    bot.delete_message(m.chat.id, m.message_id)
+  except Exception:
+    pass
+
+  uid = m.from_user.id
+  register_user(uid, m.from_user.username)
+
+  args = m.text.split()
+  if len(args) > 1 and args[1].startswith("ref_"):
+    try:
+      referrer_id = int(args[1].replace("ref_", ""))
+      if referrer_id != uid:
+        with db_lock, get_db() as conn:
+          cur = conn.cursor()
+          cur.execute(
+              "INSERT OR IGNORE INTO referrals (referrer_id, referred_id, qualified_days, last_active_date, ads_today, completed) VALUES (?, ?, 0, ?, 0, 0)",
+              (referrer_id, uid, datetime.now().strftime("%Y-%m-%d"))
+          )
     except Exception:
       pass
 
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  for row in subs:
-    markup.add(
-        types.InlineKeyboardButton(
-            f"❌ Удалить: {row['keyword']}",
-            callback_data=f"sub_del_id_{row['id']}",
-        )
-    )
-  try:
-    bot.edit_message_text(
-        "🗑 Выберите подписку для удаления:",
-        call.message.chat.id,
-        call.message.message_id,
-        reply_markup=markup,
-    )
-  except Exception:
-    pass
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("sub_del_id_"))
-def cb_sub_del_id(call):
-  try:
-    bot.answer_callback_query(call.id, "✅ Подписка удалена!")
-  except Exception:
-    pass
-
-  sub_id = int(call.data.replace("sub_del_id_", ""))
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("DELETE FROM keyword_subscriptions WHERE id = ?", (sub_id,))
-
-  try:
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-  safe_send_message(
-      call.message.chat.id,
-      "✅ Выбранная подписка успешно удалена.",
-      reply_markup=kb_main_menu(),
-  )
-
-
-def start_search(m):
-  update_state(m.from_user.id, searching_keyword=True)
-  safe_send_message(
-      m.chat.id,
-      "🔍 <b>Поиск товара в базе</b>\n\nВведите ключевое слово или название"
-      " товара для поиска по активным объявлениям текущего сервера:",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id).get("searching_keyword")
-)
-def process_search_keyword(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  query = m.text.strip().lower()
-  clear_state(uid)
-
-  if not query:
+  if is_banned(m.from_user):
     return safe_send_message(
-        m.chat.id, "⚠️ Поисковый запрос не может быть пустым."
+        m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove()
     )
 
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, user_id, category, text, photo, is_vip, 'sale' as"
-        " ad_type FROM active_ads WHERE server = ? AND LOWER(text) LIKE ? "
-        "UNION ALL "
-        "SELECT id, user_id, category, text, photo, is_vip, 'buy' as ad_type"
-        " FROM active_buy_ads WHERE server = ? AND LOWER(text) LIKE ? LIMIT 15",
-        (srv, f"%{query}%", srv, f"%{query}%"),
-    )
-    results = cur.fetchall()
+  if is_admin_or_owner(m.from_user):
+    register_admin_chat(m.chat.id)
 
-  if not results:
-    return safe_send_message(
-        m.chat.id,
-        f"📭 По запросу <code>{html.escape(query)}</code> на сервере"
-        f" <b>{html.escape(srv)}</b> ничего не найдено.",
-        reply_markup=kb_main_menu(),
-    )
-
-  safe_send_message(
-      m.chat.id,
-      f"🔎 <b>Результаты поиска по запросу:</b> <code>{html.escape(query)}</code>"
-      f" (Сервер: {srv})\nНайдено совпадений: {len(results)}",
+  update_state(uid, changing_server=True)
+  
+  welcome_text = (
+      "👋 <b>Добро пожаловать! Обратите внимание: мы не являемся официальным ботом Arizona RP.</b>\n\n"
+      "🔒 <b>Отказ от ответственности и безопасность:</b>\n"
+      "• Бот является исключительно независимой рекламной площадкой для торговли.\n"
+      "• <b>Администрация не несет никакой ответственности</b> за содержание объявлений, совершаемые сделки, "
+      "передачу игровой валюты/имущества и возможные жалобы. Все договоренности вы совершаете на свой страх и риск.\n\n"
+      "👇 <b>Выберите свой игровой сервер в меню ниже, чтобы начать работу:</b>"
   )
-
-  for row in results:
-    aid = row["id"]
-    category = row["category"]
-    text = row["text"]
-    photo = row["photo"]
-    is_vip = row["is_vip"]
-    is_buy = row["ad_type"] == "buy"
-
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          "SELECT 1 FROM favorites WHERE user_id = ? AND ad_id = ?", (uid, aid)
-      )
-      is_fav = bool(cur.fetchone())
-
-    markup = ikb_ad_actions(aid, is_fav=is_fav, user_id=uid, is_buy=is_buy)
-    type_badge = "📥 [Скупка]" if is_buy else "📤 [Продажа]"
-    fmt_text = f"{type_badge} <b>{category}</b>\n{html.escape(text)}"
-    if is_vip:
-      fmt_text = f"👑 <b>[VIP]</b>\n{fmt_text}"
-
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
+  safe_send_message(m.chat.id, welcome_text, reply_markup=kb_servers(), parse_mode="HTML")
 
 
 # ==========================================
-# ПОДАЧА ОБЪЯВЛЕНИЙ И РАБОЧИЕ ЧАСЫ
+# КЛАВИАТУРЫ
+# ==========================================
+def kb_servers():
+  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
+  for i in range(0, len(SERVERS), 2):
+    row_buttons = [types.KeyboardButton(s) for s in SERVERS[i : i + 2]]
+    m.row(*row_buttons)
+  m.row(types.KeyboardButton("📖 Справка и правила"))
+  m.row(
+      types.KeyboardButton("💎 VIP-статус"),
+      types.KeyboardButton("👑 Админ-панель"),
+  )
+  m.row(types.KeyboardButton("💬 Связаться с менеджером"))
+  return m
+
+
+def kb_main_menu():
+  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
+  m.row(types.KeyboardButton("🌐 Сменить игровой сервер"))
+  m.row(
+      types.KeyboardButton("💍 Аксессуары и вещи"),
+      types.KeyboardButton("🚗 Транспорт и тюнинг"),
+  )
+  m.row(
+      types.KeyboardButton("👕 Скины и охранники"),
+      types.KeyboardButton("🏠 Недвижимость и бизнесы"),
+  )
+  m.row(types.KeyboardButton("📦 Ресурсы и материалы"))
+  m.row(
+      types.KeyboardButton("📤 Продать товар"),
+      types.KeyboardButton("📥 Скупить товар"),
+  )
+  m.row(
+      types.KeyboardButton("🔄 Бартер / Обмен"),
+      types.KeyboardButton("🏛 Аукционы"),
+  )
+  m.row(types.KeyboardButton("👥 Рефералы и Бонусы"))
+  m.row(types.KeyboardButton("💱 Курс VC и калькулятор"))
+  m.row(
+      types.KeyboardButton("🔍 Найти товар в базе"),
+      types.KeyboardButton("❤️ Сохраненные"),
+  )
+  m.row(
+      types.KeyboardButton("🔔 Уведомления о поиске"),
+      types.KeyboardButton("📋 Мои публикации"),
+  )
+  m.row(types.KeyboardButton("📊 Анализ цен на сервере"))
+  m.row(types.KeyboardButton("💎 VIP-статус"))
+  m.row(types.KeyboardButton("📋 Логи аукционов и чатов (@bounqy)"))
+  m.row(
+      types.KeyboardButton("👑 Админ-панель"),
+      types.KeyboardButton("💬 Связаться с менеджером"),
+  )
+  return m
+
+
+def kb_cancel():
+  return types.ReplyKeyboardMarkup(resize_keyboard=True).add(
+      types.KeyboardButton("❌ Отменить действие")
+  )
+
+
+# ==========================================
+# ПОДАЧА ОБЪЯВЛЕНИЙ И УЧЕТ РЕФЕРАЛОВ
 # ==========================================
 def check_working_hours() -> bool:
   now_time = get_msk_time().time()
@@ -1165,8 +1448,7 @@ def start_add_ad(m):
   markup.add(types.KeyboardButton("❌ Отменить действие"))
   safe_send_message(
       m.chat.id,
-      f"📤 <b>Подача объявления о продаже</b>\n🌐 Сервер: {srv}\n\nВыберите"
-      " категорию товара:",
+      f"📤 <b>Подача объявления о продаже</b>\n🌐 Сервер: {srv}\n\nВыберите категорию товара:",
       reply_markup=markup,
   )
 
@@ -1199,34 +1481,19 @@ def start_add_buy_ad(m):
   markup.add(types.KeyboardButton("❌ Отменить действие"))
   safe_send_message(
       m.chat.id,
-      f"📥 <b>Подача объявления о скупке</b>\n🌐 Сервер: {srv}\n\nВыберите"
-      " категорию товара:",
+      f"📥 <b>Подача объявления о скупке</b>\n🌐 Сервер: {srv}\n\nВыберите категорию товара:",
       reply_markup=markup,
   )
 
 
 @bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step")
-    == "category"
+    func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step") == "category"
 )
 def process_ad_category(m):
   uid = m.from_user.id
-
-  if not check_working_hours() and not is_admin_or_owner(m.from_user):
-    clear_state(uid)
-    return safe_send_message(
-        m.chat.id,
-        "❌ <b>Отправка объявлений временно заблокирована!</b>\n\n"
-        "🌙 Ночной режим активен. Радиоцентр принимает объявления строго с <b>08:00:01 до 22:00:01 МСК</b>.",
-        reply_markup=kb_main_menu(),
-    )
-
   cat = m.text.strip()
   if cat not in CATEGORIES:
-    return safe_send_message(
-        m.chat.id,
-        "⚠️ Пожалуйста, выберите категорию, используя кнопки на клавиатуре.",
-    )
+    return safe_send_message(m.chat.id, "⚠️ Пожалуйста, выберите категорию из меню.")
 
   st = get_state(uid)
   st["posting_ad"]["category"] = cat
@@ -1235,62 +1502,47 @@ def process_ad_category(m):
 
   safe_send_message(
       m.chat.id,
-      f"✍️ Вы выбрали категорию: <b>{cat}</b>\n\nТеперь введите текст"
-      " объявления (укажите название товара, цену и условия связи). Можно"
-      " прикрепить фото:",
+      f"✍️ Вы выбрали: <b>{cat}</b>\n\nТеперь введите текст объявления и прикрепите фото (по желанию):",
       reply_markup=kb_cancel(),
   )
 
 
 @bot.message_handler(
     content_types=["text", "photo"],
-    func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step")
-    == "text_or_photo",
+    func=lambda msg: get_state(msg.from_user.id).get("posting_ad", {}).get("step") == "text_or_photo",
 )
 def process_ad_text_or_photo(m):
   uid = m.from_user.id
-
-  if not check_working_hours() and not is_admin_or_owner(m.from_user):
-    clear_state(uid)
-    return safe_send_message(
-        m.chat.id,
-        "❌ <b>Отправка объявлений временно заблокирована!</b>\n\n"
-        "🌙 Ночной режим активен. Радиоцентр принимает объявления строго с <b>08:00:01 до 22:00:01 МСК</b>.",
-        reply_markup=kb_main_menu(),
-    )
-
   st = get_state(uid)
-  post_data = st.get("posting_ad", {})
-  category = post_data.get("category", CATEGORIES[0])
-
   text = m.text or m.caption
   if not text:
-    return safe_send_message(
-        m.chat.id, "⚠️ Обязательно укажите текст (или описание с фото)."
-    )
+    return safe_send_message(m.chat.id, "⚠️ Укажите текст объявления.")
 
   if not check_auto_moderation(text):
     clear_state(uid)
-    return safe_send_message(
-        m.chat.id,
-        "🤬 Нельзя общаться матом! В вашем тексте обнаружены запрещенные слова. Подача отменена.",
-        reply_markup=kb_main_menu(),
-    )
+    return safe_send_message(m.chat.id, "🤬 Обнаружены запрещенные слова!", reply_markup=kb_main_menu())
 
-  polished_text = text
-  photo_id = m.photo[-1].file_id if m.photo else None
-
-  st["posting_ad"]["polished_text"] = polished_text
-  st["posting_ad"]["photo_id"] = photo_id
+  st["posting_ad"]["polished_text"] = text
+  st["posting_ad"]["photo_id"] = m.photo[-1].file_id if m.photo else None
   st["posting_ad"]["step"] = "choose_ad_type"
   update_state(uid, posting_ad=st["posting_ad"])
 
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT vip_ads_count, vip_ads_expiry FROM user_bonuses WHERE user_id = ?", (uid,))
+    b_row = cur.fetchone()
+    has_vip_bonus = b_row and b_row["vip_ads_count"] > 0 and b_row["vip_ads_expiry"] > time.time()
+    vip_count_left = b_row["vip_ads_count"] if b_row else 0
+
   markup = types.InlineKeyboardMarkup(row_width=1)
-  has_sub = is_user_premium(uid)
-  
-  if has_sub:
+  if has_vip_bonus:
     markup.add(
-        types.InlineKeyboardButton("👑 VIP-объявление (Бесплатно по подписке)", callback_data="ad_type_vip_sub"),
+        types.InlineKeyboardButton(f"👑 VIP-объявление (Бесплатно за бонус: {vip_count_left} шт.)", callback_data="ad_type_bonus_vip"),
+        types.InlineKeyboardButton("📄 Обычное объявление (Бесплатно)", callback_data="ad_type_regular")
+    )
+  elif is_user_premium(uid):
+    markup.add(
+        types.InlineKeyboardButton("👑 VIP-объявление (По подписке)", callback_data="ad_type_vip_sub"),
         types.InlineKeyboardButton("📄 Обычное объявление (Бесплатно)", callback_data="ad_type_regular")
     )
   else:
@@ -1299,31 +1551,30 @@ def process_ad_text_or_photo(m):
         types.InlineKeyboardButton("📄 Обычное объявление (Бесплатно)", callback_data="ad_type_regular")
     )
 
-  safe_send_message(
-      m.chat.id,
-      f"📝 <b>Текст объявления:</b>\n\n{polished_text}\n\nВыберите тип объявления:",
-      reply_markup=markup
-  )
+  safe_send_message(m.chat.id, f"📝 <b>Текст:</b>\n\n{text}\n\nВыберите тип объявления:", reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda c: c.data in ["ad_type_vip_sub", "ad_type_regular"])
+@bot.callback_query_handler(func=lambda c: c.data in ["ad_type_vip_sub", "ad_type_regular", "ad_type_bonus_vip"])
 def cb_publish_ad_free(call):
   try:
-    bot.answer_callback_query(call.id, "✅ Объявление отправлено на модерацию!")
+    bot.answer_callback_query(call.id, "✅ Отправлено на модерацию!")
   except Exception:
     pass
-    
+
   uid = call.from_user.id
   st = get_state(uid)
   post_data = st.get("posting_ad")
   if not post_data:
-    try:
-      bot.answer_callback_query(call.id, "⚠️ Данные объявления не найдены. Начните заново.", show_alert=True)
-    except Exception:
-      pass
     return
 
-  is_vip = 1 if call.data == "ad_type_vip_sub" else 0
+  is_vip = 0
+  if call.data in ["ad_type_vip_sub", "ad_type_bonus_vip"]:
+    is_vip = 1
+    if call.data == "ad_type_bonus_vip":
+      with db_lock, get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE user_bonuses SET vip_ads_count = MAX(0, vip_ads_count - 1) WHERE user_id = ?", (uid,))
+
   finalize_and_send_ad(uid, post_data, is_vip)
   try:
     bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -1337,25 +1588,21 @@ def cb_publish_ad_paid_vip(call):
     bot.answer_callback_query(call.id)
   except Exception:
     pass
-
   uid = call.from_user.id
   prices = [types.LabeledPrice(label="VIP Объявление", amount=1)]
   try:
     bot.send_invoice(
         chat_id=call.message.chat.id,
         title="VIP Объявление",
-        description="Публикация VIP объявления в ленте за 1 звезду",
+        description="Публикация VIP объявления за 1 звезду",
         invoice_payload="vip_single_ad",
         provider_token="",
         currency="XTR",
         prices=prices,
         start_parameter="vip_ad",
     )
-  except Exception as e:
-    try:
-      bot.answer_callback_query(call.id, f"Ошибка счета: {e}", show_alert=True)
-    except Exception:
-      pass
+  except Exception:
+    pass
 
 
 @bot.pre_checkout_query_handler(func=lambda query: True)
@@ -1376,21 +1623,13 @@ def got_payment(m):
           "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES (?, ?)",
           (uid, expires),
       )
-    safe_send_message(
-        m.chat.id,
-        "💎 <b>Поздравляем!</b> VIP-статус успешно активирован на 30 дней!",
-        reply_markup=kb_main_menu(),
-    )
+    safe_send_message(m.chat.id, "💎 VIP-статус успешно активирован на 30 дней!", reply_markup=kb_main_menu())
   elif payload == "vip_single_ad":
     st = get_state(uid)
     post_data = st.get("posting_ad")
     if post_data:
       finalize_and_send_ad(uid, post_data, is_vip=1)
-      safe_send_message(
-          m.chat.id,
-          "✅ Оплата прошла успешно! Ваше VIP-объявление отправлено на модерацию.",
-          reply_markup=kb_main_menu(),
-      )
+      safe_send_message(m.chat.id, "✅ Оплата прошла! VIP-объявление отправлено на модерацию.", reply_markup=kb_main_menu())
 
 
 def finalize_and_send_ad(uid, post_data, is_vip):
@@ -1404,1264 +1643,68 @@ def finalize_and_send_ad(uid, post_data, is_vip):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        f"INSERT INTO {table} (user_id, username, server, category, text,"
-        " photo, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (
-            uid,
-            "",
-            srv,
-            category,
-            polished_text,
-            photo_id,
-            is_vip,
-        ),
+        f"INSERT INTO {table} (user_id, username, server, category, text, photo, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (uid, "", srv, category, polished_text, photo_id, is_vip),
     )
     pid = cur.lastrowid
 
+  # Логируем действие отправки объявления в admin_action_logs для отчета владельцу
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
+        ("user_" + str(uid), "Отправка объявления на модерацию", f"Пост #{pid} ({srv})", time.time())
+    )
+
   set_user_last_ad_time(uid, time.time())
-  clear_state(uid)
 
-  safe_send_message(
-      uid,
-      "✅ Ваше объявление успешно отправлено на модерацию редакторам!",
-      reply_markup=kb_main_menu(),
-  )
+  today_str = datetime.now().strftime("%Y-%m-%d")
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM referrals WHERE referred_id = ? AND completed = 0", (uid,))
+    ref = cur.fetchone()
+    if ref:
+      referrer_id = ref["referrer_id"]
+      last_date = ref["last_active_date"]
+      ads_today = ref["ads_today"] if last_date == today_str else 0
+      qualified_days = ref["qualified_days"]
 
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  acc_prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
-  rej_prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
-  
-  markup.add(
-      types.InlineKeyboardButton("✅ Одобрить", callback_data=f"{acc_prefix}{pid}"),
-      types.InlineKeyboardButton("❌ Отклонить", callback_data=f"{rej_prefix}{pid}"),
-  )
+      new_ads_today = (ads_today + 1) if last_date == today_str else 1
+      new_qualified_days = qualified_days
+      if new_ads_today == 3 and last_date != today_str:
+        new_qualified_days += 1
+      elif new_ads_today == 3 and last_date == today_str and ads_today < 3:
+        new_qualified_days += 1
 
-  notif_text = (
-      f"📋 <b>Новый пост #{pid}</b> ({'Скупка' if is_buy else 'Продажа'})\n"
-      f"🌐 Сервер: {srv}\n📂 Категория: {category}\n👤 Автор ID: {uid}\n\n{polished_text}"
-  )
-
-  def notify_admin_async(adm_id):
-    try:
-      if photo_id:
-        safe_send_photo(adm_id, photo_id, caption=notif_text, reply_markup=markup)
+      if new_qualified_days >= 3:
+        cur.execute("UPDATE referrals SET qualified_days = 3, last_active_date = ?, ads_today = ?, completed = 1 WHERE referrer_id = ? AND referred_id = ?", (today_str, new_ads_today, referrer_id, uid))
+        expires = time.time() + 10 * 86400
+        cur.execute("INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES (?, ?)", (referrer_id, expires))
+        cur.execute("INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES (?, ?)", (uid, expires))
+        
+        with contextlib.suppress(Exception):
+          safe_send_message(referrer_id, "🎉 Ваш реферал успешно выполнил все условия (3 дня активности по 3 объявления)! Вам обоим начислена <b>VIP-подписка на 10 дней</b>!")
+          safe_send_message(uid, "🎉 Вы выполнили все условия реферальной программы! Вам начислена <b>VIP-подписка на 10 дней</b>!")
       else:
-        safe_send_message(adm_id, notif_text, reply_markup=markup)
-    except Exception:
-      pass
+        cur.execute("UPDATE referrals SET qualified_days = ?, last_active_date = ?, ads_today = ? WHERE referrer_id = ? AND referred_id = ?", (new_qualified_days, today_str, new_ads_today, referrer_id, uid))
 
-  for adm in get_all_admin_ids():
-    threading.Thread(target=notify_admin_async, args=(adm,), daemon=True).start()
-
-
-# ==========================================
-# ВНУТРЕННИЙ ЧАТ МЕЖДУ ПОКУПАТЕЛЕМ И ПРОДАВЦОМ
-# ==========================================
-@bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
-def cb_contact_seller(call):
-  try:
-    bot.answer_callback_query(call.id, "✅ Чат инициализирован!")
-  except Exception:
-    pass
-    
-  aid = int(call.data.replace("contact_seller_", ""))
-  uid = call.from_user.id
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT user_id, server, category, text FROM active_ads WHERE id = ?",
-        (aid,),
-    )
-    row = cur.fetchone()
-    is_buy = False
-    if not row:
-      cur.execute(
-          "SELECT user_id, server, category, text FROM active_buy_ads WHERE id"
-          " = ?",
-          (aid,),
-      )
-      row = cur.fetchone()
-      is_buy = True
-
-  if not row:
-    try:
-      bot.answer_callback_query(
-          call.id,
-          "⚠️ Объявление уже неактивно или удалено.",
-          show_alert=True,
-      )
-    except Exception:
-      pass
-    return
-
-  seller_id = row["user_id"]
-  if seller_id == uid:
-    try:
-      bot.answer_callback_query(
-          call.id,
-          "⚠️ Вы не можете начать диалог сами с собой!",
-          show_alert=True,
-      )
-    except Exception:
-      pass
-    return
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT OR REPLACE INTO active_dialogs (buyer_id, seller_id, ad_id,"
-        " is_active) VALUES (?, ?, ?, 1)",
-        (uid, seller_id, aid),
-    )
-
-  update_state(
-      uid, chat_with={"seller_id": seller_id, "ad_id": aid, "is_buy": is_buy}
-  )
-  update_state(
-      seller_id,
-      chat_with={"buyer_id": uid, "ad_id": aid, "is_buy": is_buy},
-  )
-
-  markup = ikb_chat_controls(aid)
-  
-  disclaimer_text = (
-      "\n\n⚠️ <b>Отказ от ответственности:</b> Администрация бота является исключительно "
-      "независимой рекламной площадкой. Мы <b>не несем никакой ответственности</b> за любые сделки, "
-      "договоренности, передачу имущества или возможные споры/жалобы между игроками. "
-      "Вся ответственность за проведение сделок лежит полностью на вас!"
-  )
-
-  safe_send_message(
-      uid,
-      f"💬 <b>Защищенный чат по сделке открыт!</b>\nВсе сообщения будут пересылаться автору объявления.{disclaimer_text}",
-      reply_markup=markup,
-  )
-  safe_send_message(
-      seller_id,
-      f"💬 <b>С вами хотят связаться по объявлению #{aid}!</b>\nНапишите ответное сообщение прямо сюда:{disclaimer_text}",
-      reply_markup=markup,
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("stop_chat_"))
-def cb_stop_chat(call):
-  try:
-    bot.answer_callback_query(call.id, "🛑 Диалог завершен.")
-  except Exception:
-    pass
-
-  aid = int(call.data.replace("stop_chat_", ""))
-  uid = call.from_user.id
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE active_dialogs SET is_active = 0 WHERE (buyer_id = ? OR"
-        " seller_id = ?) AND ad_id = ?",
-        (uid, uid, aid),
-    )
   clear_state(uid)
-  try:
-    bot.edit_message_reply_markup(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        reply_markup=None,
-    )
-  except Exception:
-    pass
-  safe_send_message(
-      call.message.chat.id,
-      "🛑 Диалог по объявлению завершен.",
-      reply_markup=kb_main_menu(),
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("resume_chat_"))
-def cb_resume_chat(call):
-  try:
-    bot.answer_callback_query(call.id, "🔄 Диалог возобновлен!")
-  except Exception:
-    pass
-
-  aid = int(call.data.replace("resume_chat_", ""))
-  uid = call.from_user.id
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE active_dialogs SET is_active = 1 WHERE (buyer_id = ? OR"
-        " seller_id = ?) AND ad_id = ?",
-        (uid, uid, aid),
-    )
-  safe_send_message(
-      call.message.chat.id,
-      "🔄 Диалог возобновлен. Можете продолжить общение.",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda msg: get_state(msg.from_user.id).get("chat_with") is not None
-)
-def handle_internal_chat_messages(m):
-  uid = m.from_user.id
-  st = get_state(uid)
-  chat_info = st.get("chat_with")
-  if not chat_info:
-    return
-
-  text = m.text or m.caption or "[Медиа/Фото]"
-
-  if m.text and not check_auto_moderation(m.text):
-    return safe_send_message(
-        m.chat.id,
-        "⚠️ Нельзя общаться матом! Сообщение не доставлено.",
-        parse_mode=None,
-    )
-
-  target_id = (
-      chat_info.get("seller_id")
-      if chat_info.get("seller_id")
-      else chat_info.get("buyer_id")
-  )
-  aid = chat_info.get("ad_id")
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT is_active FROM active_dialogs WHERE ((buyer_id = ? AND"
-        " seller_id = ?) OR (buyer_id = ? AND seller_id = ?)) AND ad_id = ?",
-        (uid, target_id, target_id, uid, aid),
-    )
-    row = cur.fetchone()
-
-  if not row or not row["is_active"]:
-    return safe_send_message(
-        m.chat.id, "⚠️ Этот диалог был завершен."
-    )
-
-  forward_text = (
-      f"✉️ <b>Сообщение по объявлению #{aid}</b>\n\n{html.escape(text)}"
-  )
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO chat_logs_history (sender_id, receiver_id, text,"
-        " timestamp) VALUES (?, ?, ?, ?)",
-        (uid, target_id, text, time.time()),
-    )
-
-  try:
-    if m.photo:
-      safe_send_photo(target_id, m.photo[-1].file_id, caption=forward_text)
-    else:
-      safe_send_message(target_id, forward_text)
-    safe_send_message(m.chat.id, "✔️ Доставлено.", parse_mode=None)
-  except Exception as e:
-    safe_send_message(m.chat.id, f"⚠️ Ошибка доставки: {e}", parse_mode=None)
-
-
-# ==========================================
-# БАНЫ И МОДЕРАЦИЯ АДМИНОВ
-# ==========================================
-def get_msk_time():
-  try:
-    return datetime.now(ZoneInfo("Europe/Moscow"))
-  except Exception:
-    return datetime.now()
-
-
-def background_cleanup_ads():
-  last_cleaned_date = None
-  while True:
-    time.sleep(5)
-    try:
-      now_msk = get_msk_time()
-      current_time = now_msk.time()
-      current_date = now_msk.date()
-
-      if (
-          current_time.hour == 7
-          and current_time.minute == 50
-          and current_time.second < 15
-      ):
-        if last_cleaned_date != current_date:
-          with db_lock, get_db() as conn:
-            cur = conn.cursor()
-            cur.execute("DELETE FROM active_ads")
-            cur.execute("DELETE FROM active_buy_ads")
-            cur.execute("DELETE FROM pending_posts")
-            cur.execute("DELETE FROM pending_buy_posts")
-          last_cleaned_date = current_date
-    except Exception as e:
-      logger.error(f"Ошибка фоновой авто-очистки: {e}")
-
-
-threading.Thread(target=background_cleanup_ads, daemon=True).start()
-
-
-def get_vc_rate() -> float:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT value FROM bot_settings WHERE key = 'vc_rate'")
-    row = cur.fetchone()
-    return float(row["value"]) if row else 95000.0
-
-
-def set_vc_rate(rate: float):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT OR REPLACE INTO bot_settings (key, value) VALUES ('vc_rate', ?)",
-        (str(rate),),
-    )
-
-
-def register_admin_chat(chat_id: int):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("INSERT OR IGNORE INTO admin_chats (chat_id) VALUES (?)", (chat_id,))
-
-
-def get_admin_chat_ids():
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT chat_id FROM admin_chats")
-    return [row["chat_id"] for row in cur.fetchall()]
-
-
-def get_all_admin_ids():
-  admin_ids = set(get_admin_chat_ids())
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT user_id FROM approved_admins")
-    for row in cur.fetchall():
-      admin_ids.add(row["user_id"])
-  return list(admin_ids)
-
-
-def is_owner(user) -> bool:
-  return bool(user and user.username and user.username.lower() == OWNER_USERNAME.lower())
-
-
-def is_admin_or_owner(user) -> bool:
-  if not user:
-    return False
-  if is_owner(user):
-    return True
-  uname = user.username.lower().lstrip("@") if user.username else ""
-  if uname in ADMIN_USERNAMES:
-    return True
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT 1 FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?",
-        (user.id, uname),
-    )
-    if cur.fetchone():
-      return True
-  return False
-
-
-def is_admin_or_owner_id(user_id: int) -> bool:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ?", (user_id,))
-    if cur.fetchone():
-      return True
-    cur.execute("SELECT username FROM user_data WHERE user_id = ?", (user_id,))
-    row = cur.fetchone()
-    if row and row["username"]:
-      uname = row["username"].lower().lstrip("@")
-      if uname == OWNER_USERNAME.lower() or uname in ADMIN_USERNAMES:
-        return True
-    cur.execute("SELECT 1 FROM admin_chats WHERE chat_id = ?", (user_id,))
-    if cur.fetchone():
-      return True
-  return False
-
-
-def is_user_premium(user_id: int) -> bool:
-  if is_admin_or_owner_id(user_id):
-    return True
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT expires_at FROM premium_users WHERE user_id = ?", (user_id,)
-    )
-    row = cur.fetchone()
-  return bool(row and row["expires_at"] > time.time())
-
-
-def check_auto_moderation(text: str) -> bool:
-  if not text:
-    return True
-  lower_text = text.lower()
-  for word in BAD_WORDS:
-    if word in lower_text:
-      return False
-  return True
-
-
-def get_user_last_ad_time(user_id):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT last_ad_time FROM user_data WHERE user_id = ?", (user_id,))
-    row = cur.fetchone()
-    return row["last_ad_time"] if row else 0
-
-
-def set_user_last_ad_time(user_id, t):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE user_data SET last_ad_time = ? WHERE user_id = ?", (t, user_id)
-    )
-
-
-def register_user(user_id, username=None):
-  uname = username.lstrip("@").lower() if username else None
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT OR IGNORE INTO user_data (user_id, username, last_ad_time, server) VALUES (?, ?, 0, ?)",
-        (user_id, uname, SERVERS[0]),
-    )
-
-
-def is_banned(user) -> bool:
-  if not user:
-    return False
-  uname = user.username.lower().lstrip("@") if user.username else ""
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT 1 FROM bans WHERE (is_id = 1 AND target = ?) OR (is_id = 0 AND target = ?)",
-        (str(user.id), uname),
-    )
-    res = cur.fetchone()
-  return bool(res)
-
-
-def verify_admin_callback(call) -> bool:
-  if not is_admin_or_owner(call.from_user):
-    try:
-      bot.answer_callback_query(call.id, "⛔ Нет доступа!", show_alert=True)
-    except Exception:
-      pass
-    return False
-  return True
-
-
-# ==========================================
-# КЛАВИАТУРЫ
-# ==========================================
-def kb_servers():
-  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  for i in range(0, len(SERVERS), 2):
-    row_buttons = [types.KeyboardButton(s) for s in SERVERS[i : i + 2]]
-    m.row(*row_buttons)
-  m.row(types.KeyboardButton("📖 Справка и правила"))
-  m.row(
-      types.KeyboardButton("💎 VIP-статус"),
-      types.KeyboardButton("👑 Админ-панель"),
-  )
-  m.row(types.KeyboardButton("💬 Связаться с менеджером"))
-  return m
-
-
-def kb_main_menu():
-  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  m.row(types.KeyboardButton("🌐 Сменить игровой сервер"))
-  m.row(
-      types.KeyboardButton("💍 Аксессуары и вещи"),
-      types.KeyboardButton("🚗 Транспорт и тюнинг"),
-  )
-  m.row(
-      types.KeyboardButton("👕 Скины и охранники"),
-      types.KeyboardButton("🏠 Недвижимость и бизнесы"),
-  )
-  m.row(types.KeyboardButton("📦 Ресурсы и материалы"))
-  m.row(
-      types.KeyboardButton("📤 Продать товар"),
-      types.KeyboardButton("📥 Скупить товар"),
-  )
-  m.row(types.KeyboardButton("💱 Курс VC и калькулятор"))
-  m.row(
-      types.KeyboardButton("🔍 Найти товар в базе"),
-      types.KeyboardButton("❤️ Сохраненные"),
-  )
-  m.row(
-      types.KeyboardButton("🔔 Уведомления о поиске"),
-      types.KeyboardButton("📋 Мои публикации"),
-  )
-  m.row(types.KeyboardButton("📊 Анализ цен на сервере"))
-  m.row(types.KeyboardButton("💎 VIP-статус"))
-  m.row(
-      types.KeyboardButton("👑 Админ-панель"),
-      types.KeyboardButton("💬 Связаться с менеджером"),
-  )
-  return m
-
-
-def kb_cancel():
-  return types.ReplyKeyboardMarkup(resize_keyboard=True).add(
-      types.KeyboardButton("❌ Отменить действие")
-  )
-
-
-def ikb_chat_controls(aid: int):
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  markup.add(
-      types.InlineKeyboardButton("🛑 Завершить диалог", callback_data=f"stop_chat_{aid}"),
-      types.InlineKeyboardButton("🔄 Возобновить", callback_data=f"resume_chat_{aid}"),
-  )
-  return markup
-
-
-def ikb_ad_actions(aid: int, is_fav: bool = False, user_id: int = 0, is_buy: bool = False):
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  fav_text = "❌ Убрать из избранного" if is_fav else "❤️ В избранное"
-  markup.add(
-      types.InlineKeyboardButton("✉️ Написать автору", callback_data=f"contact_seller_{aid}"),
-      types.InlineKeyboardButton(fav_text, callback_data=f"fav_toggle_{aid}"),
-  )
-  if user_id and is_admin_or_owner_id(user_id):
-    del_prefix = "admin_del_buy_" if is_buy else "admin_del_"
-    markup.add(
-        types.InlineKeyboardButton("🗑 Удалить (Админ)", callback_data=f"{del_prefix}{aid}")
-    )
-  return markup
-
-
-# ==========================================
-# ОСНОВНЫЕ КОМАНДЫ И СПРАВКА
-# ==========================================
-def cancel_action(m):
-  clear_state(m.from_user.id)
-  safe_send_message(
-      m.chat.id,
-      "❌ Текущее действие отменено.",
-      reply_markup=kb_main_menu(),
-  )
-
-
-@bot.message_handler(commands=["start"])
-def cmd_start(m):
-  try:
-    bot.delete_message(m.chat.id, m.message_id)
-  except Exception:
-    pass
-
-  register_user(m.from_user.id, m.from_user.username)
-
-  if is_banned(m.from_user):
-    return safe_send_message(
-        m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove()
-    )
-
-  if is_admin_or_owner(m.from_user):
-    register_admin_chat(m.chat.id)
-
-  update_state(m.from_user.id, changing_server=True)
-  
-  welcome_text = (
-      "👋 <b>Добро пожаловать! Обратите внимание: мы не являемся официальным ботом Arizona RP.</b>\n\n"
-      "🔒 <b>Отказ от ответственности и безопасность:</b>\n"
-      "• Бот является исключительно независимой рекламной площадкой для торговли.\n"
-      "• <b>Администрация не несет никакой ответственности</b> за содержание объявлений, совершаемые сделки, "
-      "передачу игровой валюты/имущества и возможные жалобы. Все договоренности вы совершаете на свой страх и риск.\n"
-      "• Администрация никогда не запрашивает пароли, пин-коды или личные данные от ваших аккаунтов.\n\n"
-      "📌 <b>Правильный формат объявления:</b>\n"
-      "Предмет:\n"
-      "Цена/бюджет:\n"
-      "Какая лавка/нету:\n\n"
-      "👇 <b>Выберите свой игровой сервер в меню ниже, чтобы начать работу:</b>"
-  )
-  safe_send_message(m.chat.id, welcome_text, reply_markup=kb_servers(), parse_mode="HTML")
-
-
-@bot.message_handler(commands=["help"])
-def cmd_help(m):
-  try:
-    bot.delete_message(m.chat.id, m.message_id)
-  except Exception:
-    pass
-
-  help_text = (
-      f"📖 <b>Часто задаваемые вопросы (FAQ) (@{BOT_USERNAME}):</b>\n\n"
-      "1️⃣ <b>Как подать объявление?</b>\n"
-      "Выберите свой сервер, нажмите кнопку «📤 Продать товар» или «📥 Скупить товар», выберите категорию и отправьте текст.\n\n"
-      "2️⃣ <b>В какое время можно отправлять объявления?</b>\n"
-      "Радиоцентр принимает объявления строго с <b>08:00:01 до 22:00:01 МСК</b>. Ночной режим временно блокирует подачу.\n\n"
-      "3️⃣ <b>Как связаться с продавцом?</b>\n"
-      "Под каждым объявлением есть кнопка «✉️ Написать автору», которая открывает безопасный защищенный чат.\n\n"
-      "4️⃣ <b>Что делать, если бот не принимает текст объявления?</b>\n"
-      "Убедитесь, что текст написан по правильному шаблону и в нем отсутствуют нецензурные слова или ссылки на сторонние ресурсы.\n\n"
-      "5️⃣ <b>Как работают подписки на ключевые слова?</b>\n"
-      "В разделе «🔔 Уведомления о поиске» вы можете указать ключевое слово, и бот пришлет уведомление, когда появится подходящий товар.\n\n"
-      "6️⃣ <b>Как узнать курс Vice City (VC)?</b>\n"
-      "Используйте кнопку «💱 Курс VC и калькулятор» в главном меню для перевода валюты и расчета потенциальной прибыли.\n\n"
-      "7️⃣ <b>Безопасно ли пользоваться ботом?</b>\n"
-      "Да! Мы независимая неофициальная площадка. Администрация не несет ответственности за сделки между игроками. Соблюдайте правила безопасности и никогда никому не передавайте данные своего аккаунта."
-  )
-  safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu(), parse_mode="HTML")
-
-
-def change_server(m):
-  update_state(m.from_user.id, changing_server=True)
-  safe_send_message(m.chat.id, "👇 Выберите новый игровой сервер:", reply_markup=kb_servers())
-
-
-def select_srv(m):
-  srv = m.text
-  uid = m.from_user.id
-  set_user_server(uid, srv)
-  safe_send_message(
-      m.chat.id,
-      f"✅ Сервер установлен: <b>{html.escape(srv)}</b>",
-      reply_markup=kb_main_menu(),
-  )
-
-
-def how_bot_works(m):
-  text = (
-      f"📖 <b>О работе радиоцентра @{BOT_USERNAME}</b>\n\n"
-      f"• Режим работы: с <b>08:00:01 до 22:00:01 МСК</b> ежедневно.\n"
-      f"• Модерация: все объявления проходят проверку редакторами.\n"
-      f"• Запрещено: оскорбления, мат, продажа виртуальной валюты за реальные деньги (реал) и любые мошеннические схемы.\n"
-      f"• Администрация не участвует в сделках и не несет за них ответственности.\n"
-      f"• При нарушении правил система может заблокировать доступ."
-  )
-  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
-
-
-def info_premium(m):
-  text = (
-      "💎 <b>VIP-статус в боте (100 ⭐)</b>\n\n"
-      "Привилегии подписки:\n"
-      "• Кулдаун на подачу сокращен в 2 раза (1 минута вместо 2х).\n"
-      "• До 20 уведомлений по поиску.\n"
-      "• Автоматические VIP-объявления бесплатно."
-  )
-  markup = types.InlineKeyboardMarkup()
-  markup.add(
-      types.InlineKeyboardButton(
-          "💎 Купить VIP на 30 дней (100 ⭐)", callback_data="buy_premium_30"
-      )
-  )
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "buy_premium_30")
-def cb_buy_premium_30(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=100)]
-  try:
-    bot.send_invoice(
-        chat_id=call.message.chat.id,
-        title="VIP Статус (30 дней)",
-        description="Оформление VIP-статуса в боте на 1 месяц",
-        invoice_payload="premium_30",
-        provider_token="",
-        currency="XTR",
-        prices=prices,
-        start_parameter="buy_vip",
-    )
-  except Exception as e:
-    try:
-      bot.answer_callback_query(call.id, f"Ошибка: {e}", show_alert=True)
-    except Exception:
-      pass
-
-
-# ==========================================
-# КАЛЬКУЛЯТОР И КУРС VC
-# ==========================================
-def show_vc_menu(m):
-  rate = get_vc_rate()
-  text = (
-      f"💱 <b>Курс обмена Vice City</b>\n\n"
-      f"Текущий курс: <b>1 VC = {rate:,.0f} SA $</b>"
-  )
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  markup.add(
-      types.InlineKeyboardButton("🔄 Конвертер валют", callback_data="vc_conv_start"),
-      types.InlineKeyboardButton("🧮 Калькулятор", callback_data="vc_calc_start"),
-  )
-  if is_admin_or_owner(m.from_user):
-    markup.add(types.InlineKeyboardButton("⚙️ Изменить курс VC", callback_data="vc_set_rate_start"))
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "vc_set_rate_start")
-def cb_vc_set_rate_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not verify_admin_callback(call):
-    return
-  update_state(call.from_user.id, vc_setting_rate=True)
-  safe_send_message(call.message.chat.id, "⚙️ Введите новый курс (SA $ за 1 VC):", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("vc_setting_rate"))
-def process_vc_set_rate(m):
-  uid = m.from_user.id
-  clear_state(uid)
-  try:
-    new_rate = float(m.text.strip().replace(" ", "").replace(",", "."))
-    if new_rate <= 0:
-      raise ValueError()
-  except ValueError:
-    return safe_send_message(m.chat.id, "⚠️ Неверный формат курса.")
-  set_vc_rate(new_rate)
-  safe_send_message(m.chat.id, f"✅ Курс обновлен: <b>1 VC = {new_rate:,.0f} SA $</b>", reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "vc_conv_start")
-def cb_vc_conv_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  update_state(call.from_user.id, vc_conv_input=True)
-  safe_send_message(call.message.chat.id, "🔄 Введите сумму (например: <code>1500000</code> или <code>500vc</code>):", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("vc_conv_input"))
-def process_vc_conv(m):
-  uid = m.from_user.id
-  clear_state(uid)
-  text = m.text.strip().lower().replace(" ", "").replace(",", ".")
-  rate = get_vc_rate()
-  try:
-    if "vc" in text:
-      val = float(text.replace("vc", ""))
-      sa_val = val * rate
-      res = f"🧮 {val:,.2f} VC = <b>{sa_val:,.0f} SA $</b>"
-    else:
-      val = float(text)
-      vc_val = val / rate if rate > 0 else 0
-      res = f"🧮 {val:,.0f} SA $ = <b>{vc_val:,.2f} VC</b>"
-  except ValueError:
-    return safe_send_message(m.chat.id, "⚠️ Неверный формат.")
-  safe_send_message(m.chat.id, res, reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "vc_calc_start")
-def cb_vc_calc_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  update_state(call.from_user.id, vc_calc_step="buy_price")
-  safe_send_message(call.message.chat.id, "🧮 Введите цену покупки на своем сервере (в SA $):", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("vc_calc_step") == "buy_price")
-def process_calc_buy(m):
-  uid = m.from_user.id
-  try:
-    val = float(m.text.strip().replace(" ", "").replace(",", "."))
-  except ValueError:
-    return safe_send_message(m.chat.id, "⚠️ Введите число.")
-  st = get_state(uid)
-  st["calc_buy"] = val
-  st["vc_calc_step"] = "sell_price"
-  update_state(uid, **st)
-  safe_send_message(m.chat.id, "2️⃣ Введите цену продажи в Vice City (в VC $):", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("vc_calc_step") == "sell_price")
-def process_calc_sell(m):
-  uid = m.from_user.id
-  try:
-    val = float(m.text.strip().replace(" ", "").replace(",", "."))
-  except ValueError:
-    return safe_send_message(m.chat.id, "⚠️ Введите число.")
-  st = get_state(uid)
-  buy_price = st.get("calc_buy", 0)
-  clear_state(uid)
-  rate = get_vc_rate()
-  sell_price_sa = val * rate
-  profit = sell_price_sa - buy_price
-  percent = (profit / buy_price * 100) if buy_price > 0 else 0
-  res = (
-      f"📊 <b>Расчет сделки:</b>\n\n"
-      f"• Покупка: <b>{buy_price:,.0f} SA $</b>\n"
-      f"• Продажа в VC: <b>{val:,.2f} VC</b> (~{sell_price_sa:,.0f} SA $)\n"
-      f"💰 Прибыль: <b>{profit:,.0f} SA $</b> ({percent:+.2f}%)"
-  )
-  safe_send_message(m.chat.id, res, reply_markup=kb_main_menu())
-
-
-# ==========================================
-# АДМИН-ПАНЕЛЬ И ФУНКЦИИ ВЛАДЕЛЬЦА
-# ==========================================
-def admin_panel(m):
-  if not is_admin_or_owner(m.from_user):
-    return safe_send_message(m.chat.id, "⛔ Нет доступа.", reply_markup=kb_main_menu())
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  markup.add(
-      types.InlineKeyboardButton("📤 Модерация продаж", callback_data="admin_mod_sales"),
-      types.InlineKeyboardButton("📥 Модерация скупки", callback_data="admin_mod_buys"),
-      types.InlineKeyboardButton("📊 Статистика админов (Топ-5)", callback_data="admin_stats_view"),
-  )
-  if is_owner(m.from_user):
-    markup.add(
-        types.InlineKeyboardButton("⚠️ Выдать штраф админу", callback_data="owner_give_penalty_start"),
-        types.InlineKeyboardButton("📢 Рассылка", callback_data="owner_broadcast_start"),
-        types.InlineKeyboardButton("📋 Логи админов", callback_data="owner_get_logs"),
-        types.InlineKeyboardButton("➕ Добавить админа (юз)", callback_data="owner_add_admin_start"),
-        types.InlineKeyboardButton("➖ Снять админа (юз)", callback_data="owner_del_admin_start"),
-        types.InlineKeyboardButton("⛔ Забанить (юз)", callback_data="owner_ban_start"),
-        types.InlineKeyboardButton("✅ Разбанить (юз)", callback_data="owner_unban_start"),
-    )
-  safe_send_message(m.chat.id, "👑 <b>Панель администратора:</b>", reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "admin_stats_view")
-def cb_admin_stats_view(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not verify_admin_callback(call):
-    return
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT username, count FROM admin_ad_stats ORDER BY count DESC LIMIT 5")
-    stats = cur.fetchall()
-
-  if not stats:
-    try:
-      return bot.answer_callback_query(call.id, "📭 Статистика админов пуста.", show_alert=True)
-    except Exception:
-      pass
-
-  text = "📊 <b>Топ-5 администраторов по одобренным объявлениям:</b>\n\n"
-  for row in stats:
-    text += f"👤 <b>@{row['username']}</b> — {row['count']} объявлений\n"
-
-  safe_send_message(call.message.chat.id, text, reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_give_penalty_start")
-def cb_owner_give_penalty_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not is_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-    except Exception:
-      pass
-    return
-  update_state(call.from_user.id, owner_give_penalty_input=True)
-  safe_send_message(call.message.chat.id, "⚠️ Введите юзернейм администратора (с @ или без), которому нужно выдать штраф:", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_give_penalty_input"))
-def process_owner_give_penalty(m):
-  uid = m.from_user.id
-  if not is_owner(m.from_user):
-    clear_state(uid)
-    return
-  uname = m.text.strip().lstrip("@").lower()
-  clear_state(uid)
-
-  if not uname:
-    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO editor_stats (username, count) VALUES (?, 1) ON CONFLICT(username) DO UPDATE SET count = count + 1",
-        (uname,),
-    )
-    cur.execute("SELECT count FROM editor_stats WHERE username = ?", (uname,))
-    row = cur.fetchone()
-    count = row["count"] if row else 1
-    if count >= 3:
-      cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (uname,))
-      cur.execute("DELETE FROM editor_stats WHERE username = ?", (uname,))
-      status_msg = f"⛔ Администратор @{uname} получил штраф (всего ошибок: {count}). Лимит исчерпан, он снят с поста!"
-    else:
-      status_msg = f"⚠️ Штраф успешно выдан администратору @{uname}. Текущих ошибок: {count}/3."
-
-  safe_send_message(m.chat.id, status_msg, reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_add_admin_start")
-def cb_owner_add_admin_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not is_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-    except Exception:
-      pass
-    return
-  update_state(call.from_user.id, owner_add_admin_input=True)
-  safe_send_message(call.message.chat.id, "➕ Введите юзернейм пользователя (с @ или без), чтобы назначить его администратором:", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_add_admin_input"))
-def process_owner_add_admin(m):
-  uid = m.from_user.id
-  if not is_owner(m.from_user):
-    clear_state(uid)
-    return
-  uname = m.text.strip().lstrip("@").lower()
-  clear_state(uid)
-
-  if not uname:
-    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT user_id FROM user_data WHERE LOWER(username) = ?", (uname,))
-    row = cur.fetchone()
-    target_id = row["user_id"] if row else 0
-    cur.execute(
-        "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES (?, ?)",
-        (target_id, uname),
-    )
-
-  safe_send_message(m.chat.id, f"✅ Пользователь <b>@{uname}</b> успешно назначен администратором!", reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_del_admin_start")
-def cb_owner_del_admin_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not is_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-    except Exception:
-      pass
-    return
-  update_state(call.from_user.id, owner_del_admin_input=True)
-  safe_send_message(call.message.chat.id, "➖ Введите юзернейм администратора (с @ или без), чтобы снять с поста:", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_del_admin_input"))
-def process_owner_del_admin(m):
-  uid = m.from_user.id
-  if not is_owner(m.from_user):
-    clear_state(uid)
-    return
-  uname = m.text.strip().lstrip("@").lower()
-  clear_state(uid)
-
-  if not uname:
-    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (uname,))
-
-  safe_send_message(m.chat.id, f"✅ Администратор <b>@{uname}</b> снят с поста.", reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_ban_start")
-def cb_owner_ban_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not is_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-    except Exception:
-      pass
-    return
-  update_state(call.from_user.id, owner_ban_input=True)
-  safe_send_message(call.message.chat.id, "⛔ Введите юзернейм пользователя (с @ или без), чтобы заблокировать его в боте:", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_ban_input"))
-def process_owner_ban(m):
-  uid = m.from_user.id
-  if not is_owner(m.from_user):
-    clear_state(uid)
-    return
-  uname = m.text.strip().lstrip("@").lower()
-  clear_state(uid)
-
-  if not uname:
-    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, 0)", (uname,))
-
-  safe_send_message(m.chat.id, f"⛔ Пользователь с юзернеймом <b>@{uname}</b> заблокирован в системе.", reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_unban_start")
-def cb_owner_unban_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not is_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-    except Exception:
-      pass
-    return
-  update_state(call.from_user.id, owner_unban_input=True)
-  safe_send_message(call.message.chat.id, "✅ Введите юзернейм пользователя (с @ или без), чтобы разблокировать его:", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_unban_input"))
-def process_owner_unban(m):
-  uid = m.from_user.id
-  if not is_owner(m.from_user):
-    clear_state(uid)
-    return
-  uname = m.text.strip().lstrip("@").lower()
-  clear_state(uid)
-
-  if not uname:
-    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("DELETE FROM bans WHERE target = ? AND is_id = 0", (uname,))
-
-  safe_send_message(m.chat.id, f"✅ Пользователь с юзернеймом <b>@{uname}</b> разблокирован.", reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_broadcast_start")
-def cb_owner_broadcast_start(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not is_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-    except Exception:
-      pass
-    return
-  update_state(call.from_user.id, owner_broadcast_input=True)
-  safe_send_message(call.message.chat.id, "📢 Введите текст для рассылки всем пользователям бота:", reply_markup=kb_cancel())
-
-
-@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_broadcast_input"))
-def process_owner_broadcast(m):
-  uid = m.from_user.id
-  if not is_owner(m.from_user):
-    clear_state(uid)
-    return
-  text = m.text
-  clear_state(uid)
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT user_id FROM user_data")
-    users = cur.fetchall()
-
-  success = 0
-  fail = 0
-  safe_send_message(m.chat.id, f"🚀 Начинаю рассылку для {len(users)} пользователей...")
-
-  for row in users:
-    target_id = row["user_id"]
-    try:
-      safe_send_message(target_id, f"📢 <b>Объявление администрации:</b>\n\n{text}")
-      success += 1
-      time.sleep(0.05)
-    except Exception:
-      fail += 1
-
-  safe_send_message(m.chat.id, f"✅ <b>Рассылка завершена!</b>\n\n• Успешно: {success}\n• Ошибок: {fail}", reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_get_logs")
-def cb_owner_get_logs(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not is_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
-    except Exception:
-      pass
-    return
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT admin_username, action, target, timestamp FROM admin_action_logs ORDER BY id DESC LIMIT 20")
-    logs = cur.fetchall()
-
-  if not logs:
-    try:
-      return bot.answer_callback_query(call.id, "📭 Логи действий админов пусты.", show_alert=True)
-    except Exception:
-      pass
-
-  text = "📋 <b>Последние лог-записи действий админов:</b>\n\n"
-  for row in logs:
-    dt = datetime.fromtimestamp(row["timestamp"]).strftime("%d.%m.%Y %H:%M")
-    text += f"👤 <b>{row['admin_username']}</b> | {row['action']} ({row['target']}) — <i>{dt}</i>\n"
-
-  safe_send_message(call.message.chat.id, text, reply_markup=kb_main_menu())
-
-
-@bot.callback_query_handler(func=lambda c: c.data in ["admin_mod_sales", "admin_mod_buys"])
-def cb_admin_mod_menu(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not verify_admin_callback(call):
-    return
-  is_buy = "buy" in call.data
-  table = "pending_buy_posts" if is_buy else "pending_posts"
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(f"SELECT id, server, category, text FROM {table} LIMIT 5")
-    posts = cur.fetchall()
-
-  if not posts:
-    try:
-      return bot.answer_callback_query(call.id, "📭 Очередь пуста.", show_alert=True)
-    except Exception:
-      pass
-
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  for row in posts:
-    markup.add(
-        types.InlineKeyboardButton(
-            f"[{row['server']}] {row['category']}: {row['text'][:25]}...",
-            callback_data=f"mod_open_{'buy_' if is_buy else ''}{row['id']}",
-        )
-    )
-  try:
-    bot.edit_message_text("📋 <b>Очередь модерации:</b>", call.message.chat.id, call.message.message_id, reply_markup=markup)
-  except Exception:
-    pass
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("mod_open_") or c.data.startswith("mod_open_buy_"))
-def cb_mod_open(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  if not verify_admin_callback(call):
-    return
-  is_buy = "mod_open_buy_" in call.data
-  prefix = "mod_open_buy_" if is_buy else "mod_open_"
-  pid = int(call.data.replace(prefix, ""))
-  table = "pending_buy_posts" if is_buy else "pending_posts"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(f"SELECT * FROM {table} WHERE id = ?", (pid,))
-    post = cur.fetchone()
-
-  if not post:
-    try:
-      return bot.answer_callback_query(call.id, "⚠️ Этот пост уже обработан.", show_alert=True)
-    except Exception:
-      pass
+  safe_send_message(uid, "✅ Ваше объявление успешно отправлено модераторам!", reply_markup=kb_main_menu())
 
   markup = types.InlineKeyboardMarkup(row_width=2)
   acc_prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
   rej_prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
-  
   markup.add(
       types.InlineKeyboardButton("✅ Одобрить", callback_data=f"{acc_prefix}{pid}"),
       types.InlineKeyboardButton("❌ Отклонить", callback_data=f"{rej_prefix}{pid}"),
   )
 
-  text = f"🔍 <b>Пост #{pid}</b>\n🌐 Сервер: {post['server']}\n📂 Категория: {post['category']}\n\n{post['text']}"
-  if post["photo"]:
-    safe_send_photo(call.message.chat.id, post["photo"], caption=text, reply_markup=markup)
-  else:
-    safe_send_message(call.message.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(
-    func=lambda c: c.data.startswith("mod_acc_")
-    or c.data.startswith("mod_acc_buy_")
-    or c.data.startswith("mod_rej_")
-    or c.data.startswith("mod_rej_buy_")
-)
-def cb_mod_decision(call):
-  try:
-    bot.answer_callback_query(call.id, "✅ Решение применено!")
-  except Exception:
-    pass
-
-  if not verify_admin_callback(call):
-    return
-  is_buy = "buy" in call.data
-  
-  if "acc" in call.data:
-    action = "acc"
-    prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
-  else:
-    action = "rej"
-    prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
-
-  pid = int(call.data.replace(prefix, ""))
-  p_table = "pending_buy_posts" if is_buy else "pending_posts"
-  a_table = "active_buy_ads" if is_buy else "active_ads"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(f"SELECT * FROM {p_table} WHERE id = ?", (pid,))
-    post = cur.fetchone()
-    
-    if not post:
-      try:
-        bot.answer_callback_query(call.id, "⚠️ Этот пост уже обработан.", show_alert=True)
-      except Exception:
-        pass
-      return
-
-    cur.execute(f"DELETE FROM {p_table} WHERE id = ?", (pid,))
-
-  log_admin_action(call.from_user.username or str(call.from_user.id), action, f"Post #{pid}")
-
-  if action == "acc":
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          f"INSERT INTO {a_table} (user_id, server, category, text, photo, is_vip, last_updated) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          (post["user_id"], post["server"], post["category"], post["text"], post["photo"], post["is_vip"], time.time()),
-      )
-      new_ad_id = cur.lastrowid
-      if call.from_user.username:
-        cur.execute(
-            "INSERT INTO admin_ad_stats (username, count) VALUES (?, 1) ON CONFLICT(username) DO UPDATE SET count = count + 1",
-            (call.from_user.username.lower(),),
-        )
-    notify_subscribers(post["server"], post["text"], new_ad_id, is_buy=is_buy)
-    safe_send_message(post["user_id"], f"✅ Ваше объявление #{new_ad_id} опубликовано!")
-  else:
-    safe_send_message(post["user_id"], "❌ Ваше объявление отклонено модератором.")
-
-  try:
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
+  notif_text = f"📋 <b>Новый пост #{pid}</b>\n🌐 Сервер: {srv}\n\n{polished_text}"
+  for adm in get_admin_chat_ids():
+    try:
+      safe_send_message(adm, notif_text, reply_markup=markup)
+    except Exception:
+      pass
 
 
 # ==========================================
@@ -2688,6 +1731,39 @@ def contact_manager(m):
   markup = types.InlineKeyboardMarkup()
   markup.add(types.InlineKeyboardButton("💬 Написать менеджеру", url=f"https://t.me/{MANAGER_USERNAME}"))
   safe_send_message(m.chat.id, f"💬 <b>Связь с менеджером:</b> @{MANAGER_USERNAME}", reply_markup=markup)
+
+
+def how_bot_works(m):
+  text = f"📖 <b>О работе радиоцентра @{BOT_USERNAME}</b>\n\n• Режим работы: с <b>08:00:01 до 22:00:01 МСК</b>."
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
+
+
+def info_premium(m):
+  text = "💎 <b>VIP-статус в боте (100 ⭐)</b>"
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
+
+
+def cancel_action(m):
+  clear_state(m.from_user.id)
+  safe_send_message(m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu())
+
+
+def change_server(m):
+  update_state(m.from_user.id, changing_server=True)
+  safe_send_message(m.chat.id, "👇 Выберите новый игровой сервер:", reply_markup=kb_servers())
+
+
+def select_srv(m):
+  srv = m.text
+  uid = m.from_user.id
+  set_user_server(uid, srv)
+  safe_send_message(m.chat.id, f"✅ Сервер установлен: <b>{html.escape(srv)}</b>", reply_markup=kb_main_menu())
+
+
+def admin_panel(m):
+  if not is_admin_or_owner(m.from_user):
+    return safe_send_message(m.chat.id, "⛔ Нет доступа.")
+  safe_send_message(m.chat.id, "👑 <b>Панель администратора активна.</b>", reply_markup=kb_main_menu())
 
 
 # ==========================================

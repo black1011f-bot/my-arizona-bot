@@ -948,6 +948,44 @@ def cancel_action(m):
 
 
 # ==========================================
+# ИНТЕГРИРОВАННЫЕ ФУНКЦИИ ИЗ ВАШЕГО СКРИПТА
+# ==========================================
+def show_average_prices(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT category, COUNT(*) as cnt FROM active_ads WHERE server = ? GROUP"
+        " BY category",
+        (srv,),
+    )
+    rows = cur.fetchall()
+
+  text = (
+      f"📊 <b>Анализ цен на сервере {html.escape(srv)}</b>\n\nСтатистика"
+      " активных объявлений по категориям:\n"
+  )
+  if rows:
+    for r in rows:
+      text += f"▪️ {html.escape(r['category'])}: <b>{r['cnt']}</b> объявлений\n"
+  else:
+    text += "Пока нет данных для анализа цен."
+
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
+
+
+def contact_manager(m):
+  uid = m.from_user.id
+  text = (
+      f"💬 <b>Связь с менеджером</b>\n\nПо всем вопросам сотрудничества и"
+      f" поддержки вы можете обратиться к менеджеру проекта:"
+      f" <b>@{MANAGER_USERNAME}</b>"
+  )
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
+
+
+# ==========================================
 # ИСПРАВЛЕННЫЙ МОДУЛЬ 1: КУРС VC И КАЛЬКУЛЯТОР
 # ==========================================
 def get_vc_rate() -> int:
@@ -1594,7 +1632,7 @@ def process_broadcast(m):
 
 
 # ==========================================
-# МОДУЛЬ УПРАВЛЕНИЯ ВЛАДЕЛЬЦА И АДМИН-ПАНЕЛИ (С ЛОГИРОВАНИЕМ БАНОВ/РАЗБАНОВ/АДМИНОК)
+# МОДУЛЬ УПРАВЛЕНИЯ ВЛАДЕЛЬЦА И АДМИН-ПАНЕЛИ
 # ==========================================
 def owner_prompt_action(m, action_type):
   if not is_owner(m.from_user):
@@ -1669,7 +1707,6 @@ def process_owner_action_input(m):
             (target_uname, 0),
         )
       
-      # Логируем действие бана
       cur.execute(
           "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
           (admin_uname, "Выдача бана", f"Игрок: {target_str} (ID: {target_uid})", time.time())
@@ -1693,7 +1730,6 @@ def process_owner_action_input(m):
           (b_target, target_uname),
       )
 
-      # Логируем разбан
       cur.execute(
           "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
           (admin_uname, "Снятие бана", f"Игрок: {target_str} (ID: {target_uid})", time.time())
@@ -1719,7 +1755,6 @@ def process_owner_action_input(m):
           (target_uid, target_uname),
       )
 
-      # Логируем назначение администратора
       cur.execute(
           "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
           (admin_uname, "Назначение админа", f"@{target_uname} (ID: {target_uid})", time.time())
@@ -1747,7 +1782,6 @@ def process_owner_action_input(m):
             "DELETE FROM approved_admins WHERE username = ?", (target_uname,)
         )
 
-      # Логируем снятие с поста администратора
       cur.execute(
           "INSERT INTO admin_action_logs (admin_username, action, target, timestamp) VALUES (?, ?, ?, ?)",
           (admin_uname, "Снятие с адм", f"@{target_uname} (ID: {target_uid})", time.time())
@@ -2949,7 +2983,7 @@ def process_ad_text_or_photo(m):
 
 @bot.callback_query_handler(
     func=lambda c: c.data
-    in ["ad_type_vip_sub", "ad_type_regular", "ad_type_bonus_vip"]
+    in ["ad_type_vip_sub", "ad_type_regular", "ad_type_bonus_vip", "ad_type_vip_paid"]
 )
 def cb_publish_ad_free(call):
   try:
@@ -2964,25 +2998,61 @@ def cb_publish_ad_free(call):
     return
 
   is_vip = 0
-  if call.data in ["ad_type_vip_sub", "ad_type_bonus_vip"]:
+  if call.data in ["ad_type_vip_sub", "ad_type_bonus_vip", "ad_type_vip_paid"]:
     is_vip = 1
     if call.data == "ad_type_bonus_vip":
       with db_lock, get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE user_bonuses SET vip_ads_count = MAX(0, vip_ads_count - 1)"
-            " WHERE user_id = ?",
+            "UPDATE user_bonuses SET vip_ads_count = vip_ads_count - 1 WHERE user_id = ?",
             (uid,),
         )
 
-  # Функция публикации (заглушка/сохранение в pending)
-  # finalize_and_send_ad(uid, post_data, is_vip)
-  try:
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
+  server = get_user_server(uid)
+  category = post_data.get("category")
+  text = post_data.get("polished_text")
+  photo = post_data.get("photo_id")
+  is_buy = post_data.get("is_buy", False)
+
+  target_pending_table = "pending_buy_posts" if is_buy else "pending_posts"
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        f"INSERT INTO {target_pending_table} (user_id, username, server, category, text, photo, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (uid, call.from_user.username or "", server, category, text, photo, is_vip),
+    )
+    post_id = cur.lastrowid
+
+  set_user_last_ad_time(uid, time.time())
+  clear_state(uid)
+
+  safe_send_message(
+      call.message.chat.id,
+      f"✅ Ваше объявление отправлено на модерацию администраторам! (ID #{post_id})",
+      reply_markup=kb_main_menu(uid),
+  )
+
+  admin_chats = get_admin_chat_ids()
+  ad_type_str = "скупки" if is_buy else "продажи"
+  markup_mod = types.InlineKeyboardMarkup(row_width=2)
+  prefix = "buy_" if is_buy else ""
+  markup_mod.add(
+      types.InlineKeyboardButton("✅ Одобрить", callback_data=f"mod_acc_{prefix}{post_id}"),
+      types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_rej_{prefix}{post_id}"),
+  )
+  caption = f"📋 <b>Новый пост {ad_type_str} (#{post_id})</b>\n🌐 Сервер: {server}\n📂 Категория: {category}\n\n{text}"
+  
+  for chat_id in admin_chats:
+    try:
+      if photo:
+        bot.send_photo(chat_id, photo, caption=caption, parse_mode="HTML", reply_markup=markup_mod)
+      else:
+        bot.send_message(chat_id, caption, parse_mode="HTML", reply_markup=markup_mod)
+    except Exception:
+      pass
 
 
 if __name__ == "__main__":
-  logger.info("Бот успешно запущен и работает...")
+  logger.info("Бот запущен и готов к работе...")
   bot.infinity_polling(skip_pending=True)

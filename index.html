@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arizona RP | Неофициальный бот объявлений</title>
+    <!-- Tailwind CSS для красивого и современного интерфейса -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Telegram Web App JS -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #18222d;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #8ab4f8;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #ffffff;
+        }
+        body {
+            background-color: var(--tg-theme-bg-color, #18222d);
+            color: var(--tg-theme-text-color, #ffffff);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .card-bg {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- ХЕДЕР И ВЫБОР СЕРВЕРА -->
+    <header class="p-4 border-b border-gray-700 flex justify-between items-center sticky top-0 bg-opacity-90 backdrop-blur z-50 bg-[#18222d]">
+        <div>
+            <h1 class="text-lg font-bold flex items-center gap-2">
+                <span>🤖</span> Arizona RP Board
+            </h1>
+            <p class="text-xs text-blue-400" id="current-server-label">🌐 Сервер: 🔥 Phoenix</p>
+        </div>
+        <button onclick="openServerModal()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg font-medium transition">
+            Сменить сервер
+        </button>
+    </header>
+
+    <!-- ОСНОВНОЙ КОНТЕЙНЕР (ЭКРАНЫ) -->
+    <main class="p-4 max-w-md mx-auto">
+
+        <!-- 1. ГЛАВНОЕ МЕНЮ -->
+        <div id="view-main" class="space-y-3">
+            <div class="p-3 rounded-xl card-bg text-xs border border-yellow-500/30 text-yellow-200">
+                ⚠️ <b>Внимание:</b> Бот является фанатским проектом. Администрация не несет ответственности за ваши сделки!
+            </div>
+
+            <!-- Категории товаров -->
+            <div class="space-y-2">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider px-1">Категории товаров</p>
+                <button onclick="openCategory('💍 Аксессуары и вещи')" class="w-full text-left p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition">
+                    <span>💍 Аксессуары и вещи</span>
+                    <span class="text-gray-400">→</span>
+                </button>
+                <button onclick="openCategory('🚗 Транспорт и тюнинг')" class="w-full text-left p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition">
+                    <span>🚗 Транспорт и тюнинг</span>
+                    <span class="text-gray-400">→</span>
+                </button>
+                <button onclick="openCategory('👕 Скины и охранники')" class="w-full text-left p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition">
+                    <span>👕 Скины и охранники</span>
+                    <span class="text-gray-400">→</span>
+                </button>
+                <button onclick="openCategory('🏠 Недвижимость и бизнесы')" class="w-full text-left p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition">
+                    <span>🏠 Недвижимость и бизнесы</span>
+                    <span class="text-gray-400">→</span>
+                </button>
+                <button onclick="openCategory('📦 Ресурсы и материалы')" class="w-full text-left p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition">
+                    <span>📦 Ресурсы и материалы</span>
+                    <span class="text-gray-400">→</span>
+                </button>
+            </div>
+
+            <!-- Основные действия -->
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button onclick="openAdForm('sell')" class="p-3 rounded-xl bg-emerald-600/80 hover:bg-emerald-600 text-center font-medium text-sm transition">
+                    📤 Продать товар
+                </button>
+                <button onclick="openAdForm('buy')" class="p-3 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-center font-medium text-sm transition">
+                    📥 Скупить товар
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="switchView('view-barter')" class="p-3 rounded-xl card-bg hover:bg-white/10 text-center text-sm transition">
+                    🔄 Бартер / Обмен
+                </button>
+                <button onclick="switchView('view-auctions')" class="p-3 rounded-xl card-bg hover:bg-white/10 text-center text-sm transition">
+                    🏛 Аукционы
+                </button>
+            </div>
+
+            <div class="space-y-2 pt-2">
+                <button onclick="switchView('view-vc')" class="w-full p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition text-sm">
+                    <span>💱 Курс VC и калькулятор</span>
+                    <span class="text-blue-400 font-semibold" id="vc-rate-preview">95,000 $</span>
+                </button>
+                <button onclick="switchView('view-ref')" class="w-full p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition text-sm">
+                    <span>👥 Рефералы и Бонусы</span>
+                    <span>🎁</span>
+                </button>
+                <button onclick="switchView('view-my-ads')" class="w-full p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition text-sm">
+                    <span>📋 Мои публикации</span>
+                    <span>📂</span>
+                </button>
+                <button onclick="switchView('view-vip')" class="w-full p-3 rounded-xl card-bg hover:bg-white/10 flex items-center justify-between transition text-sm">
+                    <span>💎 VIP-статус</span>
+                    <span class="text-yellow-400">⭐</span>
+                </button>
+            </div>
+
+            <!-- Админ панель (показывается если админ) -->
+            <div id="admin-menu-btn" class="pt-2 hidden">
+                <button onclick="switchView('view-admin')" class="w-full p-3 rounded-xl bg-purple-600/80 hover:bg-purple-600 text-center font-semibold text-sm transition">
+                    👑 Панель администратора
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. ПРОСМОТР КАТЕГОРИИ И ОБЪЯВЛЕНИЙ -->
+        <div id="view-category" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Назад в меню</button>
+            <h2 id="category-title" class="text-xl font-bold">Категория</h2>
+            <div id="ads-list" class="space-y-3">
+                <!-- Динамические объявления -->
+            </div>
+        </div>
+
+        <!-- 3. ФОРМА ПОДАЧИ ОБЪЯВЛЕНИЯ -->
+        <div id="view-ad-form" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Отменить</button>
+            <h2 id="ad-form-title" class="text-xl font-bold">Подача объявления</h2>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Выберите категорию:</label>
+                    <select id="form-category" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white">
+                        <option>💍 Аксессуары и вещи</option>
+                        <option>🚗 Транспорт и тюнинг</option>
+                        <option>👕 Скины и охранники</option>
+                        <option>🏠 Недвижимость и бизнесы</option>
+                        <option>📦 Ресурсы и материалы</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Текст объявления:</label>
+                    <textarea id="form-text" rows="4" placeholder="Опишите товар, цену и контакты..." class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white"></textarea>
+                </div>
+                <button onclick="submitAd()" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold transition">
+                    Отправить на модерацию
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. VC КАЛЬКУЛЯТОР -->
+        <div id="view-vc" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Назад в меню</button>
+            <h2 class="text-xl font-bold">💱 Курс VC и калькулятор</h2>
+            <div class="p-4 rounded-xl card-bg space-y-3">
+                <p class="text-sm text-gray-300">Текущий курс 1 VC-коина: <b id="display-vc-rate" class="text-blue-400">95,000 $</b></p>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Сумма в Долларах ($) или VC:</label>
+                    <input type="text" id="vc-input" placeholder="Например: 10kk или 100vc" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-700 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="calcVc('to_vc')" class="py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-medium">USD → VC</button>
+                    <button onclick="calcVc('to_usd')" class="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-medium">VC → USD</button>
+                </div>
+                <div id="vc-result" class="p-3 rounded-xl bg-black/30 text-sm hidden font-mono"></div>
+            </div>
+            <div id="admin-vc-box" class="hidden pt-2">
+                <button onclick="promptChangeRate()" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-medium">⚙️ Изменить курс VC (Админ)</button>
+            </div>
+        </div>
+
+        <!-- 5. VIP СТАТУС -->
+        <div id="view-vip" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Назад в меню</button>
+            <h2 class="text-xl font-bold">💎 VIP-статус</h2>
+            <div class="p-4 rounded-xl card-bg space-y-3 text-sm">
+                <p>Статус: <span id="vip-status-text" class="text-red-400 font-semibold">❌ Неактивен</span></p>
+                <p class="text-gray-300">Преимущества:</p>
+                <ul class="list-disc pl-5 space-y-1 text-gray-400 text-xs">
+                    <li>Уменьшенный кулдаун подачи объявлений (60 сек вместо 120 сек)</li>
+                    <li>Приоритетный знак отличия</li>
+                </ul>
+                <button onclick="buyVip('30')" class="w-full py-3 rounded-xl bg-yellow-600 hover:bg-yellow-500 font-semibold text-black transition">
+                    👑 VIP на 30 дней — 100 ⭐
+                </button>
+                <button onclick="buyVip('forever')" class="w-full py-3 rounded-xl bg-yellow-500 hover:bg-yellow-400 font-semibold text-black transition">
+                    👑 VIP навсегда — 500 ⭐
+                </button>
+            </div>
+        </div>
+
+        <!-- 6. РЕФЕРАЛЫ И БОНУСЫ -->
+        <div id="view-ref" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Назад в меню</button>
+            <h2 class="text-xl font-bold">👥 Рефералы и Бонусы</h2>
+            <div class="p-4 rounded-xl card-bg space-y-3 text-sm">
+                <p class="text-gray-300">Приглашайте друзей по вашей ссылке и получайте VIP на 10 дней!</p>
+                <div>
+                    <label class="text-xs text-gray-400 block mb-1">Ваша реферальная ссылка:</label>
+                    <input type="text" readonly id="ref-link-input" value="https://t.me/arizona_coin_bot?start=ref_123456" class="w-full p-2.5 rounded-xl bg-black/40 text-xs text-blue-300 font-mono">
+                </div>
+                <button onclick="claimDailyBonus()" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold transition">
+                    🎁 Забрать ежедневный бонус
+                </button>
+            </div>
+        </div>
+
+        <!-- 7. МОИ ПУБЛИКАЦИИ -->
+        <div id="view-my-ads" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Назад в меню</button>
+            <h2 class="text-xl font-bold">📋 Мои публикации</h2>
+            <div id="my-ads-list" class="space-y-3">
+                <!-- Динамически загружается -->
+            </div>
+        </div>
+
+        <!-- 8. БАРТЕР / ОБМЕН -->
+        <div id="view-barter" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Назад в меню</button>
+            <h2 class="text-xl font-bold">🔄 Бартер / Обмен</h2>
+            <div id="barter-list" class="space-y-3"></div>
+        </div>
+
+        <!-- 9. АУКЦИОНЫ -->
+        <div id="view-auctions" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Назад в меню</button>
+            <h2 class="text-xl font-bold">🏛 Аукционы</h2>
+            <div id="auctions-list" class="space-y-3"></div>
+        </div>
+
+        <!-- 10. АДМИН ПАНЕЛЬ -->
+        <div id="view-admin" class="space-y-4 hidden">
+            <button onclick="switchView('view-main')" class="text-sm text-blue-400 hover:underline">← Назад в меню</button>
+            <h2 class="text-xl font-bold text-purple-400">👑 Панель модерации</h2>
+            <div class="space-y-3">
+                <button onclick="loadPendingPosts('sale')" class="w-full p-3 rounded-xl card-bg hover:bg-white/10 text-left text-sm transition">
+                    📋 Модерация объявлений о продаже
+                </button>
+                <button onclick="loadPendingPosts('buy')" class="w-full p-3 rounded-xl card-bg hover:bg-white/10 text-left text-sm transition">
+                    📥 Модерация объявлений о скупке
+                </button>
+                <button onclick="promptBroadcast()" class="w-full p-3 rounded-xl card-bg hover:bg-white/10 text-left text-sm transition">
+                    📢 Сделать рассылку (Owner)
+                </button>
+                <button onclick="promptBanUser()" class="w-full p-3 rounded-xl card-bg hover:bg-white/10 text-left text-sm transition">
+                    🔨 Забанить игрока
+                </button>
+            </div>
+            <div id="admin-moderation-container" class="space-y-3 pt-3"></div>
+        </div>
+
+    </main>
+
+    <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА СЕРВЕРА -->
+    <div id="server-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-[#18222d] border border-gray-700 rounded-2xl p-4 max-w-sm w-full space-y-3 max-h-[80vh] overflow-y-auto">
+            <h3 class="text-lg font-bold">🌐 Выберите сервер</h3>
+            <div id="servers-grid" class="grid grid-cols-2 gap-2">
+                <!-- Сервера генерируются скриптом -->
+            </div>
+            <button onclick="closeServerModal()" class="w-full py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-sm font-medium">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- СКРИПТ ЛОГИКИ WEB APP -->
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Состояние приложения
+        let state = {
+            currentServer: "🔥 Phoenix",
+            isAdmin: true, // Для демонстрации интерфейса админки
+            vcRate: 95000,
+            activeCategory: "",
+            adMode: "sell", // sell or buy
+            myAds: [
+                { id: 1, type: "sale", text: "Продам шар +12, звоните", category: "💍 Аксессуары и вещи" }
+            ],
+            pendingAds: [
+                { id: 101, type: "sale", username: "bounqy31", server: "🔥 Phoenix", text: "Куплю дом в г. Лос-Сантос", category: "🏠 Недвижимость и бизнесы" }
+            ],
+            barters: [
+                { id: 1, text: "Меняю машину Sultan на аксессуары" }
+            ],
+            auctions: [
+                { id: 1, item: "Эксклюзивный скин CJ", price: 50000000, status: "active" }
+            ]
+        };
+
+        const serversList = [
+            "🔥 Phoenix", "🌴 Tucson", "🌵 Scottdale", "⚜️ Chandler", "❄️ Brainburg",
+            "🌊 Yuma", "✨ Saint-Rose", "🏛 Mesa", "❤️ Red-Rock", "🍀 Surprise",
+            "⚡️ Prescott", "🌲 Glendale", "👑 Kingman", "⚓️ Winslow", "🌴 Payson",
+            "💎 Gilbert", "🔥 Show-Low", "🌴 Casa-Grande", "📜 Page", "☀️ Sun-City",
+            "👑 Queen-Creek", "🌵 Sedona", "🎄 Holiday", "🍀 Wednesday", "⚡️ Yava",
+            "🌌 Faraway", "🎁 Christmas", "🐝 Bumble Bee", "🪞 Mirage", "💖 Love",
+            "📱 Mobile I", "📱 Mobile II", "📱 Mobile III"
+        ];
+
+        // Инициализация интерфейса при загрузке
+        window.onload = function() {
+            updateServerLabel();
+            if (state.isAdmin) {
+                document.getElementById('admin-menu-btn').classList.remove('hidden');
+                document.getElementById('admin-vc-box').classList.remove('hidden');
+            }
+        };
+
+        function switchView(viewId) {
+            const views = ['view-main', 'view-category', 'view-ad-form', 'view-vc', 'view-vip', 'view-ref', 'view-my-ads', 'view-barter', 'view-auctions', 'view-admin'];
+            views.forEach(v => {
+                document.getElementById(v).classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
+            window.scrollTo(0, 0);
+
+            if (viewId === 'view-my-ads') renderMyAds();
+            if (viewId === 'view-barter') renderBarters();
+            if (viewId === 'view-auctions') renderAuctions();
+        }
+
+        function updateServerLabel() {
+            document.getElementById('current-server-label').innerText = `🌐 Сервер: ${state.currentServer}`;
+        }
+
+        // Выбор сервера модалка
+        function openServerModal() {
+            const grid = document.getElementById('servers-grid');
+            grid.innerHTML = '';
+            serversList.forEach(srv => {
+                const btn = document.createElement('button');
+                btn.className = `p-2.5 rounded-xl text-xs text-left card-bg hover:bg-blue-600/30 transition ${srv === state.currentServer ? 'border border-blue-500' : ''}`;
+                btn.innerText = srv;
+                btn.onclick = () => {
+                    state.currentServer = srv;
+                    updateServerLabel();
+                    closeServerModal();
+                };
+                grid.appendChild(btn);
+            });
+            document.getElementById('server-modal').classList.remove('hidden');
+        }
+        function closeServerModal() {
+            document.getElementById('server-modal').classList.add('hidden');
+        }
+
+        // Категории
+        function openCategory(catName) {
+            state.activeCategory = catName;
+            document.getElementById('category-title').innerText = catName;
+            const list = document.getElementById('ads-list');
+            list.innerHTML = `
+                <div class="p-4 rounded-xl card-bg text-center text-sm text-gray-400">
+                    Активные объявления в категории <b>${catName}</b> на сервере <b>${state.currentServer}</b> отсутствуют.
+                </div>
+            `;
+            switchView('view-category');
+        }
+
+        // Подача объявления
+        function openAdForm(mode) {
+            state.adMode = mode;
+            document.getElementById('ad-form-title').innerText = mode === 'sell' ? '📤 Подача объявления о продаже' : '📥 Подача объявления о скупке';
+            document.getElementById('form-text').value = '';
+            switchView('view-ad-form');
+        }
+
+        function submitAd() {
+            const text = document.getElementById('form-text').value.trim();
+            const category = document.getElementById('form-category').value;
+            if (!text) {
+                alert('Введите текст объявления!');
+                return;
+            }
+            state.pendingAds.push({
+                id: Date.now(),
+                type: state.adMode,
+                username: tg.initDataUnsafe?.user?.username || "user",
+                server: state.currentServer,
+                text: text,
+                category: category
+            });
+            alert('✅ Ваше объявление успешно отправлено на модерацию администраторам!');
+            switchView('view-main');
+        }
+
+        // VC Калькулятор
+        function calcVc(direction) {
+            const raw = document.getElementById('vc-input').value.trim().toLowerCase();
+            const resDiv = document.getElementById('vc-result');
+            resDiv.classList.remove('hidden');
+
+            let multiplier = 1;
+            let cleaned = raw.replace('$', '').replace('руб', '').replace('vc', '').trim();
+            if (cleaned.includes('ккк') || cleaned.includes('миллиард')) multiplier = 1000000000;
+            else if (cleaned.includes('кк') || cleaned.includes('лям')) multiplier = 1000000;
+            else if (cleaned.includes('к') || cleaned.includes('тыс')) multiplier = 1000;
+
+            cleaned = cleaned.replace(/[^\d.]/g, '');
+            const val = parseFloat(cleaned) * multiplier;
+
+            if (isNaN(val)) {
+                resDiv.innerText = "⚠️ Неверный формат суммы!";
+                return;
+            }
+
+            if (direction === 'to_vc') {
+                const vc = val / state.vcRate;
+                resDiv.innerHTML = `💵 Сумма: <b>${val.toLocaleString()} $</b><br>💎 VC-коины: <b>${vc.toFixed(2)} VC</b>`;
+            } else {
+                const usd = val * state.vcRate;
+                resDiv.innerHTML = `💎 VC-коины: <b>${val.toLocaleString()} VC</b><br>💵 Доллары: <b>${usd.toLocaleString()} $</b>`;
+            }
+        }
+
+        function promptChangeRate() {
+            const newRate = prompt("Введите новый курс 1 VC в долларах ($):", state.vcRate);
+            if (newRate && !isNaN(newRate)) {
+                state.vcRate = parseFloat(newRate);
+                document.getElementById('display-vc-rate5').innerText = `${state.vcRate.toLocaleString()} $`;
+                document.getElementById('vc-rate-preview').innerText = `${state.vcRate.toLocaleString()} $`;
+                alert('✅ Курс обновлен!');
+            }
+        }
+
+        // Мои объявления
+        function renderMyAds() {
+            const list = document.getElementById('my-ads-list');
+            list.innerHTML = '';
+            if (state.myAds.length === 0) {
+                list.innerHTML = `<div class="p-4 rounded-xl card-bg text-center text-sm text-gray-400">У вас нет активных публикаций.</div>`;
+                return;
+            }
+            state.myAds.forEach(ad => {
+                const div = document.createElement('div');
+                div.className = "p-3 rounded-xl card-bg space-y-2 text-sm";
+                div.innerHTML = `
+                    <p><b>[#${ad.id}]</b> ${ad.text}</p>
+                    <button onclick="deleteMyAd(${ad.id})" class="text-xs text-red-400 hover:underline">🗑 Удалить объявление</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function deleteMyAd(id) {
+            state.myAds = state.myAds.filter(a => a.id !== id);
+            renderMyAds();
+        }
+
+        // Бартер
+        function renderBarters() {
+            const list = document.getElementById('barter-list');
+            list.innerHTML = '';
+            state.barters.forEach(b => {
+                list.innerHTML += `<div class="p-3 rounded-xl card-bg text-sm">🔄 <b>Обмен #${b.id}</b><br>${b.text}</div>`;
+            });
+        }
+
+        // Аукционы
+        function renderAuctions() {
+            const list = document.getElementById('auctions-list');
+            list.innerHTML = '';
+            state.auctions.forEach(a => {
+                list.innerHTML += `<div class="p-3 rounded-xl card-bg text-sm">🏛 <b>${a.item}</b><br>Текущая ставка: ${a.price.toLocaleString()} $</div>`;
+            });
+        }
+
+        // Админка
+        function loadPendingPosts(type) {
+            const container = document.getElementById('admin-moderation-container');
+            container.innerHTML = '';
+            const posts = state.pendingAds.filter(p => type === 'sale' ? p.type === 'sale' : p.type === 'buy');
+
+            if (posts.length === 0) {
+                container.innerHTML = `<div class="p-3 rounded-xl card-bg text-xs text-gray-400">Нет объявлений на модерации.</div>`;
+                return;
+            }
+
+            posts.forEach(p => {
+                const div = document.createElement('div');
+                div.className = "p-3 rounded-xl card-bg space-y-2 text-sm border border-purple-500/30";
+                div.innerHTML = `
+                    <p class="text-xs text-blue-400">🌐 Сервер: ${p.server} | От: @${p.username}</p>
+                    <p>${p.text}</p>
+                    <div class="flex gap-2 pt-1">
+                        <button onclick="moderateAd(${p.id}, true)" class="flex-1 py-1.5 bg-emerald-600 rounded-lg text-xs font-medium">Одобрить</button>
+                        <button onclick="moderateAd(${p.id}, false)" class="flex-1 py-1.5 bg-red-600 rounded-lg text-xs font-medium">Отклонить</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function moderateAd(id, approved) {
+            state.pendingAds = state.pendingAds.filter(p => p.id !== id);
+            alert(approved ? '✅ Объявление одобрено!' : '❌ Объявление отклонено.');
+            loadPendingPosts('sale');
+        }
+
+        function promptBroadcast() {
+            const msg = prompt("Введите текст рассылки для всех пользователей бота:");
+            if (msg) alert('🚀 Рассылка успешно выполнена!');
+        }
+
+        function promptBanUser() {
+            const user = prompt("Введите ID или @username игрока для блокировки:");
+            if (user) alert(`✅ Игрок ${user} заблокирован.`);
+        }
+
+        function buyVip(type) {
+            alert(`Инициирована покупка VIP (${type === '30' ? '30 дней' : 'Навсегда'}) через Telegram Stars ⭐`);
+        }
+
+        function claimDailyBonus() {
+            alert('🎉 Поздравляем! Вы успешно забрали ежедневный бонус.');
+        }
+    </script>
+</body>
+</html>
+

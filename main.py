@@ -877,6 +877,77 @@ def kb_cancel():
 
 
 # ==========================================
+# ДОБАВЛЕННЫЕ ИСПРАВЛЕННЫЕ ОБРАБОТЧИКИ КНОПОК
+# ==========================================
+def change_server(m):
+  uid = m.from_user.id
+  update_state(uid, changing_server=True)
+  safe_send_message(
+      m.chat.id,
+      "🌐 <b>Выберите игровой сервер из списка ниже:</b>",
+      reply_markup=kb_servers(),
+  )
+
+
+def select_srv(m):
+  uid = m.from_user.id
+  srv = m.text.strip()
+  if srv not in SERVERS:
+    return
+  set_user_server(uid, srv)
+  clear_state(uid)
+  safe_send_message(
+      m.chat.id,
+      f"✅ Игровой сервер успешно изменен на: <b>{html.escape(srv)}</b>",
+      reply_markup=kb_main_menu(uid),
+  )
+
+
+def admin_panel(m):
+  uid = m.from_user.id
+  if not is_admin_or_owner_id(uid):
+    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
+
+  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+  if is_owner(m.from_user):
+    markup.row(
+        types.KeyboardButton("модерация продажи"),
+        types.KeyboardButton("модерация скупки"),
+    )
+    markup.row(
+        types.KeyboardButton("рассылка"), types.KeyboardButton("📋 Логи чатов")
+    )
+    markup.row(
+        types.KeyboardButton("🔨 Забанить игрока"),
+        types.KeyboardButton("🔓 Разбанить игрока"),
+    )
+    markup.row(
+        types.KeyboardButton("👑 Добавить адм"),
+        types.KeyboardButton("🚫 Снять с адм"),
+    )
+  else:
+    markup.row(
+        types.KeyboardButton("модерация продажи"),
+        types.KeyboardButton("модерация скупки"),
+    )
+  markup.row(types.KeyboardButton("❌ Отменить действие"))
+
+  safe_send_message(
+      m.chat.id,
+      "👑 <b>Панель управления администратора:</b>",
+      reply_markup=markup,
+  )
+
+
+def cancel_action(m):
+  uid = m.from_user.id
+  clear_state(uid)
+  safe_send_message(
+      m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu(uid)
+  )
+
+
+# ==========================================
 # ЗАГЛУШКИ ДЛЯ КНОПОК
 # ==========================================
 def show_vc_menu(m):
@@ -2514,7 +2585,7 @@ def cmd_help(m):
 
 
 # ==========================================
-# ПОДАЧА ОБЪЯВЛЕНИЙ И КУЛДАУН (120 сек. для обычных, 60 сек. для VIP)
+# ПОДАЧА ОБЪЯВЛЕНИЙ И КУЛДАУН
 # ==========================================
 def check_working_hours() -> bool:
   now_time = get_msk_time().time()
@@ -2529,7 +2600,6 @@ def start_add_ad(m):
   uid = m.from_user.id
   srv = get_user_server(uid)
   last_time = get_user_last_ad_time(uid)
-  # Кулдаун: 60 секунд (1 минута) для VIP, 120 секунд (2 минуты) для обычной подписки
   cooldown = 60 if is_user_premium(uid) else 120
   if time.time() - last_time < cooldown and not is_admin_or_owner(m.from_user):
     rem = int(cooldown - (time.time() - last_time))
@@ -2565,7 +2635,6 @@ def start_add_buy_ad(m):
   uid = m.from_user.id
   srv = get_user_server(uid)
   last_time = get_user_last_ad_time(uid)
-  # Кулдаун: 60 секунд (1 минута) для VIP, 120 секунд (2 минуты) для обычной подписки
   cooldown = 60 if is_user_premium(uid) else 120
   if time.time() - last_time < cooldown and not is_admin_or_owner(m.from_user):
     rem = int(cooldown - (time.time() - last_time))
@@ -2995,59 +3064,6 @@ def cb_buy_vip_sub_xtr(call):
     )
 
 
-def cancel_action(m):
-  uid = m.from_user.id
-  clear_state(uid)
-  safe_send_message(
-      m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu(uid)
-  )
-
-
-def change_server(m):
-  update_state(m.from_user.id, changing_server=True)
-  safe_send_message(
-      m.chat.id, "👇 Выберите новый игровой сервер:", reply_markup=kb_servers()
-  )
-
-
-def select_srv(m):
-  srv = m.text
-  uid = m.from_user.id
-  set_user_server(uid, srv)
-  safe_send_message(
-      m.chat.id,
-      f"✅ Сервер установлен: <b>{html.escape(srv)}</b>",
-      reply_markup=kb_main_menu(uid),
-  )
-
-
-def admin_panel(m):
-  if not is_admin_or_owner(m.from_user):
-    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
-
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-  markup.add(
-      types.KeyboardButton("модерация продажи"),
-      types.KeyboardButton("модерация скупки"),
-  )
-  if is_owner(m.from_user):
-    markup.add(
-        types.KeyboardButton("рассылка"),
-        types.KeyboardButton("🔨 Забанить игрока"),
-    )
-    markup.add(
-        types.KeyboardButton("🔓 Разбанить игрока"),
-        types.KeyboardButton("👑 Добавить адм"),
-    )
-    markup.add(
-        types.KeyboardButton("🚫 Снять с адм"),
-        types.KeyboardButton("📋 Логи чатов"),
-    )
-  markup.add(types.KeyboardButton("❌ Отменить действие"))
-  safe_send_message(m.chat.id, "👑 <b>Админ-панель управления:</b>", reply_markup=markup)
-
-
 if __name__ == "__main__":
-  logger.info("Бот успешно запущен и работает...")
+  logger.info("Бот запущен...")
   bot.infinity_polling(skip_pending=True)
-

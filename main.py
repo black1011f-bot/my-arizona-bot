@@ -2911,7 +2911,7 @@ def show_auctions_menu(m):
   for a in auctions:
     aid = a["id"]
     item = a["item_name"]
-    price = a["current_bid"] or a["start_price"]
+    price = a["current_bid"] if a["current_bid"] and a["current_bid"] > 0 else a["start_price"]
     is_owner_lot = a["user_id"] == uid
     fmt = (
         f"🏛 <b>Аукцион #{aid}</b>\n"
@@ -3020,43 +3020,42 @@ def process_auc_price(m):
         m.chat.id, "↩️ Возвращаем в главное меню.", reply_markup=kb_main_menu(uid)
     )
 
+  st = get_state(uid)
+  item_name = st.get("auc_item", "Товар")
+
   try:
-    price = parse_flexible_price(m.text)
-    if price <= 0:
+    start_price = parse_flexible_price(m.text)
+    if start_price <= 0:
       raise ValueError
   except ValueError:
     return safe_send_message(
         m.chat.id,
-        "⚠️ Введите корректную начальную цену (например: 10000, 5кк):",
+        "⚠️ Введите корректную начальную цену (например: 100000, 1.5кк).",
         reply_markup=kb_back(),
     )
 
-  st = get_state(uid)
-  item_name = st.get("auc_item")
   srv = get_user_server(uid)
   clear_state(uid)
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO auctions (user_id, server, item_name, start_price,"
-        " current_bid, status, created_at) VALUES (?, ?, ?, ?, ?, 'active', ?)",
-        (uid, srv, item_name, price, price, time.time()),
+        "INSERT INTO auctions (user_id, server, item_name, start_price, current_bid, status, created_at) VALUES (?, ?, ?, ?, 0, 'active', ?)",
+        (uid, srv, item_name, start_price, time.time()),
     )
 
   safe_send_message(
       m.chat.id,
-      f"✅ <b>Лот успешно выставлен на аукцион!</b>\n📦 Товар:"
-      f" <b>{html.escape(item_name)}</b>\n💰 Начальная цена:"
-      f" <b>{price:,.0f} $</b>",
+      f"✅ Аукцион на товар <b>{html.escape(item_name)}</b> успешно создан с начальной ценой <b>{start_price:,.0f} $</b>!",
       reply_markup=kb_main_menu(uid),
   )
 
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("auc_bid_"))
-def cb_auc_bid_start(call):
+def cb_auc_bid(call):
   with contextlib.suppress(Exception):
     bot.answer_callback_query(call.id)
+  uid = call.from_user.id
   try:
     aid = int(call.data.replace("auc_bid_", ""))
   except ValueError:
@@ -3064,28 +3063,22 @@ def cb_auc_bid_start(call):
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,)
-    )
+    cur.execute("SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,))
     auc = cur.fetchone()
 
   if not auc:
-    return safe_send_message(
-        call.message.chat.id, "⚠️ Этот аукцион завершен или не существует."
-    )
+    return safe_send_message(call.message.chat.id, "⚠️ Этот аукцион завершен или не найден.")
 
-  if auc["user_id"] == call.from_user.id:
-    return safe_send_message(
-        call.message.chat.id, "⚠️ Вы не можете делать ставки на собственный лот."
-    )
+  if auc["user_id"] == uid:
+    return safe_send_message(call.message.chat.id, "⚠️ Вы не можете делать ставки на собственный лот.")
 
-  update_state(call.from_user.id, bidding_auc_id=aid)
-  current_price = auc["current_bid"] or auc["start_price"]
+  update_state(uid, bidding_auc_id=aid)
+  current_val = auc["current_bid"] if auc["current_bid"] and auc["current_bid"] > 0 else auc["start_price"]
   safe_send_message(
       call.message.chat.id,
-      f"💵 <b>Сделать ставку на лот #{aid} ({html.escape(auc['item_name'])})</b>\n\n"
-      f"Текущая ставка: <b>{current_price:,.0f} $</b>\n"
-      f"Введите сумму вашей ставки (она должна быть выше текущей):",
+      f"💵 <b>Сделать ставку на аукцион #{aid}</b> ({html.escape(auc['item_name'])})\n"
+      f"Текущая ставка: <b>{current_val:,.0f} $</b>\n\n"
+      f"Введите сумму вашей ставки (должна быть выше текущей):",
       reply_markup=kb_back(),
   )
 
@@ -3093,7 +3086,7 @@ def cb_auc_bid_start(call):
 @bot.message_handler(
     func=lambda m: get_state(m.from_user.id).get("bidding_auc_id") is not None
 )
-def process_auc_bid(m):
+def process_auc_bid_input(m):
   uid = m.from_user.id
   if m.text == "↩️ Назад в меню":
     clear_state(uid)
@@ -3105,68 +3098,57 @@ def process_auc_bid(m):
   aid = st.get("bidding_auc_id")
   clear_state(uid)
 
+  if not aid:
+    return safe_send_message(m.chat.id, "⚠️ Сессия аукциона истекла.", reply_markup=kb_main_menu(uid))
+
   try:
     bid_amount = parse_flexible_price(m.text)
   except ValueError:
     return safe_send_message(
         m.chat.id,
-        "⚠️ Не удалось распознать сумму ставки. Введите число (например:"
-        " 15кк):",
+        "⚠️ Не удалось распознать сумму. Введите корректную сумму ставки:",
+        reply_markup=kb_main_menu(uid),
+    )
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,))
+    auc = cur.fetchone()
+
+  if not auc:
+    return safe_send_message(m.chat.id, "⚠️ Аукцион не найден или завершен.", reply_markup=kb_main_menu(uid))
+
+  current_val = auc["current_bid"] if auc["current_bid"] and auc["current_bid"] > 0 else auc["start_price"]
+  if bid_amount <= current_val:
+    return safe_send_message(
+        m.chat.id,
+        f"⚠️ Ваша ставка должна быть больше текущей ({current_val:,.0f} $)! Попробуйте снова.",
         reply_markup=kb_main_menu(uid),
     )
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,)
-    )
-    auc = cur.fetchone()
-    if not auc:
-      return safe_send_message(
-          m.chat.id,
-          "⚠️ Аукцион не найден или уже завершен.",
-          reply_markup=kb_main_menu(uid),
-      )
-
-    current_price = auc["current_bid"] or auc["start_price"]
-    if bid_amount <= current_price:
-      return safe_send_message(
-          m.chat.id,
-          f"⚠️ Ваша ставка должна быть больше текущей"
-          f" ({current_price:,.0f} $).",
-          reply_markup=kb_main_menu(uid),
-      )
-
-    cur.execute(
         "UPDATE auctions SET current_bid = ?, highest_bidder = ? WHERE id = ?",
         (bid_amount, uid, aid),
     )
     cur.execute(
-        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp)"
-        " VALUES (?, ?, ?, ?)",
-        (
-            aid,
-            uid,
-            f"Сделана ставка: {bid_amount} $",
-            time.time(),
-        ),
+        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp) VALUES (?, ?, ?, ?)",
+        (aid, uid, f"Ставка: {bid_amount}", time.time()),
     )
 
   safe_send_message(
       m.chat.id,
-      f"✅ <b>Ставка успешно принята!</b>\nВы сделали наивысшую ставку:"
-      f" <b>{bid_amount:,.0f} $</b> по лоту #{aid}.",
+      f"✅ Ваша ставка <b>{bid_amount:,.0f} $</b> на лот <b>{html.escape(auc['item_name'])}</b> успешно принята!",
       reply_markup=kb_main_menu(uid),
   )
 
-  owner_id = auc["user_id"]
-  with contextlib.suppress(Exception):
-    safe_send_message(
-        owner_id,
-        f"🔔 <b>Новая ставка на ваш лот (#{aid})!</b>\n📦 Товар:"
-        f" <b>{html.escape(auc['item_name'])}</b>\n💰 Новая ставка:"
-        f" <b>{bid_amount:,.0f} $</b>",
-    )
+  if auc["highest_bidder"] and auc["highest_bidder"] != uid:
+    with contextlib.suppress(Exception):
+      safe_send_message(
+          auc["highest_bidder"],
+          f"⚠️ <b>Вашу ставку перебили!</b>\nНа аукцион #{aid} ({html.escape(auc['item_name'])}) сделали новую ставку: <b>{bid_amount:,.0f} $</b>.",
+      )
 
 
 # ==========================================
@@ -3174,9 +3156,4 @@ def process_auc_bid(m):
 # ==========================================
 if __name__ == "__main__":
   logger.info("Бот запущен и готов к работе...")
-  while True:
-    try:
-      bot.infinity_polling(timeout=60, long_polling_timeout=60)
-    except Exception as e:
-      logger.error(f"Ошибка в polling: {e}")
-      time.sleep(5)
+  bot.infinity_polling(skip_pending=True)

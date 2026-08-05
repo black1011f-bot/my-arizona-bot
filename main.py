@@ -557,12 +557,12 @@ def show_my_ads(m):
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, server, category, text, 'active_sale' as status FROM"
+        "SELECT id, server, category, text, photo, 'active_sale' as status FROM"
         " active_ads WHERE user_id = ? UNION ALL SELECT id, server, category,"
-        " text, 'active_buy' as status FROM active_buy_ads WHERE user_id = ?"
-        " UNION ALL SELECT id, server, category, text, 'pending_sale' as"
+        " text, photo, 'active_buy' as status FROM active_buy_ads WHERE user_id = ?"
+        " UNION ALL SELECT id, server, category, text, photo, 'pending_sale' as"
         " status FROM pending_posts WHERE user_id = ? UNION ALL SELECT id,"
-        " server, category, text, 'pending_buy' as status FROM"
+        " server, category, text, photo, 'pending_buy' as status FROM"
         " pending_buy_posts WHERE user_id = ?",
         (uid, uid, uid, uid),
     )
@@ -575,26 +575,94 @@ def show_my_ads(m):
         reply_markup=kb_main_menu(),
     )
 
-  text = "📋 <b>Ваши публикации:</b>\n\n"
+  safe_send_message(m.chat.id, "📋 <b>Ваши публикации:</b>")
   for row in ads:
+    aid = row["id"]
+    status = row["status"]
+    srv = row["server"]
+    category = row["category"]
+    text = row["text"]
+    photo = row["photo"]
+
     status_str = {
         "active_sale": "🟢 Активна (Продажа)",
         "active_buy": "🟢 Активна (Скупка)",
         "pending_sale": "⏳ На модерации (Продажа)",
         "pending_buy": "⏳ На модерации (Скупка)",
-    }.get(row["status"], "Неизвестно")
+    }.get(status, "Неизвестно")
 
-    text += (
-        f"• ID: <code>{row['id']}</code> | {status_str}\n🌐 Сервер:"
-        f" <b>{row['server']}</b> | 📂 {row['category']}\n💬"
-        f" {html.escape(row['text'][:50])}...\n\n"
+    fmt_text = (
+        f"• ID: <code>{aid}</code> | {status_str}\n"
+        f"🌐 Сервер: <b>{srv}</b> | 📂 {category}\n\n"
+        f"{html.escape(text)}"
     )
 
-  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🗑 Удалить", callback_data=f"my_del_{status}_{aid}"))
+
+    if photo:
+      safe_send_photo(m.chat.id, photo, caption=fmt_text, reply_markup=markup)
+    else:
+      safe_send_message(m.chat.id, fmt_text, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("my_del_"))
+def cb_my_delete_ad(call):
+  uid = call.from_user.id
+  try:
+    bot.answer_callback_query(call.id, "⏳ Удаление...")
+  except Exception:
+    pass
+
+  parts = call.data.replace("my_del_", "").split("_")
+  if len(parts) < 2:
+    return
+  status_type = "_".join(parts[:-1])
+  try:
+    aid = int(parts[-1])
+  except ValueError:
+    return
+
+  table_map = {
+      "active_sale": "active_ads",
+      "active_buy": "active_buy_ads",
+      "pending_sale": "pending_posts",
+      "pending_buy": "pending_buy_posts"
+  }
+  table = table_map.get(status_type)
+  if not table:
+    try:
+      bot.answer_callback_query(call.id, "⚠️ Ошибка категории.", show_alert=True)
+    except Exception:
+      pass
+    return
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(f"SELECT user_id FROM {table} WHERE id = ?", (aid,))
+    row = cur.fetchone()
+    if not row or row["user_id"] != uid:
+      try:
+        bot.answer_callback_query(call.id, "⚠️ Объявление не найдено или уже удалено.", show_alert=True)
+      except Exception:
+        pass
+      return
+    cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
+
+  try:
+    bot.answer_callback_query(call.id, "🗑 Объявление успешно удалено!")
+    bot.delete_message(call.message.chat.id, call.message.message_id)
+  except Exception:
+    pass
 
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("fav_toggle_"))
 def cb_fav_toggle(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+    
   aid = int(call.data.replace("fav_toggle_", ""))
   uid = call.from_user.id
 
@@ -638,6 +706,11 @@ def cb_fav_toggle(call):
     or c.data.startswith("admin_del_buy_")
 )
 def cb_admin_delete_ad(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+    
   if not verify_admin_callback(call):
     return
   is_buy = "admin_del_buy_" in call.data
@@ -682,6 +755,12 @@ def notify_subscribers(server: str, text: str, ad_id: int, is_buy: bool):
     lower_text = text.lower()
     notified_users = set()
 
+    def send_sub_notif(uid, notif_msg, markup):
+      try:
+        safe_send_message(uid, notif_msg, reply_markup=markup)
+      except Exception:
+        pass
+
     for row in subs:
       uid = row["user_id"]
       kw = row["keyword"].lower()
@@ -694,10 +773,7 @@ def notify_subscribers(server: str, text: str, ad_id: int, is_buy: bool):
             f"{text}"
         )
         markup = ikb_ad_actions(ad_id, user_id=uid, is_buy=is_buy)
-        try:
-          safe_send_message(uid, notif_msg, reply_markup=markup)
-        except Exception:
-          pass
+        threading.Thread(target=send_sub_notif, args=(uid, notif_msg, markup), daemon=True).start()
   except Exception as e:
     logger.error(f"Ошибка отправки уведомлений по подпискам: {e}")
 
@@ -739,6 +815,10 @@ def manage_subscriptions(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "sub_add_start")
 def cb_sub_add_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   update_state(call.from_user.id, adding_subscription=True)
   safe_send_message(
       call.message.chat.id,
@@ -794,6 +874,11 @@ def process_add_subscription(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "sub_del_start")
 def cb_sub_del_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+    
   uid = call.from_user.id
   srv = get_user_server(uid)
   with db_lock, get_db() as conn:
@@ -1118,6 +1203,11 @@ def process_ad_text_or_photo(m):
 
 @bot.callback_query_handler(func=lambda c: c.data in ["ad_type_vip_sub", "ad_type_regular"])
 def cb_publish_ad_free(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+    
   uid = call.from_user.id
   st = get_state(uid)
   post_data = st.get("posting_ad")
@@ -1247,14 +1337,17 @@ def finalize_and_send_ad(uid, post_data, is_vip):
       f"🌐 Сервер: {srv}\n📂 Категория: {category}\n👤 Автор ID: {uid}\n\n{polished_text}"
   )
 
-  for adm in get_all_admin_ids():
+  def notify_admin_async(adm_id):
     try:
       if photo_id:
-        safe_send_photo(adm, photo_id, caption=notif_text, reply_markup=markup)
+        safe_send_photo(adm_id, photo_id, caption=notif_text, reply_markup=markup)
       else:
-        safe_send_message(adm, notif_text, reply_markup=markup)
+        safe_send_message(adm_id, notif_text, reply_markup=markup)
     except Exception:
       pass
+
+  for adm in get_all_admin_ids():
+    threading.Thread(target=notify_admin_async, args=(adm,), daemon=True).start()
 
 
 # ==========================================
@@ -1262,6 +1355,11 @@ def finalize_and_send_ad(uid, post_data, is_vip):
 # ==========================================
 @bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
 def cb_contact_seller(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+    
   aid = int(call.data.replace("contact_seller_", ""))
   uid = call.from_user.id
 
@@ -1970,6 +2068,10 @@ def info_premium(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "buy_premium_30")
 def cb_buy_premium_30(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   prices = [types.LabeledPrice(label="VIP Статус на 30 дней", amount=100)]
   try:
     bot.send_invoice(
@@ -2010,6 +2112,10 @@ def show_vc_menu(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "vc_set_rate_start")
 def cb_vc_set_rate_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not verify_admin_callback(call):
     return
   update_state(call.from_user.id, vc_setting_rate=True)
@@ -2032,6 +2138,10 @@ def process_vc_set_rate(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "vc_conv_start")
 def cb_vc_conv_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   update_state(call.from_user.id, vc_conv_input=True)
   safe_send_message(call.message.chat.id, "🔄 Введите сумму (например: <code>1500000</code> или <code>500vc</code>):", reply_markup=kb_cancel())
 
@@ -2058,6 +2168,10 @@ def process_vc_conv(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "vc_calc_start")
 def cb_vc_calc_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   update_state(call.from_user.id, vc_calc_step="buy_price")
   safe_send_message(call.message.chat.id, "🧮 Введите цену покупки на своем сервере (в SA $):", reply_markup=kb_cancel())
 
@@ -2109,7 +2223,7 @@ def admin_panel(m):
   markup.add(
       types.InlineKeyboardButton("📤 Модерация продаж", callback_data="admin_mod_sales"),
       types.InlineKeyboardButton("📥 Модерация скупки", callback_data="admin_mod_buys"),
-      types.InlineKeyboardButton("📊 Статистика админов", callback_data="admin_stats_view"),
+      types.InlineKeyboardButton("📊 Статистика админов (Топ-5)", callback_data="admin_stats_view"),
   )
   if is_owner(m.from_user):
     markup.add(
@@ -2125,11 +2239,15 @@ def admin_panel(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "admin_stats_view")
 def cb_admin_stats_view(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not verify_admin_callback(call):
     return
   with db_lock, get_db() as conn:
     cur = conn.cursor()
-    cur.execute("SELECT username, count FROM admin_ad_stats ORDER BY count DESC")
+    cur.execute("SELECT username, count FROM admin_ad_stats ORDER BY count DESC LIMIT 5")
     stats = cur.fetchall()
 
   if not stats:
@@ -2138,19 +2256,19 @@ def cb_admin_stats_view(call):
     except Exception:
       pass
 
-  text = "📊 <b>Статистика администраторов (одобрено объявлений):</b>\n\n"
+  text = "📊 <b>Топ-5 администраторов по одобренным объявлениям:</b>\n\n"
   for row in stats:
     text += f"👤 <b>@{row['username']}</b> — {row['count']} объявлений\n"
 
   safe_send_message(call.message.chat.id, text, reply_markup=kb_main_menu())
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
 
 
 @bot.callback_query_handler(func=lambda c: c.data == "owner_add_admin_start")
 def cb_owner_add_admin_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not is_owner(call.from_user):
     try:
       return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
@@ -2188,6 +2306,10 @@ def process_owner_add_admin(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "owner_del_admin_start")
 def cb_owner_del_admin_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not is_owner(call.from_user):
     try:
       return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
@@ -2219,6 +2341,10 @@ def process_owner_del_admin(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "owner_ban_start")
 def cb_owner_ban_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not is_owner(call.from_user):
     try:
       return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
@@ -2250,6 +2376,10 @@ def process_owner_ban(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "owner_unban_start")
 def cb_owner_unban_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not is_owner(call.from_user):
     try:
       return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
@@ -2281,6 +2411,10 @@ def process_owner_unban(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "owner_broadcast_start")
 def cb_owner_broadcast_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not is_owner(call.from_user):
     try:
       return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
@@ -2323,6 +2457,10 @@ def process_owner_broadcast(m):
 
 @bot.callback_query_handler(func=lambda c: c.data == "owner_get_logs")
 def cb_owner_get_logs(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not is_owner(call.from_user):
     try:
       return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
@@ -2351,6 +2489,10 @@ def cb_owner_get_logs(call):
 
 @bot.callback_query_handler(func=lambda c: c.data in ["admin_mod_sales", "admin_mod_buys"])
 def cb_admin_mod_menu(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not verify_admin_callback(call):
     return
   is_buy = "buy" in call.data
@@ -2382,6 +2524,10 @@ def cb_admin_mod_menu(call):
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_open_") or c.data.startswith("mod_open_buy_"))
 def cb_mod_open(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not verify_admin_callback(call):
     return
   is_buy = "mod_open_buy_" in call.data
@@ -2429,6 +2575,10 @@ def cb_mod_open(call):
     or c.data.startswith("mod_bad_buy_")
 )
 def cb_mod_decision(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
   if not verify_admin_callback(call):
     return
   is_buy = "buy" in call.data

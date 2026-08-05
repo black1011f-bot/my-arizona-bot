@@ -680,15 +680,6 @@ def init_db():
         """)
 
     cursor.execute("""
-            CREATE TABLE IF NOT EXISTS keyword_subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                server TEXT,
-                keyword TEXT
-            )
-        """)
-
-    cursor.execute("""
             CREATE TABLE IF NOT EXISTS premium_users (
                 user_id INTEGER PRIMARY KEY,
                 expires_at REAL
@@ -813,7 +804,7 @@ def blocked_user_callback(c):
 
 
 # ==========================================
-# КЛАВИАТУРЫ
+# КЛАВИАТУРЫ (КНОПКА УВЕДОМЛЕНИЙ УДАЛЕНА)
 # ==========================================
 def kb_main_menu(user_id=None):
   m = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -837,10 +828,7 @@ def kb_main_menu(user_id=None):
   )
   m.row(types.KeyboardButton("👥 Рефералы и Бонусы"))
   m.row(types.KeyboardButton("💱 Курс VC и калькулятор"))
-  m.row(
-      types.KeyboardButton("🔍 Найти товар в базе"),
-      types.KeyboardButton("🔔 Уведомления о поиске"),
-  )
+  m.row(types.KeyboardButton("🔍 Найти товар в базе"))
   m.row(
       types.KeyboardButton("❤️ Сохраненные"),
       types.KeyboardButton("📋 Мои публикации"),
@@ -1091,7 +1079,7 @@ def cb_buy_vip(call):
 
 
 # ==========================================
-# ЗАГЛУШКИ ДЛЯ КНОПОК
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ И ОТОБРАЖЕНИЕ
 # ==========================================
 def show_my_ads(m):
   uid = m.from_user.id
@@ -1144,13 +1132,22 @@ def start_search(m):
   update_state(m.from_user.id, searching_keyword=True)
 
 
-def manage_subscriptions(m):
+def contact_manager(m):
   safe_send_message(
-      m.chat.id,
-      "🔔 <b>Уведомления о поиске:</b>\n\nУ вас нет активных подписок на"
-      " ключевые слова.",
-      reply_markup=kb_main_menu(m.from_user.id),
+    m.chat.id,
+    f"💬 Связаться с менеджером: @{MANAGER_USERNAME}",
+    reply_markup=kb_main_menu(m.from_user.id)
   )
+
+
+def show_average_prices(m):
+  uid = m.from_user.id
+  srv = get_user_server(uid)
+  text = (
+      f"📊 <b>Анализ цен на сервере {html.escape(srv)}</b>\n\n"
+      "Здесь отображается аналитика и средняя рыночная стоимость товаров на основе активных объявлений."
+  )
+  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
 
 
 def show_category_ads(m):
@@ -1206,7 +1203,6 @@ def should_override_nav(msg):
       st.get("posting_ad", {}).get("step")
       in ["category", "text_or_photo", "choose_ad_type"]
       or st.get("searching_keyword")
-      or st.get("adding_subscription")
       or st.get("vc_setting_rate")
       or st.get("vc_conv_input")
       or st.get("vc_calc_mode")
@@ -1224,7 +1220,6 @@ def should_override_nav(msg):
   nav_buttons = [
       "🔍 Найти товар в базе",
       "❤️ Сохраненные",
-      "🔔 Уведомления о поиске",
       "📋 Мои публикации",
       "📊 Анализ цен на сервере",
       "📤 Продать товар",
@@ -1279,8 +1274,6 @@ def handle_navigation_override(m):
     show_favorites(m)
   elif m.text == "🔍 Найти товар в базе":
     start_search(m)
-  elif m.text == "🔔 Уведомления о поиске":
-    manage_subscriptions(m)
   elif m.text == "👑 Админ-панель":
     admin_panel(m)
   elif m.text == "💬 Связаться с менеджером":
@@ -2923,6 +2916,7 @@ def process_ad_text_or_photo(m):
   st["posting_ad"]["polished_text"] = text
   st["posting_ad"]["photo_id"] = m.photo[-1].file_id if m.photo else None
   st["posting_ad"]["step"] = "choose_ad_type"
+  st["posting_ad"]["username"] = m.from_user.username or ""
   update_state(uid, posting_ad=st["posting_ad"])
 
   srv = get_user_server(uid)
@@ -2984,41 +2978,14 @@ def process_ad_text_or_photo(m):
 
   safe_send_message(
       m.chat.id,
-      f"📝 <b>Текст:</b>\n\n{html.escape(st['posting_ad']['polished_text'])}\n\n🌐 Сервер: <b>{html.escape(srv)}</b>\n\nВыберите тип публикации объявления:",
+      f"📝 <b>Текст:</b>\n\n{html.escape(st['posting_ad']['polished_text'])}\n\nВыберите тип публикации:",
       reply_markup=markup,
   )
 
 
-def finalize_and_send_ad(uid, ad_data, is_vip):
-  srv = get_user_server(uid)
-  text = ad_data["polished_text"]
-  photo = ad_data["photo_id"]
-  category = ad_data["category"]
-  is_buy = ad_data["is_buy"]
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    target_table = "pending_buy_posts" if is_buy else "pending_posts"
-    cur.execute(
-        f"INSERT INTO {target_table} (user_id, username, server, category,"
-        " text, photo, is_vip, editing_by, editing_since) VALUES (?, ?, ?, ?,"
-        " ?, ?, ?, 0, 0)",
-        (
-            uid,
-            "",
-            srv,
-            category,
-            text,
-            photo,
-            is_vip,
-        ),
-    )
-  set_user_last_ad_time(uid, time.time())
-
-
 @bot.callback_query_handler(
     func=lambda c: c.data
-    in ["ad_type_bonus_vip", "ad_type_vip_paid", "ad_type_regular"]
+    in ["ad_type_bonus_vip", "ad_type_regular", "ad_type_vip_paid"]
 )
 def cb_choose_ad_type(call):
   try:
@@ -3029,60 +2996,50 @@ def cb_choose_ad_type(call):
   st = get_state(uid)
   ad_data = st.get("posting_ad")
   if not ad_data:
-    return safe_send_message(
-        call.message.chat.id, "⚠️ Данные объявления не найдены. Начните заново."
-    )
+    return safe_send_message(call.message.chat.id, "⚠️ Данные объявления не найдены. Начните заново.")
+
+  clear_state(uid)
 
   if call.data == "ad_type_bonus_vip":
     with db_lock, get_db() as conn:
       cur = conn.cursor()
       cur.execute(
-          "SELECT vip_ads_count FROM user_bonuses WHERE user_id = ?", (uid,)
-      )
-      row = cur.fetchone()
-      if not row or row["vip_ads_count"] <= 0:
-        return safe_send_message(
-            call.message.chat.id, "⚠️ У вас нет доступных бонусных VIP-объявлений."
-        )
-      cur.execute(
-          "UPDATE user_bonuses SET vip_ads_count = vip_ads_count - 1 WHERE"
-          " user_id = ?",
+          "UPDATE user_bonuses SET vip_ads_count = vip_ads_count - 1 WHERE user_id = ?",
           (uid,),
       )
-    clear_state(uid)
     finalize_and_send_ad(uid, ad_data, is_vip=1)
     safe_send_message(
         call.message.chat.id,
-        "✅ Ваше VIP-объявление успешно отправлено на модерацию (списано 1"
-        " бонусное VIP-объявление).",
+        "👑 Вы использовали бонусное VIP-объявление! Пост отправлен на модерацию.",
         reply_markup=kb_main_menu(uid),
     )
-
+  elif call.data == "ad_type_regular":
+    finalize_and_send_ad(uid, ad_data, is_vip=0)
+    safe_send_message(
+        call.message.chat.id,
+        "📄 Обычное объявление успешно отправлено на модерацию администраторам.",
+        reply_markup=kb_main_menu(uid),
+    )
   elif call.data == "ad_type_vip_paid":
-    clear_state(uid)
     prices = [types.LabeledPrice(label="VIP-объявление", amount=1)]
+    payload = f"vip_ad_{uid}_{int(time.time())}"
+    title = "VIP-объявление"
+    description = "Продвижение объявления в статус VIP за 1 звезду"
     try:
       bot.send_invoice(
           chat_id=call.message.chat.id,
-          title="VIP-объявление",
-          description="Продвижение объявления в статус VIP за 1 звезду",
-          invoice_payload=f"vip_ad_{uid}_{int(time.time())}",
+          title=title,
+          description=description,
+          invoice_payload=payload,
           provider_token="",
           currency="XTR",
           prices=prices,
           start_parameter="vip_ad_pay",
       )
+      with state_lock:
+        user_states[uid] = {"pending_invoice_ad": ad_data}
     except Exception as e:
-      logger.error(f"Ошибка отправки инвойса VIP-объявления: {e}")
-
-  elif call.data == "ad_type_regular":
-    clear_state(uid)
-    finalize_and_send_ad(uid, ad_data, is_vip=0)
-    safe_send_message(
-        call.message.chat.id,
-        "✅ Ваше обычное объявление успешно отправлено на модерацию.",
-        reply_markup=kb_main_menu(uid),
-    )
+      logger.error(f"Ошибка отправки инвойса за VIP-объявление: {e}")
 
 
 @bot.pre_checkout_query_handler(func=lambda query: True)
@@ -3092,48 +3049,96 @@ def process_pre_checkout_query(pre_checkout_query):
 
 @bot.message_handler(content_types=["successful_payment"])
 def process_successful_payment(m):
-  payment = m.successful_payment
-  payload = payment.invoice_payload
   uid = m.from_user.id
+  payment_info = m.successful_payment
+  payload = payment_info.invoice_payload
 
-  if payload == "premium_30":
+  if payload.startswith("premium_30"):
     expires = time.time() + 30 * 86400
     with db_lock, get_db() as conn:
       cur = conn.cursor()
       cur.execute(
-          "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES"
-          " (?, ?)",
+          "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES (?, ?)",
           (uid, expires),
       )
     safe_send_message(
         m.chat.id,
-        "🎉 <b>Поздравляем!</b> Вы успешно приобрели VIP-статус на 30 дней!",
+        "👑 Поздравляем! Вам успешно подключен <b>VIP-статус на 30 дней</b>!",
         reply_markup=kb_main_menu(uid),
     )
-  elif payload == "premium_forever":
+  elif payload.startswith("premium_forever"):
     expires = time.time() + 3650 * 86400
     with db_lock, get_db() as conn:
       cur = conn.cursor()
       cur.execute(
-          "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES"
-          " (?, ?)",
+          "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES (?, ?)",
           (uid, expires),
       )
     safe_send_message(
         m.chat.id,
-        "🎉 <b>Поздравляем!</b> Вы успешно приобрели пожизненный VIP-статус!",
+        "👑 Поздравляем! Вам успешно подключен <b>пожизненный VIP-статус</b>!",
         reply_markup=kb_main_menu(uid),
     )
+  elif payload.startswith("vip_ad_"):
+    st = get_state(uid)
+    ad_data = st.get("pending_invoice_ad")
+    if ad_data:
+      finalize_and_send_ad(uid, ad_data, is_vip=1)
+      clear_state(uid)
+      safe_send_message(
+          m.chat.id,
+          "👑 Оплата прошла успешно! Ваше <b>VIP-объявление</b> отправлено на модерацию.",
+          reply_markup=kb_main_menu(uid),
+      )
 
 
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
+def finalize_and_send_ad(uid: int, ad_data: dict, is_vip: int):
+  set_user_last_ad_time(uid, time.time())
+  srv = get_user_server(uid)
+  category = ad_data.get("category")
+  text = ad_data.get("polished_text")
+  photo = ad_data.get("photo_id")
+  is_buy = ad_data.get("is_buy", False)
+
+  pending_table = "pending_buy_posts" if is_buy else "pending_posts"
+  username = ad_data.get("username", "")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        f"INSERT INTO {pending_table} (user_id, username, server, category, text, photo, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (uid, username, srv, category, text, photo, is_vip),
+    )
+    post_id = cur.lastrowid
+
+  admin_chat_ids = get_admin_chat_ids()
+  owner_id = get_owner_id()
+  if owner_id and owner_id not in admin_chat_ids:
+    admin_chat_ids.append(owner_id)
+
+  markup = types.InlineKeyboardMarkup(row_width=2)
+  prefix = "buy_" if is_buy else ""
+  markup.add(
+      types.InlineKeyboardButton("✅ Одобрить", callback_data=f"mod_acc_{prefix}{post_id}" if is_buy else f"mod_acc_{post_id}"),
+      types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_rej_{prefix}{post_id}" if is_buy else f"mod_rej_{post_id}"),
+  )
+
+  post_type_label = "СКУПКА" if is_buy else "ПРОДАЖА"
+  caption = (
+      f"📋 <b>Новый пост на модерацию ({post_type_label}) #{post_id}</b>\n"
+      f"🌐 Сервер: <b>{html.escape(srv)}</b>\n"
+      f"📦 Категория: <b>{html.escape(category)}</b>\n"
+      f"👑 VIP: <b>{'Да' if is_vip else 'Нет'}</b>\n\n{text}"
+  )
+
+  for cid in admin_chat_ids:
+    with contextlib.suppress(Exception):
+      if photo:
+        bot.send_photo(cid, photo, caption=caption, reply_markup=markup)
+      else:
+        bot.send_message(cid, caption, reply_markup=markup)
+
+
 if __name__ == "__main__":
-  logger.info("Бот запущен и готов к работе...")
-  while True:
-    try:
-      bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
-    except Exception as e:
-      logger.error(f"Ошибка в polling: {e}")
-      time.sleep(5)
+  logger.info("Бот запущен и готов к работе.")
+  bot.infinity_polling(none_stop=True)

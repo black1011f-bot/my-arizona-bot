@@ -815,19 +815,6 @@ def blocked_user_callback(c):
 # ==========================================
 # КЛАВИАТУРЫ
 # ==========================================
-def kb_servers():
-  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  for i in range(0, len(SERVERS), 2):
-    row_buttons = [types.KeyboardButton(s) for s in SERVERS[i : i + 2]]
-    m.row(*row_buttons)
-  m.row(
-      types.KeyboardButton("💎 VIP-статус"),
-      types.KeyboardButton("👑 Админ-панель"),
-  )
-  m.row(types.KeyboardButton("💬 Связаться с менеджером"))
-  return m
-
-
 def kb_main_menu(user_id=None):
   m = types.ReplyKeyboardMarkup(resize_keyboard=True)
   m.row(types.KeyboardButton("🌐 Сменить игровой сервер"))
@@ -871,23 +858,241 @@ def kb_main_menu(user_id=None):
 
 
 def kb_cancel():
-  return types.ReplyKeyboardMarkup(resize_keyboard=True).add(
-      types.KeyboardButton("❌ Отменить действие")
+  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
+  m.row(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
+  return m
+
+
+def kb_owner_input():
+  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
+  m.row(
+      types.KeyboardButton("🔨 Забанить игрока"),
+      types.KeyboardButton("⬅️ Назад"),
+      types.KeyboardButton("❌ Отменить действие"),
   )
+  return m
+
+
+# ==========================================
+# ИНТЕРАКТИВНЫЙ VC КАЛЬКУЛЯТОР
+# ==========================================
+def show_vc_menu(m):
+  uid = m.from_user.id
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM bot_settings WHERE key = 'vc_rate'")
+    row = cur.fetchone()
+    rate = float(row["value"]) if row else 95000.0
+
+  markup = types.InlineKeyboardMarkup(row_width=2)
+  markup.add(
+      types.InlineKeyboardButton(
+          "💵 Доллары -> VC", callback_data="vc_calc_to_vc"
+      ),
+      types.InlineKeyboardButton(
+          "💎 VC -> Доллары", callback_data="vc_calc_to_usd"
+      ),
+  )
+  if is_admin_or_owner(m.from_user):
+    markup.add(
+        types.InlineKeyboardButton(
+            "⚙️ Изменить курс VC", callback_data="vc_set_rate"
+        )
+    )
+
+  text = (
+      f"💱 <b>Курс VC и калькулятор</b>\n\n"
+      f"📊 Текущий курс 1 VC-коина: <b>{rate:,.0f} $</b>\n\n"
+      f"Выберите направление расчета или воспользуйтесь кнопками ниже:"
+  )
+  safe_send_message(m.chat.id, text, reply_markup=markup)
+
+
+@bot.callback_query_handler(
+    func=lambda c: c.data in ["vc_calc_to_vc", "vc_calc_to_usd", "vc_set_rate"]
+)
+def cb_vc_calc(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+  uid = call.from_user.id
+  if call.data == "vc_calc_to_vc":
+    update_state(uid, vc_calc_mode="to_vc")
+    safe_send_message(
+        call.message.chat.id,
+        "💵 Введите сумму в долларах ($) для перевода в VC-коины (например:"
+        " 9.5кк, 10000000):",
+        reply_markup=kb_cancel(),
+    )
+  elif call.data == "vc_calc_to_usd":
+    update_state(uid, vc_calc_mode="to_usd")
+    safe_send_message(
+        call.message.chat.id,
+        "💎 Введите количество VC-коинов для перевода в доллары ($) (например:"
+        " 100, 1500):",
+        reply_markup=kb_cancel(),
+    )
+  elif call.data == "vc_set_rate":
+    if not is_admin_or_owner(call.from_user):
+      return
+    update_state(uid, vc_set_rate=True)
+    safe_send_message(
+        call.message.chat.id,
+        "⚙️ Введите новый курс 1 VC-коина в долларах ($):",
+        reply_markup=kb_cancel(),
+    )
+
+
+@bot.message_handler(
+    func=lambda m: get_state(m.from_user.id).get("vc_calc_mode") is not None
+    or get_state(m.from_user.id).get("vc_set_rate") is True
+)
+def process_vc_calculation(m):
+  uid = m.from_user.id
+  st = get_state(uid)
+  mode = st.get("vc_calc_mode")
+  is_setting = st.get("vc_set_rate")
+  clear_state(uid)
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM bot_settings WHERE key = 'vc_rate'")
+    row = cur.fetchone()
+    rate = float(row["value"]) if row else 95000.0
+
+  if is_setting:
+    if not is_admin_or_owner(m.from_user):
+      return
+    try:
+      new_rate = parse_flexible_price(m.text)
+      with db_lock, get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT OR REPLACE INTO bot_settings (key, value) VALUES ('vc_rate',"
+            " ?)",
+            (str(new_rate),),
+        )
+      safe_send_message(
+          m.chat.id,
+          f"✅ Курс VC успешно обновлен: <b>{new_rate:,.0f} $</b>",
+          reply_markup=kb_main_menu(uid),
+      )
+    except ValueError:
+      safe_send_message(
+          m.chat.id,
+          "⚠️ Неверный формат суммы для курса.",
+          reply_markup=kb_main_menu(uid),
+      )
+    return
+
+  try:
+    val = parse_flexible_price(m.text)
+  except ValueError:
+    return safe_send_message(
+        m.chat.id,
+        "⚠️ Не удалось распознать сумму. Введите число (например: 1кк, 500к).",
+        reply_markup=kb_main_menu(uid),
+    )
+
+  if mode == "to_vc":
+    if rate <= 0:
+      rate = 95000.0
+    vc_amount = val / rate
+    res_text = (
+        f"💱 <b>Результат расчета:</b>\n\n💵 Сумма: <b>{val:,.0f}"
+        f" $</b>\n💎 Получается VC: <b>{vc_amount:,.2f} VC</b>\n📊 Курс:"
+        f" {rate:,.0f} $ / 1 VC"
+    )
+  else:
+    usd_amount = val * rate
+    res_text = (
+        f"💱 <b>Результат расчета:</b>\n\n💎 VC-коины: <b>{val:,.2f}"
+        f" VC</b>\n💵 Сумма в долларах: <b>{usd_amount:,.0f} $</b>\n📊 Курс:"
+        f" {rate:,.0f} $ / 1 VC"
+    )
+
+  safe_send_message(m.chat.id, res_text, reply_markup=kb_main_menu(uid))
+
+
+# ==========================================
+# МОДУЛЬ VIP-СТАТУСА (30 ДНЕЙ И НАВСЕГДА)
+# ==========================================
+def info_premium(m):
+  uid = m.from_user.id
+  is_prem = is_user_premium(uid)
+  status_text = "✅ <b>Активен</b>" if is_prem else "❌ <b>Неактивен</b>"
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT expires_at FROM premium_users WHERE user_id = ?", (uid,)
+    )
+    row = cur.fetchone()
+    if row and row["expires_at"] > time.time():
+      exp_date = datetime.fromtimestamp(row["expires_at"]).strftime(
+          "%d.%m.%Y %H:%M"
+      )
+      status_text += f" (до {exp_date})"
+
+  text = (
+      f"💎 <b>VIP-статус в системе</b>\n\n"
+      f"Статус: {status_text}\n\n"
+      f"<b>Преимущества VIP-статуса:</b>\n"
+      f"• Уменьшенный кулдаун на подачу объявлений (60 сек. вместо 120 сек.)\n"
+      f"• Автоматическое оформление всех объявлений как VIP\n"
+      f"• Приоритет и особый знак отличия\n\n"
+      f"Выберите вариант приобретения VIP-статуса за Telegram Stars (⭐):"
+  )
+
+  markup = types.InlineKeyboardMarkup(row_width=1)
+  markup.add(
+      types.InlineKeyboardButton(
+          "👑 VIP на 30 дней — 100 ⭐", callback_data="buy_vip_30"
+      ),
+      types.InlineKeyboardButton(
+          "👑 VIP навсегда — 500 ⭐", callback_data="buy_vip_forever"
+      ),
+  )
+  safe_send_message(m.chat.id, text, reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda c: c.data in ["buy_vip_30", "buy_vip_forever"])
+def cb_buy_vip(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+
+  if call.data == "buy_vip_30":
+    prices = [types.LabeledPrice(label="VIP на 30 дней", amount=100)]
+    payload = "premium_30"
+    title = "VIP на 30 дней"
+    description = "VIP-подписка на 30 дней за 100 звезд"
+  else:
+    prices = [types.LabeledPrice(label="VIP навсегда", amount=500)]
+    payload = "premium_forever"
+    title = "VIP навсегда"
+    description = "Пожизненная VIP-подписка за 500 звезд"
+
+  try:
+    bot.send_invoice(
+        chat_id=call.message.chat.id,
+        title=title,
+        description=description,
+        invoice_payload=payload,
+        provider_token="",
+        currency="XTR",
+        prices=prices,
+        start_parameter="vip_sub",
+    )
+  except Exception as e:
+    logger.error(f"Ошибка отправки инвойса VIP: {e}")
 
 
 # ==========================================
 # ЗАГЛУШКИ ДЛЯ КНОПОК
 # ==========================================
-def show_vc_menu(m):
-  safe_send_message(
-      m.chat.id,
-      "💱 <b>Курс VC и калькулятор</b>\n\nТекущий курс обмена VC-коинов"
-      " актуален на вашем сервере.",
-      reply_markup=kb_main_menu(m.from_user.id),
-  )
-
-
 def show_my_ads(m):
   uid = m.from_user.id
   srv = get_user_server(uid)
@@ -991,7 +1196,7 @@ def show_category_ads(m):
 def should_override_nav(msg):
   if not msg.text:
     return False
-  if msg.text == "❌ Отменить действие":
+  if msg.text in ["❌ Отменить действие", "⬅️ Назад"]:
     return True
 
   uid = msg.from_user.id
@@ -1004,7 +1209,8 @@ def should_override_nav(msg):
       or st.get("adding_subscription")
       or st.get("vc_setting_rate")
       or st.get("vc_conv_input")
-      or st.get("vc_calc_step")
+      or st.get("vc_calc_mode")
+      or st.get("vc_set_rate")
       or st.get("barter_input")
       or st.get("auction_create_step")
       or st.get("auction_bid_input")
@@ -1039,6 +1245,7 @@ def should_override_nav(msg):
       "модерация продажи",
       "модерация скупки",
       "рассылка",
+      "⬅️ Назад",
   ] + CATEGORIES
 
   if is_in_active_input:
@@ -1049,7 +1256,7 @@ def should_override_nav(msg):
 
 @bot.message_handler(func=should_override_nav)
 def handle_navigation_override(m):
-  if m.text != "❌ Отменить действие":
+  if m.text not in ["❌ Отменить действие", "⬅️ Назад"]:
     clear_state(m.from_user.id)
 
   if m.text == "🌐 Сменить игровой сервер":
@@ -1064,7 +1271,7 @@ def handle_navigation_override(m):
     start_add_buy_ad(m)
   elif m.text == "💱 Курс VC и калькулятор":
     show_vc_menu(m)
-  elif m.text == "❌ Отменить действие":
+  elif m.text in ["❌ Отменить действие", "⬅️ Назад"]:
     cancel_action(m)
   elif m.text == "📋 Мои публикации":
     show_my_ads(m)
@@ -1104,6 +1311,66 @@ def handle_navigation_override(m):
     show_category_ads(m)
   elif m.text in SERVERS:
     select_srv(m)
+
+
+def change_server(m):
+  markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+  for i in range(0, len(SERVERS), 2):
+    row_buttons = [types.KeyboardButton(s) for s in SERVERS[i : i + 2]]
+    markup.row(*row_buttons)
+  markup.row(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
+  safe_send_message(
+      m.chat.id, "🌐 Выберите ваш игровой сервер:", reply_markup=markup
+  )
+
+
+def select_srv(m):
+  srv = m.text
+  uid = m.from_user.id
+  if srv in SERVERS:
+    set_user_server(uid, srv)
+    safe_send_message(
+        m.chat.id,
+        f"✅ Сервер успешно изменен на: <b>{html.escape(srv)}</b>",
+        reply_markup=kb_main_menu(uid),
+    )
+
+
+def cancel_action(m):
+  uid = m.from_user.id
+  clear_state(uid)
+  safe_send_message(
+      m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu(uid)
+  )
+
+
+def admin_panel(m):
+  uid = m.from_user.id
+  if not is_admin_or_owner_id(uid):
+    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
+  markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+  markup.row(
+      types.KeyboardButton("модерация продажи"),
+      types.KeyboardButton("модерация скупки"),
+  )
+  if is_owner(m.from_user):
+    markup.row(
+        types.KeyboardButton("рассылка"), types.KeyboardButton("📋 Логи чатов")
+    )
+    markup.row(
+        types.KeyboardButton("🔨 Забанить игрока"),
+        types.KeyboardButton("🔓 Разбанить игрока"),
+    )
+    markup.row(
+        types.KeyboardButton("👑 Добавить адм"),
+        types.KeyboardButton("🚫 Снять с адм"),
+    )
+  markup.row(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
+  safe_send_message(
+      m.chat.id,
+      "👑 <b>Панель администратора / владельца:</b>",
+      reply_markup=markup,
+  )
 
 
 # ==========================================
@@ -1403,7 +1670,9 @@ def owner_prompt_action(m, action_type):
       ),
   }
   update_state(m.from_user.id, owner_action_input=action_type)
-  safe_send_message(m.chat.id, prompts[action_type], reply_markup=kb_cancel())
+  safe_send_message(
+      m.chat.id, prompts[action_type], reply_markup=kb_owner_input()
+  )
 
 
 @bot.message_handler(
@@ -1419,6 +1688,10 @@ def process_owner_action_input(m):
 
   if not is_owner(m.from_user):
     return safe_send_message(m.chat.id, f"⛔ Доступ запрещен.")
+
+  if target_str == "🔨 Забанить игрока":
+    owner_prompt_action(m, "ban")
+    return
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
@@ -2401,9 +2674,9 @@ def cb_claim_daily_bonus(call):
       )
     else:
       vip_ads_count = random.choices(
-          [1, 2, 3, 4, 5], weights=[40, 25, 18, 12, 5]
+          [1, 2, 3, 4, 5], weights=[50, 25, 15, 7, 3]
       )[0]
-      expiry = time.time() + 3 * 86400
+      expiry = time.time() + 86400
       cur.execute(
           "INSERT OR REPLACE INTO user_bonuses (user_id, last_claim_date,"
           " vip_ads_count, vip_ads_expiry) VALUES (?, ?, ?, ?)",
@@ -2411,7 +2684,8 @@ def cb_claim_daily_bonus(call):
       )
       reward_msg = (
           f"🎁 В ежедневном бонусе вам выпало: <b>{vip_ads_count}"
-          " VIP-объявлений</b> (действуют 3 дня)!"
+          " VIP-объявлений</b> (если не использовать их в течение 24 часов, они"
+          " сгорят)!"
       )
 
   try:
@@ -2463,23 +2737,25 @@ def cmd_start(m):
   if is_admin_or_owner(m.from_user):
     register_admin_chat(m.chat.id)
 
-  update_state(uid, changing_server=True)
+  default_server = SERVERS[0]
+  set_user_server(uid, default_server)
 
   welcome_text = (
-      "👋 <b>Добро пожаловать в неофициальный торговый бот Arizona RP!</b>\n\n🔒"
-      " <b>Отказ от ответственности и безопасность:</b>\n• Обратите внимание,"
-      " что мы <b>не являемся официальным ботом</b> разработчиков Arizona"
-      " RP.\n• <b>Администрация не несет никакой ответственности</b> за"
-      " содержание объявлений, совершаемые сделки, передачу игровой"
-      " валюты/имущества и возможные случаи мошенничества (скама). Все"
-      " договоренности вы совершаете на свой страх и риск.\n• Тем не менее,"
-      " <b>мы по возможности стараемся помогать</b> игрокам в спорных"
-      " ситуациях, анализировать логи переписок и принимать меры против"
-      " нарушителей.\n\n👇 <b>Выберите свой игровой сервер в меню ниже, чтобы"
-      " начать работу:</b>"
+      f"👋 <b>Добро пожаловать в неофициальный торговый бот Arizona RP!</b>\n\n"
+      f"🌐 Текущий сервер по умолчанию: <b>{html.escape(default_server)}</b>"
+      " (вы можете сменить его в любой момент кнопкой «🌐 Сменить игровой"
+      " сервер» в меню).\n\n🔒 <b>Отказ от ответственности и"
+      " безопасность:</b>\n• Обратите внимание, что мы <b>не являемся"
+      " официальным ботом</b> разработчиков Arizona RP.\n• <b>Администрация не"
+      " несет никакой ответственности</b> за содержание объявлений, совершаемые"
+      " сделки, передачу игровой валюты/имущества и возможные случаи"
+      " мошенничества (скама). Все договоренности вы совершаете на свой страх"
+      " и риск.\n• Тем не менее, <b>мы по возможности стараемся"
+      " помогать</b> игрокам в спорных ситуациях, анализировать логи переписок и"
+      " принимать меры против нарушителей.\n\n👇 <b>Главное меню:</b>"
   )
   safe_send_message(
-      m.chat.id, welcome_text, reply_markup=kb_servers(), parse_mode="HTML"
+      m.chat.id, welcome_text, reply_markup=kb_main_menu(uid), parse_mode="HTML"
   )
 
 
@@ -2514,7 +2790,7 @@ def cmd_help(m):
 
 
 # ==========================================
-# ПОДАЧА ОБЪЯВЛЕНИЙ И КУЛДАУН (120 сек. для обычных, 60 сек. для VIP)
+# ПОДАЧА ОБЪЯВЛЕНИЙ И КУЛДАУН
 # ==========================================
 def check_working_hours() -> bool:
   now_time = get_msk_time().time()
@@ -2529,7 +2805,6 @@ def start_add_ad(m):
   uid = m.from_user.id
   srv = get_user_server(uid)
   last_time = get_user_last_ad_time(uid)
-  # Кулдаун: 60 секунд (1 минута) для VIP, 120 секунд (2 минуты) для обычной подписки
   cooldown = 60 if is_user_premium(uid) else 120
   if time.time() - last_time < cooldown and not is_admin_or_owner(m.from_user):
     rem = int(cooldown - (time.time() - last_time))
@@ -2552,7 +2827,7 @@ def start_add_ad(m):
   markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
   for cat in CATEGORIES:
     markup.add(types.KeyboardButton(cat))
-  markup.add(types.KeyboardButton("❌ Отменить действие"))
+  markup.add(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
   safe_send_message(
       m.chat.id,
       f"📤 <b>Подача объявления о продаже</b>\n🌐 Сервер:"
@@ -2565,7 +2840,6 @@ def start_add_buy_ad(m):
   uid = m.from_user.id
   srv = get_user_server(uid)
   last_time = get_user_last_ad_time(uid)
-  # Кулдаун: 60 секунд (1 минута) для VIP, 120 секунд (2 минуты) для обычной подписки
   cooldown = 60 if is_user_premium(uid) else 120
   if time.time() - last_time < cooldown and not is_admin_or_owner(m.from_user):
     rem = int(cooldown - (time.time() - last_time))
@@ -2588,7 +2862,7 @@ def start_add_buy_ad(m):
   markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
   for cat in CATEGORIES:
     markup.add(types.KeyboardButton(cat))
-  markup.add(types.KeyboardButton("❌ Отменить действие"))
+  markup.add(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
   safe_send_message(
       m.chat.id,
       f"📥 <b>Подача объявления о скупке</b>\n🌐 Сервер:"
@@ -2651,6 +2925,18 @@ def process_ad_text_or_photo(m):
   st["posting_ad"]["step"] = "choose_ad_type"
   update_state(uid, posting_ad=st["posting_ad"])
 
+  srv = get_user_server(uid)
+
+  if is_user_premium(uid):
+    finalize_and_send_ad(uid, st["posting_ad"], is_vip=1)
+    safe_send_message(
+        m.chat.id,
+        "👑 У вас активна VIP-подписка! Ваше объявление автоматически оформлено"
+        " как <b>VIP-объявление</b> и отправлено на модерацию.",
+        reply_markup=kb_main_menu(uid),
+    )
+    return
+
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute(
@@ -2659,12 +2945,21 @@ def process_ad_text_or_photo(m):
         (uid,),
     )
     b_row = cur.fetchone()
-    has_vip_bonus = (
+    if (
         b_row
+        and b_row["vip_ads_expiry"] < time.time()
         and b_row["vip_ads_count"] > 0
-        and b_row["vip_ads_expiry"] > time.time()
-    )
-    vip_count_left = b_row["vip_ads_count"] if b_row else 0
+    ):
+      cur.execute(
+          "UPDATE user_bonuses SET vip_ads_count = 0, vip_ads_expiry = 0 WHERE"
+          " user_id = ?",
+          (uid,),
+      )
+      vip_count_left = 0
+    else:
+      vip_count_left = b_row["vip_ads_count"] if b_row else 0
+
+  has_vip_bonus = vip_count_left > 0
 
   markup = types.InlineKeyboardMarkup(row_width=1)
   if has_vip_bonus:
@@ -2672,15 +2967,6 @@ def process_ad_text_or_photo(m):
         types.InlineKeyboardButton(
             f"👑 VIP-объявление (Бесплатно за бонус: {vip_count_left} шт.)",
             callback_data="ad_type_bonus_vip",
-        ),
-        types.InlineKeyboardButton(
-            "📄 Обычное объявление (Бесплатно)", callback_data="ad_type_regular"
-        ),
-    )
-  elif is_user_premium(uid):
-    markup.add(
-        types.InlineKeyboardButton(
-            "👑 VIP-объявление (По подписке)", callback_data="ad_type_vip_sub"
         ),
         types.InlineKeyboardButton(
             "📄 Обычное объявление (Бесплатно)", callback_data="ad_type_regular"
@@ -2698,77 +2984,117 @@ def process_ad_text_or_photo(m):
 
   safe_send_message(
       m.chat.id,
-      f"📝 <b>Текст:</b>\n\n{html.escape(text)}\n\nВыберите тип объявления:",
+      f"📝 <b>Текст:</b>\n\n{html.escape(st['posting_ad']['polished_text'])}\n\n🌐 Сервер: <b>{html.escape(srv)}</b>\n\nВыберите тип публикации объявления:",
       reply_markup=markup,
   )
 
 
+def finalize_and_send_ad(uid, ad_data, is_vip):
+  srv = get_user_server(uid)
+  text = ad_data["polished_text"]
+  photo = ad_data["photo_id"]
+  category = ad_data["category"]
+  is_buy = ad_data["is_buy"]
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    target_table = "pending_buy_posts" if is_buy else "pending_posts"
+    cur.execute(
+        f"INSERT INTO {target_table} (user_id, username, server, category,"
+        " text, photo, is_vip, editing_by, editing_since) VALUES (?, ?, ?, ?,"
+        " ?, ?, ?, 0, 0)",
+        (
+            uid,
+            "",
+            srv,
+            category,
+            text,
+            photo,
+            is_vip,
+        ),
+    )
+  set_user_last_ad_time(uid, time.time())
+
+
 @bot.callback_query_handler(
     func=lambda c: c.data
-    in ["ad_type_vip_sub", "ad_type_regular", "ad_type_bonus_vip"]
+    in ["ad_type_bonus_vip", "ad_type_vip_paid", "ad_type_regular"]
 )
-def cb_publish_ad_free(call):
-  try:
-    bot.answer_callback_query(call.id, "✅ Отправлено на модерацию!")
-  except Exception:
-    pass
-
-  uid = call.from_user.id
-  st = get_state(uid)
-  post_data = st.get("posting_ad")
-  if not post_data:
-    return
-
-  is_vip = 0
-  if call.data in ["ad_type_vip_sub", "ad_type_bonus_vip"]:
-    is_vip = 1
-    if call.data == "ad_type_bonus_vip":
-      with db_lock, get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "UPDATE user_bonuses SET vip_ads_count = MAX(0, vip_ads_count - 1)"
-            " WHERE user_id = ?",
-            (uid,),
-        )
-
-  finalize_and_send_ad(uid, post_data, is_vip)
-  try:
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "ad_type_vip_paid")
-def cb_publish_ad_paid_vip(call):
+def cb_choose_ad_type(call):
   try:
     bot.answer_callback_query(call.id)
   except Exception:
     pass
-  prices = [types.LabeledPrice(label="VIP Объявление", amount=1)]
-  try:
-    bot.send_invoice(
-        chat_id=call.message.chat.id,
-        title="VIP Объявление",
-        description="Публикация VIP объявления за 1 звезду",
-        invoice_payload="vip_single_ad",
-        provider_token="",
-        currency="XTR",
-        prices=prices,
-        start_parameter="vip_ad",
+  uid = call.from_user.id
+  st = get_state(uid)
+  ad_data = st.get("posting_ad")
+  if not ad_data:
+    return safe_send_message(
+        call.message.chat.id, "⚠️ Данные объявления не найдены. Начните заново."
     )
-  except Exception:
-    pass
+
+  if call.data == "ad_type_bonus_vip":
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute(
+          "SELECT vip_ads_count FROM user_bonuses WHERE user_id = ?", (uid,)
+      )
+      row = cur.fetchone()
+      if not row or row["vip_ads_count"] <= 0:
+        return safe_send_message(
+            call.message.chat.id, "⚠️ У вас нет доступных бонусных VIP-объявлений."
+        )
+      cur.execute(
+          "UPDATE user_bonuses SET vip_ads_count = vip_ads_count - 1 WHERE"
+          " user_id = ?",
+          (uid,),
+      )
+    clear_state(uid)
+    finalize_and_send_ad(uid, ad_data, is_vip=1)
+    safe_send_message(
+        call.message.chat.id,
+        "✅ Ваше VIP-объявление успешно отправлено на модерацию (списано 1"
+        " бонусное VIP-объявление).",
+        reply_markup=kb_main_menu(uid),
+    )
+
+  elif call.data == "ad_type_vip_paid":
+    clear_state(uid)
+    prices = [types.LabeledPrice(label="VIP-объявление", amount=1)]
+    try:
+      bot.send_invoice(
+          chat_id=call.message.chat.id,
+          title="VIP-объявление",
+          description="Продвижение объявления в статус VIP за 1 звезду",
+          invoice_payload=f"vip_ad_{uid}_{int(time.time())}",
+          provider_token="",
+          currency="XTR",
+          prices=prices,
+          start_parameter="vip_ad_pay",
+      )
+    except Exception as e:
+      logger.error(f"Ошибка отправки инвойса VIP-объявления: {e}")
+
+  elif call.data == "ad_type_regular":
+    clear_state(uid)
+    finalize_and_send_ad(uid, ad_data, is_vip=0)
+    safe_send_message(
+        call.message.chat.id,
+        "✅ Ваше обычное объявление успешно отправлено на модерацию.",
+        reply_markup=kb_main_menu(uid),
+    )
 
 
 @bot.pre_checkout_query_handler(func=lambda query: True)
-def checkout(pre_checkout_query):
+def process_pre_checkout_query(pre_checkout_query):
   bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
 
 @bot.message_handler(content_types=["successful_payment"])
-def got_payment(m):
+def process_successful_payment(m):
+  payment = m.successful_payment
+  payload = payment.invoice_payload
   uid = m.from_user.id
-  payload = m.successful_payment.invoice_payload
 
   if payload == "premium_30":
     expires = time.time() + 30 * 86400
@@ -2781,280 +3107,33 @@ def got_payment(m):
       )
     safe_send_message(
         m.chat.id,
-        "💎 VIP-подписка успешно активирована на 30 дней за 100 звезд!",
+        "🎉 <b>Поздравляем!</b> Вы успешно приобрели VIP-статус на 30 дней!",
         reply_markup=kb_main_menu(uid),
     )
-  elif payload == "vip_single_ad":
-    st = get_state(uid)
-    post_data = st.get("posting_ad")
-    if post_data:
-      finalize_and_send_ad(uid, post_data, is_vip=1)
-      safe_send_message(
-          m.chat.id,
-          "✅ Оплата прошла! VIP-объявление отправлено на модерацию.",
-          reply_markup=kb_main_menu(uid),
+  elif payload == "premium_forever":
+    expires = time.time() + 3650 * 86400
+    with db_lock, get_db() as conn:
+      cur = conn.cursor()
+      cur.execute(
+          "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES"
+          " (?, ?)",
+          (uid, expires),
       )
-
-
-def finalize_and_send_ad(uid, post_data, is_vip):
-  is_buy = post_data.get("is_buy", False)
-  category = post_data.get("category", CATEGORIES[0])
-  polished_text = post_data.get("polished_text")
-  photo_id = post_data.get("photo_id")
-  srv = get_user_server(uid)
-
-  table = "pending_buy_posts" if is_buy else "pending_posts"
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        f"INSERT INTO {table} (user_id, username, server, category, text,"
-        " photo, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (uid, "", srv, category, polished_text, photo_id, is_vip),
-    )
-    pid = cur.lastrowid
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO admin_action_logs (admin_username, action, target,"
-        " timestamp) VALUES (?, ?, ?, ?)",
-        (
-            "user_" + str(uid),
-            "Отправка объявления на модерацию",
-            f"Пост #{pid} ({srv})",
-            time.time(),
-        ),
-    )
-
-  set_user_last_ad_time(uid, time.time())
-
-  today_str = datetime.now().strftime("%Y-%m-%d")
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM referrals WHERE referred_id = ? AND completed = 0",
-        (uid,),
-    )
-    ref = cur.fetchone()
-    if ref:
-      referrer_id = ref["referrer_id"]
-      last_date = ref["last_active_date"]
-      ads_today = ref["ads_today"] if last_date == today_str else 0
-      qualified_days = ref["qualified_days"]
-
-      new_ads_today = (ads_today + 1) if last_date == today_str else 1
-      new_qualified_days = qualified_days
-      if new_ads_today == 3 and last_date != today_str:
-        new_qualified_days += 1
-      elif new_ads_today == 3 and last_date == today_str and ads_today < 3:
-        new_qualified_days += 1
-
-      if new_qualified_days >= 3:
-        cur.execute(
-            "UPDATE referrals SET qualified_days = 3, last_active_date = ?,"
-            " ads_today = ?, completed = 1 WHERE referrer_id = ? AND"
-            " referred_id = ?",
-            (today_str, new_ads_today, referrer_id, uid),
-        )
-        expires = time.time() + 10 * 86400
-        cur.execute(
-            "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES"
-            " (?, ?)",
-            (referrer_id, expires),
-        )
-        cur.execute(
-            "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES"
-            " (?, ?)",
-            (uid, expires),
-        )
-
-        with contextlib.suppress(Exception):
-          safe_send_message(
-              referrer_id,
-              "🎉 Ваш реферал успешно выполнил все условия! Вам обоим начислена"
-              " <b>VIP-подписка на 10 дней</b>!",
-          )
-          safe_send_message(
-              uid,
-              "🎉 Вы выполнили все условия реферальной программы! Вам начислена"
-              " <b>VIP-подписка на 10 дней</b>!",
-          )
-      else:
-        cur.execute(
-            "UPDATE referrals SET qualified_days = ?, last_active_date = ?,"
-            " ads_today = ? WHERE referrer_id = ? AND referred_id = ?",
-            (
-                new_qualified_days,
-                today_str,
-                new_ads_today,
-                referrer_id,
-                uid,
-            ),
-        )
-
-  clear_state(uid)
-  safe_send_message(
-      uid,
-      "✅ Ваше объявление успешно отправлено модераторам!",
-      reply_markup=kb_main_menu(uid),
-  )
-
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  acc_prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
-  rej_prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
-  markup.add(
-      types.InlineKeyboardButton("✅ Одобрить", callback_data=f"{acc_prefix}{pid}"),
-      types.InlineKeyboardButton("❌ Отклонить", callback_data=f"{rej_prefix}{pid}"),
-  )
-
-  notif_text = f"📋 <b>Новый пост #{pid}</b>\n🌐 Сервер: {srv}\n\n{polished_text}"
-  for adm in get_admin_chat_ids():
-    try:
-      safe_send_message(adm, notif_text, reply_markup=markup)
-    except Exception:
-      pass
-
-
-# ==========================================
-# ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ И ВИП ПОДПИСКА
-# ==========================================
-def show_average_prices(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT category, COUNT(*) as cnt FROM active_ads WHERE server = ?"
-        " GROUP BY category",
-        (srv,),
-    )
-    sales_stats = cur.fetchall()
-
-  text = f"📊 <b>Анализ рынка на сервере {html.escape(srv)}</b>\n\n📤 <b>Продажи:</b>\n"
-  if sales_stats:
-    for row in sales_stats:
-      text += f"- {row['category']}: {row['cnt']} объявлений\n"
-  else:
-    text += "<i>Нет активных объявлений.</i>\n"
-  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
-
-
-def contact_manager(m):
-  markup = types.InlineKeyboardMarkup()
-  markup.add(
-      types.InlineKeyboardButton(
-          "💬 Написать менеджеру", url=f"https://t.me/{MANAGER_USERNAME}"
-      )
-  )
-  safe_send_message(
-      m.chat.id,
-      f"💬 <b>Связь с менеджером:</b> @{MANAGER_USERNAME}",
-      reply_markup=markup,
-  )
-
-
-def info_premium(m):
-  markup = types.InlineKeyboardMarkup()
-  markup.add(
-      types.InlineKeyboardButton(
-          "💎 Купить VIP-подписку на 30 дней (100 ⭐)",
-          callback_data="buy_vip_sub_xtr",
-      )
-  )
-  text = (
-      "💎 <b>VIP-статус в боте</b>\n\nПреимущества VIP-подписки:\n• Сниженный"
-      " кулдаун на подачу объявлений (60 сек вместо 120)\n• Возможность"
-      " отправки VIP-объявлений\n\nСтоимость VIP-подписки на 30 дней: <b>100 ⭐"
-      " (Telegram Stars)</b>."
-  )
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "buy_vip_sub_xtr")
-def cb_buy_vip_sub_xtr(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  prices = [types.LabeledPrice(label="VIP-подписка 30 дней", amount=100)]
-  try:
-    bot.send_invoice(
-        chat_id=call.message.chat.id,
-        title="VIP-подписка (30 дней)",
-        description="Активация VIP-статуса на 30 дней в боте за 100 звезд",
-        invoice_payload="premium_30",
-        provider_token="",
-        currency="XTR",
-        prices=prices,
-        start_parameter="vip_sub",
-    )
-  except Exception as e:
-    logger.error(f"Ошибка отправки инвойса подписки: {e}")
     safe_send_message(
-        call.message.chat.id, "⚠️ Ошибка создания платежа. Попробуйте позже."
+        m.chat.id,
+        "🎉 <b>Поздравляем!</b> Вы успешно приобрели пожизненный VIP-статус!",
+        reply_markup=kb_main_menu(uid),
     )
-
-
-def cancel_action(m):
-  uid = m.from_user.id
-  clear_state(uid)
-  safe_send_message(
-      m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu(uid)
-  )
-
-
-def change_server(m):
-  update_state(m.from_user.id, changing_server=True)
-  safe_send_message(
-      m.chat.id, "👇 Выберите новый игровой сервер:", reply_markup=kb_servers()
-  )
-
-
-def select_srv(m):
-  srv = m.text
-  uid = m.from_user.id
-  set_user_server(uid, srv)
-  safe_send_message(
-      m.chat.id,
-      f"✅ Сервер установлен: <b>{html.escape(srv)}</b>",
-      reply_markup=kb_main_menu(uid),
-  )
-
-
-def admin_panel(m):
-  if not is_admin_or_owner(m.from_user):
-    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
-
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-  markup.add(
-      types.KeyboardButton("модерация продажи"),
-      types.KeyboardButton("модерация скупки"),
-  )
-  if is_owner(m.from_user):
-    markup.add(
-        types.KeyboardButton("рассылка"),
-        types.KeyboardButton("🔨 Забанить игрока"),
-    )
-    markup.add(
-        types.KeyboardButton("🔓 Разбанить игрока"),
-        types.KeyboardButton("👑 Добавить адм"),
-    )
-    markup.add(
-        types.KeyboardButton("🚫 Снять с адм"),
-        types.KeyboardButton("📋 Логи чатов"),
-    )
-  markup.add(types.KeyboardButton("❌ Отменить действие"))
-
-  safe_send_message(
-      m.chat.id,
-      "👑 <b>Админ-панель</b>\n\nВыберите нужное действие из меню ниже:",
-      reply_markup=markup,
-  )
 
 
 # ==========================================
 # ЗАПУСК БОТА
 # ==========================================
 if __name__ == "__main__":
-  logger.info("Бот успешно запущен...")
-  bot.infinity_polling(skip_pending=True)
+  logger.info("Бот запущен и готов к работе...")
+  while True:
+    try:
+      bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+    except Exception as e:
+      logger.error(f"Ошибка в polling: {e}")
+      time.sleep(5)

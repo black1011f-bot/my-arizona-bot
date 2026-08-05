@@ -608,12 +608,12 @@ def show_my_ads(m):
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("my_del_"))
 def cb_my_delete_ad(call):
-  uid = call.from_user.id
   try:
     bot.answer_callback_query(call.id, "⏳ Удаление...")
   except Exception:
     pass
 
+  uid = call.from_user.id
   parts = call.data.replace("my_del_", "").split("_")
   if len(parts) < 2:
     return
@@ -921,13 +921,17 @@ def cb_sub_del_start(call):
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("sub_del_id_"))
 def cb_sub_del_id(call):
+  try:
+    bot.answer_callback_query(call.id, "✅ Подписка удалена!")
+  except Exception:
+    pass
+
   sub_id = int(call.data.replace("sub_del_id_", ""))
   with db_lock, get_db() as conn:
     cur = conn.cursor()
     cur.execute("DELETE FROM keyword_subscriptions WHERE id = ?", (sub_id,))
 
   try:
-    bot.answer_callback_query(call.id, "✅ Подписка удалена!")
     bot.delete_message(call.message.chat.id, call.message.message_id)
   except Exception:
     pass
@@ -1019,11 +1023,6 @@ def process_search_keyword(m):
 # ПОДАЧА ОБЪЯВЛЕНИЙ И РАБОЧИЕ ЧАСЫ
 # ==========================================
 def check_working_hours() -> bool:
-  """Проверка рабочего времени радиоцентра.
-
-  Запрещено отправлять объявления с 22:00:01 до 08:00:00. Разрешено после
-  08:00:01 до 22:00:01.
-  """
   now_time = get_msk_time().time()
   start_t = dtime(8, 0, 1)
   end_t = dtime(22, 0, 1)
@@ -1204,7 +1203,7 @@ def process_ad_text_or_photo(m):
 @bot.callback_query_handler(func=lambda c: c.data in ["ad_type_vip_sub", "ad_type_regular"])
 def cb_publish_ad_free(call):
   try:
-    bot.answer_callback_query(call.id)
+    bot.answer_callback_query(call.id, "✅ Объявление отправлено на модерацию!")
   except Exception:
     pass
     
@@ -1213,7 +1212,7 @@ def cb_publish_ad_free(call):
   post_data = st.get("posting_ad")
   if not post_data:
     try:
-      return bot.answer_callback_query(call.id, "⚠️ Данные объявления не найдены. Начните заново.")
+      bot.answer_callback_query(call.id, "⚠️ Данные объявления не найдены. Начните заново.", show_alert=True)
     except Exception:
       pass
     return
@@ -1221,7 +1220,6 @@ def cb_publish_ad_free(call):
   is_vip = 1 if call.data == "ad_type_vip_sub" else 0
   finalize_and_send_ad(uid, post_data, is_vip)
   try:
-    bot.answer_callback_query(call.id, "✅ Объявление отправлено на модерацию!")
     bot.delete_message(call.message.chat.id, call.message.message_id)
   except Exception:
     pass
@@ -1229,6 +1227,11 @@ def cb_publish_ad_free(call):
 
 @bot.callback_query_handler(func=lambda c: c.data == "ad_type_vip_paid")
 def cb_publish_ad_paid_vip(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+
   uid = call.from_user.id
   prices = [types.LabeledPrice(label="VIP Объявление", amount=1)]
   try:
@@ -1242,7 +1245,6 @@ def cb_publish_ad_paid_vip(call):
         prices=prices,
         start_parameter="vip_ad",
     )
-    bot.answer_callback_query(call.id)
   except Exception as e:
     try:
       bot.answer_callback_query(call.id, f"Ошибка счета: {e}", show_alert=True)
@@ -1322,14 +1324,10 @@ def finalize_and_send_ad(uid, post_data, is_vip):
   markup = types.InlineKeyboardMarkup(row_width=2)
   acc_prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
   rej_prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
-  bad_prefix = "mod_bad_buy_" if is_buy else "mod_bad_"
   
   markup.add(
       types.InlineKeyboardButton("✅ Одобрить", callback_data=f"{acc_prefix}{pid}"),
       types.InlineKeyboardButton("❌ Отклонить", callback_data=f"{rej_prefix}{pid}"),
-  )
-  markup.add(
-      types.InlineKeyboardButton("⚠️ Плохой текст (Штраф админу)", callback_data=f"{bad_prefix}{pid}")
   )
 
   notif_text = (
@@ -1356,7 +1354,7 @@ def finalize_and_send_ad(uid, post_data, is_vip):
 @bot.callback_query_handler(func=lambda c: c.data.startswith("contact_seller_"))
 def cb_contact_seller(call):
   try:
-    bot.answer_callback_query(call.id)
+    bot.answer_callback_query(call.id, "✅ Чат инициализирован!")
   except Exception:
     pass
     
@@ -1382,24 +1380,26 @@ def cb_contact_seller(call):
 
   if not row:
     try:
-      return bot.answer_callback_query(
+      bot.answer_callback_query(
           call.id,
           "⚠️ Объявление уже неактивно или удалено.",
           show_alert=True,
       )
     except Exception:
       pass
+    return
 
   seller_id = row["user_id"]
   if seller_id == uid:
     try:
-      return bot.answer_callback_query(
+      bot.answer_callback_query(
           call.id,
           "⚠️ Вы не можете начать диалог сами с собой!",
           show_alert=True,
       )
     except Exception:
       pass
+    return
 
   with db_lock, get_db() as conn:
     cur = conn.cursor()
@@ -1418,24 +1418,34 @@ def cb_contact_seller(call):
   )
 
   markup = ikb_chat_controls(aid)
+  
+  # ОБНОВЛЕННЫЙ ДИСКЛЕЙЕР О НЕЖЕЛАТЕЛЬНОЙ ОТВЕТСТВЕННОСТИ АДМИНИСТРАЦИИ
+  disclaimer_text = (
+      "\n\n⚠️ <b>Отказ от ответственности:</b> Администрация бота является исключительно "
+      "независимой рекламной площадкой. Мы **не несем никакой ответственности** за любые сделки, "
+      "договоренности, передачу имущества или возможные споры/жалобы между игроками. "
+      "Вся ответственность за проведение сделок лежит полностью на вас!"
+  )
+
   safe_send_message(
       uid,
-      "💬 <b>Защищенный чат по сделке открыт!</b>\nВсе сообщения будут пересылаться автору объявления.",
+      f"💬 <b>Защищенный чат по сделке открыт!</b>\nВсе сообщения будут пересылаться автору объявления.{disclaimer_text}",
       reply_markup=markup,
   )
   safe_send_message(
       seller_id,
-      f"💬 <b>С вами хотят связаться по объявлению #{aid}!</b>\nНапишите ответное сообщение прямо сюда:",
+      f"💬 <b>С вами хотят связаться по объявлению #{aid}!</b>\nНапишите ответное сообщение прямо сюда:{disclaimer_text}",
       reply_markup=markup,
   )
-  try:
-    bot.answer_callback_query(call.id, "✅ Чат инициализирован!")
-  except Exception:
-    pass
 
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("stop_chat_"))
 def cb_stop_chat(call):
+  try:
+    bot.answer_callback_query(call.id, "🛑 Диалог завершен.")
+  except Exception:
+    pass
+
   aid = int(call.data.replace("stop_chat_", ""))
   uid = call.from_user.id
   with db_lock, get_db() as conn:
@@ -1447,7 +1457,6 @@ def cb_stop_chat(call):
     )
   clear_state(uid)
   try:
-    bot.answer_callback_query(call.id, "🛑 Диалог завершен.")
     bot.edit_message_reply_markup(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -1464,6 +1473,11 @@ def cb_stop_chat(call):
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("resume_chat_"))
 def cb_resume_chat(call):
+  try:
+    bot.answer_callback_query(call.id, "🔄 Диалог возобновлен!")
+  except Exception:
+    pass
+
   aid = int(call.data.replace("resume_chat_", ""))
   uid = call.from_user.id
   with db_lock, get_db() as conn:
@@ -1473,10 +1487,6 @@ def cb_resume_chat(call):
         " seller_id = ?) AND ad_id = ?",
         (uid, uid, aid),
     )
-  try:
-    bot.answer_callback_query(call.id, "🔄 Диалог возобновлен!")
-  except Exception:
-    pass
   safe_send_message(
       call.message.chat.id,
       "🔄 Диалог возобновлен. Можете продолжить общение.",
@@ -1549,33 +1559,6 @@ def handle_internal_chat_messages(m):
 # ==========================================
 # БАНЫ И МОДЕРАЦИЯ АДМИНОВ
 # ==========================================
-def record_admin_error(admin_username: str, admin_id: int):
-  if not admin_username or admin_username.lower() == OWNER_USERNAME.lower():
-    return
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO editor_stats (username, count) VALUES (?, 1) ON"
-        " CONFLICT(username) DO UPDATE SET count = count + 1",
-        (admin_username.lower(),),
-    )
-    cur.execute(
-        "SELECT count FROM editor_stats WHERE username = ?",
-        (admin_username.lower(),),
-    )
-    row = cur.fetchone()
-    if row and row["count"] >= 3:
-      cur.execute(
-          "DELETE FROM approved_admins WHERE user_id = ? OR LOWER(username) = ?",
-          (admin_id, admin_username.lower()),
-      )
-      cur.execute("DELETE FROM editor_stats WHERE username = ?", (admin_username.lower(),))
-      try:
-        safe_send_message(admin_id, "⛔ Вы сняты с поста администратора за 3 ошибки при модерации.")
-      except Exception:
-        pass
-
-
 def get_msk_time():
   try:
     return datetime.now(ZoneInfo("Europe/Moscow"))
@@ -1888,6 +1871,7 @@ def should_override_nav(msg):
       or st.get("owner_del_admin_input")
       or st.get("owner_ban_input")
       or st.get("owner_unban_input")
+      or st.get("owner_give_penalty_input")
   )
 
   nav_buttons = [
@@ -1981,10 +1965,14 @@ def cmd_start(m):
     register_admin_chat(m.chat.id)
 
   update_state(m.from_user.id, changing_server=True)
+  
+  # ОБНОВЛЕННЫЙ ПРИВЕТСТВЕННЫЙ ДИСКЛЕЙЕР
   welcome_text = (
       "👋 <b>Добро пожаловать! Обратите внимание: мы не являемся официальным ботом Arizona RP.</b>\n\n"
-      "🔒 <b>Безопасность и конфиденциальность:</b>\n"
-      "• Бот представляет собой независимую площадку для торговли и подачи объявлений.\n"
+      "🔒 <b>Отказ от ответственности и безопасность:</b>\n"
+      "• Бот является исключительно независимой рекламной площадкой для торговли.\n"
+      "• <b>Администрация не несет никакой ответственности</b> за содержание объявлений, совершаемые сделки, "
+      "передачу игровой валюты/имущества и возможные жалобы. Все договоренности вы совершаете на свой страх и риск.\n"
       "• Администрация никогда не запрашивает пароли, пин-коды или личные данные от ваших аккаунтов.\n\n"
       "📌 <b>Правильный формат объявления:</b>\n"
       "Предмет:\n"
@@ -2017,7 +2005,7 @@ def cmd_help(m):
       "6️⃣ <b>Как узнать курс Vice City (VC)?</b>\n"
       "Используйте кнопку «💱 Курс VC и калькулятор» в главном меню для перевода валюты и расчета потенциальной прибыли.\n\n"
       "7️⃣ <b>Безопасно ли пользоваться ботом?</b>\n"
-      "Да! Мы независимая неофициальная площадка. Соблюдайте правила безопасности и никогда никому не передавайте данные своего аккаунта."
+      "Да! Мы независимая неофициальная площадка. Администрация не несет ответственности за сделки между игроками. Соблюдайте правила безопасности и никогда никому не передавайте данные своего аккаунта."
   )
   safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu(), parse_mode="HTML")
 
@@ -2044,6 +2032,7 @@ def how_bot_works(m):
       f"• Режим работы: с <b>08:00:01 до 22:00:01 МСК</b> ежедневно.\n"
       f"• Модерация: все объявления проходят проверку редакторами.\n"
       f"• Запрещено: оскорбления, мат, продажа виртуальной валюты за реальные деньги (реал) и любые мошеннические схемы.\n"
+      f"• Администрация не участвует в сделках и не несет за них ответственности.\n"
       f"• При нарушении правил система может заблокировать доступ."
   )
   safe_send_message(m.chat.id, text, reply_markup=kb_main_menu())
@@ -2227,6 +2216,7 @@ def admin_panel(m):
   )
   if is_owner(m.from_user):
     markup.add(
+        types.InlineKeyboardButton("⚠️ Выдать штраф админу", callback_data="owner_give_penalty_start"),
         types.InlineKeyboardButton("📢 Рассылка", callback_data="owner_broadcast_start"),
         types.InlineKeyboardButton("📋 Логи админов", callback_data="owner_get_logs"),
         types.InlineKeyboardButton("➕ Добавить админа (юз)", callback_data="owner_add_admin_start"),
@@ -2261,6 +2251,53 @@ def cb_admin_stats_view(call):
     text += f"👤 <b>@{row['username']}</b> — {row['count']} объявлений\n"
 
   safe_send_message(call.message.chat.id, text, reply_markup=kb_main_menu())
+
+
+@bot.callback_query_handler(func=lambda c: c.data == "owner_give_penalty_start")
+def cb_owner_give_penalty_start(call):
+  try:
+    bot.answer_callback_query(call.id)
+  except Exception:
+    pass
+  if not is_owner(call.from_user):
+    try:
+      return bot.answer_callback_query(call.id, "⛔ Только для владельца!", show_alert=True)
+    except Exception:
+      pass
+    return
+  update_state(call.from_user.id, owner_give_penalty_input=True)
+  safe_send_message(call.message.chat.id, "⚠️ Введите юзернейм администратора (с @ или без), которому нужно выдать штраф:", reply_markup=kb_cancel())
+
+
+@bot.message_handler(func=lambda msg: get_state(msg.from_user.id).get("owner_give_penalty_input"))
+def process_owner_give_penalty(m):
+  uid = m.from_user.id
+  if not is_owner(m.from_user):
+    clear_state(uid)
+    return
+  uname = m.text.strip().lstrip("@").lower()
+  clear_state(uid)
+
+  if not uname:
+    return safe_send_message(m.chat.id, "⚠️ Юзернейм не может быть пустым.")
+
+  with db_lock, get_db() as conn:
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO editor_stats (username, count) VALUES (?, 1) ON CONFLICT(username) DO UPDATE SET count = count + 1",
+        (uname,),
+    )
+    cur.execute("SELECT count FROM editor_stats WHERE username = ?", (uname,))
+    row = cur.fetchone()
+    count = row["count"] if row else 1
+    if count >= 3:
+      cur.execute("DELETE FROM approved_admins WHERE LOWER(username) = ?", (uname,))
+      cur.execute("DELETE FROM editor_stats WHERE username = ?", (uname,))
+      status_msg = f"⛔ Администратор @{uname} получил штраф (всего ошибок: {count}). Лимит исчерпан, он снят с поста!"
+    else:
+      status_msg = f"⚠️ Штраф успешно выдан администратору @{uname}. Текущих ошибок: {count}/3."
+
+  safe_send_message(m.chat.id, status_msg, reply_markup=kb_main_menu())
 
 
 @bot.callback_query_handler(func=lambda c: c.data == "owner_add_admin_start")
@@ -2549,14 +2586,10 @@ def cb_mod_open(call):
   markup = types.InlineKeyboardMarkup(row_width=2)
   acc_prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
   rej_prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
-  bad_prefix = "mod_bad_buy_" if is_buy else "mod_bad_"
   
   markup.add(
       types.InlineKeyboardButton("✅ Одобрить", callback_data=f"{acc_prefix}{pid}"),
       types.InlineKeyboardButton("❌ Отклонить", callback_data=f"{rej_prefix}{pid}"),
-  )
-  markup.add(
-      types.InlineKeyboardButton("⚠️ Плохой текст (Штраф)", callback_data=f"{bad_prefix}{pid}")
   )
 
   text = f"🔍 <b>Пост #{pid}</b>\n🌐 Сервер: {post['server']}\n📂 Категория: {post['category']}\n\n{post['text']}"
@@ -2571,14 +2604,13 @@ def cb_mod_open(call):
     or c.data.startswith("mod_acc_buy_")
     or c.data.startswith("mod_rej_")
     or c.data.startswith("mod_rej_buy_")
-    or c.data.startswith("mod_bad_")
-    or c.data.startswith("mod_bad_buy_")
 )
 def cb_mod_decision(call):
   try:
-    bot.answer_callback_query(call.id)
+    bot.answer_callback_query(call.id, "✅ Решение применено!")
   except Exception:
     pass
+
   if not verify_admin_callback(call):
     return
   is_buy = "buy" in call.data
@@ -2586,9 +2618,6 @@ def cb_mod_decision(call):
   if "acc" in call.data:
     action = "acc"
     prefix = "mod_acc_buy_" if is_buy else "mod_acc_"
-  elif "bad" in call.data:
-    action = "bad"
-    prefix = "mod_bad_buy_" if is_buy else "mod_bad_"
   else:
     action = "rej"
     prefix = "mod_rej_buy_" if is_buy else "mod_rej_"
@@ -2604,7 +2633,7 @@ def cb_mod_decision(call):
     
     if not post:
       try:
-        return bot.answer_callback_query(call.id, "⚠️ Этот пост уже обработан.", show_alert=True)
+        bot.answer_callback_query(call.id, "⚠️ Этот пост уже обработан.", show_alert=True)
       except Exception:
         pass
       return
@@ -2628,14 +2657,10 @@ def cb_mod_decision(call):
         )
     notify_subscribers(post["server"], post["text"], new_ad_id, is_buy=is_buy)
     safe_send_message(post["user_id"], f"✅ Ваше объявление #{new_ad_id} опубликовано!")
-  elif action == "bad":
-    record_admin_error(call.from_user.username, call.from_user.id)
-    safe_send_message(post["user_id"], "❌ Ваше объявление отклонено из-за некачественного текста.")
   else:
     safe_send_message(post["user_id"], "❌ Ваше объявление отклонено модератором.")
 
   try:
-    bot.answer_callback_query(call.id, "✅ Решение применено!")
     bot.delete_message(call.message.chat.id, call.message.message_id)
   except Exception:
     pass

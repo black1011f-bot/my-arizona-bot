@@ -622,7 +622,6 @@
                     </div>
                 </div>
 
-                <!-- Кнопки Подписаться / Игнорировать скрыты для своего профиля согласно правилам -->
                 <div class="az-actions-row" id="profileActionsRow" style="display: none;">
                     <button class="az-btn-action" id="btnSubscribe" onclick="toggleSub()">Подписаться</button>
                     <button class="az-btn-action" id="btnIgnore" onclick="toggleIgnore()">+ Игнор.</button>
@@ -816,10 +815,9 @@
                     <button class="btn-secondary" onclick="closeChatDetail()" style="width: auto; margin:0; padding: 4px 8px; font-size: 11px;">Закрыть</button>
                 </div>
             </div>
-            <!-- Telegram-style chat message bubbles -->
             <div id="chatMessages" style="background: rgba(10, 11, 18, 0.92); padding: 12px; border-radius: 12px; height: 220px; overflow-y: auto; font-size: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--forum-card-border); background-image: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 80%);"></div>
             <div style="display: flex; gap: 6px;">
-                <input type="text" id="chatInputMessage" placeholder="Написать сообщение..." style="margin-bottom:0;">
+                <input type="text" id="chatInputMessage" placeholder="Написать сообщение..." style="margin-bottom:0;" onkeypress="if(event.key === 'Enter') sendChatMessage()">
                 <button onclick="sendChatMessage()" style="width: 70px; margin-top:0; padding: 10px;">Отпр</button>
             </div>
         </div>
@@ -928,22 +926,24 @@
                 let u = tgObj.initDataUnsafe.user;
                 return {
                     id: u.id,
-                    username: u.username ? u.username : 'id_' + u.id,
+                    username: u.username ? '@' + u.username : 'id_' + u.id,
                     first_name: u.first_name || 'Игрок',
                     photo_url: u.photo_url
                 };
             }
-            return { id: 777, username: 'bounqy', first_name: 'bounqy', photo_url: '' };
+            return { id: 777, username: '@bounqy', first_name: 'bounqy', photo_url: '' };
         }
 
         function checkIsOwner() {
             let user = getCurrentUser();
-            return user.username && user.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
+            let cleanName = (user.username || '').replace('@', '');
+            return cleanName.toLowerCase() === OWNER_USERNAME.toLowerCase();
         }
 
         function checkIsAdmin() {
             let user = getCurrentUser();
-            return checkIsOwner() || (user.username && ADMIN_USERNAMES.includes(user.username.toLowerCase()));
+            let cleanName = (user.username || '').replace('@', '');
+            return checkIsOwner() || ADMIN_USERNAMES.includes(cleanName.toLowerCase());
         }
 
         function checkUserVipStatus() {
@@ -958,7 +958,7 @@
             if (confirmBuy) {
                 localStorage.setItem('arizona_user_vip_' + user.id, 'true');
                 initProfile();
-                alert(`🎉 Оплата прошла успешно! VIP статус и авто-подписка активированы!`);
+                alert(`🎉 Оплата прошла успешно! VIP статус активирован!`);
             }
         }
 
@@ -1053,7 +1053,6 @@
             document.getElementById('azStatReacts').innerText = reactionsCount;
             document.getElementById('azStatPoints').innerText = pointsCount;
 
-            // Скрываем блок действий со своими подписками/игнором на собственном профиле
             let profileActions = document.getElementById('profileActionsRow');
             if (profileActions) profileActions.style.display = 'none';
         }
@@ -1076,16 +1075,8 @@
             initProfile();
         }
 
-        function toggleSub() {
-            // Защита от самоподписки
-            alert('Вы не можете подписаться на самого себя!');
-        }
-
-        function toggleIgnore() {
-            // Защита от самоигнорирования
-            alert('Вы не можете добавить в игнор самого себя!');
-        }
-
+        function toggleSub() { alert('Вы не можете подписаться на самого себя!'); }
+        function toggleIgnore() { alert('Вы не можете добавить в игнор самого себя!'); }
         function toggleSearchMenu() { switchTab('feed'); }
 
         function switchProfileSubtab(tab) {
@@ -1116,7 +1107,8 @@
             if (!text) return;
 
             let currentUser = getCurrentUser();
-            let authorName = currentUser.username ? '@' + currentUser.username : (currentUser.first_name || 'Игрок');
+            let authorName = currentUser.username || (currentUser.first_name || 'Игрок');
+            if (!authorName.startsWith('@') && authorName !== 'Игрок') authorName = '@' + authorName;
 
             let wallComments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]');
 
@@ -1259,6 +1251,7 @@
 
         function openChat(name) {
             triggerHaptic('light');
+            if (!name) return;
             activeChatName = name;
             document.getElementById('chatsModal').style.display = 'none';
             document.getElementById('chatTitle').innerText = '💬 Чат с ' + name;
@@ -1273,16 +1266,17 @@
                 let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
                 let messages = chatsData[activeChatName] || [];
                 let currentUser = getCurrentUser();
-                let myName = currentUser.username ? '@' + currentUser.username.toLowerCase() : '';
+                let myNameClean = (currentUser.username || '').replace('@', '').toLowerCase();
                 
                 if (messages.length === 0) {
-                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:11px; padding:20px;">Начните общение в стиле Telegram!</div>';
+                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:11px; padding:20px;">Начните общение! Сообщения сохраняются в реальном времени.</div>';
                     return;
                 }
 
                 let html = '';
                 messages.forEach(m => {
-                    let isMe = (m.senderId === currentUser.id) || (m.sender && myName && m.sender.toLowerCase() === myName);
+                    let senderClean = (m.sender || '').replace('@', '').toLowerCase();
+                    let isMe = (m.senderId === currentUser.id) || (senderClean && senderClean === myNameClean);
                     html += `
                         <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 4px;">
                             <span style="font-size: 9px; color: var(--anime-pink); margin-bottom: 2px;">${escapeHtml(m.sender || (isMe ? 'Вы' : activeChatName))}</span>
@@ -1301,15 +1295,20 @@
             triggerHaptic('light');
             let input = document.getElementById('chatInputMessage');
             let text = input.value.trim();
-            if (!text) return;
+            if (!text || !activeChatName) return;
 
             let currentUser = getCurrentUser();
             let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
             if (!chatsData[activeChatName]) chatsData[activeChatName] = [];
             
+            let senderName = currentUser.username || currentUser.first_name || 'Вы';
+            if (!senderName.startsWith('@') && senderName !== 'Вы' && !senderName.startsWith('id_')) {
+                senderName = '@' + senderName;
+            }
+
             chatsData[activeChatName].push({
                 senderId: currentUser.id,
-                sender: currentUser.username ? '@' + currentUser.username : currentUser.first_name,
+                sender: senderName,
                 text: text
             });
 
@@ -1490,7 +1489,7 @@
             let textContent = document.getElementById('text').value.trim();
             let imageUrl = document.getElementById('itemImage').value.trim();
 
-            if (!textContent) { alert('Введите описание предмета!'); return; }
+            if (!textContent && !itemName) { alert('Введите название или описание предмета!'); return; }
 
             if (containsProfanity(itemName) || containsProfanity(textContent)) {
                 alert('🚫 Запрещено использовать мат в названии или описании товара!');
@@ -1503,12 +1502,14 @@
             if (adType === 'vip' && !isVipUser) {
                 let payConfirm = confirm('⭐ Публикация VIP объявления стоит 1 Telegram Star (⭐️).\nПодтвердить оплату?');
                 if (!payConfirm) return;
-                // Автоматически активируем VIP при оплате звёздами
                 localStorage.setItem('arizona_user_vip_' + getCurrentUser().id, 'true');
             }
 
             let currentUser = getCurrentUser();
-            let authorName = currentUser.username ? '@' + currentUser.username : (currentUser.first_name || 'Игрок');
+            let authorName = currentUser.username || currentUser.first_name || 'Игрок';
+            if (!authorName.startsWith('@') && authorName !== 'Игрок' && !authorName.startsWith('id_')) {
+                authorName = '@' + authorName;
+            }
 
             let adItem = {
                 id: 'ad_' + Date.now(),
@@ -1517,7 +1518,7 @@
                 server: server,
                 category: category,
                 title: itemName,
-                price: price,
+                price: price !== '' ? price : null,
                 currentBid: mode === 'auction' ? Number(price || 0) : null,
                 highestBidder: null,
                 textContent: textContent,
@@ -1561,7 +1562,10 @@
             }
 
             let currentUser = getCurrentUser();
-            let bidderName = currentUser.username ? '@' + currentUser.username : currentUser.first_name;
+            let bidderName = currentUser.username || currentUser.first_name || 'Игрок';
+            if (!bidderName.startsWith('@') && bidderName !== 'Игрок' && !bidderName.startsWith('id_')) {
+                bidderName = '@' + bidderName;
+            }
 
             ad.currentBid = userBid;
             ad.highestBidder = bidderName;
@@ -1604,7 +1608,7 @@
 
         function shareAdTopic(title, server, price) {
             triggerHaptic('light');
-            let shareText = `🔍 Товар на Arizona RP [${server}]!\n📦 ${title || 'Предмет'}\n💰 Цена: ${price}$\n\nНайдено через бот поиска!`;
+            let shareText = `🔍 Товар на Arizona RP [${server}]!\n📦 ${title || 'Предмет'}\n💰 Цена: ${price || 'Договорная'}\n\nНайдено через бот поиска!`;
             let shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(shareText);
             if (tg.openTelegramLink) {
                 tg.openTelegramLink(shareUrl);
@@ -1623,7 +1627,7 @@
                 let cur = ad.currentBid || ad.price || 0;
                 let topBidder = ad.highestBidder ? ` (Лидер: ${escapeHtml(ad.highestBidder)})` : ' (Ставок нет)';
                 priceText = ` <br>🔨 <b>Текущая ставка:</b> ${Number(cur).toLocaleString('ru-RU')}$${topBidder}`;
-            } else if (ad.price !== '' && ad.price !== null && ad.price !== undefined && !isNaN(ad.price)) {
+            } else if (ad.price !== '' && ad.price !== null && ad.price !== undefined && ad.price !== 0 && !isNaN(ad.price)) {
                 priceText = ` <br>💰 <b>Цена:</b> ${Number(ad.price).toLocaleString('ru-RU')}$`;
             }
 
@@ -1691,7 +1695,7 @@
                 let safeAuthor = escapeHtml(ad.author);
                 let adminDeleteBtn = isAdmin ? `<button onclick="deleteAdByAdmin('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin:0; width:auto;">🗑</button>` : '';
 
-                let isOwnerOfAd = (ad.authorId === currentUser.id) || (ad.author === '@' + currentUser.username);
+                let isOwnerOfAd = (ad.authorId === currentUser.id) || (ad.author === currentUser.username);
                 let auctionActionBtn = '';
                 if (ad.mode === 'auction') {
                     if (isOwnerOfAd) {
@@ -1714,7 +1718,7 @@
                         <div class="card-actions-grid">
                             <div class="write-seller-btn" data-author="${safeAuthor}">💬 В ЛС</div>
                             <div class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${ad.id}')">${isFav ? '❤️ В избранном' : '🤍 В избранное'}</div>
-                            <div class="share-btn" onclick="shareAdTopic('${escapeHtml(ad.title || 'Предмет')}', '${escapeHtml(ad.server)}', '${ad.currentBid || ad.price || 0}')">🔗 Поделиться</div>
+                            <div class="share-btn" onclick="shareAdTopic('${escapeHtml(ad.title || 'Предмет')}', '${escapeHtml(ad.server)}', '${ad.currentBid || ad.price || ''}')">🔗 Поделиться</div>
                         </div>
                     </div>
                 `;

@@ -1094,6 +1094,54 @@
                 setInterval(updateMSKTime, 1000);
                 initServerFilters();
 
+                // Проверка сохраненного рассылочного баннера
+                let savedBroadcast = localStorage.getItem('arizona_broadcast_text');
+                if (savedBroadcast) {
+                    let broadcastEl = document.getElementById('broadcastBanner');
+                    let broadcastTextEl = document.getElementById('broadcastText');
+                    if (broadcastEl && broadcastTextEl) {
+                        broadcastTextEl.innerHTML = `<b>Уведомление:</b> ${escapeHtml(savedBroadcast)}`;
+                        broadcastEl.style.display = 'block';
+                    }
+                }
+
+                // Инициализация дефолтных объявлений если лента пуста
+                if (!localStorage.getItem('arizona_global_feed')) {
+                    let defaultAds = [
+                        {
+                            id: 'default_1',
+                            userId: 777,
+                            username: '@bounqy',
+                            mode: 'sell',
+                            category: '💍 Аксессуары и вещи',
+                            title: 'Магический шар +12 (Цвет: Красный)',
+                            price: '450,000,000 $',
+                            barterOffer: '',
+                            text: 'Продаю срочно топовый шар с гравировкой. Отличный выбор для барыги!',
+                            image: DEFAULT_AVATAR,
+                            server: '🔥 Phoenix',
+                            timestamp: Date.now(),
+                            status: 'active'
+                        },
+                        {
+                            id: 'default_2',
+                            userId: 777,
+                            username: '@arizona_trader',
+                            mode: 'buy',
+                            category: '👕 Скины и охранники',
+                            title: 'Скин: Хикка (+12)',
+                            price: '300,000,000 $',
+                            barterOffer: '',
+                            text: 'Скупаю по выгодной цене на Центральном Рынке. Пишите в ЛС.',
+                            image: DEFAULT_AVATAR,
+                            server: '❤️ Red-Rock',
+                            timestamp: Date.now() - 1000,
+                            status: 'active'
+                        }
+                    ];
+                    localStorage.setItem('arizona_global_feed', JSON.stringify(defaultAds));
+                }
+
                 if (checkIsBanned()) {
                     document.getElementById('banOverlay').style.display = 'flex';
                     return;
@@ -1408,7 +1456,37 @@
             if (tabName === 'feed') renderFeed();
             if (tabName === 'favorites') renderFavorites();
             if (tabName === 'clicker') initClicker();
+            if (tabName === 'analytics') renderAnalytics();
             if (tabName === 'admin') renderAdminPendingAds();
+        }
+
+        function renderAnalytics() {
+            let container = document.getElementById('analyticsContainer');
+            if (!container) return;
+            
+            let analyticsItems = [
+                { name: 'Магический шар +12', price: '450,000,000 $', trend: '+15%', status: '📈 Растет в цене' },
+                { name: 'Скин: Хикка (+12)', price: '290,000,000 $', trend: '+5%', status: '📊 Стабильно' },
+                { name: 'НЛО на плечо +12', price: '120,000,000 $', trend: '-8%', status: '📉 Падает' },
+                { name: 'Энергетический чемодан', price: '750,000,000 $', trend: '+22%', status: '🔥 В тренде' },
+                { name: 'Ангельский нимб +12', price: '380,000,000 $', trend: '+3%', status: '📊 Стабильно' }
+            ];
+
+            let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+            analyticsItems.forEach(item => {
+                let color = item.trend.startsWith('+') ? 'var(--accent-green)' : 'var(--accent-red)';
+                html += `
+                    <div class="ad-card" style="margin-bottom:0; padding:10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="color: #fff; font-size: 12px;">${escapeHtml(item.name)}</strong>
+                            <span style="font-size: 10px; font-weight: 800; color: ${color};">${escapeHtml(item.status)} (${escapeHtml(item.trend)})</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--accent-gold); margin-top: 4px;">Средняя цена на ЦР: <strong>${escapeHtml(item.price)}</strong></div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
         }
 
         let clickerData = {

@@ -236,6 +236,11 @@
                 <textarea id="text" rows="4" placeholder="Опишите ваш товар или условия обмена..."></textarea>
             </div>
 
+            <div class="form-group" id="imageGroup">
+                <label for="itemImage">Ссылка на фото товара (необязательно):</label>
+                <input type="url" id="itemImage" placeholder="https://imgur.com/... или прямая ссылка">
+            </div>
+
             <div class="form-group">
                 <label for="server">Игровой сервер:</label>
                 <select id="server">
@@ -403,12 +408,12 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             try {
-                // Очистка старой истории объявлений (версия изменена на v4 для принудительной очистки)
-                if (!localStorage.getItem('arizona_app_cleared_v4')) {
+                // Автоудаление / очистка истории объявлений при первом запуске новой версии (v5)
+                if (!localStorage.getItem('arizona_app_cleared_v5')) {
                     localStorage.removeItem('arizona_pending_ads');
                     localStorage.removeItem('my_arizona_ads');
                     localStorage.removeItem('arizona_global_feed');
-                    localStorage.setItem('arizona_app_cleared_v4', 'true');
+                    localStorage.setItem('arizona_app_cleared_v5', 'true');
                 }
 
                 if (checkIsAdmin() || checkIsOwner()) {
@@ -478,7 +483,7 @@
                 if (textGroup) textGroup.style.display = 'block';
             } else {
                 if (catGroup) catGroup.style.display = 'block';
-                if (textGroup) textGroup.style.display = 'block';
+                if (textGroup) catGroup.style.display = 'block';
                 if (itemGroup) itemGroup.style.display = 'none';
                 if (priceGroup) priceGroup.style.display = 'none';
             }
@@ -521,6 +526,9 @@
                 }
             }
 
+            let imageEl = document.getElementById('itemImage');
+            let imageUrl = imageEl ? imageEl.value.trim() : '';
+
             let currentUser = getCurrentUser();
             let adItem = {
                 id: 'ad_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
@@ -529,6 +537,7 @@
                 server: server,
                 category: category,
                 text: textContent,
+                image: imageUrl,
                 author: currentUser.username ? '@' + currentUser.username : (currentUser.first_name || 'Игрок'),
                 date: new Date().toLocaleString()
             };
@@ -555,10 +564,12 @@
             let itemNameEl = document.getElementById('itemName');
             let priceEl = document.getElementById('price');
             let textEl = document.getElementById('text');
+            let imageEl = document.getElementById('itemImage');
 
             if (itemNameEl) itemNameEl.value = '';
             if (priceEl) priceEl.value = '';
             if (textEl) textEl.value = '';
+            if (imageEl) imageEl.value = '';
 
             if (pendingData && typeof tg.sendData === 'function') {
                 try { 
@@ -608,8 +619,10 @@
 
             let html = '';
             filtered.forEach(ad => {
+                let imageBlock = ad.image ? `<img src="${ad.image}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 6px;">` : '';
                 html += `
                     <div class="ad-card" id="pending_card_${ad.id}">
+                        ${imageBlock}
                         <div class="ad-header">
                             <span><b>${ad.server}</b> | От: ${ad.author}</span>
                             <span>${ad.date}</span>
@@ -755,8 +768,10 @@
             let ownerCheck = checkIsOwner();
             myAds.forEach(ad => {
                 let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Бартер / Обмен' }[ad.mode] || ad.mode;
+                let imageBlock = ad.image ? `<img src="${ad.image}" style="width: 100%; height: 140px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;">` : '';
                 html += `
                     <div class="ad-card" id="card_${ad.id}">
+                        ${imageBlock}
                         <div class="ad-header">
                             <span><b>${ad.server}</b> (${modeName})</span>
                             <span>${ad.date}</span>
@@ -784,8 +799,10 @@
             let html = '';
             let ownerCheck = checkIsOwner();
             feed.forEach(ad => {
+                let imageBlock = ad.image ? `<img src="${ad.image}" style="width: 100%; height: 140px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;">` : '';
                 html += `
                     <div class="ad-card" id="card_feed_${ad.id}">
+                        ${imageBlock}
                         <div class="ad-header">
                             <span><b>${ad.server}</b> | Модератор: ${ad.editor || 'Система'}</span>
                             <span>${ad.date}</span>

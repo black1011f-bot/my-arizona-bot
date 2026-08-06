@@ -770,6 +770,7 @@
     </div>
 
     <script>
+        // Старт и инициализация Telegram WebApp
         let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
         if (typeof tg.expand === 'function') { tg.expand(); }
         if (typeof tg.ready === 'function') { tg.ready(); }
@@ -2071,215 +2072,149 @@
             try {
                 feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
                 favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
-            } catch(e) { feed = []; favorites = []; }
+            } catch(e){}
 
-            let favFeed = feed.filter(ad => favorites.includes(ad.id));
-            if (favFeed.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">У вас нет избранных предметов.</div>';
+            let favAds = feed.filter(ad => favorites.includes(ad.id));
+
+            if (favAds.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">У вас нет сохраненных закладок.</div>';
                 return;
             }
 
             let html = '';
-            let currentUser = getCurrentUser();
-            let isAdmin = checkIsAdmin();
-
-            favFeed.forEach(ad => {
-                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
-                let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : '';
-                let safeAuthor = escapeHtml(ad.author);
-                
-                let isOwnerOfAd = (ad.authorId === currentUser.id) || (ad.author === currentUser.username);
-                let adminOrOwnerDeleteBtn = (isAdmin || isOwnerOfAd) ? `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin:0; width:auto;">🗑 Удалить</button>` : '';
-
-                let auctionActionBtn = '';
-                if (ad.mode === 'auction') {
-                    if (isOwnerOfAd) {
-                        auctionActionBtn = `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="font-size:10px; padding:6px; margin-top:6px;">❌ Снять аукцион</button>`;
-                    } else {
-                        auctionActionBtn = `<button onclick="placeAuctionBid('${ad.id}')" class="btn-success" style="font-size:10px; padding:6px; margin-top:6px;">🔨 Сделать ставку</button>`;
-                    }
-                }
-
-                let encodedTitle = encodeURIComponent(ad.title || 'Предмет');
-                let encodedServer = encodeURIComponent(ad.server || '');
-                let encodedPrice = encodeURIComponent(ad.currentBid || ad.price || '');
-
+            favAds.forEach(ad => {
+                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
                 html += `
                     <div class="ad-card">
-                        <div>
-                            ${imgHtml}
-                            <div class="ad-header">
-                                <span>${modeBadge}<span class="forum-badge badge-success">Проверено</span><b>${escapeHtml(ad.server)}</b> | ${safeAuthor}</span>
-                                ${adminOrOwnerDeleteBtn}
-                            </div>
-                            <div style="margin-bottom:6px;">${buildAdTextHtml(ad)}</div>
-                            ${auctionActionBtn}
-                        </div>
-                        
-                        <div class="card-actions-grid">
-                            <div class="write-seller-btn" data-author="${safeAuthor}">💬 В ЛС</div>
-                            <div class="fav-btn active" onclick="toggleFavorite('${ad.id}')">❤️ В избранном</div>
-                            <div class="share-btn" onclick="shareAdTopic('${encodedTitle}', '${encodedServer}', '${encodedPrice}')">🔗 Поделиться</div>
-                        </div>
+                        ${imgHtml}
+                        <div class="ad-header"><span><b>${escapeHtml(ad.server)}</b> | ${escapeHtml(ad.author)}</span></div>
+                        <div>${buildAdTextHtml(ad)}</div>
+                        <button onclick="toggleFavorite('${ad.id}'); renderFavorites();" class="btn-danger" style="font-size:10px; padding:6px; margin-top:8px;">❌ Удалить из закладок</button>
                     </div>
                 `;
             });
             container.innerHTML = html;
+        }
 
-            container.querySelectorAll('.write-seller-btn').forEach(btn => {
-                btn.addEventListener('click', () => openChat(btn.dataset.author));
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            document.getElementById('btnListView').classList.toggle('active', mode === 'list');
+            document.getElementById('btnGridView').classList.toggle('active', mode === 'grid');
+            renderFeed();
+        }
+
+        function clearGlobalFeedAdmin() {
+            if (!checkIsOwner()) {
+                alert('🚫 Эта функция доступна только владельцу бота (@bounqy)!');
+                return;
+            }
+            triggerHaptic('heavy');
+            if (!confirm('⚠️ Полностью очистить всю базу предметов?')) return;
+            localStorage.removeItem('arizona_global_feed');
+            renderFeed();
+            alert('База полностью очищена.');
+        }
+
+        function updateBroadcastMessage() {
+            triggerHaptic('medium');
+            let input = document.getElementById('newBroadcastInput');
+            let text = input.value.trim();
+            if (!text) { alert('Введите текст сообщения!'); return; }
+
+            let mskTime = getMSKDate().getTime();
+
+            localStorage.setItem('arizona_broadcast_text', text);
+            localStorage.setItem('arizona_broadcast_time', mskTime);
+
+            let broadcastNotifs = [];
+            try {
+                broadcastNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
+            } catch(e) { broadcastNotifs = []; }
+
+            broadcastNotifs.unshift({
+                id: 'bnotif_' + Date.now(),
+                text: '📢 Рассылка от администрации: ' + text,
+                timestamp: mskTime
             });
+
+            let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+            broadcastNotifs = broadcastNotifs.filter(n => (mskTime - n.timestamp) < sevenDaysMs);
+            localStorage.setItem('arizona_global_broadcast_notifs', JSON.stringify(broadcastNotifs));
+
+            showAndAutoHideBroadcast(text);
+            updateNotifBadge();
+
+            input.value = '';
+            alert('📢 Рассылка успешно отправлена и добавлена в колокольчик всем игрокам!');
         }
 
         function sendTargetAction(action) {
             triggerHaptic('medium');
-            if (!checkIsOwner()) {
-                alert('Только владелец бота (@bounqy) может управлять правами и банами!');
-                return;
-            }
-            let targetInput = document.getElementById('targetUser').value.trim();
-            if (!targetInput) {
-                alert('Введите целевого игрока (@username или ID)!');
-                return;
-            }
-            let cleanTarget = targetInput.replace('@', '').toLowerCase();
+            let target = document.getElementById('targetUser').value.trim();
+            if (!target) { alert('Введите ID или username пользователя!'); return; }
+            let cleanTarget = target.replace('@', '').toLowerCase();
+
+            let adminBtn = document.getElementById('adminTabBtn');
 
             if (action === 'make_admin') {
                 if (!ADMIN_USERNAMES.includes(cleanTarget)) {
                     ADMIN_USERNAMES.push(cleanTarget);
                     localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
-                    alert(`✅ Пользователь ${targetInput} назначен администратором!`);
-                } else {
-                    alert('Этот пользователь уже является администратором.');
                 }
+                if (checkIsAdmin() && adminBtn) adminBtn.style.display = 'block';
+                alert(`👑 Пользователь @${cleanTarget} успешно назначен администратором!`);
             } else if (action === 'remove_admin') {
-                if (cleanTarget === OWNER_USERNAME.toLowerCase()) {
-                    alert('Нельзя снять с админки владельца бота!');
+                if (cleanTarget === OWNER_USERNAME.toLowerCase() || cleanTarget === '777') {
+                    alert('Нельзя снять владельца бота с админки!');
                     return;
                 }
                 ADMIN_USERNAMES = ADMIN_USERNAMES.filter(u => u !== cleanTarget);
                 localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
-                alert(`✅ Пользователь ${targetInput} снят с должности администратора.`);
+                
+                if (!checkIsAdmin()) {
+                    if (adminBtn) adminBtn.style.display = 'none';
+                    if (document.getElementById('tabAdmin').classList.contains('active')) {
+                        switchTab('feed');
+                    }
+                }
+                alert(`⚙️ Пользователь @${cleanTarget} снят с должности администратора.`);
             } else if (action === 'ban') {
-                if (cleanTarget === OWNER_USERNAME.toLowerCase()) {
-                    alert('Нельзя забанить владельца бота!');
-                    return;
-                }
-                let bannedList = [];
                 try {
-                    bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
-                } catch(e) { bannedList = []; }
-
-                if (!bannedList.includes(cleanTarget)) {
-                    bannedList.push(cleanTarget);
-                    localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
-                    alert(`🚫 Пользователь ${targetInput} заблокирован!`);
-                } else {
-                    alert('Пользователь уже заблокирован.');
-                }
+                    let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
+                    if (!bannedList.includes(cleanTarget)) {
+                        bannedList.push(cleanTarget);
+                        localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
+                    }
+                    alert(`🚫 Пользователь @${cleanTarget} заблокирован!`);
+                } catch(e){}
             } else if (action === 'unban') {
-                let bannedList = [];
                 try {
-                    bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
-                } catch(e) { bannedList = []; }
-
-                bannedList = bannedList.filter(u => u !== cleanTarget);
-                localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
-                alert(`✅ Пользователь ${targetInput} разблокирован!`);
+                    let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
+                    bannedList = bannedList.filter(u => u !== cleanTarget);
+                    localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
+                    alert(`✅ Пользователь @${cleanTarget} разблокирован.`);
+                } catch(e){}
             }
             document.getElementById('targetUser').value = '';
         }
 
-        function clearGlobalFeedAdmin() {
-            triggerHaptic('heavy');
-            if (!checkIsAdmin()) return;
-            if (!confirm('Очистить всю глобальную ленту объявлений?')) return;
-            localStorage.removeItem('arizona_global_feed');
-            renderFeed();
-            alert('✅ Глобальная лента полностью очищена.');
+        function openBroadcastModal() {
+            let currentMsg = localStorage.getItem('arizona_broadcast_text') || 'Добро пожаловать в поисковик предметов Arizona RP!';
+            alert('📢 Системное уведомление:\n' + currentMsg);
         }
 
-        function updateBroadcastMessage() {
-            triggerHaptic('medium');
-            if (!checkIsAdmin()) return;
-            let textInput = document.getElementById('newBroadcastInput').value.trim();
-            if (!textInput) {
-                alert('Введите текст уведомления!');
-                return;
-            }
-            let mskNow = getMSKDate().getTime();
-            localStorage.setItem('arizona_broadcast_text', textInput);
-            localStorage.setItem('arizona_broadcast_time', mskNow);
-
-            let bNotifs = [];
-            try {
-                bNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
-            } catch(e) { bNotifs = []; }
-
-            bNotifs.unshift({
-                id: 'bnotif_' + Date.now(),
-                text: '📢 ' + textInput,
-                timestamp: mskNow
-            });
-            localStorage.setItem('arizona_global_broadcast_notifs', JSON.stringify(bNotifs));
-
-            showAndAutoHideBroadcast(textInput);
-            document.getElementById('newBroadcastInput').value = '';
-            updateNotifBadge();
-            alert('✅ Рассылка успешно отправлена всем игрокам!');
-        }
-
-        function openNotificationsModal() {
-            triggerHaptic('light');
+        function openNotificationsModal() { 
             renderNotifications();
-            document.getElementById('notificationsModal').style.display = 'flex';
+            document.getElementById('notificationsModal').style.display = 'flex'; 
         }
-
-        function closeNotificationsModal() {
-            document.getElementById('notificationsModal').style.display = 'none';
-        }
-
+        function closeNotificationsModal() { document.getElementById('notificationsModal').style.display = 'none'; }
+        
         function openChatsModal() {
-            triggerHaptic('light');
             renderChatsList();
             document.getElementById('chatsModal').style.display = 'flex';
         }
-
         function closeChatsModal() {
             document.getElementById('chatsModal').style.display = 'none';
-        }
-
-        function openSearchModal() {
-            triggerHaptic('light');
-            switchTab('feed');
-            let searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.focus();
-                searchInput.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-
-        function setViewMode(mode) {
-            triggerHaptic('light');
-            currentViewMode = mode;
-            let btnList = document.getElementById('btnListView');
-            let btnGrid = document.getElementById('btnGridView');
-            if (mode === 'list') {
-                btnList.classList.add('active');
-                btnGrid.classList.remove('active');
-            } else {
-                btnGrid.classList.add('active');
-                btnList.classList.remove('active');
-            }
-            renderFeed();
-        }
-
-        function clearMyAds() {
-            triggerHaptic('heavy');
-            if (!confirm('Очистить архив ваших объявлений?')) return;
-            localStorage.removeItem('my_arizona_ads');
-            renderMyAds();
-            alert('✅ Архив очищен.');
         }
     </script>
 </body>

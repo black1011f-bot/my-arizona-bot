@@ -83,7 +83,7 @@
         .forum-subtitle {
             font-size: 9px;
             color: var(--anime-pink);
-            text-transform: uppercase;
+            text-transform: lowercase;
             letter-spacing: 0.8px;
             font-weight: 700;
         }
@@ -93,6 +93,12 @@
             color: #ffffff;
             letter-spacing: 0.3px;
             text-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
+        }
+        .forum-time-msk {
+            font-size: 10px;
+            color: var(--anime-cyan);
+            font-weight: 600;
+            margin-top: 2px;
         }
         .forum-top-icons {
             display: flex;
@@ -480,8 +486,9 @@
         <div class="forum-topbar">
             <div class="forum-brand">
                 <div class="forum-brand-info">
-                    <div class="forum-subtitle">Форумная система</div>
+                    <div class="forum-subtitle">неофициальный клиент для продажи вещей</div>
                     <div class="forum-brand-title">Arizona RP ✨</div>
+                    <div id="mskTime" class="forum-time-msk">🕒 --:--:-- (МСК)</div>
                 </div>
             </div>
             <div class="forum-top-icons">
@@ -502,7 +509,7 @@
             <button class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">⚙️ Админ</button>
         </div>
 
-        <!-- TAB FEED (ПО УМОЛЧАНИЮ ПРИ ВХОДЕ) -->
+        <!-- TAB FEED -->
         <div id="tabFeed" class="section active">
             <div class="admin-section-title">🌍 Главный раздел форума</div>
             
@@ -535,7 +542,6 @@
                     <div>Статус: <span id="azActivity">В сети</span></div>
                 </div>
                 
-                <!-- ОБНУЛЕННАЯ СТАТИСТИКА ПО УМОЛЧАНИЮ -->
                 <div class="az-stats-grid">
                     <div class="az-stat-item">
                         <span class="az-stat-label">Сообщения</span>
@@ -565,16 +571,21 @@
             <!-- PROFILE WALL -->
             <div class="ad-card">
                 <div class="profile-subtabs">
-                    <div class="profile-subtab active">💬 Сообщения профиля</div>
-                    <div class="profile-subtab" onclick="switchTab('feed')">🕒 Последняя активность</div>
+                    <div class="profile-subtab active" id="subtabWall" onclick="switchProfileSubtab('wall')">💬 Сообщения профиля</div>
+                    <div class="profile-subtab" id="subtabActivity" onclick="switchProfileSubtab('activity')">🕒 Последняя активность</div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 8px;">
-                    <input type="text" id="wallCommentInput" placeholder="Напишите что-нибудь на стене (роспись)...">
+                <div id="profileWallContent">
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <input type="text" id="wallCommentInput" placeholder="Напишите что-нибудь на стене (роспись)...">
+                    </div>
+                    <button onclick="postWallComment()" style="padding: 8px; font-size: 11px; margin-top:0;">Оставить роспись</button>
+                    <div id="wallCommentsContainer" style="margin-top: 12px;"></div>
                 </div>
-                <button onclick="postWallComment()" style="padding: 8px; font-size: 11px; margin-top:0;">Оставить роспись</button>
 
-                <div id="wallCommentsContainer" style="margin-top: 12px;"></div>
+                <div id="profileActivityContent" style="display: none; font-size: 11px; color: var(--text-muted); text-align: center; padding: 10px;">
+                    Последняя активность: просмотр главных тем форума.
+                </div>
             </div>
         </div>
 
@@ -757,6 +768,15 @@
 
         const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%238b5cf6'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='%23ffffff' font-family='sans-serif'>A</text></svg>";
 
+        function updateMSKTime() {
+            let now = new Date();
+            let timeStr = now.toLocaleTimeString('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            let el = document.getElementById('mskTime');
+            if (el) {
+                el.innerText = '🕒 ' + timeStr + ' (МСК)';
+            }
+        }
+
         function escapeHtml(text) {
             if (!text) return '';
             return String(text)
@@ -810,6 +830,9 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             try {
+                updateMSKTime();
+                setInterval(updateMSKTime, 1000);
+
                 if (checkIsAdmin()) {
                     let adminBtn = document.getElementById('adminTabBtn');
                     if (adminBtn) adminBtn.style.display = 'block';
@@ -819,20 +842,32 @@
                     if (ownerSec) ownerSec.style.display = 'block';
                 }
                 
-                // Загрузка сохраненного объявление баннера
                 let savedBroadcast = localStorage.getItem('arizona_broadcast_text');
                 if (savedBroadcast) {
                     document.getElementById('broadcastText').innerHTML = escapeHtml(savedBroadcast);
                 }
 
-                // ВХОД СРАЗУ НА ГЛАВНУЮ ЛЕНТУ ТЕМ (НЕ ПРОФИЛЬ)
+                updateChatDotBadge();
                 switchTab('feed');
             } catch (e) {
                 console.error('Ошибка при загрузке:', e);
             }
         });
 
-        // ИНИЦИАЛИЗАЦИЯ И ОБНУЛЕНИЕ СТАТИСТИКИ ПРОФИЛЯ
+        function updateChatDotBadge() {
+            let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
+            let count = Object.keys(chatsData).length;
+            let dot = document.getElementById('chatDot');
+            if (dot) {
+                if (count > 0) {
+                    dot.innerText = count;
+                    dot.style.display = 'inline-block';
+                } else {
+                    dot.style.display = 'none';
+                }
+            }
+        }
+
         function initProfile() {
             let user = getCurrentUser();
             let name = user.first_name || 'Игрок Arizona';
@@ -858,7 +893,6 @@
 
             renderWallComments();
 
-            // ПОЛНОСТЬЮ ОБНУЛЕННЫЙ СЧЕТЧИК (Считаем строго от реальных данных локального хранилища)
             let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
             let wallComments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]');
             let subState = localStorage.getItem('arizona_sub_' + user.id) === 'true';
@@ -899,6 +933,25 @@
 
         function toggleSearchMenu() { switchTab('feed'); }
 
+        function switchProfileSubtab(tab) {
+            let wallTab = document.getElementById('subtabWall');
+            let activityTab = document.getElementById('subtabActivity');
+            let wallContent = document.getElementById('profileWallContent');
+            let activityContent = document.getElementById('profileActivityContent');
+
+            if (tab === 'wall') {
+                wallTab.classList.add('active');
+                activityTab.classList.remove('active');
+                wallContent.style.display = 'block';
+                activityContent.style.display = 'none';
+            } else {
+                activityTab.classList.add('active');
+                wallTab.classList.remove('active');
+                wallContent.style.display = 'none';
+                activityContent.style.display = 'block';
+            }
+        }
+
         function postWallComment() {
             triggerHaptic('medium');
             let input = document.getElementById('wallCommentInput');
@@ -935,7 +988,6 @@
             }
         }
 
-        // ОТРИСОВКА СТЕНЫ ПРОФИЛЯ БЕЗ СТАРЫХ ЧУЖИХ РОСПИСЕЙ ИЗ ФОТО
         function renderWallComments() {
             let container = document.getElementById('wallCommentsContainer');
             if (!container) return;
@@ -949,13 +1001,14 @@
 
             let html = '';
             wallComments.forEach(c => {
+                let formattedText = escapeHtml(c.text).replace(/\n/g, '<br>');
                 html += `
                     <div class="wall-comment">
                         <div class="wall-comment-header">
                             <span class="wall-author">${escapeHtml(c.author)}</span>
                             <span class="wall-date">${escapeHtml(c.date)}</span>
                         </div>
-                        <div style="color: #fff; margin-bottom: 6px;">${escapeHtml(c.text)}</div>
+                        <div style="color: #fff; margin-bottom: 6px;">${formattedText}</div>
                         <button onclick="likeWallComment('${c.id}')" style="width: auto; padding: 3px 8px; font-size: 10px; margin: 0;" class="btn-secondary">👍 Like (${c.likes})</button>
                     </div>
                 `;
@@ -1030,6 +1083,7 @@
             let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
             delete chatsData[chatName];
             localStorage.setItem('arizona_chats_data', JSON.stringify(chatsData));
+            updateChatDotBadge();
             renderChatsList();
         }
 
@@ -1061,7 +1115,7 @@
                 let html = '';
                 messages.forEach(m => {
                     let isMe = m.sender === 'me';
-                    html += `<div style="text-align: ${isMe ? 'right' : 'left'};"><span style="display:inline-block; background:${isMe ? 'var(--btn-anime-gradient)' : 'rgba(255,255,255,0.08)'}; padding:6px 10px; border-radius:8px; color:#fff; max-width:80%; font-size:12px;">${escapeHtml(m.text)}</span></div>`;
+                    html += `<div style="text-align: ${isMe ? 'right' : 'left'};"><span style="display:inline-block; background:${isMe ? 'var(--btn-anime-gradient)' : 'rgba(255,255,255,0.08)'}; padding:6px 10px; border-radius:8px; color:#fff; max-width:80%; font-size:12px; word-break: break-word;">${escapeHtml(m.text).replace(/\n/g, '<br>')}</span></div>`;
                 });
                 container.innerHTML = html;
                 container.scrollTop = container.scrollHeight;
@@ -1079,6 +1133,7 @@
             chatsData[activeChatName].push({ sender: 'me', text: text });
             localStorage.setItem('arizona_chats_data', JSON.stringify(chatsData));
             
+            updateChatDotBadge();
             input.value = '';
             renderChatMessages();
         }
@@ -1094,6 +1149,7 @@
             if (!chatsData[username]) chatsData[username] = [];
             localStorage.setItem('arizona_chats_data', JSON.stringify(chatsData));
             
+            updateChatDotBadge();
             input.value = '';
             openChat(username);
         }
@@ -1120,6 +1176,12 @@
             ]
         };
 
+        const pickerTitles = {
+            mode: 'Выберите тип темы',
+            category: 'Выберите раздел форума',
+            server: 'Выберите игровой сервер'
+        };
+
         let currentPickerField = '';
         function openPicker(field) {
             triggerHaptic('light');
@@ -1127,7 +1189,9 @@
             let currentVal = document.getElementById(field).value;
             let listEl = document.getElementById('pickerList');
             let items = pickerData[field] || [];
-            
+
+            document.getElementById('pickerTitle').innerText = pickerTitles[field] || 'Выберите';
+
             let html = '';
             items.forEach((item, index) => {
                 let isSelected = item.value === currentVal;
@@ -1255,8 +1319,14 @@
 
         function buildAdTextHtml(ad) {
             let titlePrefix = ad.title ? `<b>[${escapeHtml(ad.title)}]</b> ` : '';
-            let mainContent = escapeHtml(ad.textContent || ad.text || '');
-            let priceText = ad.price ? ` <br>💰 <b>Цена:</b> ${Number(ad.price).toLocaleString()}$` : '';
+            let rawText = ad.textContent || ad.text || '';
+            let mainContent = escapeHtml(rawText).replace(/\n/g, '<br>');
+            
+            let priceText = '';
+            if (ad.price !== '' && ad.price !== null && ad.price !== undefined && !isNaN(ad.price)) {
+                priceText = ` <br>💰 <b>Цена:</b> ${Number(ad.price).toLocaleString('ru-RU')}$`;
+            }
+
             return titlePrefix + mainContent + priceText;
         }
 
@@ -1312,8 +1382,6 @@
                 let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
                 let vipBadge = ad.isVip ? `<span class="forum-badge badge-vip">⭐ VIP</span>` : '';
                 let safeAuthor = escapeHtml(ad.author);
-                
-                // Кнопка удаления темы в ленте для Админов
                 let adminDeleteBtn = isAdmin ? `<button onclick="deleteAdByAdmin('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin:0; width:auto;">🗑 Удалить</button>` : '';
 
                 html += `
@@ -1342,7 +1410,6 @@
             renderFeed();
         }
 
-        // --- ВОЗВРАЩЕННЫЕ АДМИН-ФУНКЦИИ ---
         function openModerationSelector(type) {
             let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
             let count = feed.filter(a => a.mode === type).length;

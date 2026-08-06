@@ -84,6 +84,23 @@
             margin: 0 auto;
         }
 
+        /* ЭКРАН БАНА */
+        #banOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0b0c14;
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
         .broadcast-banner {
             background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
             color: #ffffff;
@@ -233,7 +250,6 @@
             transition: all 0.3s ease;
         }
 
-        /* АНИМИРОВАННЫЕ РАМКИ */
         .frame-none { border: 2px solid var(--anime-purple) !important; }
         .frame-neon { border: 3px solid #ec4899 !important; animation: pulseGlow 1.8s infinite alternate !important; }
         .frame-anime { border: 3px solid #06b6d4 !important; animation: rotateBorder 3s infinite linear !important; box-shadow: 0 0 20px #06b6d4, 0 0 35px #a855f7 !important; }
@@ -305,7 +321,6 @@
             color: #ffffff;
         }
 
-        /* КРАСИВЫЙ СЕЛЕКТОР РАМОК ВМЕСТО СТАНДАРТНОГО ВЫПАДАЮЩЕГО СПИСКА */
         .frame-selector-container {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -533,6 +548,17 @@
     </style>
 </head>
 <body>
+    <!-- ЭКРАН БАНА (БЛОКИРУЕТ ВСЕ ДЕЙСТВИЯ, ЕСЛИ ИГРОК ЗАБАНЕН) -->
+    <div id="banOverlay">
+        <div>
+            <h2 style="color: #ef4444; font-size: 22px; margin-bottom: 8px;">🚫 ВЫ ЗАБЛОКИРОВАНЫ</h2>
+            <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
+                Доступ к функциям бота, созданию тем и чатам ограничен администрацией.<br>Дождитесь снятия блокировки.
+            </p>
+            <button onclick="location.reload()" class="btn-secondary" style="width: auto; padding: 8px 16px; font-size: 11px;">🔄 Проверить статус</button>
+        </div>
+    </div>
+
     <div class="container">
         <!-- БАННЕР УВЕДОМЛЕНИЙ -->
         <div id="broadcastBanner" class="broadcast-banner" onclick="openBroadcastModal()">
@@ -615,7 +641,6 @@
                     </div>
                 </div>
 
-                <!-- УЛУЧШЕННЫЙ ИНТЕРФЕЙС КАСТОМИЗАЦИИ РАМОК ВМЕСТО УРОДЛИВОГО SELECT -->
                 <div class="admin-controls-card" style="margin-top: 10px; text-align: left;">
                     <div style="font-weight: 800; font-size: 11px; color: var(--anime-purple); margin-bottom: 6px;">🎨 КАСТОМИЗАЦИЯ РАМОК ПРОФИЛЯ</div>
                     
@@ -906,14 +931,21 @@
 
         function checkIsOwner() {
             let user = getCurrentUser();
-            let cleanName = (user.username || '').replace('@', '');
-            return cleanName.toLowerCase() === OWNER_USERNAME.toLowerCase();
+            let cleanName = (user.username || '').replace('@', '').toLowerCase();
+            return cleanName === OWNER_USERNAME.toLowerCase();
         }
 
         function checkIsAdmin() {
             let user = getCurrentUser();
-            let cleanName = (user.username || '').replace('@', '');
-            return checkIsOwner() || ADMIN_USERNAMES.includes(cleanName.toLowerCase());
+            let cleanName = (user.username || '').replace('@', '').toLowerCase();
+            return checkIsOwner() || ADMIN_USERNAMES.includes(cleanName);
+        }
+
+        function checkIsBanned() {
+            let user = getCurrentUser();
+            let cleanName = (user.username || '').replace('@', '').toLowerCase();
+            let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
+            return bannedList.includes(cleanName) || bannedList.includes(String(user.id));
         }
 
         function handleOverlayClick(e, modalId) {
@@ -926,6 +958,12 @@
             try {
                 updateMSKTime();
                 setInterval(updateMSKTime, 1000);
+
+                // ПРОВЕРКА БАНА ПРИ ЗАГРУЗКЕ
+                if (checkIsBanned()) {
+                    document.getElementById('banOverlay').style.display = 'flex';
+                    return;
+                }
 
                 if (checkIsAdmin()) {
                     let adminBtn = document.getElementById('adminTabBtn');
@@ -973,7 +1011,6 @@
             let savedFrame = localStorage.getItem('arizona_avatar_frame_' + user.id) || 'none';
             avatarImg.className = 'az-avatar-img ' + savedFrame;
             
-            // Обновляем подсветку кнопок выбора рамок
             document.querySelectorAll('.frame-option-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -1443,15 +1480,13 @@
                 author: authorName,
                 authorId: currentUser.id,
                 date: new Date().toLocaleDateString(),
-                status: 'pending' // Отправлено на модерацию
+                status: 'pending'
             };
 
-            // Сохраняем в список моих объявлений (как ожидающие проверки)
             let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
             myAds.unshift(adItem);
             localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
 
-            // Сохраняем в очередь модерации (для админов)
             let pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
             pendingAds.unshift(adItem);
             localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
@@ -1505,12 +1540,10 @@
 
             ad.status = 'approved';
 
-            // Публикуем в общую ленту
             let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
             feed.unshift(ad);
             localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
 
-            // Обновляем статус в моем архиве
             let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
             let myAd = myAds.find(a => a.id === adId);
             if (myAd) myAd.status = 'approved';
@@ -1796,11 +1829,14 @@
             if (!target) { alert('Введите ID или username пользователя!'); return; }
             let cleanTarget = target.replace('@', '').toLowerCase();
 
+            let adminBtn = document.getElementById('adminTabBtn');
+
             if (action === 'make_admin') {
                 if (!ADMIN_USERNAMES.includes(cleanTarget)) {
                     ADMIN_USERNAMES.push(cleanTarget);
                     localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
                 }
+                if (checkIsAdmin() && adminBtn) adminBtn.style.display = 'block';
                 alert(`👑 Пользователь @${cleanTarget} успешно назначен администратором!`);
             } else if (action === 'remove_admin') {
                 if (cleanTarget === OWNER_USERNAME.toLowerCase()) {
@@ -1809,13 +1845,26 @@
                 }
                 ADMIN_USERNAMES = ADMIN_USERNAMES.filter(u => u !== cleanTarget);
                 localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
+                
+                if (!checkIsAdmin()) {
+                    if (adminBtn) adminBtn.style.display = 'none';
+                    if (document.getElementById('tabAdmin').classList.contains('active')) {
+                        switchTab('feed');
+                    }
+                }
                 alert(`⚙️ Пользователь @${cleanTarget} снят с должности администратора.`);
-            } else {
-                let actionsMap = {
-                    'ban': `Пользователь ${target} заблокирован!`,
-                    'unban': `Пользователь ${target} разблокирован.`
-                };
-                alert(`👑 Панель управления:\n` + (actionsMap[action] || 'Действие выполнено.'));
+            } else if (action === 'ban') {
+                let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
+                if (!bannedList.includes(cleanTarget)) {
+                    bannedList.push(cleanTarget);
+                    localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
+                }
+                alert(`🚫 Пользователь @${cleanTarget} заблокирован!`);
+            } else if (action === 'unban') {
+                let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
+                bannedList = bannedList.filter(u => u !== cleanTarget);
+                localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
+                alert(`✅ Пользователь @${cleanTarget} разблокирован.`);
             }
             document.getElementById('targetUser').value = '';
         }
@@ -1834,4 +1883,3 @@
     </script>
 </body>
 </html>
-

@@ -126,6 +126,30 @@
             padding: 30px;
             color: #888;
         }
+        /* Стили модального окна */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .modal-content {
+            background-color: var(--tg-theme-secondary-bg-color, #242526);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 320px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid #333;
+        }
     </style>
 </head>
 <body>
@@ -268,59 +292,89 @@
         </div>
     </div>
 
-    <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand();
+    <!-- Модальное окно уведомления об отправке -->
+    <div id="successModal" class="modal-overlay">
+        <div class="modal-content">
+            <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
+            <h3 style="color: #ffaa00; margin-top: 0; margin-bottom: 10px;">Успешно!</h3>
+            <p style="font-size: 14px; margin-bottom: 20px; color: var(--tg-theme-text-color, #ffffff);">Объявление отправлено в бот и сохранено!</p>
+            <button onclick="closeSuccessModal()" style="margin-top: 0;">Убрать / Закрыть</button>
+        </div>
+    </div>
 
-        let currentUser = tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : { id: 0, username: '' };
+    <script>
+        // Безопасная инициализация Telegram WebApp
+        let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
+        if (typeof tg.expand === 'function') {
+            tg.expand();
+        }
+
+        let currentUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 0, username: '' };
         const OWNER_USERNAME = 'bounqy';
         
         let isOwner = currentUser.username && currentUser.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
-        let isAdmin = true; // Установите правила проверки админов
+        let isAdmin = true; // Настройка прав админа
 
         if (isAdmin || isOwner) {
-            document.getElementById('adminTabBtn').style.display = 'block';
+            let adminBtn = document.getElementById('adminTabBtn');
+            if (adminBtn) adminBtn.style.display = 'block';
             if (isOwner) {
-                document.getElementById('ownerSection').style.display = 'block';
+                let ownerSec = document.getElementById('ownerSection');
+                if (ownerSec) ownerSec.style.display = 'block';
             }
         }
 
         function switchTab(tabName) {
-            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            let tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
 
             if (tabName === 'app') {
-                document.querySelectorAll('.nav-tab')[0].classList.add('active');
-                document.getElementById('tabApp').classList.add('active');
+                if (tabs[0]) tabs[0].classList.add('active');
+                let tabApp = document.getElementById('tabApp');
+                if (tabApp) tabApp.classList.add('active');
             } else if (tabName === 'myAds') {
-                document.querySelectorAll('.nav-tab')[1].classList.add('active');
-                document.getElementById('tabMyAds').classList.add('active');
+                if (tabs[1]) tabs[1].classList.add('active');
+                let tabMyAds = document.getElementById('tabMyAds');
+                if (tabMyAds) tabMyAds.classList.add('active');
                 renderMyAds();
             } else {
-                document.getElementById('adminTabBtn').classList.add('active');
-                document.getElementById('tabAdmin').classList.add('active');
+                let adminTabBtn = document.getElementById('adminTabBtn');
+                if (adminTabBtn) adminTabBtn.classList.add('active');
+                let tabAdmin = document.getElementById('tabAdmin');
+                if (tabAdmin) tabAdmin.classList.add('active');
             }
         }
 
         function toggleMode() {
-            let mode = document.getElementById('mode').value;
+            let modeElement = document.getElementById('mode');
+            if (!modeElement) return;
+            let mode = modeElement.value;
+
+            let catGroup = document.getElementById('categoryGroup');
+            let itemGroup = document.getElementById('itemGroup');
+            let priceGroup = document.getElementById('priceGroup');
+            let textGroup = document.getElementById('textGroup');
+
             if (mode === 'auction') {
-                document.getElementById('categoryGroup').style.display = 'none';
-                document.getElementById('textGroup').style.display = 'none';
-                document.getElementById('itemGroup').style.display = 'block';
-                document.getElementById('priceGroup').style.display = 'block';
+                if (catGroup) catGroup.style.display = 'none';
+                if (textGroup) textGroup.style.display = 'none';
+                if (itemGroup) itemGroup.style.display = 'block';
+                if (priceGroup) priceGroup.style.display = 'block';
             } else if (mode === 'barter') {
-                document.getElementById('categoryGroup').style.display = 'none';
-                document.getElementById('itemGroup').style.display = 'none';
-                document.getElementById('priceGroup').style.display = 'none';
-                document.getElementById('textGroup').style.display = 'block';
+                if (catGroup) catGroup.style.display = 'none';
+                if (itemGroup) itemGroup.style.display = 'none';
+                if (priceGroup) priceGroup.style.display = 'none';
+                if (textGroup) textGroup.style.display = 'block';
             } else {
-                document.getElementById('categoryGroup').style.display = 'block';
-                document.getElementById('textGroup').style.display = 'block';
-                document.getElementById('itemGroup').style.display = 'none';
-                document.getElementById('priceGroup').style.display = 'none';
+                if (catGroup) catGroup.style.display = 'block';
+                if (textGroup) textGroup.style.display = 'block';
+                if (itemGroup) itemGroup.style.display = 'none';
+                if (priceGroup) priceGroup.style.display = 'none';
             }
         }
+
+        let pendingData = null;
 
         function submitData() {
             let mode = document.getElementById('mode').value;
@@ -337,21 +391,52 @@
                 data.text = document.getElementById('text').value;
             }
 
-            // Сохраняем в приложение (localStorage) для вкладки "Мои обьявы"
-            let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-            myAds.unshift({
-                ...data,
-                date: new Date().toLocaleString()
-            });
-            localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
+            // Сохранение в приложение (localStorage) для вкладки "Мои обьявы"
+            try {
+                let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
+                myAds.unshift({
+                    ...data,
+                    date: new Date().toLocaleString()
+                });
+                localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
+            } catch (e) {}
 
-            // Отправляем в бот
-            tg.sendData(JSON.stringify(data));
+            pendingData = data;
+
+            // Вывод уведомления прямо на экран
+            let modal = document.getElementById('successModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeSuccessModal() {
+            let modal = document.getElementById('successModal');
+            if (modal) modal.style.display = 'none';
+
+            // Очистка формы для следующего объявления
+            let itemNameInput = document.getElementById('itemName');
+            let priceInput = document.getElementById('price');
+            let textInput = document.getElementById('text');
+            if (itemNameInput) itemNameInput.value = '';
+            if (priceInput) priceInput.value = '';
+            if (textInput) textInput.value = '';
+
+            // Передача данных в бот
+            if (pendingData && typeof tg.sendData === 'function') {
+                try {
+                    tg.sendData(JSON.stringify(pendingData));
+                } catch (e) {}
+            }
+            pendingData = null;
         }
 
         function renderMyAds() {
             let container = document.getElementById('myAdsContainer');
-            let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
+            if (!container) return;
+
+            let myAds = [];
+            try {
+                myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
+            } catch (e) {}
 
             if (myAds.length === 0) {
                 container.innerHTML = '<div class="access-denied">У вас пока нет отправленных объявлений.</div>';
@@ -384,34 +469,46 @@
 
         function clearMyAds() {
             if (confirm('Очистить историю ваших объявлений в приложении?')) {
-                localStorage.removeItem('my_arizona_ads');
+                try {
+                    localStorage.removeItem('my_arizona_ads');
+                } catch (e) {}
                 renderMyAds();
             }
         }
 
         function sendAdminAction(actionType) {
             let data = { action: actionType };
-            tg.sendData(JSON.stringify(data));
+            if (typeof tg.sendData === 'function') {
+                try { tg.sendData(JSON.stringify(data)); } catch (e) {}
+            }
         }
 
         function sendTargetAction(actionType) {
-            let target = document.getElementById('targetUser').value.trim();
+            let targetInput = document.getElementById('targetUser');
+            if (!targetInput) return;
+            let target = targetInput.value.trim();
             if (!target) {
                 alert('Введите ID или @username пользователя!');
                 return;
             }
             let data = { action: actionType, target: target };
-            tg.sendData(JSON.stringify(data));
+            if (typeof tg.sendData === 'function') {
+                try { tg.sendData(JSON.stringify(data)); } catch (e) {}
+            }
         }
 
         function sendBroadcast() {
-            let text = document.getElementById('broadcastText').value.trim();
+            let textInput = document.getElementById('broadcastText');
+            if (!textInput) return;
+            let text = textInput.value.trim();
             if (!text) {
                 alert('Введите текст для рассылки!');
                 return;
             }
             let data = { action: 'broadcast', text: text };
-            tg.sendData(JSON.stringify(data));
+            if (typeof tg.sendData === 'function') {
+                try { tg.sendData(JSON.stringify(data)); } catch (e) {}
+            }
         }
     </script>
 </body>

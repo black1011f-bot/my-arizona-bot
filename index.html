@@ -1,1 +1,1365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arizona RP - Неофициальный бот</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0c14;
+            --card-bg: rgba(18, 20, 32, 0.7);
+            --card-border: rgba(139, 92, 246, 0.2);
+            --accent-gradient: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --danger: #ef4444;
+            --success: #10b981;
+            --gold: #f59e0b;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+        }
+
+        /* Баннер блокировки */
+        #ban-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        #ban-screen h1 { color: var(--danger); font-family: 'Orbitron', sans-serif; margin-bottom: 10px; }
+
+        /* Шапка */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(11, 12, 20, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-sub {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .logo-main {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 900;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            color: var(--text-main);
+            transition: 0.2s;
+        }
+        .icon-btn:active { transform: scale(0.92); }
+
+        .badge-counter {
+            position: absolute;
+            top: -4px; right: -4px;
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 5px;
+            border-radius: 10px;
+        }
+
+        /* Время МСК */
+        .msk-time-bar {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 4px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        /* Навигационное меню (Вкладки) */
+        .nav-tabs {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding: 12px 20px;
+            background: rgba(15, 17, 26, 0.5);
+            scrollbar-width: none;
+        }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+
+        .tab-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--accent-gradient);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Контентные секции */
+        .view-section {
+            display: none;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .view-section.active { display: block; }
+
+        /* Поиск и фильтры */
+        .search-bar-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .search-input {
+            flex: 1;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+        }
+        .search-input:focus { border-color: var(--accent-cyan); }
+
+        .view-toggle-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 0 14px;
+            border-radius: 12px;
+            color: var(--text-main);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Карточки товаров */
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        .items-grid.list-view {
+            grid-template-columns: 1fr;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: transform 0.2s;
+        }
+        .card:hover { border-color: rgba(139, 92, 246, 0.4); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .card-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-main);
+        }
+        .card-tag {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .tag-sell { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .tag-buy { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .tag-auction { background: rgba(245, 158, 11, 0.2); color: var(--gold); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .tag-exchange { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.3); }
+
+        .card-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .card-price {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 10px;
+            margin-top: 5px;
+        }
+        .card-author {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .card-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .action-icon-btn {
+            background: rgba(255,255,255,0.05);
+            border: none;
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .action-icon-btn:hover { background: rgba(255,255,255,0.1); }
+
+        /* Формы создания */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        .form-control {
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+        }
+        .form-control:focus { border-color: var(--accent-purple); }
+
+        textarea.form-control { resize: vertical; min-height: 90px; }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--accent-gradient);
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+            transition: 0.2s;
+        }
+        .btn-primary:active { transform: scale(0.98); }
+
+        /* Профиль */
+        .profile-box {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .avatar-wrapper {
+            width: 90px; height: 90px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            padding: 3px;
+            position: relative;
+        }
+        .avatar-img {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #202336;
+        }
+        /* Анимированные рамки */
+        .frame-neon { background: linear-gradient(45deg, var(--accent-cyan), var(--accent-pink)); animation: neonSpin 3s linear infinite; }
+        .frame-cyber { background: linear-gradient(90deg, var(--accent-purple), var(--gold)); animation: cyberPulse 2s ease-in-out infinite alternate; }
+        .frame-gold { background: linear-gradient(135deg, #f59e0b, #fff, #f59e0b); }
+        .frame-plasma { background: linear-gradient(60deg, #ef4444, #8b5cf6, #06b6d4); animation: plasmaWave 4s linear infinite; }
+        .frame-fire { background: linear-gradient(0deg, #f59e0b, #ef4444); }
+        .frame-matrix { background: linear-gradient(180deg, #10b981, #06b6d4); }
+        .frame-rainbow { background: linear-gradient(to right, red,orange,yellow,green,blue,indigo,violet); animation: rainbowShift 5s linear infinite; }
+
+        @keyframes neonSpin { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+        @keyframes cyberPulse { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
+        @keyframes plasmaWave { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+        @keyframes rainbowShift { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+
+        .profile-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .profile-stats { font-size: 13px; color: var(--text-muted); margin-bottom: 15px; }
+        .frames-picker {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .frame-choice-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--card-border);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+        .frame-choice-btn.active { border-color: var(--accent-cyan); background: rgba(6,182,212,0.1); }
+
+        /* Стена и росписи */
+        .wall-section { margin-top: 20px; text-align: left; }
+        .wall-input-box { display: flex; gap: 8px; margin-bottom: 12px; }
+        .wall-comment {
+            background: rgba(0,0,0,0.2);
+            border-left: 2px solid var(--accent-purple);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .wall-comment-author { font-weight: 600; font-size: 12px; color: var(--accent-cyan); margin-bottom: 2px; }
+        .wall-comment-footer { display: flex; gap: 15px; font-size: 11px; color: var(--text-muted); margin-top: 6px; cursor: pointer; }
+
+        /* Модальные окна */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: var(--bg-color);
+            border: 1px solid var(--card-border);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            border-radius: 20px;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: rgba(255,255,255,0.05);
+            border: none;
+            color: var(--text-main);
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Чаты */
+        .chat-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+        .chat-avatar { width: 40px; height: 40px; border-radius: 50%; background: #202336; object-fit: cover; }
+        .chat-info { flex: 1; }
+        .chat-name { font-weight: 600; font-size: 14px; }
+        .chat-preview { font-size: 12px; color: var(--text-muted); }
+
+        .chat-window-box {
+            display: flex;
+            flex-direction: column;
+            height: 350px;
+        }
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .msg-bubble {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.3;
+        }
+        .msg-in { background: rgba(255,255,255,0.05); align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-out { background: var(--accent-gradient); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+
+        .chat-input-bar {
+            display: flex;
+            gap: 8px;
+            padding-top: 10px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        /* Уведомления */
+        .notif-item {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .notif-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+        /* Админ панель */
+        .admin-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--gold);
+            margin: 15px 0 8px;
+            text-transform: uppercase;
+        }
+        .admin-controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .admin-btn {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .admin-btn.success { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: var(--success); }
+    </style>
+</head>
+<body>
+
+    <!-- Экран блокировки при бане -->
+    <div id="ban-screen">
+        <h1>ДОСТУП ОГРАНИЧЕН</h1>
+        <p id="ban-reason" style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Вы были занесены в черный список бота (arizona_banned_list).</p>
+        <button class="btn-primary" style="max-width: 200px;" onclick="checkBanStatus()">🔄 Проверить статус</button>
+    </div>
+
+    <!-- Шапка приложения -->
+    <header>
+        <div class="logo-container">
+            <span class="logo-sub">Неофициальный бот</span>
+            <span class="logo-main">Arizona RP</span>
+        </div>
+        <div class="header-icons">
+            <div class="icon-btn" onclick="openManager()" title="Менеджер">👔</div>
+            <div class="icon-btn" onclick="openProfileModal()" title="Профиль">👤</div>
+            <div class="icon-btn" onclick="openNotifsModal()" title="Уведомления">
+                🔔<span class="badge-counter" id="notif-counter">0</span>
+            </div>
+            <div class="icon-btn" onclick="openChatsModal()" title="Чаты">
+                💬<span class="badge-counter" id="chat-counter">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Полоса времени МСК -->
+    <div class="msk-time-bar" id="msk-time-display">МСК: 00:00:00</div>
+
+    <!-- Навигационные вкладки -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('search', this)">🌍 Поиск</button>
+        <button class="tab-btn" onclick="switchTab('create', this)">📝 Создать</button>
+        <button class="tab-btn" onclick="switchTab('my-threads', this)">📂 Мои темы</button>
+        <button class="tab-btn" onclick="switchTab('bookmarks', this)">❤️ Закладки</button>
+        <button class="tab-btn" id="admin-tab-btn" style="display:none;" onclick="switchTab('admin', this)">⚙️ Админ</button>
+    </div>
+
+    <!-- ОСНОВНЫЕ ВКЛАДКИ -->
+
+    <!-- Вкладка: Поиск -->
+    <div id="tab-search" class="view-section active">
+        <div class="search-bar-box">
+            <input type="text" class="search-input" id="search-box-input" placeholder="Поиск по названию, автору или серверу..." oninput="renderFeed()">
+            <button class="view-toggle-btn" id="view-mode-toggle" onclick="toggleViewMode()" title="Переключить вид">🧮</button>
+        </div>
+        <div class="items-grid" id="main-feed-grid">
+            <!-- Карточки рендерятся через JS -->
+        </div>
+    </div>
+
+    <!-- Вкладка: Создать -->
+    <div id="tab-create" class="view-section">
+        <div class="card">
+            <h3 style="margin-bottom: 12px; font-size: 16px;">Новая заявка</h3>
+            <div class="form-group">
+                <label class="form-label">Тип темы</label>
+                <select class="form-control" id="create-type">
+                    <option value="sell">Продажа</option>
+                    <option value="buy">Покупка</option>
+                    <option value="auction">Аукцион</option>
+                    <option value="exchange">Обмен</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Сервер</label>
+                <select class="form-control" id="create-server">
+                    <option value="Phoenix">01 | Phoenix</option>
+                    <option value="Tucson">02 | Tucson</option>
+                    <option value="Scottdale">03 | Scottdale</option>
+                    <option value="Chandler">04 | Chandler</option>
+                    <option value="Brainburg">05 | Brainburg</option>
+                    <option value="SaintRose">06 | SaintRose</option>
+                    <option value="Mesa">07 | Mesa</option>
+                    <option value="RedRock">08 | Red-Rock</option>
+                    <option value="Holiday">23 | Holiday</option>
+                    <option value="Faraway">26 | Faraway</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Название предмета / суть</label>
+                <input type="text" class="form-control" id="create-title" placeholder="Например: Шлем Ужаса +12">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Цена (поддерживает 50кк, 10kk)</label>
+                <input type="text" class="form-control" id="create-price" placeholder="Например: 50кк">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Описание и условия</label>
+                <textarea class="form-control" id="create-desc" placeholder="Укажите детали сделки..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ссылка на скриншот (необязательно)</label>
+                <input type="text" class="form-control" id="create-img" placeholder="https://...">
+            </div>
+            <button class="btn-primary" onclick="submitNewAd()">Отправить на модерацию</button>
+        </div>
+    </div>
+
+    <!-- Вкладка: Мои темы -->
+    <div id="tab-my-threads" class="view-section">
+        <h3 style="margin-bottom: 15px; font-size: 16px;">Ваши активные темы и заявки</h3>
+        <div class="items-grid" id="my-threads-grid"></div>
+    </div>
+
+    <!-- Вкладка: Закладки -->
+    <div id="tab-bookmarks" class="view-section">
+        <h3 style="margin-bottom: 15px; font-size: 16px;">Избранные объявления</h3>
+        <div class="items-grid" id="bookmarks-grid"></div>
+    </div>
+
+    <!-- Вкладка: Админ -->
+    <div id="tab-admin" class="view-section">
+        <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--gold);">Панель администратора</h3>
+        
+        <div class="admin-section-title">Модерация заявок (<span id="pending-count">0</span>)</div>
+        <div id="admin-pending-grid" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 20px;"></div>
+
+        <div class="admin-section-title">Управление пользователями</div>
+        <div class="form-group">
+            <input type="text" class="form-control" id="admin-target-user" placeholder="@username или Telegram ID">
+        </div>
+        <div class="admin-controls-grid">
+            <button class="admin-btn success" onclick="adminAction('add_admin')">➕ Добавить на адм</button>
+            <button class="admin-btn" onclick="adminAction('remove_admin')">➖ Снять с адм</button>
+            <button class="admin-btn" onclick="adminAction('ban')">🚫 Забанить</button>
+            <button class="admin-btn success" onclick="adminAction('unban')">✅ Разбанить</button>
+        </div>
+
+        <div class="admin-section-title">Рассылка и База данных</div>
+        <div class="form-group">
+            <textarea class="form-control" id="admin-broadcast-text" placeholder="Текст глобального уведомления..."></textarea>
+        </div>
+        <button class="btn-primary" style="margin-bottom: 10px;" onclick="adminSendBroadcast()">📢 Отправить Рассылку</button>
+        <button class="admin-btn" style="width:100%; padding: 12px;" onclick="adminClearFeed()">🗑 Очистить всю ленту</button>
+    </div>
+
+    <!-- МОДАЛЬНЫЕ ОКНА -->
+
+    <!-- Модальное окно: Профиль -->
+    <div class="modal" id="modal-profile">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('modal-profile')">✕</button>
+            <div class="profile-box">
+                <div class="avatar-wrapper" id="user-avatar-frame">
+                    <img src="" id="user-avatar-img" class="avatar-img" alt="Avatar">
+                </div>
+                <div class="profile-name" id="profile-display-name">Игрок</div>
+                <div class="profile-stats" id="profile-stats-text">Заявок: 0 | Репутация: 0</div>
+                
+                <div class="form-group" style="text-align: left;">
+                    <label class="form-label">Статус профиля</label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" class="form-control" id="profile-status-input" placeholder="Ваш статус...">
+                        <button class="btn-primary" style="width: auto; padding: 0 15px;" onclick="saveProfileStatus()">Сохранить</button>
+                    </div>
+                </div>
+
+                <label class="form-label" style="text-align: left;">Выбор рамки аватара</label>
+                <div class="frames-picker" id="frames-picker-container">
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-neon')">Neon Pulse</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-cyber')">Anime Cyber</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-gold')">Gold Legend</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-plasma')">Plasma Wave</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-fire')">Fire Spark</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-matrix')">Matrix Green</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-rainbow')">Rainbow</button>
+                </div>
+
+                <!-- Стена профиля -->
+                <div class="wall-section">
+                    <label class="form-label">Стена профиля (Росписи)</label>
+                    <div class="wall-input-box">
+                        <input type="text" class="form-control" id="wall-comment-input" placeholder="Оставить роспись...">
+                        <button class="btn-primary" style="width: auto; padding: 0 14px;" onclick="postWallComment()">Отпр</button>
+                    </div>
+                    <div id="wall-comments-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Уведомления -->
+    <div class="modal" id="modal-notifs">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('modal-notifs')">✕</button>
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Уведомления</h3>
+            <div id="notifs-container"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Чаты -->
+    <div class="modal" id="modal-chats">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('modal-chats')">✕</button>
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Сообщения</h3>
+            <div id="chats-list-container"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Активный чат с игроком -->
+    <div class="modal" id="modal-active-chat">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('modal-active-chat')">✕</button>
+            <h3 style="margin-bottom: 10px; font-size: 16px;" id="active-chat-title">Чат с игроком</h3>
+            <div class="chat-window-box">
+                <div class="messages-container" id="chat-messages-container"></div>
+                <div class="chat-input-bar">
+                    <input type="text" class="form-control" id="chat-msg-input" placeholder="Написать сообщение...">
+                    <button class="btn-primary" style="width: auto; padding: 0 15px;" onclick="sendChatMessage()">Отпр</button>
+                </div>
+            </div>
+            <div style="display:flex; justify-content: space-between; margin-top: 10px;">
+                <button class="admin-btn" style="width: 48%;" onclick="clearActiveChatHistory()">🧹 Очистить</button>
+                <button class="admin-btn" style="width: 48%;" onclick="deleteActiveChat()">🗑 Удалить чат</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- ИНИЦИАЛИЗАЦИЯ TELEGRAM WEBAPP ---
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+
+        // Пользовательские данные
+        let currentUser = {
+            id: tg.initDataUnsafe?.user?.id || 12345678,
+            username: tg.initDataUnsafe?.user?.username || "bounqy",
+            first_name: tg.initDataUnsafe?.user?.first_name || "Majorka",
+            avatar: tg.initDataUnsafe?.user?.photo_url || "https://via.placeholder.com/90"
+        };
+
+        // Владелец бота по ТЗ
+        const OWNER_USERNAME = "bounqy";
+
+        // Хранилище состояния в localStorage
+        let db = {
+            bannedList: JSON.parse(localStorage.getItem('arizona_banned_list') || '[]'),
+            admins: JSON.parse(localStorage.getItem('arizona_admins') || '["bounqy", "12345678"]'),
+            ads: JSON.parse(localStorage.getItem('arizona_ads') || '[]'),
+            pendingAds: JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'),
+            bookmarks: JSON.parse(localStorage.getItem('arizona_bookmarks') || '[]'),
+            notifs: JSON.parse(localStorage.getItem('arizona_notifs') || '[]'),
+            chats: JSON.parse(localStorage.getItem('arizona_chats') || '{}'),
+            userProfiles: JSON.parse(localStorage.getItem('arizona_profiles') || '{}'),
+            lastPostTime: parseInt(localStorage.getItem('arizona_last_post') || '0'),
+            lastCleanupDate: localStorage.getItem('arizona_last_cleanup') || ''
+        };
+
+        let currentViewMode = 'grid'; // 'grid' или 'list'
+        let activeChatPeer = null;
+
+        // Профиль текущего пользователя в БД
+        if (!db.userProfiles[currentUser.id]) {
+            db.userProfiles[currentUser.id] = {
+                frame: 'frame-cyber',
+                status: 'Играю на Arizona RP Phoenix ⚡',
+                wall: [],
+                stats: { adsCount: 0, likes: 0 }
+            };
+            saveDB();
+        }
+
+        function saveDB() {
+            localStorage.setItem('arizona_banned_list', JSON.stringify(db.bannedList));
+            localStorage.setItem('arizona_admins', JSON.stringify(db.admins));
+            localStorage.setItem('arizona_ads', JSON.stringify(db.ads));
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(db.pendingAds));
+            localStorage.setItem('arizona_bookmarks', JSON.stringify(db.bookmarks));
+            localStorage.setItem('arizona_notifs', JSON.stringify(db.notifs));
+            localStorage.setItem('arizona_chats', JSON.stringify(db.chats));
+            localStorage.setItem('arizona_profiles', JSON.stringify(db.userProfiles));
+            localStorage.setItem('arizona_last_post', db.lastPostTime);
+            localStorage.setItem('arizona_last_cleanup', db.lastCleanupDate);
+        }
+
+        // --- СИСТЕМА ВРЕМЕНИ МСК И СУТОЧНАЯ ОЧИСТКА ---
+        function updateMoscowTime() {
+            const now = new Date();
+            const options = { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' };
+            const formatter = new Intl.DateTimeFormat('ru-RU', options);
+            const parts = formatter.formatToParts(now);
+            let timeStr = '', dateStr = '';
+            parts.forEach(p => {
+                if (['hour', 'minute', 'second'].includes(p.type)) timeStr += p.value + (p.type !== 'second' ? ':' : '');
+                if (['day', 'month', 'year'].includes(p.type)) dateStr += p.value + (p.type !== 'year' ? '.' : '');
+            });
+            document.getElementById('msk-time-display').innerText = `МСК: ${dateStr} ${timeStr}`;
+
+            // Суточная очистка после 07:00 МСК
+            const mskHour = parseInt(new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', hour: 'numeric', hour12: false }).format(now));
+            const currentDateKey = dateStr;
+            if (mskHour >= 7 && db.lastCleanupDate !== currentDateKey) {
+                db.ads = [];
+                db.pendingAds = [];
+                db.lastCleanupDate = currentDateKey;
+                saveDB();
+                renderAll();
+            }
+        }
+        setInterval(updateMoscowTime, 1000);
+        updateMoscowTime();
+
+        // --- АВТОРИЗАЦИЯ, РОЛИ И БАНЫ ---
+        function checkBanStatus() {
+            const isBanned = db.bannedList.includes(String(currentUser.id)) || db.bannedList.includes(currentUser.username);
+            if (isBanned) {
+                document.getElementById('ban-screen').style.display = 'flex';
+            } else {
+                document.getElementById('ban-screen').style.display = 'none';
+            }
+        }
+        checkBanStatus();
+
+        function isAdmin() {
+            return currentUser.username === OWNER_USERNAME || db.admins.includes(String(currentUser.id)) || db.admins.includes(currentUser.username);
+        }
+
+        function initRolesUI() {
+            if (isAdmin() || currentUser.username === OWNER_USERNAME) {
+                document.getElementById('admin-tab-btn').style.display = 'block';
+            }
+        }
+        initRolesUI();
+
+        // --- НАВИГАЦИЯ ПО ВКЛАДКАМ ---
+        function switchTab(tabName, btnElement) {
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            btnElement.classList.add('active');
+            renderAll();
+        }
+
+        // --- ПАРСЕР ЦЕН (50кк -> 50,000,000) ---
+        function parsePrice(priceStr) {
+            if (!priceStr) return 'Договорная';
+            let clean = priceStr.toLowerCase().trim();
+            clean = clean.replace(/кк/g, '000000').replace(/kk/g, '000000').replace(/к/g, '000').replace(/k/g, '000').replace(/\s+/g, '');
+            let num = parseInt(clean);
+            if (!isNaN(num)) {
+                return num.toLocaleString('ru-RU') + ' $';
+            }
+            return priceStr;
+        }
+
+        // --- ПАРСЕР МАТА И ЗАЩИТА ---
+        function containsProfanity(text) {
+            const badWords = ['хуй', 'пизд', 'еб', 'бля', 'сука', 'залуп', 'анал'];
+            const lower = text.toLowerCase();
+            return badWords.some(word => lower.includes(word));
+        }
+
+        // --- СОЗДАНИЕ ОБЪЯВЛЕНИЙ ---
+        function submitNewAd() {
+            const now = Date.now();
+            // Кулдаун 2 минуты (120000 мс)
+            if (!isAdmin() && now - db.lastPostTime < 120000) {
+                const leftSec = Math.ceil((120000 - (now - db.lastPostTime)) / 1000);
+                alert(`Подождите еще ${leftSec} сек. перед созданием новой заявки.`);
+                return;
+            }
+
+            // Суточный таймер работы (с 08:00 до 22:00 МСК)
+            const mskHour = parseInt(new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', hour: 'numeric', hour12: false }).format(new Date()));
+            if (!isAdmin() && (mskHour < 8 || mskHour >= 22)) {
+                alert('Публикация объявлений доступна только с 08:00 до 22:00 МСК!');
+                return;
+            }
+
+            const type = document.getElementById('create-type').value;
+            const server = document.getElementById('create-server').value;
+            const title = document.getElementById('create-title').value.trim();
+            const priceInput = document.getElementById('create-price').value.trim();
+            const desc = document.getElementById('create-desc').value.trim();
+            const img = document.getElementById('create-img').value.trim();
+
+            if (!title) {
+                alert('Введите название предмета!');
+                return;
+            }
+
+            if (containsProfanity(title) || containsProfanity(desc)) {
+                alert('Обнаружены запрещенные слова (мат). Отредактируйте текст.');
+                return;
+            }
+
+            const newAd = {
+                id: 'ad_' + Date.now(),
+                userId: currentUser.id,
+                author: '@' + currentUser.username,
+                type, server, title,
+                rawPrice: priceInput,
+                price: parsePrice(priceInput),
+                desc, img,
+                bids: [],
+                currentBidValue: parseInt(priceInput.replace(/\D/g, '')) || 0,
+                time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            db.pendingAds.push(newAd);
+            db.lastPostTime = now;
+            saveDB();
+
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            alert('Заявка успешно отправлена на модерацию администраторам!');
+            document.getElementById('create-title').value = '';
+            document.getElementById('create-price').value = '';
+            document.getElementById('create-desc').value = '';
+            document.getElementById('create-img').value = '';
+            switchTab('search', document.querySelector('.tab-btn'));
+        }
+
+        // --- ЛЕНТА И ПОИСК ---
+        function toggleViewMode() {
+            currentViewMode = currentViewMode === 'grid' ? 'list' : 'grid';
+            document.getElementById('view-mode-toggle').innerText = currentViewMode === 'grid' ? '🧮' : '📄';
+            renderFeed();
+        }
+
+        function renderFeed() {
+            const query = document.getElementById('search-box-input').value.toLowerCase();
+            const feedContainer = document.getElementById('main-feed-grid');
+            feedContainer.className = currentViewMode === 'grid' ? 'items-grid' : 'items-grid list-view';
+
+            const filtered = db.ads.filter(ad => 
+                ad.title.toLowerCase().includes(query) || 
+                ad.author.toLowerCase().includes(query) || 
+                ad.server.toLowerCase().includes(query) ||
+                ad.desc.toLowerCase().includes(query)
+            );
+
+            if (filtered.length === 0) {
+                feedContainer.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: var(--text-muted); padding: 40px;">Активных объявлений не найдено</div>`;
+                return;
+            }
+
+            feedContainer.innerHTML = filtered.map(ad => createCardHTML(ad)).join('');
+            renderMyThreads();
+            renderBookmarks();
+            updateCounters();
+        }
+
+        function createCardHTML(ad) {
+            const isBookmarked = db.bookmarks.includes(ad.id);
+            const tagClass = `tag-${ad.type}`;
+            const tagNames = { sell: 'Продажа', buy: 'Покупка', auction: 'Аукцион', exchange: 'Обмен' };
+
+            let auctionBlock = '';
+            if (ad.type === 'auction') {
+                auctionBlock = `<div style="font-size:12px; color: var(--gold); margin-top:4px;">Мин. ставка: <b>${(ad.currentBidValue + 5000000).toLocaleString('ru-RU')} $</b></div>
+                                <button class="btn-primary" style="padding: 8px; font-size: 13px; margin-top: 6px;" onclick="placeBid('${ad.id}')">🔨 Сделать ставку (+5 млн)</button>`;
+            }
+
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">${ad.title}</span>
+                        <span class="card-tag ${tagClass}">${tagNames[ad.type]}</span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--accent-cyan);">🌐 Сервер: ${ad.server}</div>
+                    <div class="card-desc">${ad.desc || 'Без описания'}</div>
+                    <div class="card-price">Цена: ${ad.price}</div>
+                    ${auctionBlock}
+                    <div class="card-footer">
+                        <span class="card-author">${ad.author} (${ad.time})</span>
+                        <div class="card-actions">
+                            <button class="action-icon-btn" onclick="openChatWith('${ad.author}')" title="В ЛС">💬</button>
+                            <button class="action-icon-btn" onclick="toggleBookmark('${ad.id}')" title="Закладка">${isBookmarked ? '❤️' : '🤍'}</button>
+                            <button class="action-icon-btn" onclick="shareAd('${ad.title}', '${ad.price}')" title="Поделиться">🔗</button>
+                            ${(ad.userId === currentUser.id || isAdmin()) ? `<button class="action-icon-btn" onclick="deleteAd('${ad.id}')" title="Удалить">🗑</button>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- СИСТЕМА АУКЦИОНОВ ---
+        function placeBid(adId) {
+            let ad = db.ads.find(item => item.id === adId);
+            if (!ad) return;
+            ad.currentBidValue += 5000000;
+            ad.price = ad.currentBidValue.toLocaleString('ru-RU') + ' $ (Аукцион)';
+            saveDB();
+            renderFeed();
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            alert('Ваша ставка успешно принята!');
+        }
+
+        // --- ЗАКЛАДКИ ---
+        function toggleBookmark(adId) {
+            const index = db.bookmarks.indexOf(adId);
+            if (index > -1) {
+                db.bookmarks.splice(index, 1);
+            } else {
+                db.bookmarks.push(adId);
+            }
+            saveDB();
+            renderFeed();
+        }
+
+        function renderBookmarks() {
+            const container = document.getElementById('bookmarks-grid');
+            const bookmarkedAds = db.ads.filter(ad => db.bookmarks.includes(ad.id));
+            if (bookmarkedAds.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: var(--text-muted); padding: 40px;">Список закладок пуст</div>`;
+                return;
+            }
+            container.innerHTML = bookmarkedAds.map(ad => createCardHTML(ad)).join('');
+        }
+
+        // --- МОИ ТЕМЫ ---
+        function renderMyThreads() {
+            const container = document.getElementById('my-threads-grid');
+            const myAds = db.ads.filter(ad => ad.userId === currentUser.id);
+            if (myAds.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: var(--text-muted); padding: 40px;">У вас нет активных тем</div>`;
+                return;
+            }
+            container.innerHTML = myAds.map(ad => createCardHTML(ad)).join('');
+        }
+
+        function deleteAd(adId) {
+            db.ads = db.ads.filter(item => item.id !== adId);
+            db.pendingAds = db.pendingAds.filter(item => item.id !== adId);
+            saveDB();
+            renderFeed();
+        }
+
+        function shareAd(title, price) {
+            const text = `🛒 Товар на Arizona RP: ${title} | Цена: ${price}. Найдено в неофициальном боте @samp_trader_bot`;
+            if (navigator.share) {
+                navigator.share({ title: 'Arizona RP Маркет', text: text, url: window.location.href }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(text);
+                alert('Ссылка скопирована в буфер обмена!');
+            }
+        }
+
+        // --- ПРОФИЛЬ И РАМКИ ---
+        function openProfileModal() {
+            const p = db.userProfiles[currentUser.id];
+            document.getElementById('user-avatar-img').src = currentUser.avatar;
+            document.getElementById('profile-display-name').innerText = '@' + currentUser.username;
+            document.getElementById('profile-stats-text').innerText = `Заявок: ${db.ads.filter(a=>a.userId===currentUser.id).length} | Репутация: ${p.stats.likes}`;
+            document.getElementById('profile-status-input').value = p.status;
+            setAvatarFrame(p.frame, false);
+            renderWallComments();
+            document.getElementById('modal-profile').style.display = 'flex';
+        }
+
+        function setAvatarFrame(frameClass, save = true) {
+            document.getElementById('user-avatar-frame').className = `avatar-wrapper ${frameClass}`;
+            document.querySelectorAll('.frame-choice-btn').forEach(btn => btn.classList.remove('active'));
+            event && event.target && event.target.classList.add('active');
+            if (save) {
+                db.userProfiles[currentUser.id].frame = frameClass;
+                saveDB();
+            }
+        }
+
+        function saveProfileStatus() {
+            const newStatus = document.getElementById('profile-status-input').value.trim();
+            db.userProfiles[currentUser.id].status = newStatus;
+            saveDB();
+            alert('Статус успешно сохранен!');
+        }
+
+        // Росписи на стене
+        function postWallComment() {
+            const text = document.getElementById('wall-comment-input').value.trim();
+            if (!text) return;
+            const p = db.userProfiles[currentUser.id];
+            if (!p.wall) p.wall = [];
+            p.wall.unshift({
+                id: Date.now(),
+                author: '@' + currentUser.username,
+                text,
+                likes: 0,
+                replies: []
+            });
+            saveDB();
+            document.getElementById('wall-comment-input').value = '';
+            renderWallComments();
+        }
+
+        function renderWallComments() {
+            const p = db.userProfiles[currentUser.id];
+            const container = document.getElementById('wall-comments-list');
+            if (!p.wall || p.wall.length === 0) {
+                container.innerHTML = `<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px;">Пока нет росписей</div>`;
+                return;
+            }
+            container.innerHTML = p.wall.map(comm => `
+                <div class="wall-comment">
+                    <div class="wall-comment-author">${comm.author}</div>
+                    <div>${comm.text}</div>
+                    <div class="wall-comment-footer">
+                        <span onclick="likeWallComment(${comm.id})">👍 ${comm.likes} Like</span>
+                        <span onclick="replyWallComment(${comm.id})">↩ Ответить</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function likeWallComment(id) {
+            const p = db.userProfiles[currentUser.id];
+            const comm = p.wall.find(c => c.id === id);
+            if (comm) {
+                comm.likes++;
+                saveDB();
+                renderWallComments();
+            }
+        }
+
+        function replyWallComment(id) {
+            const replyText = prompt('Введите ваш ответ на роспись:');
+            if (!replyText) return;
+            const p = db.userProfiles[currentUser.id];
+            const comm = p.wall.find(c => c.id === id);
+            if (comm) {
+                comm.text += `<br><span style="color:var(--accent-cyan); font-size:11px;">Ответ от @${currentUser.username}: ${replyText}</span>`;
+                saveDB();
+                renderWallComments();
+            }
+        }
+
+        // --- ИТЕРАКТИВНЫЕ ЧАТЫ ---
+        function openChatsModal() {
+            const container = document.getElementById('chats-list-container');
+            const chatKeys = Object.keys(db.chats);
+            if (chatKeys.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 30px;">Нет активных диалогов</div>`;
+            } else {
+                container.innerHTML = chatKeys.map(peer => {
+                    const messages = db.chats[peer];
+                    const lastMsg = messages[messages.length - 1] || { text: '' };
+                    return `
+                        <div class="chat-list-item" onclick="openActiveChat('${peer}')">
+                            <div class="chat-avatar"></div>
+                            <div class="chat-info">
+                                <div class="chat-name">${peer}</div>
+                                <div class="chat-preview">${lastMsg.text}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            document.getElementById('modal-chats').style.display = 'flex';
+        }
+
+        function openChatWith(username) {
+            activeChatPeer = username;
+            if (!db.chats[activeChatPeer]) db.chats[activeChatPeer] = [];
+            document.getElementById('active-chat-title').innerText = `Диалог с ${username}`;
+            renderChatMessages();
+            document.getElementById('modal-active-chat').style.display = 'flex';
+        }
+
+        function openActiveChat(peer) {
+            activeChatPeer = peer;
+            document.getElementById('active-chat-title').innerText = `Диалог с ${peer}`;
+            renderChatMessages();
+            document.getElementById('modal-active-chat').style.display = 'flex';
+        }
+
+        function renderChatMessages() {
+            const container = document.getElementById('chat-messages-container');
+            const messages = db.chats[activeChatPeer] || [];
+            container.innerHTML = messages.map(m => `
+                <div class="msg-bubble ${m.out ? 'msg-out' : 'msg-in'}">${m.text}</div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-msg-input');
+            const text = input.value.trim();
+            if (!text) return;
+            if (!db.chats[activeChatPeer]) db.chats[activeChatPeer] = [];
+            db.chats[activeChatPeer].push({ text, out: true, time: Date.now() });
+            saveDB();
+            input.value = '';
+            renderChatMessages();
+            updateCounters();
+        }
+
+        function clearActiveChatHistory() {
+            if (activeChatPeer && db.chats[activeChatPeer]) {
+                db.chats[activeChatPeer] = [];
+                saveDB();
+                renderChatMessages();
+            }
+        }
+
+        function deleteActiveChat() {
+            if (activeChatPeer && db.chats[activeChatPeer]) {
+                delete db.chats[activeChatPeer];
+                saveDB();
+                closeModal('modal-active-chat');
+                openChatsModal();
+            }
+        }
+
+        // --- УВЕДОМЛЕНИЯ ---
+        function openNotifsModal() {
+            const container = document.getElementById('notifs-container');
+            if (db.notifs.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 30px;">Нет новых уведомлений</div>`;
+            } else {
+                container.innerHTML = db.notifs.map(n => `
+                    <div class="notif-item">
+                        <div>${n.text}</div>
+                        <div class="notif-time">${n.time}</div>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('modal-notifs').style.display = 'flex';
+        }
+
+        // --- АДМИН ПАНЕЛЬ ---
+        function renderAdminPending() {
+            const container = document.getElementById('admin-pending-grid');
+            document.getElementById('pending-count').innerText = db.pendingAds.length;
+            if (db.pendingAds.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color: var(--text-muted); font-size:13px; padding:15px;">Нет заявок на модерацию</div>`;
+                return;
+            }
+            container.innerHTML = db.pendingAds.map(ad => `
+                <div class="card" style="margin-bottom:0;">
+                    <div class="card-header">
+                        <span class="card-title">${ad.title}</span>
+                        <span class="card-tag tag-sell">${ad.type}</span>
+                    </div>
+                    <div style="font-size:12px; color:var(--text-muted);">От: ${ad.author} | Сервер: ${ad.server}</div>
+                    <div style="font-size:13px;">${ad.desc}</div>
+                    <div style="font-family:'Orbitron'; font-size:13px; color:var(--gold);">Цена: ${ad.price}</div>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button class="admin-btn success" style="flex:1;" onclick="approveAd('${ad.id}')">✅ Одобрить</button>
+                        <button class="admin-btn" style="flex:1;" onclick="rejectAd('${ad.id}')">❌ Отклонить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function approveAd(id) {
+            const ad = db.pendingAds.find(item => item.id === id);
+            if (!ad) return;
+            db.pendingAds = db.pendingAds.filter(item => item.id !== id);
+            db.ads.unshift(ad);
+            
+            // Уведомление автору
+            db.notifs.unshift({
+                text: `Ваша заявка "${ad.title}" успешно одобрена и опубликована в ленте!`,
+                time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+            saveDB();
+            renderAll();
+        }
+
+        function rejectAd(id) {
+            const ad = db.pendingAds.find(item => item.id === id);
+            if (!ad) return;
+            db.pendingAds = db.pendingAds.filter(item => item.id !== id);
+            db.notifs.unshift({
+                text: `К сожалению, ваша заявка "${ad.title}" была отклонена модератором.`,
+                time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+            saveDB();
+            renderAll();
+        }
+
+        function adminAction(actionType) {
+            const target = document.getElementById('admin-target-user').value.trim();
+            if (!target) {
+                alert('Введите юзернейм или ID пользователя!');
+                return;
+            }
+            if (actionType === 'add_admin') {
+                if (!db.admins.includes(target)) db.admins.push(target);
+                alert(`Пользователь ${target} назначен администратором.`);
+            } else if (actionType === 'remove_admin') {
+                db.admins = db.admins.filter(a => a !== target);
+                alert(`Пользователь ${target} снят с поста администратора.`);
+            } else if (actionType === 'ban') {
+                if (!db.bannedList.includes(target)) db.bannedList.push(target);
+                alert(`Пользователь ${target} занесен в черный список.`);
+            } else if (actionType === 'unban') {
+                db.bannedList = db.bannedList.filter(b => b !== target);
+                alert(`Пользователь ${target} разбанен.`);
+            }
+            saveDB();
+            document.getElementById('admin-target-user').value = '';
+        }
+
+        function adminSendBroadcast() {
+            const text = document.getElementById('admin-broadcast-text').value.trim();
+            if (!text) return;
+            db.notifs.unshift({
+                text: `📢 Рассылка администрации: ${text}`,
+                time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+            saveDB();
+            alert('Глобальная рассылка успешно отправлена всем пользователям!');
+            document.getElementById('admin-broadcast-text').value = '';
+            updateCounters();
+        }
+
+        function adminClearFeed() {
+            if (confirm('Вы уверены, что хотите полностью очистить всю ленту объявлений?')) {
+                db.ads = [];
+                saveDB();
+                renderFeed();
+            }
+        }
+
+        // --- УТИЛИТЫ И СЧЕТЧИКИ ---
+        function updateCounters() {
+            document.getElementById('notif-counter').innerText = db.notifs.length;
+            document.getElementById('chat-counter').innerText = Object.keys(db.chats).length;
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function openManager() {
+            alert('Связь с главным менеджером/владельцем бота: @' + OWNER_USERNAME);
+        }
+
+        function renderAll() {
+            renderFeed();
+            renderAdminPending();
+            updateCounters();
+        }
+
+        // Первичный запуск рендеринга
+        renderAll();
+    </script>
+</body>
+</html>

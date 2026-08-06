@@ -852,14 +852,16 @@
             { value: '📱 Mobile III', label: '📱 Mobile III' }
         ];
 
+        // Исправленная безопасная функция вывода времени МСК без ошибок парсинга
         function updateMSKTime() {
-            let now = new Date();
-            let mskString = now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' });
-            let mskDate = new Date(mskString);
-            let timeStr = mskDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            let el = document.getElementById('mskTime');
-            if (el) el.innerText = '🕒 ' + timeStr + ' (МСК)';
-            updateNotifBadge();
+            try {
+                let now = new Date();
+                let options = { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+                let timeStr = new Intl.DateTimeFormat('ru-RU', options).format(now);
+                let el = document.getElementById('mskTime');
+                if (el) el.innerText = '🕒 ' + timeStr + ' (МСК)';
+                updateNotifBadge();
+            } catch(e) {}
         }
 
         function escapeHtml(text) {

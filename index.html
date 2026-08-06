@@ -20,6 +20,35 @@
         h2 {
             text-align: center;
             color: var(--tg-theme-hint-color, #ffaa00);
+            margin-bottom: 10px;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 15px;
+        }
+        .nav-tab {
+            flex: 1;
+            padding: 8px 4px;
+            background-color: var(--tg-theme-secondary-bg-color, #242526);
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: var(--tg-theme-text-color, #ffffff);
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .nav-tab.active {
+            background-color: var(--tg-theme-button-color, #ffaa00);
+            color: var(--tg-theme-button-text-color, #000000);
+            border-color: transparent;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
         }
         .form-group {
             margin-bottom: 15px;
@@ -37,6 +66,7 @@
             background-color: var(--tg-theme-secondary-bg-color, #242526);
             color: var(--tg-theme-text-color, #ffffff);
             box-sizing: border-box;
+            margin-bottom: 5px;
         }
         button {
             width: 100%;
@@ -47,7 +77,16 @@
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+        }
+        .btn-danger {
+            background-color: #d9534f;
+            color: #ffffff;
+        }
+        .btn-success {
+            background-color: #5cb85c;
+            color: #ffffff;
         }
         .warning-box {
             background-color: rgba(255, 170, 0, 0.1);
@@ -58,97 +97,210 @@
             border-radius: 4px;
             line-height: 1.4;
         }
+        .ad-card {
+            background-color: var(--tg-theme-secondary-bg-color, #242526);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .ad-header {
+            font-size: 11px;
+            color: #ffaa00;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .admin-section-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #ffaa00;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 4px;
+        }
+        .access-denied {
+            text-align: center;
+            padding: 30px;
+            color: #888;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Arizona RP Объявления</h2>
-        
-        <div class="warning-box">
-            ⚠️ <b>Безопасность и ответственность:</b> Администрация бота не несет никакой ответственности за ваши сделки, обмены и договоренности. Все действия вы совершаете на свой страх и риск! Отправка доступна с <b>08:00 до 22:00 МСК</b>.
-        </div>
-        
-        <div class="form-group">
-            <label for="mode">Режим:</label>
-            <select id="mode" onchange="toggleMode()">
-                <option value="sell">Продажа</option>
-                <option value="buy">Скупка</option>
-                <option value="auction">Аукцион</option>
-                <option value="barter">Бартер / Обмен</option>
-            </select>
+        <h2>Arizona RP</h2>
+
+        <!-- Навигация по вкладкам -->
+        <div class="nav-tabs" id="navTabs">
+            <div class="nav-tab active" onclick="switchTab('app')">Объявления</div>
+            <div class="nav-tab" onclick="switchTab('myAds')">Мои обьявы</div>
+            <div class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">Админ-панель</div>
         </div>
 
-        <div class="form-group" id="categoryGroup">
-            <label for="category">Категория:</label>
-            <select id="category">
-                <option value="💍 Аксессуары и вещи">💍 Аксессуары и вещи</option>
-                <option value="🚗 Транспорт и тюнинг">🚗 Транспорт и тюнинг</option>
-                <option value="👕 Скины и охранники">👕 Скины и охранники</option>
-                <option value="🏠 Недвижимость и бизнесы">🏠 Недвижимость и бизнесы</option>
-                <option value="📦 Ресурсы и материалы">📦 Ресурсы и материалы</option>
-            </select>
+        <!-- ВКЛАДКА 1: Создание объявлений -->
+        <div id="tabApp" class="section active">
+            <div class="warning-box">
+                ⚠️ <b>Безопасность и ответственность:</b> Администрация бота не несет никакой ответственности за ваши сделки, обмены и договоренности. Все действия вы совершаете на свой страх и риск! Отправка доступна с <b>08:00 до 22:00 МСК</b>.
+            </div>
+            
+            <div class="form-group">
+                <label for="mode">Режим:</label>
+                <select id="mode" onchange="toggleMode()">
+                    <option value="sell">Продажа</option>
+                    <option value="buy">Скупка</option>
+                    <option value="auction">Аукцион</option>
+                    <option value="barter">Бартер / Обмен</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="categoryGroup">
+                <label for="category">Категория:</label>
+                <select id="category">
+                    <option value="💍 Аксессуары и вещи">💍 Аксессуары и вещи</option>
+                    <option value="🚗 Транспорт и тюнинг">🚗 Транспорт и тюнинг</option>
+                    <option value="👕 Скины и охранники">👕 Скины и охранники</option>
+                    <option value="🏠 Недвижимость и бизнесы">🏠 Недвижимость и бизнесы</option>
+                    <option value="📦 Ресурсы и материалы">📦 Ресурсы и материалы</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="itemGroup" style="display:none;">
+                <label for="itemName">Название товара:</label>
+                <input type="text" id="itemName" placeholder="Например: Шар +12">
+            </div>
+
+            <div class="form-group" id="priceGroup" style="display:none;">
+                <label for="price">Стартовая цена ($):</label>
+                <input type="number" id="price" placeholder="50000000">
+            </div>
+
+            <div class="form-group" id="textGroup">
+                <label for="text">Текст объявления:</label>
+                <textarea id="text" rows="4" placeholder="Опишите ваш товар или условия обмена..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="server">Игровой сервер:</label>
+                <select id="server">
+                    <option value="🔥 Phoenix">🔥 Phoenix</option>
+                    <option value="🌴 Tucson">🌴 Tucson</option>
+                    <option value="🌵 Scottdale">🌵 Scottdale</option>
+                    <option value="⚜️ Chandler">⚜️ Chandler</option>
+                    <option value="❄️ Brainburg">❄️ Brainburg</option>
+                    <option value="🌊 Yuma">🌊 Yuma</option>
+                    <option value="✨ Saint-Rose">✨ Saint-Rose</option>
+                    <option value="🏛 Mesa">🏛 Mesa</option>
+                    <option value="❤️ Red-Rock">❤️ Red-Rock</option>
+                    <option value="🍀 Surprise">🍀 Surprise</option>
+                    <option value="⚡️ Prescott">⚡️ Prescott</option>
+                    <option value="🌲 Glendale">🌲 Glendale</option>
+                    <option value="👑 Kingman">👑 Kingman</option>
+                    <option value="⚓️ Winslow">⚓️ Winslow</option>
+                    <option value="🌴 Payson">🌴 Payson</option>
+                    <option value="💎 Gilbert">💎 Gilbert</option>
+                    <option value="🔥 Show-Low">🔥 Show-Low</option>
+                    <option value="🌴 Casa-Grande">🌴 Casa-Grande</option>
+                    <option value="📜 Page">📜 Page</option>
+                    <option value="☀️ Sun-City">☀️ Sun-City</option>
+                    <option value="👑 Queen-Creek">👑 Queen-Creek</option>
+                    <option value="🌵 Sedona">🌵 Sedona</option>
+                    <option value="🎄 Holiday">🎄 Holiday</option>
+                    <option value="🍀 Wednesday">🍀 Wednesday</option>
+                    <option value="⚡️ Yava">⚡️ Yava</option>
+                    <option value="🌌 Faraway">🌌 Faraway</option>
+                    <option value="🎁 Christmas">🎁 Christmas</option>
+                    <option value="🐝 Bumble Bee">🐝 Bumble Bee</option>
+                    <option value="🪞 Mirage">🪞 Mirage</option>
+                    <option value="💖 Love">💖 Love</option>
+                    <option value="📱 Mobile I">📱 Mobile I</option>
+                    <option value="📱 Mobile II">📱 Mobile II</option>
+                    <option value="📱 Mobile III">📱 Mobile III</option>
+                </select>
+            </div>
+
+            <button onclick="submitData()">Отправить в бот</button>
         </div>
 
-        <div class="form-group" id="itemGroup" style="display:none;">
-            <label for="itemName">Название товара:</label>
-            <input type="text" id="itemName" placeholder="Например: Шар +12">
+        <!-- ВКЛАДКА 2: Мои объявления -->
+        <div id="tabMyAds" class="section">
+            <div class="admin-section-title">📋 Ваши отправленные объявления</div>
+            <div id="myAdsContainer"></div>
+            <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 15px;">Очистить историю</button>
         </div>
 
-        <div class="form-group" id="priceGroup" style="display:none;">
-            <label for="price">Стартовая цена ($):</label>
-            <input type="number" id="price" placeholder="50000000">
-        </div>
+        <!-- ВКЛАДКА 3: Админ-панель -->
+        <div id="tabAdmin" class="section">
+            <div id="adminContent">
+                <div class="admin-section-title">📦 Модерация объявлений</div>
+                <button onclick="sendAdminAction('mod_sell_list')">Модерация продажи</button>
+                <button onclick="sendAdminAction('mod_buy_list')">Модерация скупки</button>
 
-        <div class="form-group" id="textGroup">
-            <label for="text">Текст объявления:</label>
-            <textarea id="text" rows="4" placeholder="Опишите ваш товар или условия обмена..."></textarea>
-        </div>
+                <!-- Блок только для владельца @bounqy -->
+                <div id="ownerSection" style="display: none;">
+                    <div class="admin-section-title">👑 Управление пользователями (@bounqy)</div>
+                    <div class="form-group">
+                        <input type="text" id="targetUser" placeholder="ID или @username пользователя">
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn-danger" onclick="sendTargetAction('ban')">Забанить</button>
+                        <button class="btn-success" onclick="sendTargetAction('unban')">Разбанить</button>
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn-success" onclick="sendTargetAction('add_admin')">Дать адм</button>
+                        <button class="btn-danger" onclick="sendTargetAction('remove_admin')">Снять адм</button>
+                    </div>
 
-        <div class="form-group">
-            <label for="server">Игровой сервер:</label>
-            <select id="server">
-                <option value="🔥 Phoenix">🔥 Phoenix</option>
-                <option value="🌴 Tucson">🌴 Tucson</option>
-                <option value="🌵 Scottdale">🌵 Scottdale</option>
-                <option value="⚜️ Chandler">⚜️ Chandler</option>
-                <option value="❄️ Brainburg">❄️ Brainburg</option>
-                <option value="🌊 Yuma">🌊 Yuma</option>
-                <option value="✨ Saint-Rose">✨ Saint-Rose</option>
-                <option value="🏛 Mesa">🏛 Mesa</option>
-                <option value="❤️ Red-Rock">❤️ Red-Rock</option>
-                <option value="🍀 Surprise">🍀 Surprise</option>
-                <option value="⚡️ Prescott">⚡️ Prescott</option>
-                <option value="🌲 Glendale">🌲 Glendale</option>
-                <option value="👑 Kingman">👑 Kingman</option>
-                <option value="⚓️ Winslow">⚓️ Winslow</option>
-                <option value="🌴 Payson">🌴 Payson</option>
-                <option value="💎 Gilbert">💎 Gilbert</option>
-                <option value="🔥 Show-Low">🔥 Show-Low</option>
-                <option value="🌴 Casa-Grande">🌴 Casa-Grande</option>
-                <option value="📜 Page">📜 Page</option>
-                <option value="☀️ Sun-City">☀️ Sun-City</option>
-                <option value="👑 Queen-Creek">👑 Queen-Creek</option>
-                <option value="🌵 Sedona">🌵 Sedona</option>
-                <option value="🎄 Holiday">🎄 Holiday</option>
-                <option value="🍀 Wednesday">🍀 Wednesday</option>
-                <option value="⚡️ Yava">⚡️ Yava</option>
-                <option value="🌌 Faraway">🌌 Faraway</option>
-                <option value="🎁 Christmas">🎁 Christmas</option>
-                <option value="🐝 Bumble Bee">🐝 Bumble Bee</option>
-                <option value="🪞 Mirage">🪞 Mirage</option>
-                <option value="💖 Love">💖 Love</option>
-                <option value="📱 Mobile I">📱 Mobile I</option>
-                <option value="📱 Mobile II">📱 Mobile II</option>
-                <option value="📱 Mobile III">📱 Mobile III</option>
-            </select>
-        </div>
+                    <div class="admin-section-title">📁 Логи (файлами)</div>
+                    <button onclick="sendAdminAction('log_admin_edits')">Логи редакции админов</button>
+                    <button onclick="sendAdminAction('log_chats')">Логи чатов общения</button>
+                    <button onclick="sendAdminAction('log_auction')">Логи аукциона</button>
 
-        <button onclick="submitData()">Отправить в бот</button>
+                    <div class="admin-section-title">📢 Рассылка</div>
+                    <textarea id="broadcastText" rows="3" placeholder="Текст рассылки..."></textarea>
+                    <button onclick="sendBroadcast()">Запустить рассылку</button>
+                </div>
+            </div>
+            <div id="accessDenied" class="access-denied" style="display: none;">
+                У вас нет доступа к панели администратора.
+            </div>
+        </div>
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
+
+        let currentUser = tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : { id: 0, username: '' };
+        const OWNER_USERNAME = 'bounqy';
+        
+        let isOwner = currentUser.username && currentUser.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
+        let isAdmin = true; // Установите правила проверки админов
+
+        if (isAdmin || isOwner) {
+            document.getElementById('adminTabBtn').style.display = 'block';
+            if (isOwner) {
+                document.getElementById('ownerSection').style.display = 'block';
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+
+            if (tabName === 'app') {
+                document.querySelectorAll('.nav-tab')[0].classList.add('active');
+                document.getElementById('tabApp').classList.add('active');
+            } else if (tabName === 'myAds') {
+                document.querySelectorAll('.nav-tab')[1].classList.add('active');
+                document.getElementById('tabMyAds').classList.add('active');
+                renderMyAds();
+            } else {
+                document.getElementById('adminTabBtn').classList.add('active');
+                document.getElementById('tabAdmin').classList.add('active');
+            }
+        }
 
         function toggleMode() {
             let mode = document.getElementById('mode').value;
@@ -185,6 +337,80 @@
                 data.text = document.getElementById('text').value;
             }
 
+            // Сохраняем в приложение (localStorage) для вкладки "Мои обьявы"
+            let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
+            myAds.unshift({
+                ...data,
+                date: new Date().toLocaleString()
+            });
+            localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
+
+            // Отправляем в бот
+            tg.sendData(JSON.stringify(data));
+        }
+
+        function renderMyAds() {
+            let container = document.getElementById('myAdsContainer');
+            let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
+
+            if (myAds.length === 0) {
+                container.innerHTML = '<div class="access-denied">У вас пока нет отправленных объявлений.</div>';
+                return;
+            }
+
+            let html = '';
+            myAds.forEach(ad => {
+                let modeName = {
+                    'sell': 'Продажа',
+                    'buy': 'Скупка',
+                    'auction': 'Аукцион',
+                    'barter': 'Бартер / Обмен'
+                }[ad.mode] || ad.mode;
+
+                html += `
+                    <div class="ad-card">
+                        <div class="ad-header">
+                            <span><b>${ad.server}</b> (${modeName})</span>
+                            <span>${ad.date}</span>
+                        </div>
+                        ${ad.category ? `<div><b>Категория:</b> ${ad.category}</div>` : ''}
+                        ${ad.itemName ? `<div><b>Товар:</b> ${ad.itemName} | <b>Цена:</b> ${ad.price}$</div>` : ''}
+                        ${ad.text ? `<div><b>Текст:</b> ${ad.text}</div>` : ''}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function clearMyAds() {
+            if (confirm('Очистить историю ваших объявлений в приложении?')) {
+                localStorage.removeItem('my_arizona_ads');
+                renderMyAds();
+            }
+        }
+
+        function sendAdminAction(actionType) {
+            let data = { action: actionType };
+            tg.sendData(JSON.stringify(data));
+        }
+
+        function sendTargetAction(actionType) {
+            let target = document.getElementById('targetUser').value.trim();
+            if (!target) {
+                alert('Введите ID или @username пользователя!');
+                return;
+            }
+            let data = { action: actionType, target: target };
+            tg.sendData(JSON.stringify(data));
+        }
+
+        function sendBroadcast() {
+            let text = document.getElementById('broadcastText').value.trim();
+            if (!text) {
+                alert('Введите текст для рассылки!');
+                return;
+            }
+            let data = { action: 'broadcast', text: text };
             tg.sendData(JSON.stringify(data));
         }
     </script>

@@ -425,11 +425,19 @@
             let textContent = '';
             
             if (mode === 'auction') {
-                textContent = `Аукцион: ${document.getElementById('itemName').value} (Старт: ${document.getElementById('price').value}$)`;
-            } else if (mode === 'barter') {
-                textContent = document.getElementById('text').value;
+                let itemName = document.getElementById('itemName').value.trim();
+                let price = document.getElementById('price').value.trim();
+                if (!itemName || !price) {
+                    alert('Пожалуйста, укажите название товара и стартовую цену!');
+                    return;
+                }
+                textContent = `Аукцион: ${itemName} (Старт: ${price}$)`;
             } else {
-                textContent = document.getElementById('text').value;
+                textContent = document.getElementById('text').value.trim();
+                if (!textContent) {
+                    alert('Пожалуйста, введите текст объявления!');
+                    return;
+                }
             }
 
             let adItem = {
@@ -605,6 +613,10 @@
 
         function closePraiseModal() {
             document.getElementById('praiseModal').style.display = 'none';
+            // После закрытия окна похвалы возвращаем модальное окно выбора, чтобы админ мог продолжить модерацию
+            if (currentModType) {
+                openModerationSelector(currentModType);
+            }
         }
 
         // --- Рендеринг списков с поддержкой удаления владельцем ---

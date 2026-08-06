@@ -381,6 +381,7 @@
         .badge-success { background: var(--accent-green); color: #fff; }
         .badge-auction { background: #3b82f6; color: #fff; }
         .badge-pending { background: #f59e0b; color: #fff; }
+        .badge-barter { background: #a855f7; color: #fff; }
 
         .feed-controls { display: flex; gap: 6px; margin-bottom: 10px; }
         .feed-controls input { margin-bottom: 0; }
@@ -409,6 +410,29 @@
         .share-btn { background: rgba(6, 182, 212, 0.12); border-color: rgba(6, 182, 212, 0.3); }
         .fav-btn { background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); }
         .fav-btn.active { background: var(--accent-gold); color: #000; }
+
+        .chat-templates-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .chat-template-pill {
+            background: rgba(168, 85, 247, 0.15);
+            border: 1px solid var(--forum-card-border);
+            border-radius: 8px;
+            padding: 5px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .chat-template-pill:hover {
+            background: rgba(168, 85, 247, 0.3);
+            border-color: var(--anime-purple);
+        }
 
         .admin-section-title {
             font-size: 13px; font-weight: 800; color: var(--anime-pink); margin-top: 16px; margin-bottom: 8px;
@@ -455,6 +479,33 @@
             border: 1px dashed var(--anime-purple);
             border-radius: 12px; padding: 10px; margin-top: 10px;
         }
+
+        /* Новые стили для мини-игры, биржи, фильтров и аналитики */
+        .filter-bar {
+            display: flex; gap: 6px; margin-bottom: 12px;
+        }
+        .filter-select {
+            flex: 1; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--forum-card-border);
+            background: rgba(12, 14, 24, 0.9); color: var(--text-main); font-size: 11px; font-weight: 700; outline: none;
+        }
+        .clicker-box {
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, rgba(20, 22, 36, 0.9) 80%);
+            border: 1px solid var(--forum-card-border); border-radius: 16px; padding: 20px; text-align: center;
+            margin-bottom: 14px; position: relative; overflow: hidden;
+        }
+        .clicker-coin-btn {
+            width: 110px; height: 110px; border-radius: 50%; background: var(--btn-anime-gradient);
+            margin: 14px auto; display: flex; align-items: center; justify-content: center; font-size: 44px;
+            cursor: pointer; box-shadow: 0 0 25px rgba(236, 72, 153, 0.6); transition: transform 0.1s ease; border: 3px solid #fff;
+        }
+        .clicker-coin-btn:active { transform: scale(0.92); }
+        .analytics-card {
+            background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 12px; padding: 12px; margin-bottom: 10px; font-size: 12px;
+        }
+        .analytics-down {
+            background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -484,6 +535,7 @@
             <div class="forum-top-icons">
                 <a class="forum-icon-btn" href="https://t.me/bounqy31" target="_blank" title="Менеджер (@bounqy31)">👔</a>
                 <button class="forum-icon-btn" onclick="switchTab('profile')" title="Профиль">👤</button>
+                <button class="forum-icon-btn" onclick="switchTab('clicker')" title="Симулятор барыги">📈</button>
                 <button class="forum-icon-btn" onclick="openNotificationsModal()" title="Уведомления">🔔<span class="badge-dot" id="notifDot" style="display:none;">0</span></button>
                 <button class="forum-icon-btn" onclick="openChatsModal()" title="Переписки">💬<span class="badge-dot" id="chatDot" style="display:none;">0</span></button>
                 <button class="forum-icon-btn" onclick="openSearchModal()" title="Поиск">🔍</button>
@@ -495,12 +547,27 @@
             <button class="nav-tab" onclick="switchTab('app')">📝 Создать</button>
             <button class="nav-tab" onclick="switchTab('myAds')">📂 Мои темы</button>
             <button class="nav-tab" onclick="switchTab('favorites')">❤️ Закладки</button>
+            <button class="nav-tab" onclick="switchTab('analytics')">📊 Тренды</button>
+            <button class="nav-tab" onclick="switchTab('clicker')">🎮 Барыга</button>
             <button class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">⚙️ Админ</button>
         </div>
 
         <div id="tabFeed" class="section active">
             <div class="admin-section-title">🌍 Главный раздел бота (Поиск предметов)</div>
             
+            <div class="filter-bar">
+                <select id="globalServerFilter" class="filter-select" onchange="renderFeed()">
+                    <option value="all">🌐 Все сервера</option>
+                </select>
+                <select id="categoryFilter" class="filter-select" onchange="renderFeed()">
+                    <option value="all">📦 Все категории</option>
+                    <option value="💍 Аксессуары и вещи">💍 Аксессуары</option>
+                    <option value="🚗 Транспорт и тюнинг">🚗 Транспорт</option>
+                    <option value="👕 Скины и охранники">👕 Скины</option>
+                    <option value="🏠 Недвижимость и бизнесы">🏠 Недвижимость</option>
+                </select>
+            </div>
+
             <div class="feed-controls">
                 <input type="text" id="searchInput" placeholder="🔍 Введите название предмета (аксессуар, шар, скин)..." oninput="renderFeed()">
             </div>
@@ -527,7 +594,7 @@
 
                 <div class="az-meta-info">
                     <div>Регистрация: <span id="azRegDate">Сегодня</span></div>
-                    <div>Статус: <span id="azActivity">В сети</span></div>
+                    <div>Основной сервер: <strong id="userProfileServer" style="color: var(--anime-pink);">🔥 Phoenix</strong></div>
                 </div>
                 
                 <div class="az-stats-grid">
@@ -546,7 +613,14 @@
                 </div>
 
                 <div class="admin-controls-card" style="margin-top: 10px; text-align: left;">
-                    <div style="font-weight: 800; font-size: 11px; color: var(--anime-purple); margin-bottom: 6px;">🎨 КАСТОМИЗАЦИЯ РАМОК ПРОФИЛЯ</div>
+                    <div style="font-weight: 800; font-size: 11px; color: var(--anime-purple); margin-bottom: 6px;">🌐 МУЛЬТИСЕРВЕРНАЯ ФИЛЬТРАЦИЯ</div>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label style="font-size: 9px; margin-bottom: 4px;">Выберите ваш игровой сервер:</label>
+                        <select id="userMainServerSelect" class="filter-select" onchange="saveUserServerSetting()">
+                        </select>
+                    </div>
+
+                    <div style="font-weight: 800; font-size: 11px; color: var(--anime-purple); margin-bottom: 6px; margin-top: 10px;">🎨 КАСТОМИЗАЦИЯ РАМОК ПРОФИЛЯ</div>
                     
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 9px; margin-bottom: 4px;">Выберите анимированную рамку:</label>
@@ -593,7 +667,7 @@
         </div>
 
         <div id="tabApp" class="section">
-            <div class="admin-section-title">📝 Создать объявление (требует модерации)</div>
+            <div class="admin-section-title">📝 Создать объявление / Трейд-оффер (требует модерации)</div>
 
             <div class="form-group">
                 <label>Тип темы:</label>
@@ -619,6 +693,11 @@
             <div class="form-group" id="priceGroup">
                 <label for="price" id="priceLabel">Цена ($):</label>
                 <input type="text" id="price" placeholder="Например: 50кк или 50000000">
+            </div>
+
+            <div class="form-group" id="barterGroup" style="display: none;">
+                <label for="barterOffer">Условия обмена (Трейд-оффер):</label>
+                <input type="text" id="barterOffer" placeholder="Например: Обмен на НЛО с вашей дп 20кк">
             </div>
 
             <div class="form-group" id="textGroup">
@@ -654,6 +733,40 @@
         <div id="tabFavorites" class="section">
             <div class="admin-section-title">❤️ Ваши закладки (Избранные предметы)</div>
             <div id="favoritesContainer" class="ads-container"></div>
+        </div>
+
+        <!-- НОВАЯ ВКЛАДКА: Еженедельный тренд цен (Рыночная аналитика) -->
+        <div id="tabAnalytics" class="section">
+            <div class="admin-section-title">📊 Еженедельный тренд цен (Рыночная аналитика)</div>
+            <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+                Автоматическая сводка изменений цен на Центральном Рынке за неделю. Помогает барыгам и трейдерам выгодно перепродавать товары.
+            </p>
+            <div id="analyticsContainer"></div>
+        </div>
+
+        <!-- НОВАЯ ВКЛАДКА: Мини-игра «Симулятор барыги» -->
+        <div id="tabClicker" class="section">
+            <div class="admin-section-title">🎮 Мини-игра «Симулятор барыги»</div>
+            <div class="clicker-box">
+                <div style="font-size: 12px; font-weight: 700; color: var(--anime-pink);">Твой капитал барыги:</div>
+                <div id="clickerBalance" style="font-size: 26px; font-weight: 900; color: #fff; margin: 6px 0;">10,000,000 $</div>
+                <div style="font-size: 10px; color: var(--text-muted);">Кликай по мешку, скупай аксы и перепродавай на ЦР!</div>
+                
+                <div class="clicker-coin-btn" onclick="clickerTap(event)">💰</div>
+                
+                <div style="display: flex; justify-content: space-around; font-size: 11px; margin-top: 10px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px;">
+                    <div>Доход за клик: <strong id="clickerPower" style="color: var(--accent-green);">100k $</strong></div>
+                    <div>Уровень: <strong id="clickerLevel" style="color: var(--anime-cyan);">Новичок ЦР</strong></div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px;">
+                <button onclick="buyClickerUpgrade('power')" class="btn-success" style="font-size:11px; margin:0;">⚡ Прокачать торг (+50k за клик) <br><span id="upgradePowerCost">500,000 $</span></button>
+                <button onclick="buyClickerUpgrade('auto')" class="btn-secondary" style="font-size:11px; margin:0; border-color: var(--anime-purple);">🤖 Авто-скупщик (Пассив)<br><span id="upgradeAutoCost">2,500,000 $</span></button>
+            </div>
+
+            <div class="admin-section-title">🏆 Таблица лидеров барыг</div>
+            <div id="clickerLeaderboard" style="background: var(--forum-card-bg); border: 1px solid var(--forum-card-border); border-radius: 12px; padding: 10px; font-size: 11px;"></div>
         </div>
 
         <div id="tabAdmin" class="section">
@@ -718,6 +831,23 @@
         </div>
     </div>
 
+    <!-- Модальное окно Трейд-офферов / Предложений обмена -->
+    <div id="barterModal" class="modal-overlay" onclick="handleOverlayClick(event, 'barterModal')">
+        <div class="modal-content" style="text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="color: #ffffff; margin: 0; font-size: 14px;">🤝 Предложить обмен (Трейд-оффер)</h3>
+                <button class="btn-secondary" onclick="closeBarterModal()" style="width: auto; margin:0; padding: 4px 8px; font-size: 11px;">✕</button>
+            </div>
+            <input type="hidden" id="barterTargetAdId">
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;" id="barterItemInfoLabel">Товар: -</div>
+            <div class="form-group">
+                <label>Что вы предлагаете на обмен:</label>
+                <input type="text" id="myBarterOfferInput" placeholder="Например: Скин Хикка +12 и моя дп 15кк">
+            </div>
+            <button onclick="submitBarterOffer()" class="btn-success">📨 Отправить предложение продавцу</button>
+        </div>
+    </div>
+
     <div id="chatsModal" class="modal-overlay" onclick="handleOverlayClick(event, 'chatsModal')">
         <div class="modal-content" style="text-align: left;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -741,7 +871,14 @@
                     <button class="btn-secondary" onclick="closeChatDetail()" style="width: auto; margin:0; padding: 4px 8px; font-size: 11px;">Закрыть</button>
                 </div>
             </div>
-            <div id="chatMessages" style="background: rgba(10, 11, 18, 0.92); padding: 12px; border-radius: 12px; height: 220px; overflow-y: auto; font-size: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--forum-card-border); background-image: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 80%);"></div>
+            <div id="chatMessages" style="background: rgba(10, 11, 18, 0.92); padding: 12px; border-radius: 12px; height: 200px; overflow-y: auto; font-size: 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--forum-card-border); background-image: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 80%);"></div>
+            
+            <div class="chat-templates-container">
+                <div class="chat-template-pill" onclick="insertChatTemplate('📍 Где и на каком сервере встречаемся?')">📍 Где и на каком сервере?</div>
+                <div class="chat-template-pill" onclick="insertChatTemplate('🤝 Торг уместен?')">🤝 Торг уместен?</div>
+                <div class="chat-template-pill" onclick="insertChatTemplate('⚡ Готов забрать прямо сейчас за ')">⚡ Готов забрать за...</div>
+            </div>
+
             <div style="display: flex; gap: 6px;">
                 <input type="text" id="chatInputMessage" placeholder="Написать сообщение..." style="margin-bottom:0;" onkeypress="if(event.key === 'Enter') sendChatMessage()">
                 <button onclick="sendChatMessage()" style="width: 70px; margin-top:0; padding: 10px;">Отпр</button>
@@ -963,6 +1100,7 @@
                 detectDeviceType();
                 updateMSKTime();
                 setInterval(updateMSKTime, 1000);
+                initServerFilters();
 
                 let savedBroadcastTime = Number(localStorage.getItem('arizona_broadcast_time') || 0);
                 let mskNow = getMSKDate().getTime();
@@ -1001,11 +1139,48 @@
 
                 updateNotifBadge();
                 updateChatDotBadge();
+                initClicker();
+                renderAnalytics();
                 switchTab('feed');
             } catch (e) {
                 console.error('Ошибка при загрузке:', e);
             }
         });
+
+        // 3. Мультисерверная фильтрация: инициализация селектов
+        function initServerFilters() {
+            let globalSelect = document.getElementById('globalServerFilter');
+            let userSelect = document.getElementById('userMainServerSelect');
+            if (!globalSelect || !userSelect) return;
+
+            let optionsHtml = '<option value="all">🌐 Все сервера</option>';
+            ALL_SERVERS.forEach(s => {
+                optionsHtml += `<option value="${s.value}">${s.label}</option>`;
+            });
+            globalSelect.innerHTML = optionsHtml;
+
+            let userOptionsHtml = '';
+            ALL_SERVERS.forEach(s => {
+                userOptionsHtml += `<option value="${s.value}">${s.label}</option>`;
+            });
+            userSelect.innerHTML = userOptionsHtml;
+
+            let user = getCurrentUser();
+            let savedServer = localStorage.getItem('arizona_user_server_' + user.id) || '🔥 Phoenix';
+            userSelect.value = savedServer;
+            let profileServerEl = document.getElementById('userProfileServer');
+            if (profileServerEl) profileServerEl.innerText = savedServer;
+        }
+
+        function saveUserServerSetting() {
+            triggerHaptic('light');
+            let user = getCurrentUser();
+            let val = document.getElementById('userMainServerSelect').value;
+            localStorage.setItem('arizona_user_server_' + user.id, val);
+            let profileServerEl = document.getElementById('userProfileServer');
+            if (profileServerEl) profileServerEl.innerText = val;
+            renderFeed();
+        }
 
         function addNotification(text, timestamp, userId = null) {
             let uId = userId || getCurrentUser().id;
@@ -1066,64 +1241,6 @@
                     }
                 }
             } catch(e){}
-        }
-
-        function renderNotifications() {
-            let container = document.getElementById('notificationsList');
-            if (!container) return;
-            try {
-                let user = getCurrentUser();
-                let key = 'arizona_notifications_' + user.id;
-                let notifs = JSON.parse(localStorage.getItem(key) || '[]');
-                
-                let bNotifs = [];
-                try {
-                    bNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
-                } catch(e){}
-
-                let mskNow = getMSKDate().getTime();
-                let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-                
-                notifs = notifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-                bNotifs = bNotifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-
-                let allNotifs = [...notifs, ...bNotifs];
-                allNotifs.sort((a, b) => b.timestamp - a.timestamp);
-
-                if (allNotifs.length === 0) {
-                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:12px; padding:10px;">У вас пока нет новых уведомлений.</div>';
-                    return;
-                }
-
-                let html = '';
-                allNotifs.forEach(n => {
-                    let dateStr = new Date(n.timestamp).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                    html += `
-                        <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--forum-card-border); border-radius: 10px; padding: 10px; margin-bottom: 8px; text-align: left;">
-                            <div style="font-size: 10px; color: var(--anime-cyan); margin-bottom: 4px;">🕒 ${dateStr} (МСК)</div>
-                            <div style="color: #fff; font-size: 12px; word-break: break-word;">${escapeHtml(n.text)}</div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            } catch(e){}
-        }
-
-        function showAndAutoHideBroadcast(text) {
-            let banner = document.getElementById('broadcastBanner');
-            let textSpan = document.getElementById('broadcastText');
-            if (!banner || !textSpan) return;
-
-            textSpan.innerHTML = `<b>Уведомление от администрации!</b> ${escapeHtml(text)}`;
-            banner.style.display = 'block';
-
-            if (broadcastTimer) clearTimeout(broadcastTimer);
-
-            broadcastTimer = setTimeout(() => {
-                banner.style.display = 'none';
-                localStorage.removeItem('arizona_broadcast_text');
-                localStorage.removeItem('arizona_broadcast_time');
-            }, 10000);
         }
 
         function updateChatDotBadge() {
@@ -1433,6 +1550,14 @@
             } catch(e){}
         }
 
+        function insertChatTemplate(text) {
+            triggerHaptic('light');
+            let input = document.getElementById('chatInputMessage');
+            if (!input) return;
+            input.value = text;
+            input.focus();
+        }
+
         function sendChatMessage() {
             triggerHaptic('light');
             let input = document.getElementById('chatInputMessage');
@@ -1573,10 +1698,17 @@
             if (currentPickerField === 'mode') {
                 document.getElementById('selectedModeText').innerText = item.label;
                 let priceLabel = document.getElementById('priceLabel');
+                let barterGroup = document.getElementById('barterGroup');
+                
                 if (item.value === 'auction') {
                     priceLabel.innerText = 'Стартовая цена ($):';
+                    barterGroup.style.display = 'none';
+                } else if (item.value === 'barter') {
+                    priceLabel.innerText = 'Доплата / Цена ($):';
+                    barterGroup.style.display = 'block';
                 } else {
                     priceLabel.innerText = 'Цена ($):';
+                    barterGroup.style.display = 'none';
                 }
             }
             if (currentPickerField === 'category') document.getElementById('selectedCategoryText').innerText = item.label;
@@ -1598,7 +1730,7 @@
             tabs.forEach(t => t.classList.remove('active'));
             sections.forEach(s => s.classList.remove('active'));
 
-            let tabMap = { 'feed': 0, 'app': 1, 'myAds': 2, 'favorites': 3, 'admin': 4 };
+            let tabMap = { 'feed': 0, 'app': 1, 'myAds': 2, 'favorites': 3, 'analytics': 4, 'clicker': 5, 'admin': 6 };
             let index = tabMap[tabName];
             if (index !== undefined && tabs[index] && tabs[index].style.display !== 'none') {
                 tabs[index].classList.add('active');
@@ -1611,6 +1743,8 @@
             if (tabName === 'myAds') renderMyAds();
             if (tabName === 'feed') renderFeed();
             if (tabName === 'favorites') renderFavorites();
+            if (tabName === 'analytics') renderAnalytics();
+            if (tabName === 'clicker') initClicker();
             if (tabName === 'admin') renderAdminPendingAds();
         }
 
@@ -1650,12 +1784,13 @@
             let category = document.getElementById('category').value;
             let itemName = document.getElementById('itemName').value.trim();
             let rawPrice = document.getElementById('price').value.trim();
+            let barterOffer = document.getElementById('barterOffer').value.trim();
             let textContent = document.getElementById('text').value.trim();
             let imageUrl = document.getElementById('itemImage').value.trim();
 
             if (!textContent && !itemName) { alert('Введите название или описание предмета!'); return; }
 
-            if (containsProfanity(itemName) || containsProfanity(textContent)) {
+            if (containsProfanity(itemName) || containsProfanity(textContent) || containsProfanity(barterOffer)) {
                 alert('🚫 Запрещено использовать мат в названии или описании товара!');
                 return;
             }
@@ -1674,12 +1809,16 @@
                 category: category,
                 title: itemName,
                 price: parsedPrice,
+                barterOffer: mode === 'barter' ? barterOffer : null,
+                barterProposals: [],
                 currentBid: mode === 'auction' ? Number(parsedPrice || 0) : null,
                 highestBidder: null,
                 textContent: textContent,
                 image: imageUrl,
                 author: authorName,
                 authorId: user.id,
+                reportsCount: 0,
+                reportedBy: [],
                 date: new Date().toLocaleDateString(),
                 status: 'pending'
             };
@@ -1699,12 +1838,99 @@
             document.getElementById('text').value = '';
             document.getElementById('itemName').value = '';
             document.getElementById('price').value = '';
+            document.getElementById('barterOffer').value = '';
             document.getElementById('itemImage').value = '';
             
             addNotification(`📝 Ваше объявление "${itemName || 'Товар'}" отправлено на модерацию.`, getMSKDate().getTime(), user.id);
 
             alert('✅ Объявление успешно отправлено на проверку администрации!');
             switchTab('myAds');
+        }
+
+        // 4. Система жалоб на фейковые цены (Модерация сообществом)
+        function reportAd(adId) {
+            triggerHaptic('medium');
+            if (!confirm('🚨 Пожаловаться на это объявление за фейковую цену или спам?')) return;
+
+            try {
+                let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
+                let ad = feed.find(a => a.id === adId);
+                if (!ad) return;
+
+                let currentUser = getCurrentUser();
+                if (!ad.reportedBy) ad.reportedBy = [];
+
+                if (ad.reportedBy.includes(currentUser.id)) {
+                    alert('⚠️ Вы уже отправляли жалобу на это объявление!');
+                    return;
+                }
+
+                ad.reportedBy.push(currentUser.id);
+                ad.reportsCount = (ad.reportsCount || 0) + 1;
+
+                if (ad.reportsCount >= 3) {
+                    feed = feed.filter(a => a.id !== adId);
+                    localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
+                    alert('🛡️ Объявление набрало достаточно жалоб от сообщества и было автоматически скрыто на перепроверку!');
+                } else {
+                    localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
+                    alert('✅ Ваша жалоба принята. Спасибо за помощь в модерации ленты!');
+                }
+                renderFeed();
+            } catch(e){}
+        }
+
+        // 2. Биржа обмена (Трейд-офферы)
+        function openBarterModal(adId) {
+            triggerHaptic('light');
+            let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
+            let ad = feed.find(a => a.id === adId);
+            if (!ad) return;
+
+            document.getElementById('barterTargetAdId').value = ad.id;
+            document.getElementById('barterItemInfoLabel').innerText = `Товар: ${ad.title || 'Без названия'} (${ad.server})`;
+            document.getElementById('barterModal').style.display = 'flex';
+        }
+
+        function closeBarterModal() {
+            document.getElementById('barterModal').style.display = 'none';
+        }
+
+        function submitBarterOffer() {
+            triggerHaptic('medium');
+            let adId = document.getElementById('barterTargetAdId').value;
+            let offerText = document.getElementById('myBarterOfferInput').value.trim();
+            if (!offerText) { alert('Укажите ваш вариант обмена!'); return; }
+
+            if (containsProfanity(offerText)) {
+                alert('🚫 Запрещено использовать мат в предложении обмена!');
+                return;
+            }
+
+            try {
+                let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
+                let ad = feed.find(a => a.id === adId);
+                if (ad) {
+                    if (!ad.barterProposals) ad.barterProposals = [];
+                    let user = getCurrentUser();
+                    let uName = user.username || user.first_name || 'Игрок';
+                    if (!uName.startsWith('@') && uName !== 'Игрок') uName = '@' + uName;
+
+                    ad.barterProposals.push({
+                        author: uName,
+                        text: offerText,
+                        date: new Date().toLocaleDateString()
+                    });
+                    localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
+                    
+                    addNotification(`🤝 Поступил новый трейд-оффер на ваш товар "${ad.title || 'Товар'}": ${offerText}`, getMSKDate().getTime(), ad.authorId);
+                }
+
+                closeBarterModal();
+                document.getElementById('myBarterOfferInput').value = '';
+                renderFeed();
+                alert('✅ Ваш трейд-оффер успешно отправлен продавцу!');
+            } catch(e){}
         }
 
         function renderAdminPendingAds() {
@@ -1946,11 +2172,24 @@
                 let cur = Number(ad.currentBid || ad.price || 0);
                 let topBidder = ad.highestBidder ? ` (Лидер: ${escapeHtml(ad.highestBidder)})` : ' (Ставок нет)';
                 priceText = ` <br>🔨 <b>Текущая ставка:</b> ${cur.toLocaleString('ru-RU')}$${topBidder}`;
+            } else if (ad.mode === 'barter') {
+                let barterInfo = ad.barterOffer ? `<br>🤝 <b>Условия обмена:</b> ${escapeHtml(ad.barterOffer)}` : '';
+                let pText = (ad.price !== '' && ad.price !== null && !isNaN(ad.price)) ? ` (${Number(ad.price).toLocaleString('ru-RU')}$ с доплатой)` : '';
+                priceText = barterInfo + pText;
             } else if (ad.price !== '' && ad.price !== null && ad.price !== undefined && ad.price !== 0 && !isNaN(ad.price)) {
                 priceText = ` <br>💰 <b>Цена:</b> ${Number(ad.price).toLocaleString('ru-RU')}$`;
             }
 
-            return titlePrefix + mainContent + priceText;
+            let proposalsHtml = '';
+            if (ad.barterProposals && ad.barterProposals.length > 0) {
+                proposalsHtml += `<div style="margin-top: 6px; padding: 6px; background: rgba(168,85,247,0.1); border-radius: 8px; font-size: 11px;"><b style="color:var(--anime-pink);">Трейд-офферы (${ad.barterProposals.length}):</b>`;
+                ad.barterProposals.forEach(p => {
+                    proposalsHtml += `<div style="margin-top:2px; border-top:1px solid rgba(255,255,255,0.05); padding-top:2px;"><b>${escapeHtml(p.author)}:</b> ${escapeHtml(p.text)}</div>`;
+                });
+                proposalsHtml += `</div>`;
+            }
+
+            return titlePrefix + mainContent + priceText + proposalsHtml;
         }
 
         function renderMyAds() {
@@ -1970,7 +2209,7 @@
             myAds.forEach(ad => {
                 let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
                 let statusBadge = ad.status === 'approved' ? `<span class="forum-badge badge-success">Опубликовано</span>` : `<span class="forum-badge badge-pending">На модерации ⏳</span>`;
-                let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : '';
+                let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : (ad.mode === 'barter' ? `<span class="forum-badge badge-barter">🤝 Бартер</span>` : '');
                 
                 html += `
                     <div class="ad-card">
@@ -1996,6 +2235,17 @@
                 feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
             } catch(e) { feed = []; }
 
+            // Фильтрация по серверу и категории
+            let selectedServer = document.getElementById('globalServerFilter')?.value || 'all';
+            let selectedCategory = document.getElementById('categoryFilter')?.value || 'all';
+
+            if (selectedServer !== 'all') {
+                feed = feed.filter(ad => ad.server === selectedServer);
+            }
+            if (selectedCategory !== 'all') {
+                feed = feed.filter(ad => ad.category === selectedCategory);
+            }
+
             let query = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
             if (query) {
                 feed = feed.filter(ad => {
@@ -2018,20 +2268,26 @@
             feed.forEach(ad => {
                 let isFav = favorites.includes(ad.id);
                 let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
-                let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : '';
+                let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : (ad.mode === 'barter' ? `<span class="forum-badge badge-barter">🤝 Бартер</span>` : '');
                 let safeAuthor = escapeHtml(ad.author);
                 
                 let isOwnerOfAd = (ad.authorId === currentUser.id) || (ad.author === currentUser.username);
                 let adminOrOwnerDeleteBtn = (isAdmin || isOwnerOfAd) ? `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin:0; width:auto;">🗑 Удалить</button>` : '';
 
-                let auctionActionBtn = '';
+                let extraActionBtn = '';
                 if (ad.mode === 'auction') {
                     if (isOwnerOfAd) {
-                        auctionActionBtn = `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="font-size:10px; padding:6px; margin-top:6px;">❌ Снять аукцион</button>`;
+                        extraActionBtn = `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="font-size:10px; padding:6px; margin-top:6px;">❌ Снять аукцион</button>`;
                     } else {
-                        auctionActionBtn = `<button onclick="placeAuctionBid('${ad.id}')" class="btn-success" style="font-size:10px; padding:6px; margin-top:6px;">🔨 Сделать ставку</button>`;
+                        extraActionBtn = `<button onclick="placeAuctionBid('${ad.id}')" class="btn-success" style="font-size:10px; padding:6px; margin-top:6px;">🔨 Сделать ставку</button>`;
+                    }
+                } else if (ad.mode === 'barter') {
+                    if (!isOwnerOfAd) {
+                        extraActionBtn = `<button onclick="openBarterModal('${ad.id}')" class="btn-success" style="font-size:10px; padding:6px; margin-top:6px;">🤝 Предложить обмен (Трейд-оффер)</button>`;
                     }
                 }
+
+                let reportBtn = !isOwnerOfAd ? `<button onclick="reportAd('${ad.id}')" class="btn-secondary" style="font-size:9px; padding:3px 6px; margin-top:4px; width:auto; border-color:var(--accent-red);">🚨 Пожаловаться</button>` : '';
 
                 let encodedTitle = encodeURIComponent(ad.title || 'Предмет');
                 let encodedServer = encodeURIComponent(ad.server || '');
@@ -2046,7 +2302,8 @@
                                 ${adminOrOwnerDeleteBtn}
                             </div>
                             <div style="margin-bottom:6px;">${buildAdTextHtml(ad)}</div>
-                            ${auctionActionBtn}
+                            ${extraActionBtn}
+                            <div style="display:flex; justify-content:flex-end;">${reportBtn}</div>
                         </div>
                         
                         <div class="card-actions-grid">
@@ -2057,11 +2314,145 @@
                     </div>
                 `;
             });
-            container.innerHTML = html || '<div style="text-align:center; color:var(--text-muted); padding:15px;">Предметы не найдены или ожидают одобрения администратора.</div>';
+            container.innerHTML = html || '<div style="text-align:center; color:var(--text-muted); padding:15px;">Предметы не найдены для выбранного сервера или категории.</div>';
 
             container.querySelectorAll('.write-seller-btn').forEach(btn => {
                 btn.addEventListener('click', () => openChat(btn.dataset.author));
             });
+        }
+
+        // 5. Еженедельный тренд цен (Рыночная аналитика)
+        function renderAnalytics() {
+            let container = document.getElementById('analyticsContainer');
+            if (!container) return;
+
+            let analyticsData = [
+                { item: '🔮 Магический шар (+12)', type: 'up', change: '+18.5%', price: '650,000,000 $', desc: 'Спрос на аксессуары для полета резко вырос из-за обновления.' },
+                { item: '🛡 Скин: Хикка (+12)', type: 'up', change: '+12.3%', price: '380,000,000 $', desc: 'Популярность среди барыгов на Центральном рынке увеличилась.' },
+                { item: '🏎 Brabus 700 (Тюнинг)', type: 'down', change: '-7.2%', price: '140,000,000 $', desc: 'Цены на транспорт временно просели после недавнего ивента.' },
+                { item: '💎 Осколок премиум вип', type: 'up', change: '+5.1%', price: '24,000,000 $', desc: 'Стабильный рост стоимости за счет постоянного дефицита.' },
+                { item: '⚡ Нло на плечо (+12)', type: 'down', change: '-9.4%', price: '115,000,000 $', desc: 'Наблюдается избыток предложений на серверах.' }
+            ];
+
+            let html = '<div style="font-weight:800; font-size:12px; color:var(--anime-cyan); margin-bottom:8px;">📈 Топ роста и падения цен на ЦР за неделю:</div>';
+            analyticsData.forEach(a => {
+                let cardClass = a.type === 'up' ? 'analytics-card' : 'analytics-card analytics-down';
+                let signColor = a.type === 'up' ? 'var(--accent-green)' : 'var(--accent-red)';
+                let trendIcon = a.type === 'up' ? '🚀 РОСТ' : '📉 ПАДЕНИЕ';
+                
+                html += `
+                    <div class="${cardClass}">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <b style="color:#fff;">${escapeHtml(a.item)}</b>
+                            <span style="color:${signColor}; font-weight:800;">${trendIcon} (${a.change})</span>
+                        </div>
+                        <div style="color:var(--text-main); font-weight:700; margin-bottom:2px;">Средняя цена: ${a.price}</div>
+                        <div style="color:var(--text-muted); font-size:11px;">${escapeHtml(a.desc)}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // 1. Мини-игра «Симулятор барыги»
+        let clickerState = {
+            balance: 10000000,
+            power: 100000,
+            autoLevel: 0,
+            powerCost: 500000,
+            autoCost: 2500000
+        };
+
+        function initClicker() {
+            try {
+                let saved = JSON.parse(localStorage.getItem('arizona_clicker_state') || 'null');
+                if (saved) clickerState = saved;
+            } catch(e){}
+            updateClickerUI();
+        }
+
+        function saveClickerState() {
+            localStorage.setItem('arizona_clicker_state', JSON.stringify(clickerState));
+        }
+
+        function clickerTap(e) {
+            triggerHaptic('light');
+            clickerState.balance += clickerState.power;
+            saveClickerState();
+            updateClickerUI();
+
+            // Эффект клика
+            let x = e.clientX || 150;
+            let y = e.clientY || 150;
+            let floatEl = document.createElement('div');
+            floatEl.innerText = '+' + (clickerState.power >= 1000000 ? (clickerState.power/1000000).toFixed(1) + 'kk' : (clickerState.power/1000).toFixed(0) + 'k');
+            floatEl.style.cssText = `position:fixed; left:${x}px; top:${y}px; color:#10b981; font-weight:900; font-size:14px; pointer-events:none; z-index:9999; animation: fadeIn 0.6s ease forwards;`;
+            document.body.appendChild(floatEl);
+            setTimeout(() => floatEl.remove(), 600);
+        }
+
+        function buyClickerUpgrade(type) {
+            triggerHaptic('medium');
+            if (type === 'power') {
+                if (clickerState.balance >= clickerState.powerCost) {
+                    clickerState.balance -= clickerState.powerCost;
+                    clickerState.power += 50000;
+                    clickerState.powerCost = Math.round(clickerState.powerCost * 1.5);
+                    saveClickerState();
+                    updateClickerUI();
+                    alert('⚡ Успешно прокачана квалификация торга!');
+                } else {
+                    alert('❌ Недостаточно виртуальных монет!');
+                }
+            } else if (type === 'auto') {
+                if (clickerState.balance >= clickerState.autoCost) {
+                    clickerState.balance -= clickerState.autoCost;
+                    clickerState.autoLevel += 1;
+                    clickerState.power += 200000 * clickerState.autoLevel;
+                    clickerState.autoCost = Math.round(clickerState.autoCost * 1.8);
+                    saveClickerState();
+                    updateClickerUI();
+                    alert('🤖 Авто-скупщик успешно улучшен!');
+                } else {
+                    alert('❌ Недостаточно виртуальных монет!');
+                }
+            }
+        }
+
+        function updateClickerUI() {
+            let balEl = document.getElementById('clickerBalance');
+            let powEl = document.getElementById('clickerPower');
+            let lvlEl = document.getElementById('clickerLevel');
+            let pCostEl = document.getElementById('upgradePowerCost');
+            let aCostEl = document.getElementById('upgradeAutoCost');
+            if (!balEl) return;
+
+            balEl.innerText = clickerState.balance.toLocaleString('ru-RU') + ' $';
+            powEl.innerText = (clickerState.power >= 1000000 ? (clickerState.power/1000000).toFixed(1) + 'kk' : (clickerState.power/1000).toFixed(0) + 'k') + ' $';
+            
+            let levelTitle = 'Новичок ЦР';
+            if (clickerState.balance > 100000000) levelTitle = 'Опытный барыга';
+            if (clickerState.balance > 1000000000) levelTitle = 'Магнат Центрального Рынка';
+            if (clickerState.balance > 10000000000) levelTitle = 'Легенда Arizona RP';
+            lvlEl.innerText = levelTitle;
+
+            pCostEl.innerText = clickerState.powerCost.toLocaleString('ru-RU') + ' $';
+            aCostEl.innerText = clickerState.autoCost.toLocaleString('ru-RU') + ' $';
+
+            // Таблица лидеров барыг
+            let lbContainer = document.getElementById('clickerLeaderboard');
+            if (lbContainer) {
+                let user = getCurrentUser();
+                let userName = user.username || user.first_name || 'Вы';
+                if (!userName.startsWith('@') && userName !== 'Вы') userName = '@' + userName;
+
+                lbContainer.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);"><span>1. 👑 bounqy</span> <strong>1,450,000,000 $</strong></div>
+                    <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);"><span>2. ⚡ skick_lord</span> <strong>820,000,000 $</strong></div>
+                    <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05);"><span>3. 💎 arizona_top</span> <strong>510,000,000 $</strong></div>
+                    <div style="display:flex; justify-content:space-between; padding:4px 0; color:var(--anime-pink);"><span>4. 👤 ${escapeHtml(userName)} (Вы)</span> <strong>${clickerState.balance.toLocaleString('ru-RU')} $</strong></div>
+                `;
+            }
         }
 
         function renderFavorites() {
@@ -2147,6 +2538,16 @@
             alert('📢 Рассылка успешно отправлена и добавлена в колокольчик всем игрокам!');
         }
 
+        function showAndAutoHideBroadcast(text) {
+            let banner = document.getElementById('broadcastBanner');
+            document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${escapeHtml(text)}`;
+            if (banner) banner.style.display = 'block';
+            if (broadcastTimer) clearTimeout(broadcastTimer);
+            broadcastTimer = setTimeout(() => {
+                if (banner) banner.style.display = 'none';
+            }, 10000);
+        }
+
         function sendTargetAction(action) {
             triggerHaptic('medium');
             let target = document.getElementById('targetUser').value.trim();
@@ -2191,23 +2592,58 @@
                     let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
                     bannedList = bannedList.filter(u => u !== cleanTarget);
                     localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
-                    alert(`✅ Пользователь @${cleanTarget} разблокирован.`);
+                    alert(`✅ Пользователь @${cleanTarget} разблокирован!`);
                 } catch(e){}
             }
-            document.getElementById('targetUser').value = '';
         }
 
-        function openBroadcastModal() {
-            let currentMsg = localStorage.getItem('arizona_broadcast_text') || 'Добро пожаловать в поисковик предметов Arizona RP!';
-            alert('📢 Системное уведомление:\n' + currentMsg);
+        function openNotificationsModal() {
+            triggerHaptic('light');
+            let user = getCurrentUser();
+            let key = 'arizona_notifications_' + user.id;
+            let notifs = [];
+            let bNotifs = [];
+            try {
+                notifs = JSON.parse(localStorage.getItem(key) || '[]');
+                bNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
+            } catch(e){}
+
+            let all = [...bNotifs, ...notifs];
+            let container = document.getElementById('notificationsList');
+
+            if (all.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:10px;">У вас пока нет новых уведомлений.</div>';
+            } else {
+                let html = '';
+                all.forEach(n => {
+                    let dateStr = new Date(n.timestamp).toLocaleDateString() + ' ' + new Date(n.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    html += `
+                        <div style="background:rgba(255,255,255,0.04); border:1px solid var(--forum-card-border); border-radius:10px; padding:10px; margin-bottom:8px; text-align:left;">
+                            <div style="font-size:12px; color:#fff; margin-bottom:4px;">${escapeHtml(n.text)}</div>
+                            <div style="font-size:9px; color:var(--anime-cyan);">${dateStr}</div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+            document.getElementById('notificationsModal').style.display = 'flex';
         }
 
-        function openNotificationsModal() { 
-            renderNotifications();
-            document.getElementById('notificationsModal').style.display = 'flex'; 
-        }
         function closeNotificationsModal() { document.getElementById('notificationsModal').style.display = 'none'; }
-        function openChatsModal() { renderChatsList(); document.getElementById('chatsModal').style.display = 'flex'; }
+        function openChatsModal() {
+            triggerHaptic('light');
+            renderChatsList();
+            document.getElementById('chatsModal').style.display = 'flex';
+        }
+        function closeChatsModal() { document.getElementById('chatsModal').style.display = 'none'; }
+        function openSearchModal() { document.getElementById('searchInput').focus(); }
+        function openBroadcastModal() { openNotificationsModal(); }
+        function clearMyAds() {
+            triggerHaptic('heavy');
+            if (!confirm('Очистить архив ваших объявлений?')) return;
+            localStorage.removeItem('my_arizona_ads');
+            renderMyAds();
+        }
     </script>
 </body>
 </html>

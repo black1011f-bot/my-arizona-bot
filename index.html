@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arizona RP Anime Mini App</title>
+    <title>Arizona RP Item Search Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @keyframes fadeIn {
@@ -209,7 +209,6 @@
             transition: all 0.3s ease;
         }
 
-        /* АНИМИРОВАННЫЕ РАМКИ */
         .frame-neon {
             border: 3px solid #ec4899 !important;
             animation: pulseGlow 1.8s infinite alternate !important;
@@ -477,19 +476,21 @@
 
         .card-actions-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 6px;
             margin-top: 8px;
         }
 
-        .write-seller-btn, .share-btn {
+        .write-seller-btn, .share-btn, .fav-btn {
             background: rgba(168, 85, 247, 0.12); border: 1px solid var(--forum-card-border);
-            border-radius: 8px; padding: 7px 8px; display: flex; align-items: center; justify-content: center; gap: 4px;
-            color: var(--text-main); font-size: 11px; font-weight: 700; cursor: pointer; transition: background 0.2s;
+            border-radius: 8px; padding: 7px 6px; display: flex; align-items: center; justify-content: center; gap: 4px;
+            color: var(--text-main); font-size: 10px; font-weight: 700; cursor: pointer; transition: background 0.2s;
             margin: 0; width: 100%; box-shadow: none;
         }
-        .write-seller-btn:hover, .share-btn:hover { background: rgba(168, 85, 247, 0.25); }
+        .write-seller-btn:hover, .share-btn:hover, .fav-btn:hover { background: rgba(168, 85, 247, 0.25); }
         .share-btn { background: rgba(6, 182, 212, 0.12); border-color: rgba(6, 182, 212, 0.3); }
+        .fav-btn { background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); }
+        .fav-btn.active { background: var(--accent-gold); color: #000; }
 
         .admin-section-title {
             font-size: 13px; font-weight: 800; color: var(--anime-pink); margin-top: 16px; margin-bottom: 8px;
@@ -539,46 +540,44 @@
 </head>
 <body>
     <div class="container">
-        <!-- БАННЕР ОБЪЯВЛЕНИЙ -->
+        <!-- БАННЕР УВЕДОМЛЕНИЙ -->
         <div id="broadcastBanner" class="broadcast-banner" onclick="openBroadcastModal()">
             📢 <span id="broadcastText"><b>Уведомление от администрации!</b> Нажмите, чтобы открыть.</span>
         </div>
 
-        <!-- ВЕРХНЯЯ ПАНЕЛЬ С ИКОНКОЙ ПРОФИЛЯ И СВЯЗЬЮ С МЕНЕДЖЕРОМ -->
+        <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
         <div class="forum-topbar">
             <div class="forum-brand">
                 <div class="forum-brand-info">
-                    <div class="forum-subtitle">неофициальный клиент для продажи вещей</div>
-                    <div class="forum-brand-title">Arizona RP ✨</div>
+                    <div class="forum-subtitle">поиск предметов Arizona RP</div>
+                    <div class="forum-brand-title">Arizona RP 🔍</div>
                     <div id="mskTime" class="forum-time-msk">🕒 --:--:-- (МСК)</div>
                 </div>
             </div>
             <div class="forum-top-icons">
-                <!-- Связаться с менеджером @bounqy31 -->
-                <a class="forum-icon-btn" href="https://t.me/bounqy31" target="_blank" title="Связаться с менеджером (@bounqy31)">👔</a>
-                <!-- Профиль в верхней панели -->
-                <button class="forum-icon-btn" onclick="switchTab('profile')" title="Мой Профиль">👤</button>
+                <a class="forum-icon-btn" href="https://t.me/bounqy31" target="_blank" title="Менеджер (@bounqy31)">👔</a>
+                <button class="forum-icon-btn" onclick="switchTab('profile')" title="Профиль">👤</button>
                 <button class="forum-icon-btn" onclick="openNotificationsModal()" title="Уведомления">🔔<span class="badge-dot" id="notifDot" style="display:none;">0</span></button>
                 <button class="forum-icon-btn" onclick="openChatsModal()" title="Переписки">💬<span class="badge-dot" id="chatDot" style="display:none;">0</span></button>
                 <button class="forum-icon-btn" onclick="openSearchModal()" title="Поиск">🔍</button>
             </div>
         </div>
 
-        <!-- НАВИГАЦИОННЫЕ ВКЛАДКИ (КНОПКА ПРОФИЛЯ УБРАНА ОТСЮДА) -->
+        <!-- НАВИГАЦИЯ -->
         <div class="nav-tabs" id="navTabs">
-            <button class="nav-tab active" onclick="switchTab('feed')">🌍 Лента</button>
+            <button class="nav-tab active" onclick="switchTab('feed')">🌍 Поиск</button>
             <button class="nav-tab" onclick="switchTab('app')">📝 Создать</button>
-            <button class="nav-tab" onclick="switchTab('myAds')">📂 Темы</button>
+            <button class="nav-tab" onclick="switchTab('myAds')">📂 Мои темы</button>
             <button class="nav-tab" onclick="switchTab('favorites')">❤️ Закладки</button>
             <button class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">⚙️ Админ</button>
         </div>
 
-        <!-- TAB FEED -->
+        <!-- TAB FEED (ИЗМЕНЕНО НА ГЛАВНЫЙ РАЗДЕЛ БОТА) -->
         <div id="tabFeed" class="section active">
-            <div class="admin-section-title">🌍 Главный раздел форума</div>
+            <div class="admin-section-title">🌍 Главный раздел бота (Поиск предметов)</div>
             
             <div class="feed-controls">
-                <input type="text" id="searchInput" placeholder="🔍 Поиск по темам..." oninput="renderFeed()">
+                <input type="text" id="searchInput" placeholder="🔍 Введите название предмета (аксессуар, шар, скин)..." oninput="renderFeed()">
             </div>
 
             <div class="view-mode-btns">
@@ -610,7 +609,7 @@
                 
                 <div class="az-stats-grid">
                     <div class="az-stat-item">
-                        <span class="az-stat-label">Сообщения</span>
+                        <span class="az-stat-label">Заявки</span>
                         <span class="az-stat-value" id="azStatMsgs">0</span>
                     </div>
                     <div class="az-stat-item">
@@ -623,14 +622,12 @@
                     </div>
                 </div>
 
-                <!-- Кнопка Подписаться и действия -->
                 <div class="az-actions-row" id="profileActionsRow">
                     <button class="az-btn-action" id="btnSubscribe" onclick="toggleSub()">Подписаться</button>
                     <button class="az-btn-action" id="btnIgnore" onclick="toggleIgnore()">+ Игнор.</button>
                     <button class="az-btn-action" onclick="toggleSearchMenu()">Найти ▾</button>
                 </div>
 
-                <!-- Кастомизация профиля -->
                 <div class="admin-controls-card" style="margin-top: 10px; text-align: left;">
                     <div style="font-weight: 800; font-size: 11px; color: var(--anime-purple); margin-bottom: 6px;">🎨 КАСТОМИЗАЦИЯ ПРОФИЛЯ</div>
                     
@@ -653,9 +650,8 @@
                     </div>
                 </div>
 
-                <!-- Покупка VIP за Telegram Stars -->
                 <div class="vip-buy-box">
-                    <div style="font-weight: 800; font-size: 12px; color: var(--accent-gold); margin-bottom: 6px;">⭐ ПРЕМЕАЛЬНЫЙ VIP СТАТУС</div>
+                    <div style="font-weight: 800; font-size: 12px; color: var(--accent-gold); margin-bottom: 6px;">⭐ ПРЕМИАЛЬНЫЙ VIP СТАТУС</div>
                     <div style="display: flex; gap: 6px;">
                         <button class="btn-vip" onclick="buyVipStars(100, 30)" style="margin: 0; padding: 8px; font-size: 11px;">⭐ VIP 30 дн. (100 ⭐️)</button>
                         <button class="btn-vip" onclick="buyVipStars(500, 9999)" style="margin: 0; padding: 8px; font-size: 11px;">👑 VIP Навсегда (500 ⭐️)</button>
@@ -663,23 +659,22 @@
                 </div>
             </div>
 
-            <!-- PROFILE WALL -->
             <div class="ad-card">
                 <div class="profile-subtabs">
-                    <div class="profile-subtab active" id="subtabWall" onclick="switchProfileSubtab('wall')">💬 Сообщения профиля</div>
-                    <div class="profile-subtab" id="subtabActivity" onclick="switchProfileSubtab('activity')">🕒 Последняя активность</div>
+                    <div class="profile-subtab active" id="subtabWall" onclick="switchProfileSubtab('wall')">💬 Росписи на стене</div>
+                    <div class="profile-subtab" id="subtabActivity" onclick="switchProfileSubtab('activity')">🕒 Активность</div>
                 </div>
 
                 <div id="profileWallContent">
                     <div class="form-group" style="margin-bottom: 8px;">
-                        <input type="text" id="wallCommentInput" placeholder="Напишите что-нибудь на стене (роспись)...">
+                        <input type="text" id="wallCommentInput" placeholder="Напишите роспись в профиле...">
                     </div>
                     <button onclick="postWallComment()" style="padding: 8px; font-size: 11px; margin-top:0;">Оставить роспись</button>
                     <div id="wallCommentsContainer" style="margin-top: 12px;"></div>
                 </div>
 
                 <div id="profileActivityContent" style="display: none; font-size: 11px; color: var(--text-muted); text-align: center; padding: 10px;">
-                    Последняя активность: смотрел рынок.
+                    Последняя активность: проверка цен на сервере.
                 </div>
             </div>
         </div>
@@ -708,7 +703,7 @@
             </div>
 
             <div class="form-group" id="categoryGroup">
-                <label>Раздел форума:</label>
+                <label>Раздел бота:</label>
                 <div class="custom-select-trigger" onclick="openPicker('category')">
                     <span id="selectedCategoryText">💍 Аксессуары и вещи</span> <span>▼</span>
                 </div>
@@ -716,24 +711,23 @@
             </div>
 
             <div class="form-group" id="itemGroup">
-                <label for="itemName">Название товара (опционально):</label>
+                <label for="itemName">Название предмета / товара:</label>
                 <input type="text" id="itemName" placeholder="Например: Магический шар +12">
             </div>
 
-            <!-- Динамическая надпись: Стартовая цена / Цена -->
             <div class="form-group" id="priceGroup">
                 <label for="price" id="priceLabel">Цена ($):</label>
                 <input type="number" id="price" placeholder="50000000">
             </div>
 
             <div class="form-group" id="textGroup">
-                <label for="text">Содержание темы / Описание:</label>
-                <textarea id="text" rows="4" placeholder="Опишите условия сделки или подробности товара..."></textarea>
+                <label for="text">Описание / характеристики предмета:</label>
+                <textarea id="text" rows="4" placeholder="Опишите состояние предмета или условия..."></textarea>
             </div>
 
             <div class="form-group" id="imageGroup">
-                <label for="itemImage">Ссылка на скриншот (ускоренная загрузка):</label>
-                <input type="url" id="itemImage" placeholder="https://i.imgur.com/... или ссылка на скрин">
+                <label for="itemImage">Ссылка на скриншот предмета:</label>
+                <input type="url" id="itemImage" placeholder="https://i.imgur.com/...">
             </div>
 
             <div class="form-group">
@@ -744,33 +738,32 @@
                 <input type="hidden" id="server" value="🔥 Phoenix">
             </div>
 
-            <button onclick="submitData()">Создать тему</button>
+            <button onclick="submitData()">Опубликовать в поиск</button>
         </div>
 
         <!-- TAB MY ADS -->
         <div id="tabMyAds" class="section">
-            <div class="admin-section-title">📂 Ваши созданные темы</div>
+            <div class="admin-section-title">📂 Ваши размещенные товары</div>
             <div id="myAdsContainer" class="ads-container"></div>
-            <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 14px;">Очистить архив тем</button>
+            <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 14px;">Очистить архив</button>
         </div>
 
         <!-- TAB FAVORITES -->
         <div id="tabFavorites" class="section">
-            <div class="admin-section-title">❤️ Ваши закладки</div>
+            <div class="admin-section-title">❤️ Ваши закладки (Избранные предметы)</div>
             <div id="favoritesContainer" class="ads-container"></div>
         </div>
 
-        <!-- TAB ADMIN / OWNER -->
+        <!-- TAB ADMIN -->
         <div id="tabAdmin" class="section">
             <div id="adminContent">
-                <div class="admin-section-title">🛡️ Модерация тем форума</div>
-                <button class="btn-secondary" onclick="openModerationSelector('sell')" style="margin-bottom: 6px;">Модерация раздела "Продажа"</button>
-                <button class="btn-secondary" onclick="openModerationSelector('buy')" style="margin-bottom: 6px;">Модерация раздела "Скупка"</button>
+                <div class="admin-section-title">🛡️ Модерация базы предметов</div>
+                <button class="btn-secondary" onclick="openModerationSelector('sell')" style="margin-bottom: 6px;">Модерация продаж</button>
+                <button class="btn-secondary" onclick="openModerationSelector('buy')" style="margin-bottom: 6px;">Модерация скупки</button>
                 <button class="btn-secondary" onclick="openModerationSelector('auction')" style="margin-bottom: 6px;">Модерация аукционов</button>
                 <button class="btn-secondary" onclick="openModerationSelector('barter')" style="margin-bottom: 6px;">Модерация обменов</button>
-                <button class="btn-danger" onclick="clearGlobalFeedAdmin()" style="margin-top: 10px;">🗑 Очистить всю ленту тем</button>
+                <button class="btn-danger" onclick="clearGlobalFeedAdmin()" style="margin-top: 10px;">🗑 Очистить всю ленту</button>
 
-                <!-- OWNER PANEL -->
                 <div id="ownerSection" style="display: none; margin-top: 15px;">
                     <div class="admin-section-title">👑 Панель Управления Владельца</div>
                     
@@ -793,7 +786,7 @@
                     <div class="admin-controls-card">
                         <label>Редактировать системный баннер:</label>
                         <input type="text" id="newBroadcastInput" placeholder="Новый текст уведомления..." style="margin-bottom: 6px;">
-                        <button onclick="updateBroadcastMessage()" class="btn-success">📢 Обновить Объявление</button>
+                        <button onclick="updateBroadcastMessage()" class="btn-success">📢 Обновить Баннер</button>
                     </div>
                 </div>
             </div>
@@ -804,7 +797,7 @@
     <div id="chatsModal" class="modal-overlay" onclick="handleOverlayClick(event, 'chatsModal')">
         <div class="modal-content" style="text-align: left;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">💬 Переписки</h3>
+                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">💬 Переписки с продавцами</h3>
                 <button class="btn-secondary" onclick="closeChatsModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
             </div>
             <div style="margin-bottom: 10px; display: flex; gap: 6px;">
@@ -864,44 +857,44 @@
 
         const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%238b5cf6'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='%23ffffff' font-family='sans-serif'>A</text></svg>";
 
-        // СПИСОК ВСЕХ 33 СЕРВЕРОВ ARIZONA RP
         const ALL_SERVERS = [
-            { value: '🔥 Phoenix (1)', label: '🔥 Phoenix (1)' },
-            { value: '🌴 Tucson (2)', label: '🌴 Tucson (2)' },
-            { value: '🌵 Scottdale (3)', label: '🌵 Scottdale (3)' },
-            { value: '💎 Chandler (4)', label: '💎 Chandler (4)' },
-            { value: '🏛 Brainburg (5)', label: '🏛 Brainburg (5)' },
-            { value: '🌹 Saint Rose (6)', label: '🌹 Saint Rose (6)' },
-            { value: '🏙 Mesa (7)', label: '🏙 Mesa (7)' },
-            { value: '🔴 Red-Rock (8)', label: '🔴 Red-Rock (8)' },
-            { value: '🌽 Yuma (9)', label: '🌽 Yuma (9)' },
-            { value: '🎁 Surprise (10)', label: '🎁 Surprise (10)' },
-            { value: '⚡️ Prescott (11)', label: '⚡️ Prescott (11)' },
-            { value: '🦅 Glendale (12)', label: '🦅 Glendale (12)' },
-            { value: '👑 Kingman (13)', label: '👑 Kingman (13)' },
-            { value: '❄️ Winslow (14)', label: '❄️ Winslow (14)' },
-            { value: '🏔 Payson (15)', label: '🏔 Payson (15)' },
-            { value: '🍀 Gilbert (16)', label: '🍀 Gilbert (16)' },
-            { value: '🌊 Show-Low (17)', label: '🌊 Show-Low (17)' },
-            { value: '🎰 Casa-Grande (18)', label: '🎰 Casa-Grande (18)' },
-            { value: '📄 Page (19)', label: '📄 Page (19)' },
-            { value: '☀️ Sun-City (20)', label: '☀️ Sun-City (20)' },
-            { value: '👑 Queen-Creek (21)', label: '👑 Queen-Creek (21)' },
-            { value: '🏜 Sedona (22)', label: '🏜 Sedona (22)' },
-            { value: '🎄 Holiday (23)', label: '🎄 Holiday (23)' },
-            { value: '🍹 Wednesday (24)', label: '🍹 Wednesday (24)' },
-            { value: '🍏 Yava (25)', label: '🍏 Yava (25)' },
-            { value: '🌌 Faraway (26)', label: '🌌 Faraway (26)' },
-            { value: '🐝 Bumble Bee (27)', label: '🐝 Bumble Bee (27)' },
-            { value: '🎅 Christmas (28)', label: '🎅 Christmas (28)' },
-            { value: '🔮 Mirage (29)', label: '🔮 Mirage (29)' },
-            { value: '❤️ Love (30)', label: '❤️ Love (30)' },
-            { value: '🐉 Drake (31)', label: '🐉 Drake (31)' },
-            { value: '🚀 Space (32)', label: '🚀 Space (32)' },
-            { value: '🏝 Vice City (33)', label: '🏝 Vice City (33)' }
+            { value: '🔥 Phoenix', label: '🔥 Phoenix' },
+            { value: '🌴 Tucson', label: '🌴 Tucson' },
+            { value: '🌵 Scottdale', label: '🌵 Scottdale' },
+            { value: '⚜️ Chandler', label: '⚜️ Chandler' },
+            { value: '❄️ Brainburg', label: '❄️ Brainburg' },
+            { value: '🌊 Yuma', label: '🌊 Yuma' },
+            { value: '✨ Saint-Rose', label: '✨ Saint-Rose' },
+            { value: '🏛 Mesa', label: '🏛 Mesa' },
+            { value: '❤️ Red-Rock', label: '❤️ Red-Rock' },
+            { value: '🍀 Surprise', label: '🍀 Surprise' },
+            { value: '⚡️ Prescott', label: '⚡️ Prescott' },
+            { value: '🌲 Glendale', label: '🌲 Glendale' },
+            { value: '👑 Kingman', label: '👑 Kingman' },
+            { value: '⚓️ Winslow', label: '⚓️ Winslow' },
+            { value: '🌴 Payson', label: '🌴 Payson' },
+            { value: '💎 Gilbert', label: '💎 Gilbert' },
+            { value: '🔥 Show-Low', label: '🔥 Show-Low' },
+            { value: '🌴 Casa-Grande', label: '🌴 Casa-Grande' },
+            { value: '📜 Page', label: '📜 Page' },
+            { value: '☀️ Sun-City', label: '☀️ Sun-City' },
+            { value: '👑 Queen-Creek', label: '👑 Queen-Creek' },
+            { value: '🌵 Sedona', label: '🌵 Sedona' },
+            { value: '🎄 Holiday', label: '🎄 Holiday' },
+            { value: '🍀 Wednesday', label: '🍀 Wednesday' },
+            { value: '⚡️ Yava', label: '⚡️ Yava' },
+            { value: '🌌 Faraway', label: '🌌 Faraway' },
+            { value: '🎁 Christmas', label: '🎁 Christmas' },
+            { value: '🐝 Bumble Bee', label: '🐝 Bumble Bee' },
+            { value: '💎 Mirage', label: '💎 Mirage' },
+            { value: '💖 Love', label: '💖 Love' },
+            { value: '📱 Mobile I', label: '📱 Mobile I' },
+            { value: '📱 Mobile II', label: '📱 Mobile II' },
+            { value: '📱 Mobile III', label: '📱 Mobile III' },
+            { value: '🔙 Назад', label: '🔙 Назад' },
+            { value: '❌ Отменить действие', label: '❌ Отменить действие' }
         ];
 
-        // ФИЛЬТР МАТОВ ДЛЯ ОБЪЯВЛЕНИЙ
         function containsProfanity(text) {
             if (!text) return false;
             const badWordsRegex = /(хуй|пизд|блять|бляд|ебат|ебал|ебан|пидор|сука|чмо|гандон|презерватив|сцука|ебп|нах)/i;
@@ -1017,7 +1010,6 @@
             }
         }
 
-        // 1 & 5. ИНИЦИАЛИЗАЦИЯ ПРОФИЛЯ С РОЛЯМИ И КАСТОМИЗАЦИЕЙ
         function initProfile() {
             let user = getCurrentUser();
             let name = user.first_name || 'Игрок';
@@ -1026,17 +1018,14 @@
             let avatarImg = document.getElementById('azAvatarImg');
             avatarImg.src = user.photo_url || DEFAULT_AVATAR;
 
-            // Применение рамки профиля
             let savedFrame = localStorage.getItem('arizona_avatar_frame_' + user.id) || 'none';
             avatarImg.className = 'az-avatar-img ' + (savedFrame !== 'none' ? savedFrame : '');
             let frameSelect = document.getElementById('avatarFrameSelect');
             if (frameSelect) frameSelect.value = savedFrame;
 
-            // Кастомный статус
             let savedStatus = localStorage.getItem('arizona_custom_status_' + user.id) || 'Статус не установлен';
             document.getElementById('azCustomStatus').innerText = savedStatus;
 
-            // Роли (5-й пункт): "владелец @bounqy", "Админ", "Игрок"
             let roleBadge = document.getElementById('azRoleBadge');
             if (checkIsOwner()) {
                 roleBadge.innerText = '👑 Владелец бота @bounqy';
@@ -1095,7 +1084,6 @@
             initProfile();
         }
 
-        // 6. ПОДПИСКА (Нельзя подписаться на самого себя)
         function toggleSub() {
             triggerHaptic('light');
             let user = getCurrentUser();
@@ -1134,7 +1122,6 @@
             }
         }
 
-        // 7. РОСПИСИ НА СТЕНЕ И ОТВЕТЫ НА НИХ
         function postWallComment(replyToId = null) {
             triggerHaptic('medium');
             let inputId = replyToId ? 'wallReplyInput_' + replyToId : 'wallCommentInput';
@@ -1242,7 +1229,6 @@
             container.innerHTML = html;
         }
 
-        // 4. ИСПРАВЛЕННАЯ ЛОГИКА ЧАТА (Четкое разделение вы и собеседник)
         function renderChatsList() {
             let container = document.getElementById('chatsList');
             if (!container) return;
@@ -1283,9 +1269,7 @@
                 container.querySelectorAll('.btn-del-chat').forEach(el => {
                     el.addEventListener('click', () => deleteChatCompletely(el.dataset.chatName));
                 });
-            } catch(e){
-                console.error(e);
-            }
+            } catch(e){}
         }
 
         function openChat(name) {
@@ -1313,7 +1297,6 @@
 
                 let html = '';
                 messages.forEach(m => {
-                    // Если отправитель я -> справа, иначе слева
                     let isMe = (m.senderId === currentUser.id) || (m.sender && myName && m.sender.toLowerCase() === myName);
                     html += `
                         <div style="text-align: ${isMe ? 'right' : 'left'};">
@@ -1328,7 +1311,6 @@
             } catch(e){}
         }
 
-        // 13. В ЛС МОЖНО С МАТАМИ (Фильтр тут НЕ применяется)
         function sendChatMessage() {
             triggerHaptic('light');
             let input = document.getElementById('chatInputMessage');
@@ -1397,7 +1379,6 @@
             openChat(username);
         }
 
-        // 11. ВСЕ 33 СЕРВЕРА В ПИКЕРЕ
         const pickerData = {
             mode: [
                 { value: 'sell', label: 'Продажа' },
@@ -1416,8 +1397,8 @@
 
         const pickerTitles = {
             mode: 'Выберите тип темы',
-            category: 'Выберите раздел форума',
-            server: 'Выберите игровой сервер (Все 33)'
+            category: 'Выберите раздел бота',
+            server: 'Выберите игровой сервер'
         };
 
         let currentPickerField = '';
@@ -1445,7 +1426,6 @@
 
         function closePicker() { document.getElementById('pickerModal').style.display = 'none'; }
         
-        // 10. ТЕКСТ "СТАРТОВАЯ ЦЕНА" ТОЛЬКО ПРИ ВЫБОРЕ АУКЦИОНА
         function selectPickerItemByIndex(index) {
             let items = pickerData[currentPickerField] || [];
             let item = items[index];
@@ -1481,7 +1461,6 @@
             }
         }
 
-        // 3. ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК (Без кнопки Профиль внизу)
         function switchTab(tabName) {
             triggerHaptic('light');
 
@@ -1514,7 +1493,6 @@
             if (tabName === 'favorites') renderFavorites();
         }
 
-        // 13. НЕЛЬЗЯ КИДАТЬ ОБЪЯВЫ С МАТАМИ
         function submitData() {
             triggerHaptic('medium');
             let adType = document.getElementById('adType').value;
@@ -1526,10 +1504,10 @@
             let textContent = document.getElementById('text').value.trim();
             let imageUrl = document.getElementById('itemImage').value.trim();
 
-            if (!textContent) { alert('Введите описание темы!'); return; }
+            if (!textContent) { alert('Введите описание предмета!'); return; }
 
             if (containsProfanity(itemName) || containsProfanity(textContent)) {
-                alert('🚫 Запрещено использовать матерные слова в заголовке или описании объявления!');
+                alert('🚫 Запрещено использовать мат в названии или описании товара!');
                 return;
             }
 
@@ -1573,10 +1551,9 @@
             document.getElementById('itemName').value = '';
             document.getElementById('price').value = '';
             document.getElementById('itemImage').value = '';
-            switchTab('myAds');
+            switchTab('feed');
         }
 
-        // 12. МЕХАНИКА АУКЦИОНОВ (Перебивание ставок и удаление лота)
         function placeAuctionBid(adId) {
             triggerHaptic('medium');
             let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
@@ -1608,7 +1585,7 @@
 
         function deleteAuctionByOwner(adId) {
             triggerHaptic('heavy');
-            if (!confirm('Вы уверены, что хотите снять данный лот с аукциона?')) return;
+            if (!confirm('Вы уверены, что хотите снять этот лот?')) return;
 
             let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
             feed = feed.filter(a => a.id !== adId);
@@ -1620,13 +1597,26 @@
 
             renderFeed();
             if (document.getElementById('tabMyAds').classList.contains('active')) renderMyAds();
-            alert('Лот успешно удален с аукциона.');
+            alert('Лот успешно удален.');
         }
 
-        // 2. INLINE SHARE (Поделиться темой в любой чат ТГ)
+        function toggleFavorite(adId) {
+            triggerHaptic('light');
+            let favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
+            let index = favorites.indexOf(adId);
+            if (index > -1) {
+                favorites.splice(index, 1);
+            } else {
+                favorites.push(adId);
+            }
+            localStorage.setItem('arizona_favorites', JSON.stringify(favorites));
+            renderFeed();
+            if (document.getElementById('tabFavorites').classList.contains('active')) renderFavorites();
+        }
+
         function shareAdTopic(title, server, price) {
             triggerHaptic('light');
-            let shareText = `🔥 Товар на Arizona RP [${server}]!\n📦 ${title}\n💰 Цена: ${price}$\n\nПосмотри в мини-приложении!`;
+            let shareText = `🔍 Товар на Arizona RP [${server}]!\n📦 ${title || 'Предмет'}\n💰 Цена: ${price}$\n\nНайдено через бот поиска!`;
             let shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(shareText);
             if (tg.openTelegramLink) {
                 tg.openTelegramLink(shareUrl);
@@ -1658,7 +1648,7 @@
             let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
             
             if (myAds.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">У вас нет созданных тем.</div>';
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">У вас нет созданных предложений.</div>';
                 return;
             }
 
@@ -1673,7 +1663,7 @@
                         ${imgHtml}
                         <div class="ad-header"><span>${vipBadge}${modeBadge}<b>${escapeHtml(ad.server)}</b></span><span>${escapeHtml(ad.date)}</span></div>
                         <div>${buildAdTextHtml(ad)}</div>
-                        ${ad.mode === 'auction' ? `<button onclick="deleteAuctionByOwner('${ad.id}')" class="btn-danger" style="font-size:10px; padding:6px; margin-top:8px;">❌ Снять аукцион</button>` : ''}
+                        <button onclick="deleteAuctionByOwner('${ad.id}')" class="btn-danger" style="font-size:10px; padding:6px; margin-top:8px;">❌ Удалить</button>
                     </div>
                 `;
             });
@@ -1700,16 +1690,18 @@
                 });
             }
 
+            let favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
             let html = '';
             let isAdmin = checkIsAdmin();
             let currentUser = getCurrentUser();
 
             feed.forEach(ad => {
+                let isFav = favorites.includes(ad.id);
                 let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
                 let vipBadge = ad.isVip ? `<span class="forum-badge badge-vip">⭐ VIP</span>` : '';
                 let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : '';
                 let safeAuthor = escapeHtml(ad.author);
-                let adminDeleteBtn = isAdmin ? `<button onclick="deleteAdByAdmin('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin:0; width:auto;">🗑 Удалить</button>` : '';
+                let adminDeleteBtn = isAdmin ? `<button onclick="deleteAdByAdmin('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin:0; width:auto;">🗑</button>` : '';
 
                 let isOwnerOfAd = (ad.authorId === currentUser.id) || (ad.author === '@' + currentUser.username);
                 let auctionActionBtn = '';
@@ -1725,7 +1717,7 @@
                     <div class="ad-card ${ad.isVip ? 'vip-ad' : ''}">
                         ${imgHtml}
                         <div class="ad-header">
-                            <span>${vipBadge}${modeBadge}<span class="forum-badge badge-success">Одобрено</span><b>${escapeHtml(ad.server)}</b> | ${safeAuthor}</span>
+                            <span>${vipBadge}${modeBadge}<span class="forum-badge badge-success">В базе</span><b>${escapeHtml(ad.server)}</b> | ${safeAuthor}</span>
                             ${adminDeleteBtn}
                         </div>
                         <div style="margin-bottom:6px;">${buildAdTextHtml(ad)}</div>
@@ -1733,16 +1725,44 @@
                         
                         <div class="card-actions-grid">
                             <div class="write-seller-btn" data-author="${safeAuthor}">💬 В ЛС</div>
-                            <div class="share-btn" onclick="shareAdTopic('${escapeHtml(ad.title || 'Товар')}', '${escapeHtml(ad.server)}', '${ad.currentBid || ad.price || 0}')">🔗 Поделиться</div>
+                            <div class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${ad.id}')">${isFav ? '❤️ В избранном' : '🤍 В избранное'}</div>
+                            <div class="share-btn" onclick="shareAdTopic('${escapeHtml(ad.title || 'Предмет')}', '${escapeHtml(ad.server)}', '${ad.currentBid || ad.price || 0}')">🔗 Поделиться</div>
                         </div>
                     </div>
                 `;
             });
-            container.innerHTML = html || '<div style="text-align:center; color:var(--text-muted); padding:15px;">Темы не найдены.</div>';
+            container.innerHTML = html || '<div style="text-align:center; color:var(--text-muted); padding:15px;">Предметы не найдены. Попробуйте изменить запрос в поиске.</div>';
 
             container.querySelectorAll('.write-seller-btn').forEach(btn => {
                 btn.addEventListener('click', () => openChat(btn.dataset.author));
             });
+        }
+
+        function renderFavorites() {
+            let container = document.getElementById('favoritesContainer');
+            if (!container) return;
+            let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
+            let favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
+            let favAds = feed.filter(ad => favorites.includes(ad.id));
+
+            if (favAds.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">У вас нет сохраненных закладок.</div>';
+                return;
+            }
+
+            let html = '';
+            favAds.forEach(ad => {
+                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
+                html += `
+                    <div class="ad-card ${ad.isVip ? 'vip-ad' : ''}">
+                        ${imgHtml}
+                        <div class="ad-header"><span><b>${escapeHtml(ad.server)}</b> | ${escapeHtml(ad.author)}</span></div>
+                        <div>${buildAdTextHtml(ad)}</div>
+                        <button onclick="toggleFavorite('${ad.id}'); renderFavorites();" class="btn-danger" style="font-size:10px; padding:6px; margin-top:8px;">❌ Удалить из закладок</button>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
         }
 
         function setViewMode(mode) {
@@ -1755,26 +1775,26 @@
         function openModerationSelector(type) {
             let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
             let count = feed.filter(a => a.mode === type).length;
-            alert(`🛡️ Модерация раздела [${type.toUpperCase()}]: Найдено ${count} активных тем.`);
+            alert(`🛡️ Модерация раздела [${type.toUpperCase}]: Найдено ${count} активных записей.`);
         }
 
         function deleteAdByAdmin(adId) {
             triggerHaptic('medium');
-            if (!confirm('Вы точно хотите удалить эту тему как администратор?')) return;
+            if (!confirm('Удалить эту запись как администратор?')) return;
             
             let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
             feed = feed.filter(a => a.id !== adId);
             localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
             renderFeed();
-            alert('Тема успешно удалена!');
+            alert('Запись успешно удалена!');
         }
 
         function clearGlobalFeedAdmin() {
             triggerHaptic('heavy');
-            if (!confirm('⚠️ Вы уверены, что хотите полностью очистить ленту всех тем?')) return;
+            if (!confirm('⚠️ Полностью очистить всю базу предметов?')) return;
             localStorage.removeItem('arizona_global_feed');
             renderFeed();
-            alert('Лента объявлений полностью очищена.');
+            alert('База полностью очищена.');
         }
 
         function updateBroadcastMessage() {
@@ -1786,7 +1806,7 @@
             localStorage.setItem('arizona_broadcast_text', text);
             document.getElementById('broadcastText').innerText = text;
             input.value = '';
-            alert('📢 Системный баннер обновлен для всех игроков!');
+            alert('📢 Баннер успешно обновлен!');
         }
 
         function sendTargetAction(action) {
@@ -1795,11 +1815,11 @@
             if (!user) { alert('Введите ID или username пользователя!'); return; }
 
             let actionsMap = {
-                'ban': `Пользователь ${user} заблокирован на форуме!`,
-                'unban': `Пользователь ${user} успешно разблокирован.`,
+                'ban': `Пользователь ${user} заблокирован!`,
+                'unban': `Пользователь ${user} разблокирован.`,
                 'give_vip': `Пользователю ${user} выдан VIP статус!`,
-                'remove_vip': `У пользователя ${user} аннулирован VIP статус.`,
-                'make_admin': `Пользователю ${user} успешно выдан статус Администратора!`
+                'remove_vip': `У пользователя ${user} снят VIP статус.`,
+                'make_admin': `Пользователю ${user} выдан статус Администратора!`
             };
 
             alert(`👑 Панель управления:\n` + (actionsMap[action] || 'Действие выполнено.'));
@@ -1807,8 +1827,8 @@
         }
 
         function openBroadcastModal() {
-            let currentMsg = localStorage.getItem('arizona_broadcast_text') || 'Добро пожаловать на обновленный форум Arizona RP!';
-            alert('📢 Системное объявление:\n' + currentMsg);
+            let currentMsg = localStorage.getItem('arizona_broadcast_text') || 'Добро пожаловать в поисковик предметов Arizona RP!';
+            alert('📢 Системное уведомление:\n' + currentMsg);
         }
 
         function openNotificationsModal() { document.getElementById('notificationsModal').style.display = 'flex'; }
@@ -1816,10 +1836,6 @@
         function openChatsModal() { renderChatsList(); document.getElementById('chatsModal').style.display = 'flex'; }
         function closeChatsModal() { document.getElementById('chatsModal').style.display = 'none'; }
         function openSearchModal() { switchTab('feed'); }
-        function renderFavorites() {
-            let container = document.getElementById('favoritesContainer');
-            if (container) container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">Закладок пока нет.</div>';
-        }
         function clearMyAds() { localStorage.removeItem('my_arizona_ads'); renderMyAds(); }
     </script>
 </body>

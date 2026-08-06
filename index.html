@@ -57,7 +57,7 @@
             display: none;
         }
 
-        /* Шапка форума в стиле скриншотов */
+        /* Шапка форума */
         .forum-topbar {
             display: flex;
             justify-content: space-between;
@@ -74,9 +74,21 @@
             gap: 10px;
         }
         .forum-logo {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             object-fit: contain;
+            background: transparent;
+        }
+        .forum-brand-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .forum-subtitle {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
         .forum-brand-title {
             font-weight: 800;
@@ -97,15 +109,21 @@
             color: var(--text-muted);
             cursor: pointer;
             position: relative;
-            padding: 0;
+            padding: 4px;
             margin: 0;
             width: auto;
             box-shadow: none;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .forum-icon-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
         }
         .forum-icon-btn span.badge-dot {
             position: absolute;
-            top: -2px;
-            right: -2px;
+            top: 0;
+            right: 0;
             background: var(--accent-red);
             color: white;
             font-size: 9px;
@@ -159,7 +177,7 @@
             animation: fadeIn 0.25s ease-out forwards;
         }
 
-        /* Формы и поля ввода в стиле форума */
+        /* Формы и поля ввода */
         .form-group {
             margin-bottom: 14px;
         }
@@ -234,7 +252,7 @@
             color: #fcd34d;
         }
         
-        /* Карточки тем на форуме */
+        /* Карточки тем */
         .ad-card {
             background: var(--forum-card-bg);
             border: 1px solid var(--forum-card-border);
@@ -263,7 +281,7 @@
             align-items: center;
         }
 
-        /* Форумные плашки статусов */
+        /* Плашки */
         .forum-badge {
             display: inline-block;
             font-size: 9px;
@@ -278,7 +296,6 @@
         .badge-important { background: var(--accent-red); color: #fff; }
         .badge-success { background: var(--accent-green); color: #fff; }
 
-        /* Элементы ленты и комментов */
         .feed-controls {
             display: flex;
             gap: 6px;
@@ -311,7 +328,6 @@
             border-color: rgba(255, 255, 255, 0.15);
         }
 
-        /* Сетка */
         .ads-container.grid-view {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -377,6 +393,20 @@
             border: 1px solid var(--forum-card-border);
         }
 
+        /* Список чатов и уведомлений */
+        .chat-item, .notif-item {
+            background: var(--forum-card-hover);
+            border: 1px solid var(--forum-card-border);
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .chat-item:hover, .notif-item:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
         /* Модальные окна */
         .modal-overlay {
             display: none;
@@ -417,7 +447,7 @@
 </head>
 <body>
     <div class="container">
-        <!-- Уведомление о рассылке (появляется сверху) -->
+        <!-- Уведомление о рассылке сверху -->
         <div id="broadcastBanner" class="broadcast-banner" onclick="openBroadcastModal()">
             📢 <b>Новая рассылка от администрации!</b> Нажмите, чтобы прочитать.
         </div>
@@ -425,13 +455,16 @@
         <!-- Шапка форума -->
         <div class="forum-topbar">
             <div class="forum-brand">
-                <img src="1000060999.jpg" alt="Logo" class="forum-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%23ef4444\'><path d=\'M12 2L2 22h20L12 2z\'/></svg>'">
-                <div class="forum-brand-title">Arizona RolePlay</div>
+                <img src="1000060999_2.jpg" alt="Logo" class="forum-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%23ef4444\'><path d=\'M12 2L2 22h20L12 2z\'/></svg>'">
+                <div class="forum-brand-info">
+                    <div class="forum-subtitle">неофициальный клиент</div>
+                    <div class="forum-brand-title">Arizona RolePlay</div>
+                </div>
             </div>
             <div class="forum-top-icons">
-                <button class="forum-icon-btn" title="Уведомления">🔔<span class="badge-dot">1</span></button>
-                <button class="forum-icon-btn" title="Переписки">💬</button>
-                <button class="forum-icon-btn" title="Поиск">🔍</button>
+                <button class="forum-icon-btn" onclick="openNotificationsModal()" title="Уведомления">🔔<span class="badge-dot" id="notifDot" style="display:none;">1</span></button>
+                <button class="forum-icon-btn" onclick="openChatsModal()" title="Переписки">💬<span class="badge-dot" id="chatDot" style="display:none;">1</span></button>
+                <button class="forum-icon-btn" onclick="openSearchModal()" title="Поиск">🔍</button>
             </div>
         </div>
 
@@ -540,7 +573,7 @@
             <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 14px;">Очистить архив тем</button>
         </div>
 
-        <!-- ВКЛАДКА 3: Лента всех отредактированных объявлений -->
+        <!-- ВКЛАДКА 3: Лента -->
         <div id="tabFeed" class="section">
             <div class="admin-section-title">🌍 Главный раздел форума (Лента)</div>
             
@@ -632,7 +665,7 @@
         </div>
     </div>
 
-    <!-- Модальные окна -->
+    <!-- Модальное окно: Успешное создание -->
     <div id="successModal" class="modal-overlay">
         <div class="modal-content">
             <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
@@ -642,13 +675,69 @@
         </div>
     </div>
 
-    <!-- Модальное окно просмотра рассылки -->
+    <!-- Модальное окно: Просмотр рассылки -->
     <div id="broadcastModal" class="modal-overlay">
         <div class="modal-content">
             <div style="font-size: 32px; margin-bottom: 10px;">📢</div>
             <h3 style="color: #ffffff; margin-top: 0; margin-bottom: 6px; font-size: 16px;">Рассылка</h3>
             <p id="broadcastContentText" style="font-size: 12px; color: var(--text-main); margin-bottom: 16px; line-height: 1.4; text-align: left; background: var(--forum-card-hover); padding: 10px; border-radius: 8px;"></p>
             <button onclick="closeBroadcastModal()" style="margin-top: 0;">В главное меню</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Подтверждение отправки рассылки (для админа) -->
+    <div id="broadcastSentModal" class="modal-overlay">
+        <div class="modal-content">
+            <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
+            <h3 style="color: #ffffff; margin-top: 0; margin-bottom: 6px; font-size: 16px;">Рассылка отправлена!</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Спасибо! Ваше сообщение успешно разослано всем игрокам.</p>
+            <button onclick="closeBroadcastSentModal()" style="margin-top: 0;">Убрать сообщение</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Центр уведомлений (Колокольчик) -->
+    <div id="notificationsModal" class="modal-overlay">
+        <div class="modal-content" style="text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">🔔 Уведомления</h3>
+                <button class="btn-secondary" onclick="closeNotificationsModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
+            </div>
+            <div id="notificationsList"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Переписки (Сообщения) -->
+    <div id="chatsModal" class="modal-overlay">
+        <div class="modal-content" style="text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">💬 Переписки</h3>
+                <button class="btn-secondary" onclick="closeChatsModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
+            </div>
+            <div id="chatsList">
+                <div class="chat-item" onclick="openChat('Тех. поддержка Arizona')">
+                    <div style="font-weight: 700; font-size: 12px; margin-bottom: 2px;">🛡️ Тех. поддержка Arizona</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Добро пожаловать в клиент! Задайте вопрос по модерации тем.</div>
+                </div>
+                <div class="chat-item" onclick="openChat('Arizona Games (Администратор)')">
+                    <div style="font-weight: 700; font-size: 12px; margin-bottom: 2px;">👑 Arizona Games</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Ваша тема на сервере была проверена.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно конкретного чата -->
+    <div id="chatDetailModal" class="modal-overlay">
+        <div class="modal-content" style="text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 id="chatTitle" style="color: #ffffff; margin: 0; font-size: 14px;">Чат</h3>
+                <button class="btn-secondary" onclick="closeChatDetail()" style="width: auto; margin:0; padding: 4px 8px; font-size: 11px;">Назад</button>
+            </div>
+            <div id="chatMessages" style="background: var(--forum-card-hover); padding: 10px; border-radius: 8px; height: 160px; overflow-y: auto; font-size: 11px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px;"></div>
+            <div style="display: flex; gap: 6px;">
+                <input type="text" id="chatInputMessage" placeholder="Введите сообщение..." style="margin-bottom:0;">
+                <button onclick="sendChatMessage()" style="width: 70px; margin-top:0; padding: 10px;">Отпр</button>
+            </div>
         </div>
     </div>
 
@@ -685,7 +774,7 @@
 
     <div id="imageModal" class="modal-overlay" onclick="closeImageModal()">
         <div class="modal-content" style="background: transparent; border: none; max-width: 90vw;" onclick="event.stopPropagation()">
-            <img id="lightboxImage" class="lightbox-img" src="" alt="Full view" loading="lazy" decoding="async">
+            <img id="lightboxImage" class="lightbox-img" src="" alt="Full view" loading="lazy">
             <button class="btn-secondary" onclick="closeImageModal()" style="margin-top: 10px; width: auto; padding: 6px 20px;">Закрыть</button>
         </div>
     </div>
@@ -716,8 +805,7 @@
         }
 
         function checkIsAdmin() {
-            let user = checkIsOwner() || (getCurrentUser().username && ADMIN_USERNAMES.includes(getCurrentUser().username.toLowerCase()));
-            return user;
+            return checkIsOwner() || (getCurrentUser().username && ADMIN_USERNAMES.includes(getCurrentUser().username.toLowerCase()));
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -729,12 +817,134 @@
                     if (ownerSec && checkIsOwner()) ownerSec.style.display = 'block';
                 }
                 checkActiveBroadcast();
+                loadNotifications();
                 switchTab('app');
             } catch (e) {
                 console.error('Ошибка инициализации:', e);
             }
         });
 
+        // Уведомления (Колокольчик)
+        function addNotification(text) {
+            try {
+                let notifs = JSON.parse(localStorage.getItem('arizona_notifications') || '[]');
+                notifs.unshift({ text: text, date: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
+                localStorage.setItem('arizona_notifications', JSON.stringify(notifs));
+                loadNotifications();
+            } catch(e){}
+        }
+
+        function loadNotifications() {
+            try {
+                let notifs = JSON.parse(localStorage.getItem('arizona_notifications') || '[]');
+                let container = document.getElementById('notificationsList');
+                let dot = document.getElementById('notifDot');
+                if (notifs.length > 0 && dot) dot.style.display = 'block';
+
+                if (!container) return;
+                if (notifs.length === 0) {
+                    container.innerHTML = '<div class="access-denied">Нет новых уведомлений.</div>';
+                    return;
+                }
+                let html = '';
+                notifs.forEach(n => {
+                    html += `<div class="notif-item"><div style="font-size:11px; color:#fff; margin-bottom:2px;">${n.text}</div><div style="font-size:9px; color:var(--text-muted);">${n.date}</div></div>`;
+                });
+                container.innerHTML = html;
+            } catch(e){}
+        }
+
+        function openNotificationsModal() {
+            triggerHaptic('light');
+            let dot = document.getElementById('notifDot');
+            if (dot) dot.style.display = 'none';
+            let modal = document.getElementById('notificationsModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeNotificationsModal() {
+            triggerHaptic('light');
+            let modal = document.getElementById('notificationsModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // Переписки (Сообщения)
+        function openChatsModal() {
+            triggerHaptic('light');
+            let chatDot = document.getElementById('chatDot');
+            if (chatDot) chatDot.style.display = 'none';
+            let modal = document.getElementById('chatsModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeChatsModal() {
+            let modal = document.getElementById('chatsModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        let activeChatName = '';
+        function openChat(name) {
+            triggerHaptic('light');
+            activeChatName = name;
+            let chatModal = document.getElementById('chatsModal');
+            if (chatModal) chatModal.style.display = 'none';
+
+            let titleEl = document.getElementById('chatTitle');
+            if (titleEl) titleEl.innerText = name;
+
+            renderChatMessages();
+            let detailModal = document.getElementById('chatDetailModal');
+            if (detailModal) detailModal.style.display = 'flex';
+        }
+
+        function closeChatDetail() {
+            let detailModal = document.getElementById('chatDetailModal');
+            if (detailModal) detailModal.style.display = 'none';
+            openChatsModal();
+        }
+
+        function renderChatMessages() {
+            let container = document.getElementById('chatMessages');
+            if (!container) return;
+            try {
+                let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
+                let messages = chatsData[activeChatName] || [
+                    { sender: 'system', text: 'Здравствуйте! Здесь вы можете общаться с участниками и администрацией.' }
+                ];
+                let html = '';
+                messages.forEach(m => {
+                    let isMe = m.sender === 'me';
+                    html += `<div style="text-align: ${isMe ? 'right' : 'left'};"><span style="display:inline-block; background:${isMe ? 'var(--accent-blue)' : '#222531'}; padding:6px 10px; border-radius:8px; color:#fff; max-width:80%;">${m.text}</span></div>`;
+                });
+                container.innerHTML = html;
+                container.scrollTop = container.scrollHeight;
+            } catch(e){}
+        }
+
+        function sendChatMessage() {
+            triggerHaptic('light');
+            let input = document.getElementById('chatInputMessage');
+            if (!input) return;
+            let text = input.value.trim();
+            if (!text) return;
+
+            try {
+                let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
+                if (!chatsData[activeChatName]) chatsData[activeChatName] = [];
+                chatsData[activeChatName].push({ sender: 'me', text: text });
+                localStorage.setItem('arizona_chats_data', JSON.stringify(chatsData));
+                input.value = '';
+                renderChatMessages();
+            } catch(e){}
+        }
+
+        function openSearchModal() {
+            switchTab('feed');
+            let searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.focus();
+        }
+
+        // Рассылка
         function checkActiveBroadcast() {
             try {
                 let broadcastText = localStorage.getItem('arizona_active_broadcast');
@@ -760,7 +970,31 @@
             triggerHaptic('light');
             let modal = document.getElementById('broadcastModal');
             if (modal) modal.style.display = 'none';
-            switchTab('app'); // Переход в главное меню
+            switchTab('app');
+        }
+
+        function sendBroadcast() {
+            triggerHaptic('medium');
+            let broadcastText = document.getElementById('broadcastText');
+            if (!broadcastText) return;
+            let text = broadcastText.value.trim();
+            if (!text) { alert('Введите текст!'); return; }
+
+            try {
+                localStorage.setItem('arizona_active_broadcast', text);
+                addNotification('📢 Новая рассылка от администрации: ' + text);
+            } catch(e){}
+
+            let sentModal = document.getElementById('broadcastSentModal');
+            if (sentModal) sentModal.style.display = 'flex';
+        }
+
+        function closeBroadcastSentModal() {
+            triggerHaptic('light');
+            let sentModal = document.getElementById('broadcastSentModal');
+            if (sentModal) sentModal.style.display = 'none';
+            let broadcastText = document.getElementById('broadcastText');
+            if (broadcastText) broadcastText.value = '';
         }
 
         function switchTab(tabName) {
@@ -839,7 +1073,7 @@
             if (!modeEl || !serverEl) return;
 
             let mode = modeEl.value;
-            let server = serverEl.value;
+            let server = serverEl.value; // Корректно выбранный сервер
             let category = categoryEl ? categoryEl.value : '';
             let textContent = '';
             
@@ -912,9 +1146,6 @@
             if (textEl) textEl.value = '';
             if (imageEl) imageEl.value = '';
 
-            if (pendingData && typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify({ action: 'new_ad', data: pendingData })); } catch (e) {}
-            }
             pendingData = null;
         }
 
@@ -955,7 +1186,7 @@
 
             let html = '';
             filtered.forEach(ad => {
-                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
+                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
                 html += `
                     <div class="ad-card" id="pending_card_${ad.id}">
                         ${imageBlock}
@@ -1031,19 +1262,8 @@
                     let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
                     feed.unshift(feedItem);
                     localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
+                    addNotification(`✅ Ваша тема на сервере ${ad.server} была отредактирована и одобрена модератором.`);
                 } catch(e){}
-
-                if (typeof tg.sendData === 'function') {
-                    try {
-                        tg.sendData(JSON.stringify({
-                            action: 'approve_and_edit_ad',
-                            id: selectedAdId,
-                            userId: ad.userId || 0,
-                            edited_text: newText,
-                            mode: currentModType
-                        }));
-                    } catch(e){}
-                }
             }
 
             let praiseText = document.getElementById('praiseText');
@@ -1071,10 +1291,8 @@
                 localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
                 renderPendingAdsList();
 
-                if (typeof tg.sendData === 'function') {
-                    try {
-                        tg.sendData(JSON.stringify({ action: 'delete_pending_ad', id: id, userId: targetAd ? targetAd.userId : 0 }));
-                    } catch(e){}
+                if (targetAd) {
+                    addNotification(`❌ Ваша тема (${targetAd.server}) была отклонена / удалена администрацией.`);
                 }
             }, 250);
         }
@@ -1105,7 +1323,7 @@
             let html = '';
             myAds.forEach(ad => {
                 let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Обмен' }[ad.mode] || ad.mode;
-                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'75px':'120px'}; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
+                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'75px':'120px'}; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
                 html += `
                     <div class="ad-card" id="my_card_${ad.id}">
                         ${imageBlock}
@@ -1167,7 +1385,7 @@
 
             filtered.forEach(ad => {
                 let isFav = favorites.includes(ad.id);
-                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'75px':'120px'}; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
+                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'75px':'120px'}; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
                 html += `
                     <div class="ad-card" id="card_feed_${ad.id}">
                         ${imageBlock}
@@ -1179,7 +1397,7 @@
                             </div>
                         </div>
                         <div style="margin-bottom: 6px;">${ad.text}</div>
-                        <div class="forum-comment-box">
+                        <div class="forum-comment-box" onclick="openChat('Обсуждение темы ${ad.server}')">
                             <span>✏️</span> Напишите комментарий...
                         </div>
                         ${isOwner ? `<button class="btn-danger" style="margin-top:6px; padding:5px; font-size:11px;" onclick="ownerDeleteFeedAd('${ad.id}')">🗑 Удалить тему (Владелец)</button>` : ''}
@@ -1193,7 +1411,13 @@
             triggerHaptic('medium');
             if (!confirm('Удалить тему из ленты?')) return;
             let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
+            try { 
+                feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
+                let target = feed.find(a => a.id === id);
+                if (target) {
+                    addNotification(`⚠️ Ваша опубликованная тема (${target.server}) была удалена администратором.`);
+                }
+            } catch(e){}
             feed = feed.filter(a => a.id !== id);
             localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
             renderFeed();
@@ -1236,7 +1460,7 @@
 
             let html = '';
             favoriteAds.forEach(ad => {
-                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 110px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
+                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 110px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
                 html += `
                     <div class="ad-card">
                         ${imageBlock}
@@ -1295,24 +1519,8 @@
                 try { tg.sendData(JSON.stringify({ action: actionType, target: target })); } catch (e) {}
             }
         }
-
-        function sendBroadcast() {
-            triggerHaptic('medium');
-            let broadcastText = document.getElementById('broadcastText');
-            if (!broadcastText) return;
-            let text = broadcastText.value.trim();
-            if (!text) { alert('Введите текст!'); return; }
-
-            // Сохраняем рассылку локально для отображения баннера активным пользователям
-            try {
-                localStorage.setItem('arizona_active_broadcast', text);
-            } catch(e){}
-
-            if (typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify({ action: 'broadcast', text: text })); } catch (e) {}
-            }
-            alert('Рассылка успешно отправлена!');
-        }
     </script>
 </body>
 </html>
+
+

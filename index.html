@@ -3,42 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arizona RP Mini App</title>
+    <title>Arizona RP Forum Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 15px rgba(255, 170, 0, 0.2); }
-            50% { box-shadow: 0 0 25px rgba(255, 170, 0, 0.4); }
-            100% { box-shadow: 0 0 15px rgba(255, 170, 0, 0.2); }
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         :root {
-            --bg-gradient: linear-gradient(145deg, #090a0f 0%, #13151b 50%, #1a1c24 100%);
-            --card-bg: rgba(26, 28, 35, 0.7);
-            --card-border: rgba(255, 255, 255, 0.07);
-            --accent-primary: #ffb703;
-            --accent-gradient: linear-gradient(135deg, #ffb703 0%, #fb8500 100%);
-            --text-main: #f8f9fa;
+            --forum-bg: #0c0d12;
+            --forum-header-bg: #13151d;
+            --forum-card-bg: #161821;
+            --forum-card-border: rgba(255, 255, 255, 0.06);
+            --forum-card-hover: #1c1f2b;
+            --accent-red: #ef4444;
+            --accent-orange: #f59e0b;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --text-main: #f3f4f6;
             --text-muted: #9ca3af;
+            --badge-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg-gradient);
+            background: var(--forum-bg);
             color: var(--text-main);
             margin: 0;
-            padding: 16px;
+            padding: 12px;
             min-height: 100vh;
             box-sizing: border-box;
         }
@@ -47,97 +40,99 @@
             max-width: 440px;
             margin: 0 auto;
         }
-        
-        /* Шапка */
-        .app-header-container {
-            text-align: center;
-            margin-bottom: 20px;
-            position: relative;
-        }
-        .app-header-container::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60px;
-            height: 3px;
-            background: var(--accent-gradient);
-            border-radius: 2px;
-        }
-        .unofficial-badge {
-            font-size: 10px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 8px;
-            font-weight: 700;
-        }
-        .app-avatar-ring {
-            display: inline-flex;
-            justify-content: center;
+
+        /* Шапка форума в стиле скриншотов */
+        .forum-topbar {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ffb703, #fb8500, #ff0055, #7209b7);
-            padding: 2px;
-            margin-bottom: 8px;
-            animation: pulseGlow 4s infinite ease-in-out;
+            background: var(--forum-header-bg);
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--forum-card-border);
+            margin-bottom: 14px;
         }
-        .app-avatar-inner {
-            width: 100%;
-            height: 100%;
-            background: #13151b;
-            border-radius: 50%;
+        .forum-brand {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 24px;
+            gap: 10px;
         }
-        .app-title {
+        .forum-logo {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+        .forum-brand-title {
+            font-weight: 800;
+            font-size: 15px;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }
+        .forum-top-icons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+        .forum-icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            position: relative;
+            padding: 0;
             margin: 0;
-            font-size: 26px;
-            font-weight: 900;
-            background: linear-gradient(135deg, #ffffff 30%, #ffb703 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: 0.5px;
+            width: auto;
+            box-shadow: none;
+        }
+        .forum-icon-btn span.badge-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: var(--accent-red);
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 10px;
         }
 
-        /* Навигация */
+        /* Навигация (вкладки форума) */
         .nav-tabs {
             display: flex;
-            gap: 6px;
-            margin-bottom: 20px;
-            background: rgba(18, 20, 26, 0.8);
-            padding: 6px;
-            border-radius: 14px;
-            border: 1px solid var(--card-border);
-            backdrop-filter: blur(10px);
+            gap: 5px;
+            margin-bottom: 16px;
+            background: var(--forum-header-bg);
+            padding: 5px;
+            border-radius: 12px;
+            border: 1px solid var(--forum-card-border);
+            overflow-x: auto;
         }
         .nav-tab {
             flex: 1;
-            padding: 9px 4px;
+            padding: 8px 6px;
             background-color: transparent;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             color: var(--text-muted);
             font-weight: 600;
             text-align: center;
             cursor: pointer;
             font-size: 11px;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            transition: all 0.2s ease;
         }
         .nav-tab:hover {
             color: var(--text-main);
             background: rgba(255, 255, 255, 0.03);
         }
         .nav-tab.active {
-            background: var(--accent-gradient);
-            color: #000000;
-            font-weight: 800;
-            box-shadow: 0 4px 15px rgba(251, 133, 0, 0.35);
+            background: var(--forum-card-hover);
+            color: #ffffff;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
         .section {
@@ -145,103 +140,99 @@
         }
         .section.active {
             display: block;
-            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: fadeIn 0.25s ease-out forwards;
         }
 
+        /* Формы и поля ввода в стиле форума */
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         label {
             display: block;
-            margin-bottom: 6px;
-            font-size: 12px;
+            margin-bottom: 5px;
+            font-size: 11px;
             font-weight: 600;
-            color: #d1d5db;
-            letter-spacing: 0.3px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         select, input, textarea {
             width: 100%;
-            padding: 12px 14px;
+            padding: 11px 13px;
             border-radius: 10px;
-            border: 1px solid var(--card-border);
-            background: rgba(20, 22, 29, 0.8);
-            backdrop-filter: blur(12px);
-            color: var(--tg-theme-text-color, #ffffff);
+            border: 1px solid var(--forum-card-border);
+            background: var(--forum-card-bg);
+            color: var(--text-main);
             box-sizing: border-box;
-            margin-bottom: 4px;
             font-size: 13px;
             outline: none;
-            transition: all 0.2s ease;
+            transition: border-color 0.2s;
         }
         select:focus, input:focus, textarea:focus {
-            border-color: var(--accent-primary);
-            background: rgba(25, 28, 38, 0.95);
-            box-shadow: 0 0 0 3px rgba(255, 183, 3, 0.15);
+            border-color: var(--accent-blue);
         }
 
         button {
             width: 100%;
-            padding: 13px;
-            background: var(--accent-gradient);
-            color: #000000;
+            padding: 12px;
+            background: var(--accent-blue);
+            color: #ffffff;
             border: none;
             border-radius: 10px;
-            font-weight: 800;
-            font-size: 14px;
+            font-weight: 700;
+            font-size: 13px;
             cursor: pointer;
-            margin-top: 8px;
-            margin-bottom: 12px;
-            transition: transform 0.15s ease, opacity 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 4px 15px rgba(251, 133, 0, 0.3);
+            margin-top: 6px;
+            margin-bottom: 10px;
+            transition: opacity 0.2s, transform 0.1s;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
         button:active {
-            transform: scale(0.97);
+            transform: scale(0.98);
             opacity: 0.9;
         }
         .btn-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: #ffffff;
-            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            background: var(--badge-gradient);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
         .btn-success {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: #ffffff;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            color: #ffffff;
-            border: 1px solid var(--card-border);
+            background: var(--forum-card-hover);
+            color: var(--text-main);
+            border: 1px solid var(--forum-card-border);
             box-shadow: none;
         }
 
         .warning-box {
-            background: rgba(255, 183, 3, 0.06);
-            border: 1px solid rgba(255, 183, 3, 0.2);
-            border-left: 4px solid var(--accent-primary);
-            padding: 12px;
-            font-size: 12px;
-            margin-bottom: 18px;
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-left: 3px solid var(--accent-orange);
+            padding: 10px 12px;
+            font-size: 11px;
+            margin-bottom: 14px;
             border-radius: 8px;
-            line-height: 1.5;
+            line-height: 1.4;
+            color: #fcd34d;
         }
         
-        /* Карточки */
+        /* Карточки тем на форуме */
         .ad-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--card-border);
-            border-radius: 14px;
-            padding: 14px;
-            margin-bottom: 12px;
-            font-size: 13px;
-            animation: fadeIn 0.3s ease-out forwards;
-            transition: transform 0.2s ease, border-color 0.2s ease;
+            background: var(--forum-card-bg);
+            border: 1px solid var(--forum-card-border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            transition: background 0.2s, border-color 0.2s;
             position: relative;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
         }
         .ad-card:hover {
-            border-color: rgba(255, 183, 3, 0.3);
+            background: var(--forum-card-hover);
+            border-color: rgba(255, 255, 255, 0.1);
         }
         .ad-card.removing {
             opacity: 0;
@@ -249,19 +240,33 @@
         }
         .ad-header {
             font-size: 11px;
-            color: var(--accent-primary);
-            margin-bottom: 8px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-weight: 600;
         }
-        
-        /* Элементы ленты */
+
+        /* Форумные плашки статусов */
+        .forum-badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            margin-right: 6px;
+        }
+        .badge-new { background: var(--accent-orange); color: #000; }
+        .badge-processing { background: rgba(255, 255, 255, 0.1); color: #d1d5db; border: 1px solid var(--forum-card-border); }
+        .badge-important { background: var(--accent-red); color: #fff; }
+        .badge-success { background: var(--accent-green); color: #fff; }
+
+        /* Элементы ленты и комментов */
         .feed-controls {
             display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 6px;
+            margin-bottom: 10px;
         }
         .feed-controls input, .feed-controls select {
             margin-bottom: 0;
@@ -269,33 +274,32 @@
         .view-mode-btns {
             display: flex;
             gap: 6px;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
         .view-mode-btn {
             flex: 1;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--card-border);
+            padding: 6px;
+            background: var(--forum-card-bg);
+            border: 1px solid var(--forum-card-border);
             color: var(--text-muted);
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            box-shadow: none;
+            margin: 0;
         }
         .view-mode-btn.active {
-            background: var(--accent-gradient);
-            color: #000;
-            font-weight: 800;
-            border-color: transparent;
-            box-shadow: 0 2px 10px rgba(251, 133, 0, 0.3);
+            background: var(--forum-card-hover);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.15);
         }
 
         /* Сетка */
         .ads-container.grid-view {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 8px;
         }
         .ads-container.grid-view .ad-card {
             margin-bottom: 0;
@@ -303,47 +307,59 @@
             padding: 10px;
         }
         .ads-container.grid-view img {
-            height: 90px !important;
+            height: 80px !important;
         }
 
         .fav-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--card-border);
+            background: var(--forum-card-hover);
+            border: 1px solid var(--forum-card-border);
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 26px;
+            height: 26px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             padding: 0;
             box-shadow: none;
             margin: 0;
-            transition: transform 0.2s;
         }
-        .fav-btn:active {
-            transform: scale(1.2);
+
+        /* Имитация блока ответа на форуме */
+        .forum-comment-box {
+            margin-top: 8px;
+            background: #0f1015;
+            border: 1px solid var(--forum-card-border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 11px;
         }
 
         .admin-section-title {
-            font-size: 14px;
-            font-weight: 800;
-            color: var(--accent-primary);
-            margin-top: 18px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid var(--card-border);
-            padding-bottom: 6px;
-            letter-spacing: 0.5px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-top: 16px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--forum-card-border);
+            padding-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         .access-denied {
             text-align: center;
-            padding: 40px 20px;
+            padding: 30px 16px;
             color: var(--text-muted);
-            font-size: 13px;
-            background: var(--card-bg);
-            border-radius: 14px;
-            border: 1px solid var(--card-border);
+            font-size: 12px;
+            background: var(--forum-card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--forum-card-border);
         }
 
         /* Модальные окна */
@@ -354,24 +370,24 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(5, 6, 9, 0.85);
-            backdrop-filter: blur(8px);
+            background: rgba(8, 9, 13, 0.85);
+            backdrop-filter: blur(6px);
             z-index: 1000;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 16px;
             box-sizing: border-box;
             animation: fadeIn 0.2s ease-out;
         }
         .modal-content {
-            background: #161821;
-            padding: 24px;
-            border-radius: 18px;
-            max-width: 360px;
+            background: var(--forum-card-bg);
+            padding: 20px;
+            border-radius: 14px;
+            max-width: 340px;
             width: 100%;
             text-align: center;
-            border: 1px solid var(--card-border);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--forum-card-border);
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6);
             max-height: 85vh;
             overflow-y: auto;
             box-sizing: border-box;
@@ -380,38 +396,42 @@
             width: 100%;
             max-height: 75vh;
             object-fit: contain;
-            border-radius: 10px;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Шапка -->
-        <div class="app-header-container">
-            <div class="unofficial-badge">Неофициальный клиент</div>
-            <div class="app-avatar-ring">
-                <div class="app-avatar-inner">🔥</div>
+        <!-- Шапка форума -->
+        <div class="forum-topbar">
+            <div class="forum-brand">
+                <img src="1000060999.jpg" alt="Logo" class="forum-logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'%23ef4444\'><path d=\'M12 2L2 22h20L12 2z\'/></svg>'">
+                <div class="forum-brand-title">Arizona RolePlay</div>
             </div>
-            <h2 class="app-title">Arizona RP</h2>
+            <div class="forum-top-icons">
+                <button class="forum-icon-btn" title="Уведомления">🔔<span class="badge-dot">1</span></button>
+                <button class="forum-icon-btn" title="Переписки">💬</button>
+                <button class="forum-icon-btn" title="Поиск">🔍</button>
+            </div>
         </div>
 
-        <!-- Навигация -->
+        <!-- Навигационные вкладки -->
         <div class="nav-tabs" id="navTabs">
-            <button class="nav-tab active" onclick="switchTab('app')">Объявить</button>
-            <button class="nav-tab" onclick="switchTab('myAds')">Мои</button>
-            <button class="nav-tab" onclick="switchTab('feed')">Лента</button>
-            <button class="nav-tab" onclick="switchTab('favorites')">Избранное</button>
-            <button class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">Админ</button>
+            <button class="nav-tab active" onclick="switchTab('app')">📝 Создать</button>
+            <button class="nav-tab" onclick="switchTab('myAds')">📂 Мои темы</button>
+            <button class="nav-tab" onclick="switchTab('feed')">🌍 Лента</button>
+            <button class="nav-tab" onclick="switchTab('favorites')">❤️ Закладки</button>
+            <button class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">⚙️ Админ</button>
         </div>
 
         <!-- ВКЛАДКА 1: Создание объявлений -->
         <div id="tabApp" class="section active">
             <div class="warning-box">
-                ⚠️ <b>Безопасность:</b> Администрация не несет ответственности за сделки. Все действия на ваш страх и риск! Отправка доступна с <b>08:00 до 22:00 МСК</b>.
+                ⚠️ <b>Правила раздела:</b> Администрация не несет ответственности за сделки. Публикация доступна с <b>08:00 до 22:00 МСК</b>.
             </div>
             
             <div class="form-group">
-                <label for="mode">Режим:</label>
+                <label for="mode">Тип темы:</label>
                 <select id="mode" onchange="toggleMode()">
                     <option value="sell">Продажа</option>
                     <option value="buy">Скупка</option>
@@ -421,7 +441,7 @@
             </div>
 
             <div class="form-group" id="categoryGroup">
-                <label for="category">Категория:</label>
+                <label for="category">Раздел форума:</label>
                 <select id="category">
                     <option value="💍 Аксессуары и вещи">💍 Аксессуары и вещи</option>
                     <option value="🚗 Транспорт и тюнинг">🚗 Транспорт и тюнинг</option>
@@ -442,12 +462,12 @@
             </div>
 
             <div class="form-group" id="textGroup">
-                <label for="text">Текст объявления:</label>
-                <textarea id="text" rows="4" placeholder="Опишите ваш товар или условия..."></textarea>
+                <label for="text">Содержание темы / Описание:</label>
+                <textarea id="text" rows="4" placeholder="Опишите ваш товар или условия сделки..."></textarea>
             </div>
 
             <div class="form-group" id="imageGroup">
-                <label for="itemImage">Ссылка на фото (необязательно):</label>
+                <label for="itemImage">Ссылка на скриншот (необязательно):</label>
                 <input type="url" id="itemImage" placeholder="https://imgur.com/... или прямая ссылка">
             </div>
 
@@ -490,23 +510,23 @@
                 </select>
             </div>
 
-            <button onclick="submitData()">Отправить в бот</button>
+            <button onclick="submitData()">Создать тему</button>
         </div>
 
         <!-- ВКЛАДКА 2: Мои объявления -->
         <div id="tabMyAds" class="section">
-            <div class="admin-section-title">📋 Ваши отправленные объявления</div>
+            <div class="admin-section-title">📂 Созданные вами темы</div>
             <div id="myAdsContainer" class="ads-container"></div>
-            <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 15px;">Очистить всю историю</button>
+            <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 14px;">Очистить архив тем</button>
         </div>
 
         <!-- ВКЛАДКА 3: Лента всех отредактированных объявлений -->
         <div id="tabFeed" class="section">
-            <div class="admin-section-title">🌍 Лента объявлений игроков</div>
+            <div class="admin-section-title">🌍 Главный раздел форума (Лента)</div>
             
             <div class="feed-controls">
-                <input type="text" id="searchInput" placeholder="🔍 Поиск по тексту..." oninput="renderFeed()">
-                <select id="serverFilter" onchange="renderFeed()" style="width: 140px;">
+                <input type="text" id="searchInput" placeholder="🔍 Поиск по темам..." oninput="renderFeed()">
+                <select id="serverFilter" onchange="renderFeed()" style="width: 130px;">
                     <option value="">Все серверы</option>
                     <option value="Phoenix">Phoenix</option>
                     <option value="Tucson">Tucson</option>
@@ -542,8 +562,8 @@
             </div>
 
             <div class="view-mode-btns">
-                <button class="view-mode-btn active" id="btnListView" onclick="setViewMode('list')">📄 Список</button>
-                <button class="view-mode-btn" id="btnGridView" onclick="setViewMode('grid')">🧮 Сетка</button>
+                <button class="view-mode-btn active" id="btnListView" onclick="setViewMode('list')">📄 Списком</button>
+                <button class="view-mode-btn" id="btnGridView" onclick="setViewMode('grid')">🧮 Плиткой</button>
             </div>
 
             <div id="feedContainer" class="ads-container"></div>
@@ -551,15 +571,15 @@
 
         <!-- ВКЛАДКА 4: Избранное -->
         <div id="tabFavorites" class="section">
-            <div class="admin-section-title">❤️ Избранные объявления</div>
+            <div class="admin-section-title">❤️ Ваши закладки</div>
             <div id="favoritesContainer" class="ads-container"></div>
         </div>
 
         <!-- ВКЛАДКА 5: Админ-панель -->
         <div id="tabAdmin" class="section">
             <div id="adminContent">
-                <div class="admin-section-title">📦 Модерация объявлений</div>
-                <button onclick="openModerationSelector('sell')">Модерация продажи</button>
+                <div class="admin-section-title">🛡️ Модерация тем</div>
+                <button onclick="openModerationSelector('sell')">Модерация продаж</button>
                 <button onclick="openModerationSelector('buy')">Модерация скупки</button>
 
                 <div id="ownerSection" style="display: none;">
@@ -567,27 +587,27 @@
                     <div class="form-group">
                         <input type="text" id="targetUser" placeholder="ID или @username пользователя">
                     </div>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 6px;">
                         <button class="btn-danger" onclick="sendTargetAction('ban')">Забанить</button>
                         <button class="btn-success" onclick="sendTargetAction('unban')">Разбанить</button>
                     </div>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 6px;">
                         <button class="btn-success" onclick="sendTargetAction('add_admin')">Дать адм</button>
                         <button class="btn-danger" onclick="sendTargetAction('remove_admin')">Снять адм</button>
                     </div>
 
-                    <div class="admin-section-title">📁 Логи (файлами)</div>
-                    <button class="btn-secondary" onclick="sendAdminAction('log_admin_edits')">Логи редакции админов</button>
-                    <button class="btn-secondary" onclick="sendAdminAction('log_chats')">Логи чатов общения</button>
-                    <button class="btn-secondary" onclick="sendAdminAction('log_auction')">Логи аукциона</button>
+                    <div class="admin-section-title">📁 Логи форума</div>
+                    <button class="btn-secondary" onclick="sendAdminAction('log_admin_edits')">Логи редакторов</button>
+                    <button class="btn-secondary" onclick="sendAdminAction('log_chats')">Логи чатов</button>
+                    <button class="btn-secondary" onclick="sendAdminAction('log_auction')">Логи аукционов</button>
 
-                    <div class="admin-section-title">📢 Рассылка</div>
+                    <div class="admin-section-title">📢 Рассылка игрокам</div>
                     <textarea id="broadcastText" rows="3" placeholder="Текст рассылки..."></textarea>
-                    <button onclick="sendBroadcast()">Запустить рассылку</button>
+                    <button onclick="sendBroadcast()">Отправить рассылку</button>
                 </div>
             </div>
             <div id="accessDenied" class="access-denied" style="display: none;">
-                У вас нет доступа к панели администратора.
+                У вас нет прав администратора для просмотра этого раздела.
             </div>
         </div>
     </div>
@@ -595,30 +615,30 @@
     <!-- Модальные окна -->
     <div id="successModal" class="modal-overlay">
         <div class="modal-content">
-            <div style="font-size: 36px; margin-bottom: 12px;">✅</div>
-            <h3 style="color: var(--accent-primary); margin-top: 0; margin-bottom: 8px;">Успешно!</h3>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Объявление отправлено в бот и ожидает модерации!</p>
+            <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
+            <h3 style="color: #ffffff; margin-top: 0; margin-bottom: 6px; font-size: 16px;">Тема создана!</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">Ваша тема отправлена на модерацию администраторам.</p>
             <button onclick="closeSuccessModal()" style="margin-top: 0;">Закрыть</button>
         </div>
     </div>
 
     <div id="adSelectorModal" class="modal-overlay">
         <div class="modal-content" style="text-align: left;">
-            <h3 style="color: var(--accent-primary); margin-top: 0; text-align: center;" id="selectorTitle">Выбор объявления</h3>
-            <div id="pendingAdsList" style="margin-bottom: 15px;"></div>
+            <h3 style="color: #ffffff; margin-top: 0; text-align: center; font-size: 15px;" id="selectorTitle">Выбор темы</h3>
+            <div id="pendingAdsList" style="margin-bottom: 12px;"></div>
             <button class="btn-secondary" onclick="closeAdSelectorModal()">🔙 Назад</button>
         </div>
     </div>
 
     <div id="moderationModal" class="modal-overlay">
         <div class="modal-content" style="text-align: left;">
-            <h3 style="color: var(--accent-primary); margin-top: 0; text-align: center;">Редактирование объявления</h3>
+            <h3 style="color: #ffffff; margin-top: 0; text-align: center; font-size: 15px;">Редактирование темы</h3>
             <div class="form-group">
-                <label for="modEditText">Текст объявления:</label>
+                <label for="modEditText">Содержание:</label>
                 <textarea id="modEditText" rows="5" style="width: 100%;"></textarea>
             </div>
-            <div style="display: flex; gap: 8px;">
-                <button class="btn-success" onclick="submitModerationEdit()" style="margin-top:0;">Опубликовать</button>
+            <div style="display: flex; gap: 6px;">
+                <button class="btn-success" onclick="submitModerationEdit()" style="margin-top:0;">Одобрить</button>
                 <button class="btn-danger" onclick="closeModerationEdit()" style="margin-top:0;">Отмена</button>
             </div>
         </div>
@@ -626,17 +646,17 @@
 
     <div id="praiseModal" class="modal-overlay">
         <div class="modal-content">
-            <div style="font-size: 36px; margin-bottom: 12px;">🏆</div>
-            <h3 style="color: var(--accent-primary); margin-top: 0; margin-bottom: 8px;">Отлично!</h3>
-            <p id="praiseText" style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4;"></p>
-            <button onclick="closePraiseModal()" style="margin-top: 0;">Понятно</button>
+            <div style="font-size: 32px; margin-bottom: 10px;">🏆</div>
+            <h3 style="color: #ffffff; margin-top: 0; margin-bottom: 6px; font-size: 16px;">Успешно!</h3>
+            <p id="praiseText" style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;"></p>
+            <button onclick="closePraiseModal()" style="margin-top: 0;">Ок</button>
         </div>
     </div>
 
     <div id="imageModal" class="modal-overlay" onclick="closeImageModal()">
         <div class="modal-content" style="background: transparent; border: none; max-width: 90vw;" onclick="event.stopPropagation()">
             <img id="lightboxImage" class="lightbox-img" src="" alt="Full view" loading="lazy" decoding="async">
-            <button class="btn-secondary" onclick="closeImageModal()" style="margin-top: 12px; width: auto; padding: 8px 24px;">Закрыть</button>
+            <button class="btn-secondary" onclick="closeImageModal()" style="margin-top: 10px; width: auto; padding: 6px 20px;">Закрыть</button>
         </div>
     </div>
 
@@ -666,17 +686,13 @@
         }
 
         function checkIsAdmin() {
-            let user = getCurrentUser();
-            return checkIsOwner() || (user.username && ADMIN_USERNAMES.includes(user.username.toLowerCase()));
+            let user = checkIsOwner() || (getCurrentUser().username && ADMIN_USERNAMES.includes(getCurrentUser().username.toLowerCase()));
+            return user;
         }
 
         document.addEventListener('DOMContentLoaded', function() {
             try {
-                if (!localStorage.getItem('arizona_app_cleared_v7')) {
-                    localStorage.setItem('arizona_app_cleared_v7', 'true');
-                }
-
-                if (checkIsAdmin() || checkIsOwner()) {
+                if (checkIsAdmin()) {
                     let adminBtn = document.getElementById('adminTabBtn');
                     if (adminBtn) adminBtn.style.display = 'block';
                     let ownerSec = document.getElementById('ownerSection');
@@ -776,7 +792,7 @@
                 let itemName = itemNameEl.value.trim();
                 let price = priceEl.value.trim();
                 if (!itemName || !price) {
-                    alert('Пожалуйста, укажите название товара и стартовую цену!');
+                    alert('Укажите название и стартовую цену!');
                     return;
                 }
                 textContent = `Аукцион: ${itemName} (Старт: ${price}$)`;
@@ -786,7 +802,7 @@
 
                 textContent = textEl.value.trim();
                 if (!textContent) {
-                    alert('Пожалуйста, введите текст объявления!');
+                    alert('Введите содержание темы!');
                     return;
                 }
             }
@@ -804,7 +820,7 @@
                 text: textContent,
                 image: imageUrl,
                 author: currentUser.username ? '@' + currentUser.username : (currentUser.first_name || 'Игрок'),
-                date: new Date().toLocaleString()
+                date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
             };
 
             try {
@@ -838,9 +854,7 @@
             if (imageEl) imageEl.value = '';
 
             if (pendingData && typeof tg.sendData === 'function') {
-                try { 
-                    tg.sendData(JSON.stringify({ action: 'new_ad', data: pendingData })); 
-                } catch (e) {}
+                try { tg.sendData(JSON.stringify({ action: 'new_ad', data: pendingData })); } catch (e) {}
             }
             pendingData = null;
         }
@@ -853,7 +867,7 @@
             currentModType = type;
             let selectorTitle = document.getElementById('selectorTitle');
             if (selectorTitle) {
-                selectorTitle.innerText = type === 'sell' ? 'Модерация продажи' : 'Модерация скупки';
+                selectorTitle.innerText = type === 'sell' ? 'Модерация: Продажа' : 'Модерация: Скупка';
             }
             renderPendingAdsList();
             let adSelectorModal = document.getElementById('adSelectorModal');
@@ -876,24 +890,24 @@
             let filtered = pendingAds.filter(ad => ad.mode === currentModType);
 
             if (filtered.length === 0) {
-                container.innerHTML = '<div class="access-denied">Нет объявлений для модерации.</div>';
+                container.innerHTML = '<div class="access-denied">Нет тем, ожидающих проверки.</div>';
                 return;
             }
 
             let html = '';
             filtered.forEach(ad => {
-                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 110px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; cursor: pointer;">` : '';
+                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
                 html += `
                     <div class="ad-card" id="pending_card_${ad.id}">
                         ${imageBlock}
                         <div class="ad-header">
-                            <span><b>${ad.server}</b> | ${ad.author}</span>
+                            <span><span class="forum-badge badge-new">Новое</span><b>${ad.server}</b> | ${ad.author}</span>
                             <span>${ad.date}</span>
                         </div>
-                        <div style="margin-bottom: 10px;"><b>Текст:</b> ${ad.text}</div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn-success" style="margin:0; padding:8px; font-size:11px;" onclick="startEditAd('${ad.id}')">✏️ Отредактировать</button>
-                            <button class="btn-danger" style="margin:0; padding:8px; font-size:11px;" onclick="deletePendingAd('${ad.id}')">🗑 Удалить</button>
+                        <div style="margin-bottom: 8px;">${ad.text}</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn-success" style="margin:0; padding:6px; font-size:11px;" onclick="startEditAd('${ad.id}')">✏️ Одобрить / Правка</button>
+                            <button class="btn-danger" style="margin:0; padding:6px; font-size:11px;" onclick="deletePendingAd('${ad.id}')">🗑 Отклонить</button>
                         </div>
                     </div>
                 `;
@@ -951,7 +965,7 @@
                 let feedItem = {
                     ...ad,
                     editor: currentUser.username ? '@' + currentUser.username : 'Админ',
-                    date: new Date().toLocaleString()
+                    date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                 };
 
                 try {
@@ -975,13 +989,13 @@
 
             let praiseText = document.getElementById('praiseText');
             let praiseModal = document.getElementById('praiseModal');
-            if (praiseText) praiseText.innerText = 'Отлично! Объявление проверено, отредактировано и отправлено в общую ленту!';
+            if (praiseText) praiseText.innerText = 'Тема успешно проверена и опубликована в главном разделе форума!';
             if (praiseModal) praiseModal.style.display = 'flex';
         }
 
         function deletePendingAd(id) {
             triggerHaptic('medium');
-            if (!confirm('Удалить это объявление с отклонением?')) return;
+            if (!confirm('Отклонить и удалить тему?')) return;
 
             let cardEl = document.getElementById('pending_card_' + id);
             if (cardEl) cardEl.classList.add('removing');
@@ -1025,23 +1039,23 @@
             try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch (e) {}
 
             if (myAds.length === 0) {
-                container.innerHTML = '<div class="access-denied">У вас пока нет отправленных объявлений.</div>';
+                container.innerHTML = '<div class="access-denied">У вас нет созданных тем.</div>';
                 return;
             }
 
             let html = '';
             myAds.forEach(ad => {
                 let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Обмен' }[ad.mode] || ad.mode;
-                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'80px':'130px'}; object-fit: cover; border-radius: 8px; margin-bottom: 8px; cursor: pointer;">` : '';
+                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'75px':'120px'}; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
                 html += `
                     <div class="ad-card" id="my_card_${ad.id}">
                         ${imageBlock}
                         <div class="ad-header">
-                            <span><b>${ad.server}</b> (${modeName})</span>
+                            <span><span class="forum-badge badge-processing">На модерации</span><b>${ad.server}</b> (${modeName})</span>
                             <span>${ad.date}</span>
                         </div>
-                        <div style="margin-bottom: 8px;"><b>Текст:</b> ${ad.text}</div>
-                        <button class="btn-danger" style="margin:6px 0 0 0; padding:6px; font-size:11px;" onclick="deleteMyAd('${ad.id}')">🗑 Удалить объявление</button>
+                        <div style="margin-bottom: 6px;">${ad.text}</div>
+                        <button class="btn-danger" style="margin:4px 0 0 0; padding:5px; font-size:11px;" onclick="deleteMyAd('${ad.id}')">🗑 Удалить тему</button>
                     </div>
                 `;
             });
@@ -1050,7 +1064,7 @@
 
         function deleteMyAd(id) {
             triggerHaptic('medium');
-            if (!confirm('Вы действительно хотите удалить свое объявление?')) return;
+            if (!confirm('Удалить эту тему?')) return;
 
             let cardEl = document.getElementById('my_card_' + id);
             if (cardEl) cardEl.classList.add('removing');
@@ -1084,7 +1098,7 @@
             });
 
             if (filtered.length === 0) {
-                container.innerHTML = '<div class="access-denied">Ничего не найдено в ленте.</div>';
+                container.innerHTML = '<div class="access-denied">В главном разделе пока нет тем.</div>';
                 return;
             }
 
@@ -1094,19 +1108,22 @@
 
             filtered.forEach(ad => {
                 let isFav = favorites.includes(ad.id);
-                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'80px':'130px'}; object-fit: cover; border-radius: 8px; margin-bottom: 8px; cursor: pointer;">` : '';
+                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'75px':'120px'}; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
                 html += `
                     <div class="ad-card" id="card_feed_${ad.id}">
                         ${imageBlock}
                         <div class="ad-header">
-                            <span><b>${ad.server}</b> | Модер: ${ad.editor || 'Система'}</span>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <button class="fav-btn" onclick="toggleFavorite('${ad.id}')" title="В избранное">${isFav ? '❤️' : '🤍'}</button>
+                            <span><span class="forum-badge badge-success">Одобрено</span><b>${ad.server}</b> | Автор: ${ad.author}</span>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button class="fav-btn" onclick="toggleFavorite('${ad.id}')" title="В закладки">${isFav ? '❤️' : '🤍'}</button>
                                 <span>${ad.date}</span>
                             </div>
                         </div>
-                        <div style="margin-bottom: 8px;"><b>Текст:</b> ${ad.text}</div>
-                        ${isOwner ? `<button class="btn-danger" style="margin-top:6px; padding:6px; font-size:11px;" onclick="ownerDeleteFeedAd('${ad.id}')">🗑 Удалить (Владелец)</button>` : ''}
+                        <div style="margin-bottom: 6px;">${ad.text}</div>
+                        <div class="forum-comment-box">
+                            <span>✏️</span> Напишите комментарий...
+                        </div>
+                        ${isOwner ? `<button class="btn-danger" style="margin-top:6px; padding:5px; font-size:11px;" onclick="ownerDeleteFeedAd('${ad.id}')">🗑 Удалить тему (Владелец)</button>` : ''}
                     </div>
                 `;
             });
@@ -1115,7 +1132,7 @@
 
         function ownerDeleteFeedAd(id) {
             triggerHaptic('medium');
-            if (!confirm('Удалить из ленты как владелец?')) return;
+            if (!confirm('Удалить тему из ленты?')) return;
             let feed = [];
             try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
             feed = feed.filter(a => a.id !== id);
@@ -1154,13 +1171,13 @@
             let favoriteAds = feed.filter(ad => favs.includes(ad.id));
 
             if (favoriteAds.length === 0) {
-                container.innerHTML = '<div class="access-denied">У вас нет избранных объявлений. Нажимайте сердечко ❤️ в ленте!</div>';
+                container.innerHTML = '<div class="access-denied">У вас нет закладок. Нажимайте сердечко ❤️ на темах в ленте!</div>';
                 return;
             }
 
             let html = '';
             favoriteAds.forEach(ad => {
-                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; cursor: pointer;">` : '';
+                let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" decoding="async" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 110px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
                 html += `
                     <div class="ad-card">
                         ${imageBlock}
@@ -1168,7 +1185,7 @@
                             <span><b>${ad.server}</b></span>
                             <button class="fav-btn" onclick="toggleFavorite('${ad.id}')">❤️</button>
                         </div>
-                        <div><b>Текст:</b> ${ad.text}</div>
+                        <div>${ad.text}</div>
                     </div>
                 `;
             });
@@ -1177,7 +1194,7 @@
 
         function clearMyAds() {
             triggerHaptic('medium');
-            if (confirm('Очистить историю ваших объявлений?')) {
+            if (confirm('Очистить ваши темы?')) {
                 localStorage.removeItem('my_arizona_ads');
                 renderMyAds();
             }
@@ -1204,7 +1221,7 @@
             if (typeof tg.sendData === 'function') {
                 try { 
                     tg.sendData(JSON.stringify({ action: actionType, requested_by: '@' + (getCurrentUser().username || 'owner') })); 
-                    alert('Запрос отправлен в чат бота!');
+                    alert('Запрос отправлен в бота!');
                 } catch (e) {}
             }
         }

@@ -359,20 +359,32 @@
             tg.ready();
         }
 
-        let currentUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 0, username: '' };
         const OWNER_USERNAME = 'bounqy';
-        
-        let isOwner = currentUser.username && currentUser.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
         const ADMIN_USERNAMES = ['bounqy'];
-        let isAdmin = isOwner || (currentUser.username && ADMIN_USERNAMES.includes(currentUser.username.toLowerCase()));
+
+        // Динамические функции проверки прав (исправляют проблему с задержкой инициализации initDataUnsafe)
+        function getCurrentUser() {
+            let tgObj = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
+            return (tgObj.initDataUnsafe && tgObj.initDataUnsafe.user) ? tgObj.initDataUnsafe.user : { id: 0, username: '' };
+        }
+
+        function checkIsOwner() {
+            let user = getCurrentUser();
+            return user.username && user.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
+        }
+
+        function checkIsAdmin() {
+            let user = getCurrentUser();
+            return checkIsOwner() || (user.username && ADMIN_USERNAMES.includes(user.username.toLowerCase()));
+        }
 
         document.addEventListener('DOMContentLoaded', function() {
             try {
-                if (isAdmin || isOwner) {
+                if (checkIsAdmin() || checkIsOwner()) {
                     let adminBtn = document.getElementById('adminTabBtn');
                     if (adminBtn) adminBtn.style.display = 'block';
                     let ownerSec = document.getElementById('ownerSection');
-                    if (ownerSec && isOwner) ownerSec.style.display = 'block';
+                    if (ownerSec && checkIsOwner()) ownerSec.style.display = 'block';
                 }
                 switchTab('app');
             } catch (e) {
@@ -402,7 +414,7 @@
                 if (tabFeed) tabFeed.classList.add('active');
                 renderFeed();
             } else if (tabName === 'admin') {
-                if (!isAdmin && !isOwner) {
+                if (!checkIsAdmin() && !checkIsOwner()) {
                     alert('У вас нет доступа к этой вкладке!');
                     switchTab('app');
                     return;
@@ -478,6 +490,7 @@
                 }
             }
 
+            let currentUser = getCurrentUser();
             let adItem = {
                 id: 'ad_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
                 mode: mode,
@@ -618,6 +631,7 @@
                 pendingAds.splice(index, 1);
                 localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
 
+                let currentUser = getCurrentUser();
                 let feedItem = {
                     ...ad,
                     editor: currentUser.username ? '@' + currentUser.username : 'Админ',
@@ -687,6 +701,7 @@
             }
 
             let html = '';
+            let ownerCheck = checkIsOwner();
             myAds.forEach(ad => {
                 let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Бартер / Обмен' }[ad.mode] || ad.mode;
                 html += `
@@ -696,7 +711,7 @@
                             <span>${ad.date}</span>
                         </div>
                         <div><b>Текст:</b> ${ad.text}</div>
-                        ${isOwner ? `<button class="btn-danger" style="margin-top:8px; padding:6px; font-size:11px;" onclick="ownerDeleteAd('${ad.id}', 'my')">🗑 Удалить (Владелец)</button>` : ''}
+                        ${ownerCheck ? `<button class="btn-danger" style="margin-top:8px; padding:6px; font-size:11px;" onclick="ownerDeleteAd('${ad.id}', 'my')">🗑 Удалить (Владелец)</button>` : ''}
                     </div>
                 `;
             });
@@ -716,6 +731,7 @@
             }
 
             let html = '';
+            let ownerCheck = checkIsOwner();
             feed.forEach(ad => {
                 html += `
                     <div class="ad-card" id="card_feed_${ad.id}">
@@ -724,7 +740,7 @@
                             <span>${ad.date}</span>
                         </div>
                         <div><b>Текст:</b> ${ad.text}</div>
-                        ${isOwner ? `<button class="btn-danger" style="margin-top:8px; padding:6px; font-size:11px;" onclick="ownerDeleteAd('${ad.id}', 'feed')">🗑 Удалить (Владелец)</button>` : ''}
+                        ${ownerCheck ? `<button class="btn-danger" style="margin-top:8px; padding:6px; font-size:11px;" onclick="ownerDeleteAd('${ad.id}', 'feed')">🗑 Удалить (Владелец)</button>` : ''}
                     </div>
                 `;
             });
@@ -732,7 +748,7 @@
         }
 
         function ownerDeleteAd(id, type) {
-            if (!isOwner) return;
+            if (!checkIsOwner()) return;
             if (!confirm('Вы уверены, что хотите удалить это объявление как владелец (@bounqy)?')) return;
 
             if (type === 'feed') {
@@ -791,3 +807,4 @@
     </script>
 </body>
 </html>
+

@@ -1,4 +1,5 @@
 <script>
+try {
     // Инициализация Telegram WebApp объекта
     let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
     if (typeof tg.expand === 'function') {
@@ -17,15 +18,19 @@
 
     // Запуск настройки интерфейса только после полной загрузки DOM
     document.addEventListener('DOMContentLoaded', function() {
-        if (isAdmin || isOwner) {
-            let adminBtn = document.getElementById('adminTabBtn');
-            if (adminBtn) adminBtn.style.display = 'block';
-            let ownerSec = document.getElementById('ownerSection');
-            if (ownerSec && isOwner) ownerSec.style.display = 'block';
-        }
+        try {
+            if (isAdmin || isOwner) {
+                let adminBtn = document.getElementById('adminTabBtn');
+                if (adminBtn) adminBtn.style.display = 'block';
+                let ownerSec = document.getElementById('ownerSection');
+                if (ownerSec && isOwner) ownerSec.style.display = 'block';
+            }
 
-        // Автоматически открываем главную вкладку при запуске
-        switchTab('app');
+            // Автоматически открываем главную вкладку при запуске
+            switchTab('app');
+        } catch (e) {
+            console.error('Ошибка в DOMContentLoaded:', e);
+        }
     });
 
     function switchTab(tabName) {
@@ -436,4 +441,8 @@
             try { tg.sendData(JSON.stringify({ action: 'broadcast', text: text })); } catch (e) {}
         }
     }
+} catch (globalErr) {
+    // Если произойдет глобальная ошибка, выведем её на экран вместо черного фона
+    document.body.innerHTML = '<div style="color: red; padding: 20px; font-family: monospace; background: #222;"><h3>Критическая ошибка скрипта:</h3><p>' + globalErr.message + '</p></div>';
+}
 </script>

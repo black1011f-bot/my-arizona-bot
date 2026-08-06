@@ -2210,6 +2210,11 @@
                 favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
             } catch(e) { favorites = []; }
 
+            if (feed.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px; font-size:12px;">Активных объявлений пока нет. Создайте первое во вкладке "Создать"!</div>';
+                return;
+            }
+
             let html = '';
             let isAdmin = checkIsAdmin();
             let currentUser = getCurrentUser();
@@ -2238,56 +2243,65 @@
 
                 html += `
                     <div class="ad-card">
-                        <div>
-                            ${imgHtml}
-                            <div class="ad-header">
-                                <span>${modeBadge}<span class="forum-badge badge-success">Проверено</span><b>${escapeHtml(ad.server)}</b> | ${safeAuthor}</span>
-                                ${adminOrOwnerDeleteBtn}
-                            </div>
-                            <div style="margin-bottom:6px;">${buildAdTextHtml(ad)}</div>
-                            ${auctionActionBtn}
-                        </div>
-                        
+                        ${imgHtml}
+                        <div class="ad-header"><span>${modeBadge}<b>${escapeHtml(ad.server)}</b> | ${safeAuthor}</span><span>${escapeHtml(ad.date)}</span></div>
+                        <div>${buildAdTextHtml(ad)}</div>
+                        ${auctionActionBtn}
                         <div class="card-actions-grid">
-                            <div class="write-seller-btn" data-author="${safeAuthor}">💬 В ЛС</div>
-                            <div class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${ad.id}')">${isFav ? '❤️ В избранном' : '🤍 В избранное'}</div>
-                            <div class="share-btn" onclick="shareAdTopic('${encodedTitle}', '${encodedServer}', '${encodedPrice}')">🔗 Поделиться</div>
+                            <button class="write-seller-btn" onclick="openChat('${safeAuthor}')">💬 Написать</button>
+                            <button class="share-btn" onclick="shareAdTopic('${encodedTitle}', '${encodedServer}', '${encodedPrice}')">🔗 Поделиться</button>
+                            <button class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${ad.id}')">❤️ ${isFav ? 'В закладках' : 'В закладки'}</button>
                         </div>
+                        ${adminOrOwnerDeleteBtn ? `<div style="margin-top:6px; text-align:right;">${adminOrOwnerDeleteBtn}</div>` : ''}
                     </div>
                 `;
             });
-            container.innerHTML = html || '<div style="text-align:center; color:var(--text-muted); padding:15px;">Предметы не найдены или ожидают одобрения администратора.</div>';
-
-            container.querySelectorAll('.write-seller-btn').forEach(btn => {
-                btn.addEventListener('click', () => openChat(btn.dataset.author));
-            });
+            container.innerHTML = html;
         }
 
         function renderFavorites() {
             let container = document.getElementById('favoritesContainer');
             if (!container) return;
-            let feed = [], favorites = [];
+            let feed = [];
+            let favorites = [];
             try {
                 feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
                 favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
-            } catch(e){}
+            } catch(e) {}
 
             let favAds = feed.filter(ad => favorites.includes(ad.id));
 
             if (favAds.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">У вас нет сохраненных закладок.</div>';
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px; font-size:12px;">У вас пока нет избранных объявлений.</div>';
                 return;
             }
 
             let html = '';
+            let currentUser = getCurrentUser();
+            let isAdmin = checkIsAdmin();
+
             favAds.forEach(ad => {
-                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
+                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
+                let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : '';
+                let safeAuthor = escapeHtml(ad.author);
+                let isOwnerOfAd = (ad.authorId === currentUser.id) || (ad.author === currentUser.username);
+                let adminOrOwnerDeleteBtn = (isAdmin || isOwnerOfAd) ? `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin:0; width:auto;">🗑 Удалить</button>` : '';
+
+                let encodedTitle = encodeURIComponent(ad.title || 'Предмет');
+                let encodedServer = encodeURIComponent(ad.server || '');
+                let encodedPrice = encodeURIComponent(ad.currentBid || ad.price || '');
+
                 html += `
                     <div class="ad-card">
                         ${imgHtml}
-                        <div class="ad-header"><span><b>${escapeHtml(ad.server)}</b> | ${escapeHtml(ad.author)}</span></div>
+                        <div class="ad-header"><span>${modeBadge}<b>${escapeHtml(ad.server)}</b> | ${safeAuthor}</span><span>${escapeHtml(ad.date)}</span></div>
                         <div>${buildAdTextHtml(ad)}</div>
-                        <button onclick="toggleFavorite('${ad.id}'); renderFavorites();" class="btn-danger" style="font-size:10px; padding:6px; margin-top:8px;">❌ Удалить из закладок</button>
+                        <div class="card-actions-grid" style="margin-top:8px;">
+                            <button class="write-seller-btn" onclick="openChat('${safeAuthor}')">💬 Написать</button>
+                            <button class="share-btn" onclick="shareAdTopic('${encodedTitle}', '${encodedServer}', '${encodedPrice}')">🔗 Поделиться</button>
+                            <button class="fav-btn active" onclick="toggleFavorite('${ad.id}')">❤️ В закладках</button>
+                        </div>
+                        ${adminOrOwnerDeleteBtn ? `<div style="margin-top:6px; text-align:right;">${adminOrOwnerDeleteBtn}</div>` : ''}
                     </div>
                 `;
             });
@@ -2295,105 +2309,24 @@
         }
 
         function setViewMode(mode) {
+            triggerHaptic('light');
             currentViewMode = mode;
-            document.getElementById('btnListView').classList.toggle('active', mode === 'list');
-            document.getElementById('btnGridView').classList.toggle('active', mode === 'grid');
+            let btnList = document.getElementById('btnListView');
+            let btnGrid = document.getElementById('btnGridView');
+            if (mode === 'grid') {
+                btnGrid.classList.add('active');
+                btnList.classList.remove('active');
+            } else {
+                btnList.classList.add('active');
+                btnGrid.classList.remove('active');
+            }
             renderFeed();
         }
 
-        function clearGlobalFeedAdmin() {
-            if (!checkIsOwner()) {
-                alert('🚫 Эта функция доступна только владельцу бота (@bounqy)!');
-                return;
-            }
-            triggerHaptic('heavy');
-            if (!confirm('⚠️ Полностью очистить всю базу предметов?')) return;
-            localStorage.removeItem('arizona_global_feed');
-            renderFeed();
-            alert('База полностью очищена.');
-        }
-
-        function updateBroadcastMessage() {
-            triggerHaptic('medium');
-            let input = document.getElementById('newBroadcastInput');
-            let text = input.value.trim();
-            if (!text) { alert('Введите текст сообщения!'); return; }
-
-            let mskTime = getMSKDate().getTime();
-
-            localStorage.setItem('arizona_broadcast_text', text);
-            localStorage.setItem('arizona_broadcast_time', mskTime);
-
-            let broadcastNotifs = [];
-            try {
-                broadcastNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
-            } catch(e) { broadcastNotifs = []; }
-
-            broadcastNotifs.unshift({
-                id: 'bnotif_' + Date.now(),
-                text: '📢 Рассылка от администрации: ' + text,
-                timestamp: mskTime
-            });
-
-            let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-            broadcastNotifs = broadcastNotifs.filter(n => (mskTime - n.timestamp) < sevenDaysMs);
-            localStorage.setItem('arizona_global_broadcast_notifs', JSON.stringify(broadcastNotifs));
-
-            showAndAutoHideBroadcast(text);
-            updateNotifBadge();
-
-            input.value = '';
-            alert('📢 Рассылка успешно отправлена и добавлена в колокольчик всем игрокам!');
-        }
-
-        function sendTargetAction(action) {
-            triggerHaptic('medium');
-            let target = document.getElementById('targetUser').value.trim();
-            if (!target) { alert('Введите ID или username пользователя!'); return; }
-            let cleanTarget = target.replace('@', '').toLowerCase();
-
-            let adminBtn = document.getElementById('adminTabBtn');
-
-            if (action === 'make_admin') {
-                if (!ADMIN_USERNAMES.includes(cleanTarget)) {
-                    ADMIN_USERNAMES.push(cleanTarget);
-                    localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
-                    alert(`✅ Пользователь ${target} назначен администратором!`);
-                } else {
-                    alert('Этот пользователь уже администратор.');
-                }
-            } else if (action === 'remove_admin') {
-                if (cleanTarget === OWNER_USERNAME.toLowerCase()) {
-                    alert('Нельзя снять владельца!');
-                    return;
-                }
-                ADMIN_USERNAMES = ADMIN_USERNAMES.filter(u => u !== cleanTarget);
-                localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
-                alert(`✅ Пользователь ${target} снят с должности администратора.`);
-            } else if (action === 'ban') {
-                if (cleanTarget === OWNER_USERNAME.toLowerCase()) {
-                    alert('Нельзя забанить владельца!');
-                    return;
-                }
-                let bannedList = [];
-                try {
-                    bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
-                } catch(e){}
-                if (!bannedList.includes(cleanTarget)) {
-                    bannedList.push(cleanTarget);
-                    localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
-                    alert(`🚫 Пользователь ${target} заблокирован.`);
-                }
-            } else if (action === 'unban') {
-                let bannedList = [];
-                try {
-                    bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
-                } catch(e){}
-                bannedList = bannedList.filter(u => u !== cleanTarget);
-                localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
-                alert(`✅ Пользователь ${target} разблокирован.`);
-            }
-            document.getElementById('targetUser').value = '';
+        function openBroadcastModal() {
+            triggerHaptic('light');
+            let broadcastText = localStorage.getItem('arizona_broadcast_text') || 'Уведомление от администрации отсутствует.';
+            alert('📢 Сообщение от администрации:\n\n' + broadcastText);
         }
 
         function openNotificationsModal() {
@@ -2414,6 +2347,104 @@
 
         function closeChatsModal() {
             document.getElementById('chatsModal').style.display = 'none';
+        }
+
+        function clearMyAds() {
+            triggerHaptic('medium');
+            if (!confirm('Очистить весь ваш архив созданных объявлений?')) return;
+            localStorage.removeItem('my_arizona_ads');
+            renderMyAds();
+            alert('Архив успешно очищен.');
+        }
+
+        function sendTargetAction(action) {
+            triggerHaptic('medium');
+            let targetInput = document.getElementById('targetUser').value.trim();
+            if (!targetInput) {
+                alert('Введите имя игрока или ID!');
+                return;
+            }
+            let cleanTarget = targetInput.replace('@', '').toLowerCase();
+
+            if (action === 'make_admin') {
+                if (!ADMIN_USERNAMES.includes(cleanTarget)) {
+                    ADMIN_USERNAMES.push(cleanTarget);
+                    localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
+                    alert(`✅ Пользователь ${targetInput} добавлен в список администраторов!`);
+                } else {
+                    alert('Этот пользователь уже является администратором.');
+                }
+            } else if (action === 'remove_admin') {
+                if (cleanTarget === OWNER_USERNAME.toLowerCase()) {
+                    alert('Нельзя снять владельца бота!');
+                    return;
+                }
+                ADMIN_USERNAMES = ADMIN_USERNAMES.filter(u => u !== cleanTarget);
+                localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
+                alert(`➖ Пользователь ${targetInput} снят с поста администратора.`);
+            } else if (action === 'ban') {
+                if (cleanTarget === OWNER_USERNAME.toLowerCase()) {
+                    alert('Нельзя забанить владельца бота!');
+                    return;
+                }
+                let banned = [];
+                try { banned = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]'); } catch(e){}
+                if (!banned.includes(cleanTarget)) {
+                    banned.push(cleanTarget);
+                    localStorage.setItem('arizona_banned_list', JSON.stringify(banned));
+                    alert(`🚫 Пользователь ${targetInput} заблокирован.`);
+                } else {
+                    alert('Пользователь уже заблокирован.');
+                }
+            } else if (action === 'unban') {
+                let banned = [];
+                try { banned = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]'); } catch(e){}
+                banned = banned.filter(u => u !== cleanTarget);
+                localStorage.setItem('arizona_banned_list', JSON.stringify(banned));
+                alert(`✅ Пользователь ${targetInput} разблокирован.`);
+            }
+            document.getElementById('targetUser').value = '';
+        }
+
+        function clearGlobalFeedAdmin() {
+            triggerHaptic('heavy');
+            if (!confirm('⚠️ Вы уверены, что хотите полностью очистить всю ленту глобальных объявлений? Это действие необратимо!')) return;
+            localStorage.removeItem('arizona_global_feed');
+            localStorage.removeItem('arizona_pending_ads');
+            renderFeed();
+            renderAdminPendingAds();
+            alert('🗑 Вся глобальная лента объявлений очищена.');
+        }
+
+        function updateBroadcastMessage() {
+            triggerHaptic('medium');
+            let input = document.getElementById('newBroadcastInput');
+            let text = input.value.trim();
+            if (!text) {
+                alert('Введите текст рассылки!');
+                return;
+            }
+
+            let mskNow = getMSKDate().getTime();
+            localStorage.setItem('arizona_broadcast_text', text);
+            localStorage.setItem('arizona_broadcast_time', mskNow);
+
+            let bNotifs = [];
+            try {
+                bNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
+            } catch(e){}
+
+            bNotifs.unshift({
+                id: 'broadcast_' + Date.now(),
+                text: '📢 Рассылка от администрации: ' + text,
+                timestamp: mskNow
+            });
+            localStorage.setItem('arizona_global_broadcast_notifs', JSON.stringify(bNotifs));
+
+            showAndAutoHideBroadcast(text);
+            updateNotifBadge();
+            input.value = '';
+            alert('✅ Рассылка успешно отправлена всем пользователям!');
         }
     </script>
 </body>

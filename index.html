@@ -41,6 +41,22 @@
             margin: 0 auto;
         }
 
+        /* Баннер рассылки сверху */
+        .broadcast-banner {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #000;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+            animation: fadeIn 0.3s ease-out;
+            display: none;
+        }
+
         /* Шапка форума в стиле скриншотов */
         .forum-topbar {
             display: flex;
@@ -326,7 +342,6 @@
             margin: 0;
         }
 
-        /* Имитация блока ответа на форуме */
         .forum-comment-box {
             margin-top: 8px;
             background: #0f1015;
@@ -402,6 +417,11 @@
 </head>
 <body>
     <div class="container">
+        <!-- Уведомление о рассылке (появляется сверху) -->
+        <div id="broadcastBanner" class="broadcast-banner" onclick="openBroadcastModal()">
+            📢 <b>Новая рассылка от администрации!</b> Нажмите, чтобы прочитать.
+        </div>
+
         <!-- Шапка форума -->
         <div class="forum-topbar">
             <div class="forum-brand">
@@ -622,6 +642,16 @@
         </div>
     </div>
 
+    <!-- Модальное окно просмотра рассылки -->
+    <div id="broadcastModal" class="modal-overlay">
+        <div class="modal-content">
+            <div style="font-size: 32px; margin-bottom: 10px;">📢</div>
+            <h3 style="color: #ffffff; margin-top: 0; margin-bottom: 6px; font-size: 16px;">Рассылка</h3>
+            <p id="broadcastContentText" style="font-size: 12px; color: var(--text-main); margin-bottom: 16px; line-height: 1.4; text-align: left; background: var(--forum-card-hover); padding: 10px; border-radius: 8px;"></p>
+            <button onclick="closeBroadcastModal()" style="margin-top: 0;">В главное меню</button>
+        </div>
+    </div>
+
     <div id="adSelectorModal" class="modal-overlay">
         <div class="modal-content" style="text-align: left;">
             <h3 style="color: #ffffff; margin-top: 0; text-align: center; font-size: 15px;" id="selectorTitle">Выбор темы</h3>
@@ -698,11 +728,40 @@
                     let ownerSec = document.getElementById('ownerSection');
                     if (ownerSec && checkIsOwner()) ownerSec.style.display = 'block';
                 }
+                checkActiveBroadcast();
                 switchTab('app');
             } catch (e) {
                 console.error('Ошибка инициализации:', e);
             }
         });
+
+        function checkActiveBroadcast() {
+            try {
+                let broadcastText = localStorage.getItem('arizona_active_broadcast');
+                let banner = document.getElementById('broadcastBanner');
+                if (broadcastText && banner) {
+                    banner.style.display = 'block';
+                }
+            } catch(e){}
+        }
+
+        function openBroadcastModal() {
+            triggerHaptic('light');
+            try {
+                let broadcastText = localStorage.getItem('arizona_active_broadcast') || 'Нет активных рассылок.';
+                let contentEl = document.getElementById('broadcastContentText');
+                if (contentEl) contentEl.innerText = broadcastText;
+                let modal = document.getElementById('broadcastModal');
+                if (modal) modal.style.display = 'flex';
+            } catch(e){}
+        }
+
+        function closeBroadcastModal() {
+            triggerHaptic('light');
+            let modal = document.getElementById('broadcastModal');
+            if (modal) modal.style.display = 'none';
+            switchTab('app'); // Переход в главное меню
+        }
 
         function switchTab(tabName) {
             triggerHaptic('light');
@@ -1243,9 +1302,16 @@
             if (!broadcastText) return;
             let text = broadcastText.value.trim();
             if (!text) { alert('Введите текст!'); return; }
+
+            // Сохраняем рассылку локально для отображения баннера активным пользователям
+            try {
+                localStorage.setItem('arizona_active_broadcast', text);
+            } catch(e){}
+
             if (typeof tg.sendData === 'function') {
                 try { tg.sendData(JSON.stringify({ action: 'broadcast', text: text })); } catch (e) {}
             }
+            alert('Рассылка успешно отправлена!');
         }
     </script>
 </body>

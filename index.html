@@ -6,6 +6,17 @@
     <title>Arizona RP Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--tg-theme-bg-color, #18191a);
@@ -38,6 +49,7 @@
             text-align: center;
             cursor: pointer;
             font-size: 11px;
+            transition: background-color 0.2s, color 0.2s;
         }
         .nav-tab.active {
             background-color: var(--tg-theme-button-color, #ffaa00);
@@ -49,6 +61,7 @@
         }
         .section.active {
             display: block;
+            animation: fadeIn 0.25s ease-out forwards;
         }
         .form-group {
             margin-bottom: 15px;
@@ -79,6 +92,10 @@
             cursor: pointer;
             margin-top: 5px;
             margin-bottom: 10px;
+            transition: opacity 0.2s;
+        }
+        button:active {
+            opacity: 0.8;
         }
         .btn-danger {
             background-color: #d9534f;
@@ -108,6 +125,12 @@
             padding: 12px;
             margin-bottom: 10px;
             font-size: 13px;
+            animation: fadeIn 0.3s ease-out forwards;
+            transition: all 0.25s ease;
+        }
+        .ad-card.removing {
+            opacity: 0;
+            transform: scale(0.95);
         }
         .ad-header {
             font-size: 11px;
@@ -144,6 +167,7 @@
             align-items: center;
             padding: 20px;
             box-sizing: border-box;
+            animation: fadeIn 0.2s ease-out;
         }
         .modal-content {
             background-color: var(--tg-theme-secondary-bg-color, #242526);
@@ -362,7 +386,6 @@
         const OWNER_USERNAME = 'bounqy';
         const ADMIN_USERNAMES = ['bounqy'];
 
-        // Динамические функции проверки прав (исправляют проблему с задержкой инициализации initDataUnsafe)
         function getCurrentUser() {
             let tgObj = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
             return (tgObj.initDataUnsafe && tgObj.initDataUnsafe.user) ? tgObj.initDataUnsafe.user : { id: 0, username: '' };
@@ -380,6 +403,14 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             try {
+                // Очистка старой истории объявлений (версия изменена на v4 для принудительной очистки)
+                if (!localStorage.getItem('arizona_app_cleared_v4')) {
+                    localStorage.removeItem('arizona_pending_ads');
+                    localStorage.removeItem('my_arizona_ads');
+                    localStorage.removeItem('arizona_global_feed');
+                    localStorage.setItem('arizona_app_cleared_v4', 'true');
+                }
+
                 if (checkIsAdmin() || checkIsOwner()) {
                     let adminBtn = document.getElementById('adminTabBtn');
                     if (adminBtn) adminBtn.style.display = 'block';
@@ -493,6 +524,7 @@
             let currentUser = getCurrentUser();
             let adItem = {
                 id: 'ad_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                userId: currentUser.id || 0,
                 mode: mode,
                 server: server,
                 category: category,
@@ -529,7 +561,12 @@
             if (textEl) textEl.value = '';
 
             if (pendingData && typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify(pendingData)); } catch (e) {}
+                try { 
+                    tg.sendData(JSON.stringify({
+                        action: 'new_ad',
+                        data: pendingData
+                    })); 
+                } catch (e) {}
             }
             pendingData = null;
         }
@@ -572,7 +609,7 @@
             let html = '';
             filtered.forEach(ad => {
                 html += `
-                    <div class="ad-card">
+                    <div class="ad-card" id="pending_card_${ad.id}">
                         <div class="ad-header">
                             <span><b>${ad.server}</b> | От: ${ad.author}</span>
                             <span>${ad.date}</span>
@@ -649,6 +686,7 @@
                         tg.sendData(JSON.stringify({
                             action: 'approve_and_edit_ad',
                             id: selectedAdId,
+                            userId: ad.userId || 0,
                             edited_text: newText,
                             mode: currentModType
                         }));
@@ -658,26 +696,39 @@
 
             let praiseText = document.getElementById('praiseText');
             let praiseModal = document.getElementById('praiseModal');
-            if (praiseText) praiseText.innerText = 'Молодец! Ты успешно отредактировал объявление, проверил его на маты и отправил в ленту. Порядок наведен!';
+            if (praiseText) praiseText.innerText = 'Молодец! Ты успешно отредактировал объявление, проверил его на маты и отправил в ленту. Уведомление отправлено автору в бот!';
             if (praiseModal) praiseModal.style.display = 'flex';
         }
 
         function deletePendingAd(id) {
             if (!confirm('Вы уверены, что хотите удалить это объявление из-за матов/нарушений?')) return;
 
-            let pendingAds = [];
-            try { pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch (e) {}
+            let cardEl = document.getElementById('pending_card_' + id);
+            if (cardEl) cardEl.classList.add('removing');
 
-            pendingAds = pendingAds.filter(a => a.id !== id);
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
+            setTimeout(() => {
+                let pendingAds = [];
+                let targetAd = null;
+                try { 
+                    pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); 
+                    targetAd = pendingAds.find(a => a.id === id);
+                } catch (e) {}
 
-            renderPendingAdsList();
+                pendingAds = pendingAds.filter(a => a.id !== id);
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
 
-            if (typeof tg.sendData === 'function') {
-                try {
-                    tg.sendData(JSON.stringify({ action: 'delete_pending_ad', id: id }));
-                } catch(e){}
-            }
+                renderPendingAdsList();
+
+                if (typeof tg.sendData === 'function') {
+                    try {
+                        tg.sendData(JSON.stringify({ 
+                            action: 'delete_pending_ad', 
+                            id: id, 
+                            userId: targetAd ? targetAd.userId : 0 
+                        }));
+                    } catch(e){}
+                }
+            }, 250);
         }
 
         function closePraiseModal() {
@@ -751,25 +802,31 @@
             if (!checkIsOwner()) return;
             if (!confirm('Вы уверены, что хотите удалить это объявление как владелец (@bounqy)?')) return;
 
-            if (type === 'feed') {
-                let feed = [];
-                try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch (e) {}
-                feed = feed.filter(a => a.id !== id);
-                localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-                renderFeed();
-            } else {
-                let myAds = [];
-                try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch (e) {}
-                myAds = myAds.filter(a => a.id !== id);
-                localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
-                renderMyAds();
-            }
+            let cardId = type === 'feed' ? 'card_feed_' + id : 'card_' + id;
+            let cardEl = document.getElementById(cardId);
+            if (cardEl) cardEl.classList.add('removing');
 
-            if (typeof tg.sendData === 'function') {
-                try {
-                    tg.sendData(JSON.stringify({ action: 'owner_delete_ad', id: id, list_type: type }));
-                } catch(e){}
-            }
+            setTimeout(() => {
+                if (type === 'feed') {
+                    let feed = [];
+                    try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch (e) {}
+                    feed = feed.filter(a => a.id !== id);
+                    localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
+                    renderFeed();
+                } else {
+                    let myAds = [];
+                    try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch (e) {}
+                    myAds = myAds.filter(a => a.id !== id);
+                    localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
+                    renderMyAds();
+                }
+
+                if (typeof tg.sendData === 'function') {
+                    try {
+                        tg.sendData(JSON.stringify({ action: 'owner_delete_ad', id: id, list_type: type }));
+                    } catch(e){}
+                }
+            }, 250);
         }
 
         function clearMyAds() {
@@ -779,9 +836,17 @@
             }
         }
 
+        // Отправка запросов лотов/файлов в чат бота владельцу
         function sendAdminAction(actionType) {
+            if (!checkIsOwner()) return;
             if (typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify({ action: actionType })); } catch (e) {}
+                try { 
+                    tg.sendData(JSON.stringify({ 
+                        action: actionType, 
+                        requested_by: '@' + (getCurrentUser().username || 'owner') 
+                    })); 
+                    alert('Запрос на получение логов отправлен в чат бота!');
+                } catch (e) {}
             }
         }
 
@@ -807,4 +872,3 @@
     </script>
 </body>
 </html>
-

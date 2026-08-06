@@ -1331,15 +1331,16 @@
                     let msgs = chatsData[chatName];
                     let lastMsg = (msgs && msgs.length > 0) ? msgs[msgs.length - 1].text : 'История очищена';
                     let safeName = escapeHtml(chatName);
+                    let encodedChatName = encodeURIComponent(chatName);
                     html += `
                         <div class="chat-item-row">
-                            <div class="chat-item-info" data-chat-name="${safeName}">
+                            <div class="chat-item-info" data-chat-name="${encodedChatName}">
                                 <div style="font-weight: 800; font-size: 12px; color: #fff;">💬 ${safeName}</div>
                                 <div style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(lastMsg)}</div>
                             </div>
                             <div class="chat-item-actions">
-                                <button class="chat-action-btn btn-clear-chat" data-chat-name="${safeName}" title="Очистить">🧹</button>
-                                <button class="chat-action-btn btn-del-chat" data-chat-name="${safeName}" title="Удалить">🗑</button>
+                                <button class="chat-action-btn btn-clear-chat" data-chat-name="${encodedChatName}" title="Очистить">🧹</button>
+                                <button class="chat-action-btn btn-del-chat" data-chat-name="${encodedChatName}" title="Удалить">🗑</button>
                             </div>
                         </div>
                     `;
@@ -1347,13 +1348,19 @@
                 container.innerHTML = html;
 
                 container.querySelectorAll('.chat-item-info').forEach(el => {
-                    el.addEventListener('click', () => openChat(el.dataset.chatName));
+                    el.addEventListener('click', () => openChat(decodeURIComponent(el.dataset.chatName)));
                 });
                 container.querySelectorAll('.btn-clear-chat').forEach(el => {
-                    el.addEventListener('click', () => clearChatHistory(el.dataset.chatName));
+                    el.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        clearChatHistory(decodeURIComponent(el.dataset.chatName));
+                    });
                 });
                 container.querySelectorAll('.btn-del-chat').forEach(el => {
-                    el.addEventListener('click', () => deleteChatCompletely(el.dataset.chatName));
+                    el.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteChatCompletely(decodeURIComponent(el.dataset.chatName));
+                    });
                 });
             } catch(e){}
         }
@@ -1886,8 +1893,11 @@
             } catch(e){}
         }
 
-        function shareAdTopic(title, server, price) {
+        function shareAdTopic(encodedTitle, encodedServer, encodedPrice) {
             triggerHaptic('light');
+            let title = decodeURIComponent(encodedTitle);
+            let server = decodeURIComponent(encodedServer);
+            let price = decodeURIComponent(encodedPrice);
             let shareText = `🔍 Товар на Arizona RP [${server}]!\n📦 ${title || 'Предмет'}\n💰 Цена: ${price || 'Договорная'}\n\nНайдено через бот поиска!`;
             let shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(shareText);
             if (tg.openTelegramLink) {
@@ -1994,6 +2004,10 @@
                     }
                 }
 
+                let encodedTitle = encodeURIComponent(ad.title || 'Предмет');
+                let encodedServer = encodeURIComponent(ad.server || '');
+                let encodedPrice = encodeURIComponent(ad.currentBid || ad.price || '');
+
                 html += `
                     <div class="ad-card">
                         <div>
@@ -2009,7 +2023,7 @@
                         <div class="card-actions-grid">
                             <div class="write-seller-btn" data-author="${safeAuthor}">💬 В ЛС</div>
                             <div class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${ad.id}')">${isFav ? '❤️ В избранном' : '🤍 В избранное'}</div>
-                            <div class="share-btn" onclick="shareAdTopic('${escapeHtml(ad.title || 'Предмет')}', '${escapeHtml(ad.server)}', '${ad.currentBid || ad.price || ''}')">🔗 Поделиться</div>
+                            <div class="share-btn" onclick="shareAdTopic('${encodedTitle}', '${encodedServer}', '${encodedPrice}')">🔗 Поделиться</div>
                         </div>
                     </div>
                 `;

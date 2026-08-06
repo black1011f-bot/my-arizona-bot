@@ -29,7 +29,7 @@
         }
         .nav-tab {
             flex: 1;
-            padding: 8px 4px;
+            padding: 8px 2px;
             background-color: var(--tg-theme-secondary-bg-color, #242526);
             border: 1px solid #333;
             border-radius: 8px;
@@ -37,7 +37,7 @@
             font-weight: bold;
             text-align: center;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
         }
         .nav-tab.active {
             background-color: var(--tg-theme-button-color, #ffaa00);
@@ -126,7 +126,7 @@
             padding: 30px;
             color: #888;
         }
-        /* Стили модального окна */
+        /* Стили модальных окон */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -160,7 +160,8 @@
         <div class="nav-tabs" id="navTabs">
             <div class="nav-tab active" onclick="switchTab('app')">Объявления</div>
             <div class="nav-tab" onclick="switchTab('myAds')">Мои обьявы</div>
-            <div class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">Админ-панель</div>
+            <div class="nav-tab" onclick="switchTab('feed')">Лента обьяв</div>
+            <div class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">Админ</div>
         </div>
 
         <!-- ВКЛАДКА 1: Создание объявлений -->
@@ -254,16 +255,22 @@
             <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 15px;">Очистить историю</button>
         </div>
 
-        <!-- ВКЛАДКА 3: Админ-панель -->
+        <!-- ВКЛАДКА 3: Лента всех отредактированных объявлений -->
+        <div id="tabFeed" class="section">
+            <div class="admin-section-title">🌍 Лента объявлений игроков</div>
+            <div id="feedContainer"></div>
+        </div>
+
+        <!-- ВКЛАДКА 4: Админ-панель -->
         <div id="tabAdmin" class="section">
             <div id="adminContent">
                 <div class="admin-section-title">📦 Модерация объявлений</div>
-                <button onclick="sendAdminAction('mod_sell_list')">Модерация продажи</button>
-                <button onclick="sendAdminAction('mod_buy_list')">Модерация скупки</button>
+                <button onclick="openModerationModal('sell')">Модерация продажи</button>
+                <button onclick="openModerationModal('buy')">Модерация скупки</button>
 
                 <!-- Блок только для владельца @bounqy -->
                 <div id="ownerSection" style="display: none;">
-                    <div class="admin-section-title">👑 Управление пользователями (@bounqy)</div>
+                    <div class="admin-section-title">👑 Управление (@bounqy)</div>
                     <div class="form-group">
                         <input type="text" id="targetUser" placeholder="ID или @username пользователя">
                     </div>
@@ -292,18 +299,42 @@
         </div>
     </div>
 
-    <!-- Модальное окно уведомления об отправке -->
+    <!-- Модальное окно уведомления об отправке обычного объявления -->
     <div id="successModal" class="modal-overlay">
         <div class="modal-content">
             <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
             <h3 style="color: #ffaa00; margin-top: 0; margin-bottom: 10px;">Успешно!</h3>
-            <p style="font-size: 14px; margin-bottom: 20px; color: var(--tg-theme-text-color, #ffffff);">Объявление отправлено в бот и сохранено!</p>
+            <p style="font-size: 14px; margin-bottom: 20px;">Объявление отправлено в бот и сохранено!</p>
             <button onclick="closeSuccessModal()" style="margin-top: 0;">Убрать / Закрыть</button>
         </div>
     </div>
 
+    <!-- Модальное окно редактора модерации для админа -->
+    <div id="moderationModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 350px; text-align: left;">
+            <h3 style="color: #ffaa00; margin-top: 0; text-align: center;" id="modModalTitle">Редактирование объявления</h3>
+            <div class="form-group">
+                <label for="modEditText">Текст объявления (можно изменить):</label>
+                <textarea id="modEditText" rows="5" style="width: 100%;"></textarea>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-success" onclick="submitModeration(true)" style="margin-top:0;">Отправить</button>
+                <button class="btn-danger" onclick="submitModeration(false)" style="margin-top:0;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно похвалы для админа -->
+    <div id="praiseModal" class="modal-overlay">
+        <div class="modal-content">
+            <div style="font-size: 32px; margin-bottom: 10px;">🏆</div>
+            <h3 style="color: #ffaa00; margin-top: 0; margin-bottom: 10px;">Отлично!</h3>
+            <p id="praiseText" style="font-size: 14px; margin-bottom: 20px; line-height: 1.4;"></p>
+            <button onclick="closePraiseModal()" style="margin-top: 0;">Понятно / Закрыть</button>
+        </div>
+    </div>
+
     <script>
-        // Безопасная инициализация Telegram WebApp
         let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
         if (typeof tg.expand === 'function') {
             tg.expand();
@@ -313,7 +344,7 @@
         const OWNER_USERNAME = 'bounqy';
         
         let isOwner = currentUser.username && currentUser.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
-        let isAdmin = true; // Настройка прав админа
+        let isAdmin = true; // Права админа для демонстрации
 
         if (isAdmin || isOwner) {
             let adminBtn = document.getElementById('adminTabBtn');
@@ -330,47 +361,44 @@
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
 
             if (tabName === 'app') {
-                if (tabs[0]) tabs[0].classList.add('active');
-                let tabApp = document.getElementById('tabApp');
-                if (tabApp) tabApp.classList.add('active');
+                tabs[0].classList.add('active');
+                document.getElementById('tabApp').classList.add('active');
             } else if (tabName === 'myAds') {
-                if (tabs[1]) tabs[1].classList.add('active');
-                let tabMyAds = document.getElementById('tabMyAds');
-                if (tabMyAds) tabMyAds.classList.add('active');
+                tabs[1].classList.add('active');
+                document.getElementById('tabMyAds').classList.add('active');
                 renderMyAds();
-            } else {
-                let adminTabBtn = document.getElementById('adminTabBtn');
-                if (adminTabBtn) adminTabBtn.classList.add('active');
-                let tabAdmin = document.getElementById('tabAdmin');
-                if (tabAdmin) tabAdmin.classList.add('active');
+            } else if (tabName === 'feed') {
+                tabs[2].classList.add('active');
+                document.getElementById('tabFeed').classList.add('active');
+                renderFeed();
+            } else if (tabName === 'admin') {
+                tabs[3].classList.add('active');
+                document.getElementById('tabAdmin').classList.add('active');
             }
         }
 
         function toggleMode() {
-            let modeElement = document.getElementById('mode');
-            if (!modeElement) return;
-            let mode = modeElement.value;
-
+            let mode = document.getElementById('mode').value;
             let catGroup = document.getElementById('categoryGroup');
             let itemGroup = document.getElementById('itemGroup');
             let priceGroup = document.getElementById('priceGroup');
             let textGroup = document.getElementById('textGroup');
 
             if (mode === 'auction') {
-                if (catGroup) catGroup.style.display = 'none';
-                if (textGroup) textGroup.style.display = 'none';
-                if (itemGroup) itemGroup.style.display = 'block';
-                if (priceGroup) priceGroup.style.display = 'block';
+                catGroup.style.display = 'none';
+                textGroup.style.display = 'none';
+                itemGroup.style.display = 'block';
+                priceGroup.style.display = 'block';
             } else if (mode === 'barter') {
-                if (catGroup) catGroup.style.display = 'none';
-                if (itemGroup) itemGroup.style.display = 'none';
-                if (priceGroup) priceGroup.style.display = 'none';
-                if (textGroup) textGroup.style.display = 'block';
+                catGroup.style.display = 'none';
+                itemGroup.style.display = 'none';
+                priceGroup.style.display = 'none';
+                textGroup.style.display = 'block';
             } else {
-                if (catGroup) catGroup.style.display = 'block';
-                if (textGroup) textGroup.style.display = 'block';
-                if (itemGroup) itemGroup.style.display = 'none';
-                if (priceGroup) priceGroup.style.display = 'none';
+                catGroup.style.display = 'block';
+                textGroup.style.display = 'block';
+                itemGroup.style.display = 'none';
+                priceGroup.style.display = 'none';
             }
         }
 
@@ -391,19 +419,16 @@
                 data.text = document.getElementById('text').value;
             }
 
-            // Сохранение в приложение (localStorage) для вкладки "Мои обьявы"
+            // Сохранение в мои объявления
             try {
                 let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-                myAds.unshift({
-                    ...data,
-                    date: new Date().toLocaleString()
-                });
+                myAds.unshift({ ...data, date: new Date().toLocaleString() });
                 localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
             } catch (e) {}
 
             pendingData = data;
 
-            // Вывод уведомления прямо на экран
+            // Открываем модальное окно успешной отправки
             let modal = document.getElementById('successModal');
             if (modal) modal.style.display = 'flex';
         }
@@ -412,21 +437,87 @@
             let modal = document.getElementById('successModal');
             if (modal) modal.style.display = 'none';
 
-            // Очистка формы для следующего объявления
-            let itemNameInput = document.getElementById('itemName');
-            let priceInput = document.getElementById('price');
-            let textInput = document.getElementById('text');
-            if (itemNameInput) itemNameInput.value = '';
-            if (priceInput) priceInput.value = '';
-            if (textInput) textInput.value = '';
+            // Очищаем форму
+            document.getElementById('itemName').value = '';
+            document.getElementById('price').value = '';
+            document.getElementById('text').value = '';
 
-            // Передача данных в бот
+            // Передаем данные в бот
             if (pendingData && typeof tg.sendData === 'function') {
-                try {
-                    tg.sendData(JSON.stringify(pendingData));
-                } catch (e) {}
+                try { tg.sendData(JSON.stringify(pendingData)); } catch (e) {}
             }
             pendingData = null;
+        }
+
+        // Переменные для модерации админом
+        let currentModType = '';
+
+        function openModerationModal(type) {
+            currentModType = type;
+            let title = type === 'sell' ? 'Модерация продажи (Редактирование)' : 'Модерация скупки (Редактирование)';
+            document.getElementById('modModalTitle').innerText = title;
+            
+            // Пример шаблона объявления для проверки и редактирования админом
+            let sampleText = type === 'sell' 
+                ? 'Продам аксессуар Шар +12 с гравировкой, цена договорная.' 
+                : 'Скупаю ресурсы (металл, дрова) оптом. Жду предложения.';
+            
+            document.getElementById('modEditText').value = sampleText;
+            document.getElementById('moderationModal').style.display = 'flex';
+        }
+
+        function submitModeration(isSent) {
+            let editedText = document.getElementById('modEditText').value;
+            document.getElementById('moderationModal').style.display = 'none';
+
+            let praiseMsg = '';
+            let actionName = currentModType === 'sell' ? 'mod_sell_list' : 'mod_buy_list';
+
+            if (isSent) {
+                praiseMsg = 'Молодец! Ты успешно отредактировал объявление и отправил его в систему. Твоя внимательность к деталям превосходна!';
+                
+                let feedItem = {
+                    action: actionName,
+                    text: editedText,
+                    editor: currentUser.username ? '@' + currentUser.username : 'Админ',
+                    date: new Date().toLocaleString()
+                };
+
+                // Сохраняем в общую ленту
+                try {
+                    let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
+                    feed.unshift(feedItem);
+                    localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
+                } catch(e){}
+
+                // Отправляем в main.py через tg.sendData
+                if (typeof tg.sendData === 'function') {
+                    try {
+                        tg.sendData(JSON.stringify({
+                            action: actionName,
+                            edited_text: editedText,
+                            status: 'approved'
+                        }));
+                    } catch(e){}
+                }
+            } else {
+                praiseMsg = 'Ты тщательно прочитал и нажал отмену. Ты большой молодец, что держишь порядок под контролем и не пропускаешь лишнего!';
+                if (typeof tg.sendData === 'function') {
+                    try {
+                        tg.sendData(JSON.stringify({
+                            action: actionName,
+                            status: 'canceled'
+                        }));
+                    } catch(e){}
+                }
+            }
+
+            document.getElementById('praiseText').innerText = praiseMsg;
+            document.getElementById('praiseModal').style.display = 'flex';
+        }
+
+        function closePraiseModal() {
+            document.getElementById('praiseModal').style.display = 'none';
         }
 
         function renderMyAds() {
@@ -434,9 +525,7 @@
             if (!container) return;
 
             let myAds = [];
-            try {
-                myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-            } catch (e) {}
+            try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch (e) {}
 
             if (myAds.length === 0) {
                 container.innerHTML = '<div class="access-denied">У вас пока нет отправленных объявлений.</div>';
@@ -445,13 +534,7 @@
 
             let html = '';
             myAds.forEach(ad => {
-                let modeName = {
-                    'sell': 'Продажа',
-                    'buy': 'Скупка',
-                    'auction': 'Аукцион',
-                    'barter': 'Бартер / Обмен'
-                }[ad.mode] || ad.mode;
-
+                let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Бартер / Обмен' }[ad.mode] || ad.mode;
                 html += `
                     <div class="ad-card">
                         <div class="ad-header">
@@ -467,19 +550,45 @@
             container.innerHTML = html;
         }
 
+        function renderFeed() {
+            let container = document.getElementById('feedContainer');
+            if (!container) return;
+
+            let feed = [];
+            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch (e) {}
+
+            if (feed.length === 0) {
+                container.innerHTML = '<div class="access-denied">В ленте пока нет отредактированных объявлений.</div>';
+                return;
+            }
+
+            let html = '';
+            feed.forEach(item => {
+                let typeName = item.action === 'mod_sell_list' ? 'Продажа (Отредактировано)' : 'Скупка (Отредактировано)';
+                html += `
+                    <div class="ad-card">
+                        <div class="ad-header">
+                            <span><b>${typeName}</b></span>
+                            <span>${item.date}</span>
+                        </div>
+                        <div><b>Текст:</b> ${item.text}</div>
+                        <div style="font-size: 10px; color: #888; margin-top: 4px;">Модератор: ${item.editor}</div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
         function clearMyAds() {
-            if (confirm('Очистить историю ваших объявлений в приложении?')) {
-                try {
-                    localStorage.removeItem('my_arizona_ads');
-                } catch (e) {}
+            if (confirm('Очистить историю ваших объявлений?')) {
+                localStorage.removeItem('my_arizona_ads');
                 renderMyAds();
             }
         }
 
         function sendAdminAction(actionType) {
-            let data = { action: actionType };
             if (typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify(data)); } catch (e) {}
+                try { tg.sendData(JSON.stringify({ action: actionType })); } catch (e) {}
             }
         }
 
@@ -487,27 +596,17 @@
             let targetInput = document.getElementById('targetUser');
             if (!targetInput) return;
             let target = targetInput.value.trim();
-            if (!target) {
-                alert('Введите ID или @username пользователя!');
-                return;
-            }
-            let data = { action: actionType, target: target };
+            if (!target) { alert('Введите ID или @username!'); return; }
             if (typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify(data)); } catch (e) {}
+                try { tg.sendData(JSON.stringify({ action: actionType, target: target })); } catch (e) {}
             }
         }
 
         function sendBroadcast() {
-            let textInput = document.getElementById('broadcastText');
-            if (!textInput) return;
-            let text = textInput.value.trim();
-            if (!text) {
-                alert('Введите текст для рассылки!');
-                return;
-            }
-            let data = { action: 'broadcast', text: text };
+            let text = document.getElementById('broadcastText').value.trim();
+            if (!text) { alert('Введите текст!'); return; }
             if (typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify(data)); } catch (e) {}
+                try { tg.sendData(JSON.stringify({ action: 'broadcast', text: text })); } catch (e) {}
             }
         }
     </script>

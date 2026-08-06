@@ -1,89 +1,125 @@
 <script>
-    // Инициализация из 1-го скрипта (без блокировки DOMContentLoaded)
+    // Инициализация Telegram WebApp объекта
     let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
     if (typeof tg.expand === 'function') {
         tg.expand();
+    }
+    if (typeof tg.ready === 'function') {
+        tg.ready(); // Сообщаем Telegram, что мини-приложение загрузилось
     }
 
     let currentUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 0, username: '' };
     const OWNER_USERNAME = 'bounqy';
     
     let isOwner = currentUser.username && currentUser.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
-    let isAdmin = true; // Права админа из 1-го скрипта
+    const ADMIN_USERNAMES = ['bounqy'];
+    let isAdmin = isOwner || (currentUser.username && ADMIN_USERNAMES.includes(currentUser.username.toLowerCase()));
 
-    if (isAdmin || isOwner) {
-        let adminBtn = document.getElementById('adminTabBtn');
-        if (adminBtn) adminBtn.style.display = 'block';
-        if (isOwner) {
+    // Запуск настройки интерфейса только после полной загрузки DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        if (isAdmin || isOwner) {
+            let adminBtn = document.getElementById('adminTabBtn');
+            if (adminBtn) adminBtn.style.display = 'block';
             let ownerSec = document.getElementById('ownerSection');
-            if (ownerSec) ownerSec.style.display = 'block';
+            if (ownerSec && isOwner) ownerSec.style.display = 'block';
         }
-    }
+
+        // Автоматически открываем главную вкладку при запуске
+        switchTab('app');
+    });
 
     function switchTab(tabName) {
         let tabs = document.querySelectorAll('.nav-tab');
+        let sections = document.querySelectorAll('.section');
+        
         tabs.forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
 
         if (tabName === 'app') {
-            tabs[0].classList.add('active');
-            document.getElementById('tabApp').classList.add('active');
+            if (tabs[0]) tabs[0].classList.add('active');
+            let tabApp = document.getElementById('tabApp');
+            if (tabApp) tabApp.classList.add('active');
         } else if (tabName === 'myAds') {
-            tabs[1].classList.add('active');
-            document.getElementById('tabMyAds').classList.add('active');
+            if (tabs[1]) tabs[1].classList.add('active');
+            let tabMyAds = document.getElementById('tabMyAds');
+            if (tabMyAds) tabMyAds.classList.add('active');
             renderMyAds();
         } else if (tabName === 'feed') {
-            tabs[2].classList.add('active');
-            document.getElementById('tabFeed').classList.add('active');
+            if (tabs[2]) tabs[2].classList.add('active');
+            let tabFeed = document.getElementById('tabFeed');
+            if (tabFeed) tabFeed.classList.add('active');
             renderFeed();
         } else if (tabName === 'admin') {
-            tabs[3].classList.add('active');
-            document.getElementById('tabAdmin').classList.add('active');
+            if (!isAdmin && !isOwner) {
+                alert('У вас нет доступа к этой вкладке!');
+                switchTab('app');
+                return;
+            }
+            if (tabs[3]) tabs[3].classList.add('active');
+            let tabAdmin = document.getElementById('tabAdmin');
+            if (tabAdmin) tabAdmin.classList.add('active');
         }
     }
 
     function toggleMode() {
-        let mode = document.getElementById('mode').value;
+        let modeEl = document.getElementById('mode');
+        if (!modeEl) return;
+        let mode = modeEl.value;
+
         let catGroup = document.getElementById('categoryGroup');
         let itemGroup = document.getElementById('itemGroup');
         let priceGroup = document.getElementById('priceGroup');
         let textGroup = document.getElementById('textGroup');
 
         if (mode === 'auction') {
-            catGroup.style.display = 'none';
-            textGroup.style.display = 'none';
-            itemGroup.style.display = 'block';
-            priceGroup.style.display = 'block';
+            if (catGroup) catGroup.style.display = 'none';
+            if (textGroup) textGroup.style.display = 'none';
+            if (itemGroup) itemGroup.style.display = 'block';
+            if (priceGroup) priceGroup.style.display = 'block';
         } else if (mode === 'barter') {
-            catGroup.style.display = 'none';
-            itemGroup.style.display = 'none';
-            priceGroup.style.display = 'none';
-            textGroup.style.display = 'block';
+            if (catGroup) catGroup.style.display = 'none';
+            if (itemGroup) itemGroup.style.display = 'none';
+            if (priceGroup) priceGroup.style.display = 'none';
+            if (textGroup) textGroup.style.display = 'block';
         } else {
-            catGroup.style.display = 'block';
-            textGroup.style.display = 'block';
-            itemGroup.style.display = 'none';
-            priceGroup.style.display = 'none';
+            if (catGroup) catGroup.style.display = 'block';
+            if (textGroup) textGroup.style.display = 'block';
+            if (itemGroup) itemGroup.style.display = 'none';
+            if (priceGroup) priceGroup.style.display = 'none';
         }
     }
 
     let pendingData = null;
 
     function submitData() {
-        let mode = document.getElementById('mode').value;
-        let server = document.getElementById('server').value;
+        let modeEl = document.getElementById('mode');
+        let serverEl = document.getElementById('server');
+        let categoryEl = document.getElementById('category');
+        
+        if (!modeEl || !serverEl) return;
+
+        let mode = modeEl.value;
+        let server = serverEl.value;
+        let category = categoryEl ? categoryEl.value : '';
         let textContent = '';
         
         if (mode === 'auction') {
-            let itemName = document.getElementById('itemName').value.trim();
-            let price = document.getElementById('price').value.trim();
+            let itemNameEl = document.getElementById('itemName');
+            let priceEl = document.getElementById('price');
+            if (!itemNameEl || !priceEl) return;
+
+            let itemName = itemNameEl.value.trim();
+            let price = priceEl.value.trim();
             if (!itemName || !price) {
                 alert('Пожалуйста, укажите название товара и стартовую цену!');
                 return;
             }
             textContent = `Аукцион: ${itemName} (Старт: ${price}$)`;
         } else {
-            textContent = document.getElementById('text').value.trim();
+            let textEl = document.getElementById('text');
+            if (!textEl) return;
+
+            textContent = textEl.value.trim();
             if (!textContent) {
                 alert('Пожалуйста, введите текст объявления!');
                 return;
@@ -94,7 +130,7 @@
             id: 'ad_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
             mode: mode,
             server: server,
-            category: document.getElementById('category').value,
+            category: category,
             text: textContent,
             author: currentUser.username ? '@' + currentUser.username : (currentUser.first_name || 'Игрок'),
             date: new Date().toLocaleString()
@@ -111,14 +147,21 @@
         } catch (e) {}
 
         pendingData = adItem;
-        document.getElementById('successModal').style.display = 'flex';
+        let successModal = document.getElementById('successModal');
+        if (successModal) successModal.style.display = 'flex';
     }
 
     function closeSuccessModal() {
-        document.getElementById('successModal').style.display = 'none';
-        document.getElementById('itemName').value = '';
-        document.getElementById('price').value = '';
-        document.getElementById('text').value = '';
+        let successModal = document.getElementById('successModal');
+        if (successModal) successModal.style.display = 'none';
+
+        let itemNameEl = document.getElementById('itemName');
+        let priceEl = document.getElementById('price');
+        let textEl = document.getElementById('text');
+
+        if (itemNameEl) itemNameEl.value = '';
+        if (priceEl) priceEl.value = '';
+        if (textEl) textEl.value = '';
 
         if (pendingData && typeof tg.sendData === 'function') {
             try { tg.sendData(JSON.stringify(pendingData)); } catch (e) {}
@@ -131,17 +174,24 @@
 
     function openModerationSelector(type) {
         currentModType = type;
-        document.getElementById('selectorTitle').innerText = type === 'sell' ? 'Модерация продажи' : 'Модерация скупки';
+        let selectorTitle = document.getElementById('selectorTitle');
+        if (selectorTitle) {
+            selectorTitle.innerText = type === 'sell' ? 'Модерация продажи' : 'Модерация скупки';
+        }
         renderPendingAdsList();
-        document.getElementById('adSelectorModal').style.display = 'flex';
+        let adSelectorModal = document.getElementById('adSelectorModal');
+        if (adSelectorModal) adSelectorModal.style.display = 'flex';
     }
 
     function closeAdSelectorModal() {
-        document.getElementById('adSelectorModal').style.display = 'none';
+        let adSelectorModal = document.getElementById('adSelectorModal');
+        if (adSelectorModal) adSelectorModal.style.display = 'none';
     }
 
     function renderPendingAdsList() {
         let container = document.getElementById('pendingAdsList');
+        if (!container) return;
+
         let pendingAds = [];
         try {
             pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
@@ -181,19 +231,29 @@
         let ad = pendingAds.find(a => a.id === id);
         if (!ad) return;
 
-        document.getElementById('modEditText').value = ad.text;
-        document.getElementById('adSelectorModal').style.display = 'none';
-        document.getElementById('moderationModal').style.display = 'flex';
+        let modEditText = document.getElementById('modEditText');
+        if (modEditText) modEditText.value = ad.text;
+
+        let adSelectorModal = document.getElementById('adSelectorModal');
+        let moderationModal = document.getElementById('moderationModal');
+        if (adSelectorModal) adSelectorModal.style.display = 'none';
+        if (moderationModal) moderationModal.style.display = 'flex';
     }
 
     function closeModerationEdit() {
-        document.getElementById('moderationModal').style.display = 'none';
-        document.getElementById('adSelectorModal').style.display = 'flex';
+        let moderationModal = document.getElementById('moderationModal');
+        let adSelectorModal = document.getElementById('adSelectorModal');
+        if (moderationModal) moderationModal.style.display = 'none';
+        if (adSelectorModal) adSelectorModal.style.display = 'flex';
     }
 
     function submitModerationEdit() {
-        let newText = document.getElementById('modEditText').value.trim();
-        document.getElementById('moderationModal').style.display = 'none';
+        let modEditText = document.getElementById('modEditText');
+        if (!modEditText) return;
+
+        let newText = modEditText.value.trim();
+        let moderationModal = document.getElementById('moderationModal');
+        if (moderationModal) moderationModal.style.display = 'none';
 
         let pendingAds = [];
         try { pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch (e) {}
@@ -230,8 +290,10 @@
             }
         }
 
-        document.getElementById('praiseText').innerText = 'Молодец! Ты успешно отредактировал объявление, проверил его на маты и отправил в ленту. Порядок наведен!';
-        document.getElementById('praiseModal').style.display = 'flex';
+        let praiseText = document.getElementById('praiseText');
+        let praiseModal = document.getElementById('praiseModal');
+        if (praiseText) praiseText.innerText = 'Молодец! Ты успешно отредактировал объявление, проверил его на маты и отправил в ленту. Порядок наведен!';
+        if (praiseModal) praiseModal.style.display = 'flex';
     }
 
     function deletePendingAd(id) {
@@ -253,7 +315,8 @@
     }
 
     function closePraiseModal() {
-        document.getElementById('praiseModal').style.display = 'none';
+        let praiseModal = document.getElementById('praiseModal');
+        if (praiseModal) praiseModal.style.display = 'none';
         if (currentModType) {
             openModerationSelector(currentModType);
         }
@@ -365,7 +428,9 @@
     }
 
     function sendBroadcast() {
-        let text = document.getElementById('broadcastText').value.trim();
+        let broadcastText = document.getElementById('broadcastText');
+        if (!broadcastText) return;
+        let text = broadcastText.value.trim();
         if (!text) { alert('Введите текст!'); return; }
         if (typeof tg.sendData === 'function') {
             try { tg.sendData(JSON.stringify({ action: 'broadcast', text: text })); } catch (e) {}

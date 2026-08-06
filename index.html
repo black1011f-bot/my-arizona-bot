@@ -1,739 +1,382 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arizona RP Mini App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #18191a);
-            color: var(--tg-theme-text-color, #ffffff);
-            margin: 0;
-            padding: 16px;
-        }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-        }
-        h2 {
-            text-align: center;
-            color: var(--tg-theme-hint-color, #ffaa00);
-            margin-bottom: 10px;
-        }
-        .nav-tabs {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 15px;
-        }
-        .nav-tab {
-            flex: 1;
-            padding: 8px 2px;
-            background-color: var(--tg-theme-secondary-bg-color, #242526);
-            border: 1px solid #333;
-            border-radius: 8px;
-            color: var(--tg-theme-text-color, #ffffff);
-            font-weight: bold;
-            text-align: center;
-            cursor: pointer;
-            font-size: 11px;
-        }
-        .nav-tab.active {
-            background-color: var(--tg-theme-button-color, #ffaa00);
-            color: var(--tg-theme-button-text-color, #000000);
-            border-color: transparent;
-        }
-        .section {
-            display: none;
-        }
-        .section.active {
-            display: block;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        select, input, textarea {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #333;
-            background-color: var(--tg-theme-secondary-bg-color, #242526);
-            color: var(--tg-theme-text-color, #ffffff);
-            box-sizing: border-box;
-            margin-bottom: 5px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--tg-theme-button-color, #ffaa00);
-            color: var(--tg-theme-button-text-color, #000000);
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 5px;
-            margin-bottom: 10px;
-        }
-        .btn-danger {
-            background-color: #d9534f;
-            color: #ffffff;
-        }
-        .btn-success {
-            background-color: #5cb85c;
-            color: #ffffff;
-        }
-        .btn-secondary {
-            background-color: #555;
-            color: #ffffff;
-        }
-        .warning-box {
-            background-color: rgba(255, 170, 0, 0.1);
-            border-left: 4px solid #ffaa00;
-            padding: 10px;
-            font-size: 12px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            line-height: 1.4;
-        }
-        .ad-card {
-            background-color: var(--tg-theme-secondary-bg-color, #242526);
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            font-size: 13px;
-        }
-        .ad-header {
-            font-size: 11px;
-            color: #ffaa00;
-            margin-bottom: 6px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .admin-section-title {
-            font-size: 15px;
-            font-weight: bold;
-            color: #ffaa00;
-            margin-top: 15px;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 4px;
-        }
-        .access-denied {
-            text-align: center;
-            padding: 30px;
-            color: #888;
-        }
-        /* Стили модальных окон */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .modal-content {
-            background-color: var(--tg-theme-secondary-bg-color, #242526);
-            padding: 20px;
-            border-radius: 12px;
-            max-width: 350px;
-            width: 100%;
-            text-align: center;
-            border: 1px solid #333;
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Arizona RP</h2>
+<script>
+    let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
+    if (typeof tg.expand === 'function') {
+        tg.expand();
+    }
 
-        <!-- Навигация по вкладкам -->
-        <div class="nav-tabs" id="navTabs">
-            <div class="nav-tab active" onclick="switchTab('app')">Объявления</div>
-            <div class="nav-tab" onclick="switchTab('myAds')">Мои обьявы</div>
-            <div class="nav-tab" onclick="switchTab('feed')">Лента обьяв</div>
-            <div class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">Админ</div>
-        </div>
+    let currentUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 0, username: '' };
+    const OWNER_USERNAME = 'bounqy';
+    
+    let isOwner = currentUser.username && currentUser.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
+    
+    // Безопасная проверка админов (например, по ID или username, а не хардкод true для всех)
+    // Укажите список ID администраторов или проверку на бэкенде
+    const ADMIN_USERNAMES = ['bounqy']; // добавьте юзернеймы админов при необходимости
+    let isAdmin = isOwner || (currentUser.username && ADMIN_USERNAMES.includes(currentUser.username.toLowerCase()));
 
-        <!-- ВКЛАДКА 1: Создание объявлений -->
-        <div id="tabApp" class="section active">
-            <div class="warning-box">
-                ⚠️ <b>Безопасность и ответственность:</b> Администрация бота не несет никакой ответственности за ваши сделки, обмены и договоренности. Все действия вы совершаете на свой страх и риск! Отправка доступна с <b>08:00 до 22:00 МСК</b>.
-            </div>
-            
-            <div class="form-group">
-                <label for="mode">Режим:</label>
-                <select id="mode" onchange="toggleMode()">
-                    <option value="sell">Продажа</option>
-                    <option value="buy">Скупка</option>
-                    <option value="auction">Аукцион</option>
-                    <option value="barter">Бартер / Обмен</option>
-                </select>
-            </div>
-
-            <div class="form-group" id="categoryGroup">
-                <label for="category">Категория:</label>
-                <select id="category">
-                    <option value="💍 Аксессуары и вещи">💍 Аксессуары и вещи</option>
-                    <option value="🚗 Транспорт и тюнинг">🚗 Транспорт и тюнинг</option>
-                    <option value="👕 Скины и охранники">👕 Скины и охранники</option>
-                    <option value="🏠 Недвижимость и бизнесы">🏠 Недвижимость и бизнесы</option>
-                    <option value="📦 Ресурсы и материалы">📦 Ресурсы и материалы</option>
-                </select>
-            </div>
-
-            <div class="form-group" id="itemGroup" style="display:none;">
-                <label for="itemName">Название товара:</label>
-                <input type="text" id="itemName" placeholder="Например: Шар +12">
-            </div>
-
-            <div class="form-group" id="priceGroup" style="display:none;">
-                <label for="price">Стартовая цена ($):</label>
-                <input type="number" id="price" placeholder="50000000">
-            </div>
-
-            <div class="form-group" id="textGroup">
-                <label for="text">Текст объявления:</label>
-                <textarea id="text" rows="4" placeholder="Опишите ваш товар или условия обмена..."></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="server">Игровой сервер:</label>
-                <select id="server">
-                    <option value="🔥 Phoenix">🔥 Phoenix</option>
-                    <option value="🌴 Tucson">🌴 Tucson</option>
-                    <option value="🌵 Scottdale">🌵 Scottdale</option>
-                    <option value="⚜️ Chandler">⚜️ Chandler</option>
-                    <option value="❄️ Brainburg">❄️ Brainburg</option>
-                    <option value="🌊 Yuma">🌊 Yuma</option>
-                    <option value="✨ Saint-Rose">✨ Saint-Rose</option>
-                    <option value="🏛 Mesa">🏛 Mesa</option>
-                    <option value="❤️ Red-Rock">❤️ Red-Rock</option>
-                    <option value="🍀 Surprise">🍀 Surprise</option>
-                    <option value="⚡️ Prescott">⚡️ Prescott</option>
-                    <option value="🌲 Glendale">🌲 Glendale</option>
-                    <option value="👑 Kingman">👑 Kingman</option>
-                    <option value="⚓️ Winslow">⚓️ Winslow</option>
-                    <option value="🌴 Payson">🌴 Payson</option>
-                    <option value="💎 Gilbert">💎 Gilbert</option>
-                    <option value="🔥 Show-Low">🔥 Show-Low</option>
-                    <option value="🌴 Casa-Grande">🌴 Casa-Grande</option>
-                    <option value="📜 Page">📜 Page</option>
-                    <option value="☀️ Sun-City">☀️ Sun-City</option>
-                    <option value="👑 Queen-Creek">👑 Queen-Creek</option>
-                    <option value="🌵 Sedona">🌵 Sedona</option>
-                    <option value="🎄 Holiday">🎄 Holiday</option>
-                    <option value="🍀 Wednesday">🍀 Wednesday</option>
-                    <option value="⚡️ Yava">⚡️ Yava</option>
-                    <option value="🌌 Faraway">🌌 Faraway</option>
-                    <option value="🎁 Christmas">🎁 Christmas</option>
-                    <option value="🐝 Bumble Bee">🐝 Bumble Bee</option>
-                    <option value="🪞 Mirage">🪞 Mirage</option>
-                    <option value="💖 Love">💖 Love</option>
-                    <option value="📱 Mobile I">📱 Mobile I</option>
-                    <option value="📱 Mobile II">📱 Mobile II</option>
-                    <option value="📱 Mobile III">📱 Mobile III</option>
-                </select>
-            </div>
-
-            <button onclick="submitData()">Отправить в бот</button>
-        </div>
-
-        <!-- ВКЛАДКА 2: Мои объявления -->
-        <div id="tabMyAds" class="section">
-            <div class="admin-section-title">📋 Ваши отправленные объявления</div>
-            <div id="myAdsContainer"></div>
-            <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 15px;">Очистить историю</button>
-        </div>
-
-        <!-- ВКЛАДКА 3: Лента всех отредактированных объявлений -->
-        <div id="tabFeed" class="section">
-            <div class="admin-section-title">🌍 Лента объявлений игроков</div>
-            <div id="feedContainer"></div>
-        </div>
-
-        <!-- ВКЛАДКА 4: Админ-панель -->
-        <div id="tabAdmin" class="section">
-            <div id="adminContent">
-                <div class="admin-section-title">📦 Модерация объявлений</div>
-                <button onclick="openModerationSelector('sell')">Модерация продажи</button>
-                <button onclick="openModerationSelector('buy')">Модерация скупки</button>
-
-                <!-- Блок только для владельца @bounqy -->
-                <div id="ownerSection" style="display: none;">
-                    <div class="admin-section-title">👑 Управление (@bounqy)</div>
-                    <div class="form-group">
-                        <input type="text" id="targetUser" placeholder="ID или @username пользователя">
-                    </div>
-                    <div style="display: flex; gap: 5px;">
-                        <button class="btn-danger" onclick="sendTargetAction('ban')">Забанить</button>
-                        <button class="btn-success" onclick="sendTargetAction('unban')">Разбанить</button>
-                    </div>
-                    <div style="display: flex; gap: 5px;">
-                        <button class="btn-success" onclick="sendTargetAction('add_admin')">Дать адм</button>
-                        <button class="btn-danger" onclick="sendTargetAction('remove_admin')">Снять адм</button>
-                    </div>
-
-                    <div class="admin-section-title">📁 Логи (файлами)</div>
-                    <button onclick="sendAdminAction('log_admin_edits')">Логи редакции админов</button>
-                    <button onclick="sendAdminAction('log_chats')">Логи чатов общения</button>
-                    <button onclick="sendAdminAction('log_auction')">Логи аукциона</button>
-
-                    <div class="admin-section-title">📢 Рассылка</div>
-                    <textarea id="broadcastText" rows="3" placeholder="Текст рассылки..."></textarea>
-                    <button onclick="sendBroadcast()">Запустить рассылку</button>
-                </div>
-            </div>
-            <div id="accessDenied" class="access-denied" style="display: none;">
-                У вас нет доступа к панели администратора.
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно: Успешная отправка обычного объявления -->
-    <div id="successModal" class="modal-overlay">
-        <div class="modal-content">
-            <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
-            <h3 style="color: #ffaa00; margin-top: 0; margin-bottom: 10px;">Успешно!</h3>
-            <p style="font-size: 14px; margin-bottom: 20px;">Объявление отправлено в бот и ожидает модерации!</p>
-            <button onclick="closeSuccessModal()" style="margin-top: 0;">Убрать / Закрыть</button>
-        </div>
-    </div>
-
-    <!-- Модальное окно: Выбор конкретного объявления для модерации -->
-    <div id="adSelectorModal" class="modal-overlay">
-        <div class="modal-content" style="text-align: left;">
-            <h3 style="color: #ffaa00; margin-top: 0; text-align: center;" id="selectorTitle">Выбор объявления</h3>
-            <div id="pendingAdsList" style="margin-bottom: 15px;"></div>
-            <button class="btn-secondary" onclick="closeAdSelectorModal()">🔙 Назад</button>
-        </div>
-    </div>
-
-    <!-- Модальное окно: Редактирование конкретного выбранного объявления -->
-    <div id="moderationModal" class="modal-overlay">
-        <div class="modal-content" style="text-align: left;">
-            <h3 style="color: #ffaa00; margin-top: 0; text-align: center;">Редактирование объявления</h3>
-            <div class="form-group">
-                <label for="modEditText">Текст объявления (измените при необходимости):</label>
-                <textarea id="modEditText" rows="5" style="width: 100%;"></textarea>
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <button class="btn-success" onclick="submitModerationEdit()" style="margin-top:0;">Опубликовать</button>
-                <button class="btn-danger" onclick="closeModerationEdit()" style="margin-top:0;">Отмена</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно: Похвала для админа -->
-    <div id="praiseModal" class="modal-overlay">
-        <div class="modal-content">
-            <div style="font-size: 32px; margin-bottom: 10px;">🏆</div>
-            <h3 style="color: #ffaa00; margin-top: 0; margin-bottom: 10px;">Отлично!</h3>
-            <p id="praiseText" style="font-size: 14px; margin-bottom: 20px; line-height: 1.4;"></p>
-            <button onclick="closePraiseModal()" style="margin-top: 0;">Понятно / Закрыть</button>
-        </div>
-    </div>
-
-    <script>
-        let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
-        if (typeof tg.expand === 'function') {
-            tg.expand();
+    if (isAdmin || isOwner) {
+        let adminBtn = document.getElementById('adminTabBtn');
+        if (adminBtn) adminBtn.style.display = 'block';
+        if (isOwner) {
+            let ownerSec = document.getElementById('ownerSection');
+            if (ownerSec) ownerSec.style.display = 'block';
         }
+    }
 
-        let currentUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : { id: 0, username: '' };
-        const OWNER_USERNAME = 'bounqy';
+    function switchTab(tabName) {
+        let tabs = document.querySelectorAll('.nav-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+
+        if (tabName === 'app') {
+            tabs[0].classList.add('active');
+            document.getElementById('tabApp').classList.add('active');
+        } else if (tabName === 'myAds') {
+            tabs[1].classList.add('active');
+            document.getElementById('tabMyAds').classList.add('active');
+            renderMyAds();
+        } else if (tabName === 'feed') {
+            tabs[2].classList.add('active');
+            document.getElementById('tabFeed').classList.add('active');
+            renderFeed();
+        } else if (tabName === 'admin') {
+            if (!isAdmin && !isOwner) {
+                alert('У вас нет доступа к этой вкладке!');
+                switchTab('app');
+                return;
+            }
+            tabs[3].classList.add('active');
+            document.getElementById('tabAdmin').classList.add('active');
+        }
+    }
+
+    function toggleMode() {
+        let mode = document.getElementById('mode').value;
+        let catGroup = document.getElementById('categoryGroup');
+        let itemGroup = document.getElementById('itemGroup');
+        let priceGroup = document.getElementById('priceGroup');
+        let textGroup = document.getElementById('textGroup');
+
+        if (mode === 'auction') {
+            catGroup.style.display = 'none';
+            textGroup.style.display = 'none';
+            itemGroup.style.display = 'block';
+            priceGroup.style.display = 'block';
+        } else if (mode === 'barter') {
+            catGroup.style.display = 'none';
+            itemGroup.style.display = 'none';
+            priceGroup.style.display = 'none';
+            textGroup.style.display = 'block';
+        } else {
+            catGroup.style.display = 'block';
+            textGroup.style.display = 'block';
+            itemGroup.style.display = 'none';
+            priceGroup.style.display = 'none';
+        }
+    }
+
+    let pendingData = null;
+
+    function submitData() {
+        let mode = document.getElementById('mode').value;
+        let server = document.getElementById('server').value;
+        let textContent = '';
         
-        let isOwner = currentUser.username && currentUser.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
-        let isAdmin = true; // Права админа
-
-        if (isAdmin || isOwner) {
-            let adminBtn = document.getElementById('adminTabBtn');
-            if (adminBtn) adminBtn.style.display = 'block';
-            if (isOwner) {
-                let ownerSec = document.getElementById('ownerSection');
-                if (ownerSec) ownerSec.style.display = 'block';
+        if (mode === 'auction') {
+            let itemName = document.getElementById('itemName').value.trim();
+            let price = document.getElementById('price').value.trim();
+            if (!itemName || !price) {
+                alert('Пожалуйста, укажите название товара и стартовую цену!');
+                return;
+            }
+            textContent = `Аукцион: ${itemName} (Старт: ${price}$)`;
+        } else {
+            textContent = document.getElementById('text').value.trim();
+            if (!textContent) {
+                alert('Пожалуйста, введите текст объявления!');
+                return;
             }
         }
 
-        function switchTab(tabName) {
-            let tabs = document.querySelectorAll('.nav-tab');
-            tabs.forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        let adItem = {
+            id: 'ad_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+            mode: mode,
+            server: server,
+            category: document.getElementById('category').value,
+            text: textContent,
+            author: currentUser.username ? '@' + currentUser.username : (currentUser.first_name || 'Игрок'),
+            date: new Date().toLocaleString()
+        };
 
-            if (tabName === 'app') {
-                tabs[0].classList.add('active');
-                document.getElementById('tabApp').classList.add('active');
-            } else if (tabName === 'myAds') {
-                tabs[1].classList.add('active');
-                document.getElementById('tabMyAds').classList.add('active');
-                renderMyAds();
-            } else if (tabName === 'feed') {
-                tabs[2].classList.add('active');
-                document.getElementById('tabFeed').classList.add('active');
-                renderFeed();
-            } else if (tabName === 'admin') {
-                tabs[3].classList.add('active');
-                document.getElementById('tabAdmin').classList.add('active');
-            }
+        try {
+            let pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+            pendingAds.unshift(adItem);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
+
+            let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
+            myAds.unshift(adItem);
+            localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
+        } catch (e) {}
+
+        pendingData = adItem;
+        document.getElementById('successModal').style.display = 'flex';
+    }
+
+    function closeSuccessModal() {
+        document.getElementById('successModal').style.display = 'none';
+        document.getElementById('itemName').value = '';
+        document.getElementById('price').value = '';
+        document.getElementById('text').value = '';
+
+        if (pendingData && typeof tg.sendData === 'function') {
+            try { tg.sendData(JSON.stringify(pendingData)); } catch (e) {}
+        }
+        pendingData = null;
+    }
+
+    let currentModType = '';
+    let selectedAdId = null;
+
+    function openModerationSelector(type) {
+        currentModType = type;
+        document.getElementById('selectorTitle').innerText = type === 'sell' ? 'Модерация продажи' : 'Модерация скупки';
+        renderPendingAdsList();
+        document.getElementById('adSelectorModal').style.display = 'flex';
+    }
+
+    function closeAdSelectorModal() {
+        document.getElementById('adSelectorModal').style.display = 'none';
+    }
+
+    function renderPendingAdsList() {
+        let container = document.getElementById('pendingAdsList');
+        let pendingAds = [];
+        try {
+            pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+        } catch (e) {}
+
+        let filtered = pendingAds.filter(ad => ad.mode === currentModType);
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="access-denied">Нет объявлений для модерации в этой категории.</div>';
+            return;
         }
 
-        function toggleMode() {
-            let mode = document.getElementById('mode').value;
-            let catGroup = document.getElementById('categoryGroup');
-            let itemGroup = document.getElementById('itemGroup');
-            let priceGroup = document.getElementById('priceGroup');
-            let textGroup = document.getElementById('textGroup');
+        let html = '';
+        filtered.forEach(ad => {
+            html += `
+                <div class="ad-card">
+                    <div class="ad-header">
+                        <span><b>${ad.server}</b> | От: ${ad.author}</span>
+                        <span>${ad.date}</span>
+                    </div>
+                    <div style="margin-bottom: 8px;"><b>Текст:</b> ${ad.text}</div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn-success" style="margin:0; padding:6px; font-size:11px;" onclick="startEditAd('${ad.id}')">✏️ Редактировать</button>
+                        <button class="btn-danger" style="margin:0; padding:6px; font-size:11px;" onclick="deletePendingAd('${ad.id}')">🗑 Удалить</button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
 
-            if (mode === 'auction') {
-                catGroup.style.display = 'none';
-                textGroup.style.display = 'none';
-                itemGroup.style.display = 'block';
-                priceGroup.style.display = 'block';
-            } else if (mode === 'barter') {
-                catGroup.style.display = 'none';
-                itemGroup.style.display = 'none';
-                priceGroup.style.display = 'none';
-                textGroup.style.display = 'block';
-            } else {
-                catGroup.style.display = 'block';
-                textGroup.style.display = 'block';
-                itemGroup.style.display = 'none';
-                priceGroup.style.display = 'none';
-            }
-        }
+    function startEditAd(id) {
+        selectedAdId = id;
+        let pendingAds = [];
+        try { pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch (e) {}
+        
+        let ad = pendingAds.find(a => a.id === id);
+        if (!ad) return;
 
-        let pendingData = null;
+        document.getElementById('modEditText').value = ad.text;
+        document.getElementById('adSelectorModal').style.display = 'none';
+        document.getElementById('moderationModal').style.display = 'flex';
+    }
 
-        function submitData() {
-            let mode = document.getElementById('mode').value;
-            let server = document.getElementById('server').value;
-            let textContent = '';
+    function closeModerationEdit() {
+        document.getElementById('moderationModal').style.display = 'none';
+        document.getElementById('adSelectorModal').style.display = 'flex';
+    }
+
+    function submitModerationEdit() {
+        let newText = document.getElementById('modEditText').value.trim();
+        document.getElementById('moderationModal').style.display = 'none';
+
+        let pendingAds = [];
+        try { pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch (e) {}
+
+        let index = pendingAds.findIndex(a => a.id === selectedAdId);
+        if (index !== -1) {
+            let ad = pendingAds[index];
+            ad.text = newText;
             
-            if (mode === 'auction') {
-                let itemName = document.getElementById('itemName').value.trim();
-                let price = document.getElementById('price').value.trim();
-                if (!itemName || !price) {
-                    alert('Пожалуйста, укажите название товара и стартовую цену!');
-                    return;
-                }
-                textContent = `Аукцион: ${itemName} (Старт: ${price}$)`;
-            } else {
-                textContent = document.getElementById('text').value.trim();
-                if (!textContent) {
-                    alert('Пожалуйста, введите текст объявления!');
-                    return;
-                }
-            }
+            pendingAds.splice(index, 1);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
 
-            let adItem = {
-                id: 'ad_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                mode: mode,
-                server: server,
-                category: document.getElementById('category').value,
-                text: textContent,
-                author: currentUser.username ? '@' + currentUser.username : (currentUser.first_name || 'Игрок'),
+            let feedItem = {
+                ...ad,
+                editor: currentUser.username ? '@' + currentUser.username : 'Админ',
                 date: new Date().toLocaleString()
             };
 
-            // Сохраняем в список ожидающих модерации
             try {
-                let pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-                pendingAds.unshift(adItem);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
+                let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
+                feed.unshift(feedItem);
+                localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
+            } catch(e){}
 
-                // Также в личные объявления
-                let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-                myAds.unshift(adItem);
-                localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
-            } catch (e) {}
-
-            pendingData = adItem;
-            document.getElementById('successModal').style.display = 'flex';
-        }
-
-        function closeSuccessModal() {
-            document.getElementById('successModal').style.display = 'none';
-            document.getElementById('itemName').value = '';
-            document.getElementById('price').value = '';
-            document.getElementById('text').value = '';
-
-            if (pendingData && typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify(pendingData)); } catch (e) {}
-            }
-            pendingData = null;
-        }
-
-        // --- Модерация админом конкретных объявлений ---
-        let currentModType = '';
-        let selectedAdId = null;
-
-        function openModerationSelector(type) {
-            currentModType = type;
-            document.getElementById('selectorTitle').innerText = type === 'sell' ? 'Модерация продажи' : 'Модерация скупки';
-            renderPendingAdsList();
-            document.getElementById('adSelectorModal').style.display = 'flex';
-        }
-
-        function closeAdSelectorModal() {
-            document.getElementById('adSelectorModal').style.display = 'none';
-        }
-
-        function renderPendingAdsList() {
-            let container = document.getElementById('pendingAdsList');
-            let pendingAds = [];
-            try {
-                pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-            } catch (e) {}
-
-            // Фильтруем по типу (sell или buy)
-            let filtered = pendingAds.filter(ad => ad.mode === currentModType);
-
-            if (filtered.length === 0) {
-                container.innerHTML = '<div class="access-denied">Нет объявлений для модерации в этой категории.</div>';
-                return;
-            }
-
-            let html = '';
-            filtered.forEach(ad => {
-                html += `
-                    <div class="ad-card">
-                        <div class="ad-header">
-                            <span><b>${ad.server}</b> | От: ${ad.author}</span>
-                            <span>${ad.date}</span>
-                        </div>
-                        <div style="margin-bottom: 8px;"><b>Текст:</b> ${ad.text}</div>
-                        <div style="display: flex; gap: 6px;">
-                            <button class="btn-success" style="margin:0; padding:6px; font-size:11px;" onclick="startEditAd('${ad.id}')">✏️ Редактировать</button>
-                            <button class="btn-danger" style="margin:0; padding:6px; font-size:11px;" onclick="deletePendingAd('${ad.id}')">🗑 Удалить</button>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function startEditAd(id) {
-            selectedAdId = id;
-            let pendingAds = [];
-            try { pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch (e) {}
-            
-            let ad = pendingAds.find(a => a.id === id);
-            if (!ad) return;
-
-            document.getElementById('modEditText').value = ad.text;
-            document.getElementById('adSelectorModal').style.display = 'none';
-            document.getElementById('moderationModal').style.display = 'flex';
-        }
-
-        function closeModerationEdit() {
-            document.getElementById('moderationModal').style.display = 'none';
-            document.getElementById('adSelectorModal').style.display = 'flex';
-        }
-
-        function submitModerationEdit() {
-            let newText = document.getElementById('modEditText').value.trim();
-            document.getElementById('moderationModal').style.display = 'none';
-
-            let pendingAds = [];
-            try { pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch (e) {}
-
-            let index = pendingAds.findIndex(a => a.id === selectedAdId);
-            if (index !== -1) {
-                let ad = pendingAds[index];
-                ad.text = newText;
-                
-                // Удаляем из ожидающих
-                pendingAds.splice(index, 1);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
-
-                // Добавляем в глобальную ленту
-                let feedItem = {
-                    ...ad,
-                    editor: currentUser.username ? '@' + currentUser.username : 'Админ',
-                    date: new Date().toLocaleString()
-                };
-
-                try {
-                    let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
-                    feed.unshift(feedItem);
-                    localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-                } catch(e){}
-
-                // Отправляем в бэкенд
-                if (typeof tg.sendData === 'function') {
-                    try {
-                        tg.sendData(JSON.stringify({
-                            action: 'approve_and_edit_ad',
-                            id: selectedAdId,
-                            edited_text: newText,
-                            mode: currentModType
-                        }));
-                    } catch(e){}
-                }
-            }
-
-            document.getElementById('praiseText').innerText = 'Молодец! Ты успешно отредактировал объявление, проверил его на маты и отправил в ленту. Порядок наведен!';
-            document.getElementById('praiseModal').style.display = 'flex';
-        }
-
-        function deletePendingAd(id) {
-            if (!confirm('Вы уверены, что хотите удалить это объявление из-за матов/нарушений?')) return;
-
-            let pendingAds = [];
-            try { pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch (e) {}
-
-            pendingAds = pendingAds.filter(a => a.id !== id);
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
-
-            // Обновляем список в модалке
-            renderPendingAdsList();
-
-            // Отправляем сигнал удаления боту
             if (typeof tg.sendData === 'function') {
                 try {
-                    tg.sendData(JSON.stringify({ action: 'delete_pending_ad', id: id }));
+                    tg.sendData(JSON.stringify({
+                        action: 'approve_and_edit_ad',
+                        id: selectedAdId,
+                        edited_text: newText,
+                        mode: currentModType
+                    }));
                 } catch(e){}
             }
         }
 
-        function closePraiseModal() {
-            document.getElementById('praiseModal').style.display = 'none';
-            // После закрытия окна похвалы возвращаем модальное окно выбора, чтобы админ мог продолжить модерацию
-            if (currentModType) {
-                openModerationSelector(currentModType);
-            }
+        document.getElementById('praiseText').innerText = 'Молодец! Ты успешно отредактировал объявление, проверил его на маты и отправил в ленту. Порядок наведен!';
+        document.getElementById('praiseModal').style.display = 'flex';
+    }
+
+    function deletePendingAd(id) {
+        if (!confirm('Вы уверены, что хотите удалить это объявление из-за матов/нарушений?')) return;
+
+        let pendingAds = [];
+        try { pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch (e) {}
+
+        pendingAds = pendingAds.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
+
+        renderPendingAdsList();
+
+        if (typeof tg.sendData === 'function') {
+            try {
+                tg.sendData(JSON.stringify({ action: 'delete_pending_ad', id: id }));
+            } catch(e){}
+        }
+    }
+
+    function closePraiseModal() {
+        document.getElementById('praiseModal').style.display = 'none';
+        if (currentModType) {
+            openModerationSelector(currentModType);
+        }
+    }
+
+    function renderMyAds() {
+        let container = document.getElementById('myAdsContainer');
+        if (!container) return;
+
+        let myAds = [];
+        try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch (e) {}
+
+        if (myAds.length === 0) {
+            container.innerHTML = '<div class="access-denied">У вас пока нет отправленных объявлений.</div>';
+            return;
         }
 
-        // --- Рендеринг списков с поддержкой удаления владельцем ---
-        function renderMyAds() {
-            let container = document.getElementById('myAdsContainer');
-            if (!container) return;
-
-            let myAds = [];
-            try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch (e) {}
-
-            if (myAds.length === 0) {
-                container.innerHTML = '<div class="access-denied">У вас пока нет отправленных объявлений.</div>';
-                return;
-            }
-
-            let html = '';
-            myAds.forEach(ad => {
-                let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Бартер / Обмен' }[ad.mode] || ad.mode;
-                html += `
-                    <div class="ad-card" id="card_${ad.id}">
-                        <div class="ad-header">
-                            <span><b>${ad.server}</b> (${modeName})</span>
-                            <span>${ad.date}</span>
-                        </div>
-                        <div><b>Текст:</b> ${ad.text}</div>
-                        ${isOwner ? `<button class="btn-danger" style="margin-top:8px; padding:6px; font-size:11px;" onclick="ownerDeleteAd('${ad.id}', 'my')">🗑 Удалить (Владелец)</button>` : ''}
+        let html = '';
+        myAds.forEach(ad => {
+            let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Бартер / Обмен' }[ad.mode] || ad.mode;
+            html += `
+                <div class="ad-card" id="card_${ad.id}">
+                    <div class="ad-header">
+                        <span><b>${ad.server}</b> (${modeName})</span>
+                        <span>${ad.date}</span>
                     </div>
-                `;
-            });
-            container.innerHTML = html;
+                    <div><b>Текст:</b> ${ad.text}</div>
+                    ${isOwner ? `<button class="btn-danger" style="margin-top:8px; padding:6px; font-size:11px;" onclick="ownerDeleteAd('${ad.id}', 'my')">🗑 Удалить (Владелец)</button>` : ''}
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function renderFeed() {
+        let container = document.getElementById('feedContainer');
+        if (!container) return;
+
+        let feed = [];
+        try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch (e) {}
+
+        if (feed.length === 0) {
+            container.innerHTML = '<div class="access-denied">В ленте пока нет отредактированных объявлений.</div>';
+            return;
         }
 
-        function renderFeed() {
-            let container = document.getElementById('feedContainer');
-            if (!container) return;
+        let html = '';
+        feed.forEach(ad => {
+            html += `
+                <div class="ad-card" id="card_feed_${ad.id}">
+                    <div class="ad-header">
+                        <span><b>${ad.server}</b> | Модератор: ${ad.editor || 'Система'}</span>
+                        <span>${ad.date}</span>
+                    </div>
+                    <div><b>Текст:</b> ${ad.text}</div>
+                    ${isOwner ? `<button class="btn-danger" style="margin-top:8px; padding:6px; font-size:11px;" onclick="ownerDeleteAd('${ad.id}', 'feed')">🗑 Удалить (Владелец)</button>` : ''}
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
 
+    function ownerDeleteAd(id, type) {
+        if (!isOwner) return;
+        if (!confirm('Вы уверены, что хотите удалить это объявление как владелец (@bounqy)?')) return;
+
+        if (type === 'feed') {
             let feed = [];
             try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch (e) {}
-
-            if (feed.length === 0) {
-                container.innerHTML = '<div class="access-denied">В ленте пока нет отредактированных объявлений.</div>';
-                return;
-            }
-
-            let html = '';
-            feed.forEach(ad => {
-                html += `
-                    <div class="ad-card" id="card_feed_${ad.id}">
-                        <div class="ad-header">
-                            <span><b>${ad.server}</b> | Модератор: ${ad.editor || 'Система'}</span>
-                            <span>${ad.date}</span>
-                        </div>
-                        <div><b>Текст:</b> ${ad.text}</div>
-                        ${isOwner ? `<button class="btn-danger" style="margin-top:8px; padding:6px; font-size:11px;" onclick="ownerDeleteAd('${ad.id}', 'feed')">🗑 Удалить (Владелец)</button>` : ''}
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
+            feed = feed.filter(a => a.id !== id);
+            localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
+            renderFeed();
+        } else {
+            let myAds = [];
+            try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch (e) {}
+            myAds = myAds.filter(a => a.id !== id);
+            localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
+            renderMyAds();
         }
 
-        // Удаление владельцем (@bounqy)
-        function ownerDeleteAd(id, type) {
-            if (!isOwner) return;
-            if (!confirm('Вы уверены, что хотите удалить это объявление как владелец (@bounqy)?')) return;
-
-            if (type === 'feed') {
-                let feed = [];
-                try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch (e) {}
-                feed = feed.filter(a => a.id !== id);
-                localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-                renderFeed();
-            } else {
-                let myAds = [];
-                try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch (e) {}
-                myAds = myAds.filter(a => a.id !== id);
-                localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
-                renderMyAds();
-            }
-
-            // Уведомляем бэкенд
-            if (typeof tg.sendData === 'function') {
-                try {
-                    tg.sendData(JSON.stringify({ action: 'owner_delete_ad', id: id, list_type: type }));
-                } catch(e){}
-            }
+        if (typeof tg.sendData === 'function') {
+            try {
+                tg.sendData(JSON.stringify({ action: 'owner_delete_ad', id: id, list_type: type }));
+            } catch(e){}
         }
+    }
 
-        function clearMyAds() {
-            if (confirm('Очистить историю ваших объявлений?')) {
-                localStorage.removeItem('my_arizona_ads');
-                renderMyAds();
-            }
+    function clearMyAds() {
+        if (confirm('Очистить историю ваших объявлений?')) {
+            localStorage.removeItem('my_arizona_ads');
+            renderMyAds();
         }
+    }
 
-        function sendAdminAction(actionType) {
-            if (typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify({ action: actionType })); } catch (e) {}
-            }
+    function sendAdminAction(actionType) {
+        if (typeof tg.sendData === 'function') {
+            try { tg.sendData(JSON.stringify({ action: actionType })); } catch (e) {}
         }
+    }
 
-        function sendTargetAction(actionType) {
-            let targetInput = document.getElementById('targetUser');
-            if (!targetInput) return;
-            let target = targetInput.value.trim();
-            if (!target) { alert('Введите ID или @username!'); return; }
-            if (typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify({ action: actionType, target: target })); } catch (e) {}
-            }
+    function sendTargetAction(actionType) {
+        let targetInput = document.getElementById('targetUser');
+        if (!targetInput) return;
+        let target = targetInput.value.trim();
+        if (!target) { alert('Введите ID или @username!'); return; }
+        if (typeof tg.sendData === 'function') {
+            try { tg.sendData(JSON.stringify({ action: actionType, target: target })); } catch (e) {}
         }
+    }
 
-        function sendBroadcast() {
-            let text = document.getElementById('broadcastText').value.trim();
-            if (!text) { alert('Введите текст!'); return; }
-            if (typeof tg.sendData === 'function') {
-                try { tg.sendData(JSON.stringify({ action: 'broadcast', text: text })); } catch (e) {}
-            }
+    function sendBroadcast() {
+        let text = document.getElementById('broadcastText').value.trim();
+        if (!text) { alert('Введите текст!'); return; }
+        if (typeof tg.sendData === 'function') {
+            try { tg.sendData(JSON.stringify({ action: 'broadcast', text: text })); } catch (e) {}
         }
-    </script>
-</body>
-</html>
+    }
+</script>

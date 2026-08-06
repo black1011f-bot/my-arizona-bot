@@ -1,5 +1,5 @@
 <script>
-    // Инициализация Telegram WebApp объекта
+    // Инициализация из 1-го скрипта (без блокировки DOMContentLoaded)
     let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
     if (typeof tg.expand === 'function') {
         tg.expand();
@@ -9,20 +9,16 @@
     const OWNER_USERNAME = 'bounqy';
     
     let isOwner = currentUser.username && currentUser.username.toLowerCase() === OWNER_USERNAME.toLowerCase();
-    const ADMIN_USERNAMES = ['bounqy'];
-    let isAdmin = isOwner || (currentUser.username && ADMIN_USERNAMES.includes(currentUser.username.toLowerCase()));
+    let isAdmin = true; // Права админа из 1-го скрипта
 
-    // Запуск настройки интерфейса только после полной загрузки DOM
-    document.addEventListener('DOMContentLoaded', function() {
-        if (isAdmin || isOwner) {
-            let adminBtn = document.getElementById('adminTabBtn');
-            if (adminBtn) adminBtn.style.display = 'block';
-            if (isOwner) {
-                let ownerSec = document.getElementById('ownerSection');
-                if (ownerSec) ownerSec.style.display = 'block';
-            }
+    if (isAdmin || isOwner) {
+        let adminBtn = document.getElementById('adminTabBtn');
+        if (adminBtn) adminBtn.style.display = 'block';
+        if (isOwner) {
+            let ownerSec = document.getElementById('ownerSection');
+            if (ownerSec) ownerSec.style.display = 'block';
         }
-    });
+    }
 
     function switchTab(tabName) {
         let tabs = document.querySelectorAll('.nav-tab');
@@ -41,11 +37,6 @@
             document.getElementById('tabFeed').classList.add('active');
             renderFeed();
         } else if (tabName === 'admin') {
-            if (!isAdmin && !isOwner) {
-                alert('У вас нет доступа к этой вкладке!');
-                switchTab('app');
-                return;
-            }
             tabs[3].classList.add('active');
             document.getElementById('tabAdmin').classList.add('active');
         }

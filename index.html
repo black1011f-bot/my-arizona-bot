@@ -647,6 +647,9 @@
             </div>
 
             <button onclick="submitData()">Отправить на модерацию</button>
+            <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 6px;">
+                🕒 Время отправки объявлений: с 08:00 до 22:00 по МСК
+            </div>
         </div>
 
         <div id="tabMyAds" class="section">
@@ -891,13 +894,10 @@
 
         function checkDailyCleanup(mskDate) {
             let hours = mskDate.getHours();
-            let minutes = mskDate.getMinutes();
-            let seconds = mskDate.getSeconds();
-
             let lastCleanDate = localStorage.getItem('arizona_last_auto_clean');
             let todayStr = mskDate.toDateString();
 
-            if (hours === 7 && minutes === 50 && seconds < 5 && lastCleanDate !== todayStr) {
+            if (hours >= 7 && lastCleanDate !== todayStr) {
                 localStorage.setItem('arizona_last_auto_clean', todayStr);
                 localStorage.removeItem('arizona_global_feed');
                 localStorage.removeItem('arizona_pending_ads');
@@ -983,7 +983,6 @@
                     if (ownerSec) ownerSec.style.display = 'block';
                 }
                 
-                // Проверка активного баннера и времени его показа (10 секунд)
                 let savedBroadcast = localStorage.getItem('arizona_broadcast_text');
                 let savedTime = Number(localStorage.getItem('arizona_broadcast_time') || 0);
                 let mskNow = getMSKDate().getTime();
@@ -1012,7 +1011,6 @@
             }
         });
 
-        // Управление уведомлениями в колокольчике с удалением через 7 дней по МСК
         function addNotification(text, timestamp) {
             let notifs = [];
             try {
@@ -1032,7 +1030,6 @@
             let mskNow = getMSKDate().getTime();
             let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
-            // Удаляем рассылки старше 7 дней по МСК
             let validNotifs = notifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
             localStorage.setItem('arizona_notifications', JSON.stringify(validNotifs));
             updateNotifBadge();
@@ -1098,7 +1095,6 @@
 
             if (broadcastTimer) clearTimeout(broadcastTimer);
 
-            // Автоматическое скрытие с экрана через 10 секунд
             broadcastTimer = setTimeout(() => {
                 banner.style.display = 'none';
             }, 10000);
@@ -2079,14 +2075,10 @@
 
             let mskTime = getMSKDate().getTime();
 
-            // Сохраняем текст и время рассылки
             localStorage.setItem('arizona_broadcast_text', text);
             localStorage.setItem('arizona_broadcast_time', mskTime);
 
-            // Добавляем в колокольчик уведомлений с автоудалением через 7 дней по МСК
             addNotification(text, mskTime);
-
-            // Отображаем на экране и запускаем таймер скрытия через 10 секунд
             showAndAutoHideBroadcast(text);
 
             input.value = '';

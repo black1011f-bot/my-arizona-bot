@@ -805,7 +805,8 @@
         }
 
         function checkIsAdmin() {
-            return checkIsOwner() || (getCurrentUser().username && ADMIN_USERNAMES.includes(getCurrentUser().username.toLowerCase()));
+            let user = getCurrentUser();
+            return checkIsOwner() || (user.username && ADMIN_USERNAMES.includes(user.username.toLowerCase()));
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -1073,7 +1074,7 @@
             if (!modeEl || !serverEl) return;
 
             let mode = modeEl.value;
-            let server = serverEl.value; // Корректно выбранный сервер
+            let server = serverEl.value;
             let category = categoryEl ? categoryEl.value : '';
             let textContent = '';
             
@@ -1187,6 +1188,7 @@
             let html = '';
             filtered.forEach(ad => {
                 let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
+                let catBadge = ad.category ? `<div style="font-size:10px; color:var(--accent-orange); margin-bottom:4px;">${ad.category}</div>` : '';
                 html += `
                     <div class="ad-card" id="pending_card_${ad.id}">
                         ${imageBlock}
@@ -1194,6 +1196,7 @@
                             <span><span class="forum-badge badge-new">Новое</span><b>${ad.server}</b> | ${ad.author}</span>
                             <span>${ad.date}</span>
                         </div>
+                        ${catBadge}
                         <div style="margin-bottom: 8px;">${ad.text}</div>
                         <div style="display: flex; gap: 6px;">
                             <button class="btn-success" style="margin:0; padding:6px; font-size:11px;" onclick="startEditAd('${ad.id}')">✏️ Одобрить / Правка</button>
@@ -1324,6 +1327,7 @@
             myAds.forEach(ad => {
                 let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Обмен' }[ad.mode] || ad.mode;
                 let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'75px':'120px'}; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
+                let catBadge = ad.category ? `<div style="font-size:10px; color:var(--accent-orange); margin-bottom:4px;">${ad.category}</div>` : '';
                 html += `
                     <div class="ad-card" id="my_card_${ad.id}">
                         ${imageBlock}
@@ -1331,6 +1335,7 @@
                             <span><span class="forum-badge badge-processing">На модерации</span><b>${ad.server}</b> (${modeName})</span>
                             <span>${ad.date}</span>
                         </div>
+                        ${catBadge}
                         <div style="margin-bottom: 6px;">${ad.text}</div>
                         <button class="btn-danger" style="margin:4px 0 0 0; padding:5px; font-size:11px;" onclick="deleteMyAd('${ad.id}')">🗑 Удалить тему</button>
                     </div>
@@ -1368,7 +1373,7 @@
             let selectedServer = document.getElementById('serverFilter')?.value || '';
 
             let filtered = feed.filter(ad => {
-                let matchText = (ad.text + ' ' + ad.server + ' ' + ad.author).toLowerCase();
+                let matchText = (ad.text + ' ' + ad.server + ' ' + ad.author + ' ' + (ad.category || '')).toLowerCase();
                 let matchesSearch = matchText.includes(searchQuery);
                 let matchesServer = selectedServer ? ad.server.includes(selectedServer) : true;
                 return matchesSearch && matchesServer;
@@ -1385,17 +1390,21 @@
 
             filtered.forEach(ad => {
                 let isFav = favorites.includes(ad.id);
+                let modeName = { 'sell': 'Продажа', 'buy': 'Скупка', 'auction': 'Аукцион', 'barter': 'Обмен' }[ad.mode] || ad.mode;
                 let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" onclick="openImageModal('${ad.image}')" style="width: 100%; height: ${currentViewMode==='grid'?'75px':'120px'}; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
+                let catBadge = ad.category ? `<div style="font-size:10px; color:var(--accent-orange); margin-bottom:4px;">${ad.category} (${modeName})</div>` : `<div style="font-size:10px; color:var(--accent-orange); margin-bottom:4px;">${modeName}</div>`;
+                
                 html += `
                     <div class="ad-card" id="card_feed_${ad.id}">
                         ${imageBlock}
                         <div class="ad-header">
-                            <span><span class="forum-badge badge-success">Одобрено</span><b>${ad.server}</b> | Автор: ${ad.author}</span>
+                            <span><span class="forum-badge badge-success">Одобрено</span><b>${ad.server}</b> | ${ad.author}</span>
                             <div style="display: flex; align-items: center; gap: 6px;">
                                 <button class="fav-btn" onclick="toggleFavorite('${ad.id}')" title="В закладки">${isFav ? '❤️' : '🤍'}</button>
                                 <span>${ad.date}</span>
                             </div>
                         </div>
+                        ${catBadge}
                         <div style="margin-bottom: 6px;">${ad.text}</div>
                         <div class="forum-comment-box" onclick="openChat('Обсуждение темы ${ad.server}')">
                             <span>✏️</span> Напишите комментарий...
@@ -1461,6 +1470,7 @@
             let html = '';
             favoriteAds.forEach(ad => {
                 let imageBlock = ad.image ? `<img src="${ad.image}" loading="lazy" onclick="openImageModal('${ad.image}')" style="width: 100%; height: 110px; object-fit: cover; border-radius: 6px; margin-bottom: 6px; cursor: pointer;">` : '';
+                let catBadge = ad.category ? `<div style="font-size:10px; color:var(--accent-orange); margin-bottom:4px;">${ad.category}</div>` : '';
                 html += `
                     <div class="ad-card">
                         ${imageBlock}
@@ -1468,6 +1478,7 @@
                             <span><b>${ad.server}</b></span>
                             <button class="fav-btn" onclick="toggleFavorite('${ad.id}')">❤️</button>
                         </div>
+                        ${catBadge}
                         <div>${ad.text}</div>
                     </div>
                 `;
@@ -1522,5 +1533,3 @@
     </script>
 </body>
 </html>
-
-

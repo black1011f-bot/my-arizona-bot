@@ -7,8 +7,13 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes tabSwitchAnimation {
+            0% { opacity: 0; transform: scale(0.97) translateY(6px); filter: blur(4px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
         }
 
         @keyframes pulseGlow {
@@ -47,6 +52,13 @@
             100% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
         }
 
+        /* Анимация выделения при клике/выборе раздела */
+        @keyframes selectBounce {
+            0% { transform: scale(1); background-color: rgba(236, 72, 153, 0.3); }
+            50% { transform: scale(1.02); background-color: rgba(168, 85, 247, 0.4); }
+            100% { transform: scale(1); background-color: rgba(236, 72, 153, 0.15); }
+        }
+
         :root {
             --forum-bg: #0b0c14;
             --forum-card-bg: rgba(20, 22, 36, 0.88);
@@ -79,14 +91,12 @@
             box-sizing: border-box;
         }
 
-        /* Адаптивные контейнеры в зависимости от устройства */
         .container {
             max-width: 440px;
             margin: 0 auto;
             transition: max-width 0.3s ease;
         }
 
-        /* Планшетная версия */
         body.device-tablet .container {
             max-width: 740px;
         }
@@ -96,7 +106,6 @@
             gap: 10px;
         }
 
-        /* ПК / Десктоп версия */
         body.device-pc .container {
             max-width: 1100px;
         }
@@ -245,7 +254,7 @@
         }
 
         .section { display: none; }
-        .section.active { display: block; animation: fadeIn 0.25s ease-out forwards; }
+        .section.active { display: block; animation: tabSwitchAnimation 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
         .profile-card-az {
             background: var(--forum-card-bg);
@@ -436,10 +445,21 @@
             box-sizing: border-box;
             font-size: 13px;
             outline: none;
-            transition: border-color 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        input:focus, textarea:focus, select:focus { border-color: var(--anime-pink); }
-        .custom-select-trigger { display: flex; justify-content: space-between; cursor: pointer; }
+        input:focus, textarea:focus, select:focus { border-color: var(--anime-pink); box-shadow: 0 0 10px rgba(236, 72, 153, 0.3); }
+        
+        /* Класс анимации для триггера выбора */
+        .custom-select-trigger { 
+            display: flex; 
+            justify-content: space-between; 
+            cursor: pointer; 
+            position: relative;
+            overflow: hidden;
+        }
+        .custom-select-trigger.animating {
+            animation: selectBounce 0.4s ease-out;
+        }
 
         button {
             width: 100%;
@@ -473,6 +493,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            animation: fadeIn 0.3s ease-out;
         }
 
         .ad-header {
@@ -503,8 +524,9 @@
         .view-mode-btn {
             flex: 1; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--forum-card-border);
             color: var(--text-muted); border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; box-shadow: none; margin: 0;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .view-mode-btn.active { background: var(--anime-purple); color: #ffffff; }
+        .view-mode-btn.active { background: var(--anime-purple); color: #ffffff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4); }
 
         .ads-container.grid-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
         body.device-pc .ads-container.grid-view { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -550,12 +572,13 @@
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(6, 7, 12, 0.88); backdrop-filter: blur(8px); z-index: 1000;
-            justify-content: center; align-items: center; padding: 16px; box-sizing: border-box; animation: fadeIn 0.2s ease-out;
+            justify-content: center; align-items: center; padding: 16px; box-sizing: border-box; animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .modal-content {
             background: #121422; padding: 20px; border-radius: 16px; max-width: 360px; width: 100%;
             text-align: center; border: 1px solid var(--forum-card-border); box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
             max-height: 85vh; overflow-y: auto; box-sizing: border-box;
+            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .picker-list { display: flex; flex-direction: column; gap: 6px; text-align: left; margin-top: 10px; max-height: 250px; overflow-y: auto; }
@@ -563,8 +586,10 @@
             background: rgba(255,255,255,0.05); border: 1px solid var(--forum-card-border); padding: 10px 12px;
             border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
             font-size: 13px; font-weight: 700; color: var(--text-main);
+            transition: all 0.2s ease;
         }
-        .picker-item.selected { border-color: var(--anime-pink); background: rgba(236, 72, 153, 0.15); }
+        .picker-item:hover { background: rgba(168, 85, 247, 0.2); border-color: var(--anime-purple); transform: translateX(3px); }
+        .picker-item.selected { border-color: var(--anime-pink); background: rgba(236, 72, 153, 0.2); box-shadow: 0 0 12px rgba(236, 72, 153, 0.3); }
         
         .admin-controls-card {
             background: rgba(255, 255, 255, 0.04);
@@ -715,7 +740,7 @@
 
             <div class="form-group">
                 <label>Тип темы:</label>
-                <div class="custom-select-trigger" onclick="openPicker('mode')">
+                <div class="custom-select-trigger" id="triggerMode" onclick="openPicker('mode')">
                     <span id="selectedModeText">Продажа</span> <span>▼</span>
                 </div>
                 <input type="hidden" id="mode" value="sell">
@@ -723,7 +748,7 @@
 
             <div class="form-group" id="categoryGroup">
                 <label>Раздел бота:</label>
-                <div class="custom-select-trigger" onclick="openPicker('category')">
+                <div class="custom-select-trigger" id="triggerCategory" onclick="openPicker('category')">
                     <span id="selectedCategoryText">💍 Аксессуары и вещи</span> <span>▼</span>
                 </div>
                 <input type="hidden" id="category" value="💍 Аксессуары и вещи">
@@ -751,7 +776,7 @@
 
             <div class="form-group">
                 <label>Игровой сервер:</label>
-                <div class="custom-select-trigger" onclick="openPicker('server')">
+                <div class="custom-select-trigger" id="triggerServer" onclick="openPicker('server')">
                     <span id="selectedServerText">🔥 Phoenix</span> <span>▼</span>
                 </div>
                 <input type="hidden" id="server" value="🔥 Phoenix">
@@ -800,6 +825,33 @@
                         <button onclick="updateBroadcastMessage()" class="btn-success">📢 Обновить Баннер</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования объявления для админов -->
+    <div id="editAdModal" class="modal-overlay" onclick="handleOverlayClick(event, 'editAdModal')">
+        <div class="modal-content" style="text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">✏️ Редактирование объявления (Админ)</h3>
+                <button class="btn-secondary" onclick="closeEditModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
+            </div>
+            <input type="hidden" id="editAdId">
+            <div class="form-group">
+                <label>Название / Заголовок:</label>
+                <input type="text" id="editAdTitle">
+            </div>
+            <div class="form-group">
+                <label>Цена ($):</label>
+                <input type="number" id="editAdPrice">
+            </div>
+            <div class="form-group">
+                <label>Описание:</label>
+                <textarea id="editAdText" rows="4"></textarea>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <button onclick="saveEditedAd()" class="btn-success" style="margin:0;">💾 Сохранить</button>
+                <button onclick="closeEditModal()" class="btn-secondary" style="margin:0;">Отмена</button>
             </div>
         </div>
     </div>
@@ -860,7 +912,6 @@
         if (typeof tg.expand === 'function') { tg.expand(); }
         if (typeof tg.ready === 'function') { tg.ready(); }
 
-        // Функция автоматического определения устройства и применения стилей для ПК, планшета и телефона
         function detectDeviceType() {
             let body = document.body;
             body.classList.remove('device-pc', 'device-tablet', 'device-mobile');
@@ -934,11 +985,42 @@
             return badWordsRegex.test(text);
         }
 
-        function updateMSKTime() {
+        // Получение текущего времени по МСК
+        function getMSKDate() {
             let now = new Date();
-            let timeStr = now.toLocaleTimeString('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            // Используем toLocaleString с таймзоной Москвы для точного расчета времени
+            let mskString = now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' });
+            return new Date(mskString);
+        }
+
+        function updateMSKTime() {
+            let mskDate = getMSKDate();
+            let timeStr = mskDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             let el = document.getElementById('mskTime');
             if (el) el.innerText = '🕒 ' + timeStr + ' (МСК)';
+
+            // Проверка на автоматическое удаление старых объявлений в 07:50:00 по МСК
+            checkDailyCleanup(mskDate);
+        }
+
+        // Автоматическая очистка старых объявлений в 07:50:00 по МСК
+        function checkDailyCleanup(mskDate) {
+            let hours = mskDate.getHours();
+            let minutes = mskDate.getMinutes();
+            let seconds = mskDate.getSeconds();
+
+            let lastCleanDate = localStorage.getItem('arizona_last_auto_clean');
+            let todayStr = mskDate.toDateString();
+
+            if (hours === 7 && minutes === 50 && seconds < 5 && lastCleanDate !== todayStr) {
+                localStorage.setItem('arizona_last_auto_clean', todayStr);
+                
+                // Очищаем глобальную ленту и архив модерации от старых объявлений
+                localStorage.removeItem('arizona_global_feed');
+                localStorage.removeItem('arizona_pending_ads');
+                
+                console.log('Произведена автоматическая очистка старых объявлений по расписанию (07:50 МСК).');
+            }
         }
 
         function escapeHtml(text) {
@@ -1468,6 +1550,16 @@
             if (!item) return;
 
             document.getElementById(currentPickerField).value = item.value;
+            
+            // Запуск красивой анимации выбора на триггере
+            let triggerMap = { 'mode': 'triggerMode', 'category': 'triggerCategory', 'server': 'triggerServer' };
+            let triggerEl = document.getElementById(triggerMap[currentPickerField]);
+            if (triggerEl) {
+                triggerEl.classList.remove('animating');
+                void triggerEl.offsetWidth; // сброс анимации
+                triggerEl.classList.add('animating');
+            }
+
             if (currentPickerField === 'mode') {
                 document.getElementById('selectedModeText').innerText = item.label;
                 let priceLabel = document.getElementById('priceLabel');
@@ -1514,6 +1606,37 @@
 
         function submitData() {
             triggerHaptic('medium');
+            
+            // 1. Проверка лимита по времени отправки (с 08:00:00 до 22:00:00 по МСК)
+            let mskDate = getMSKDate();
+            let hours = mskDate.getHours();
+            let minutes = mskDate.getMinutes();
+            let seconds = mskDate.getSeconds();
+            let totalSecondsNow = hours * 3600 + minutes * 60 + seconds;
+            
+            let startAllowed = 8 * 3600; // 08:00:00
+            let endAllowed = 22 * 3600;  // 22:00:00
+
+            if (totalSecondsNow < startAllowed || totalSecondsNow > endAllowed) {
+                alert('⏰ Отправка объявлений разрешена только с 08:00:00 по 22:00:00 по МСК!');
+                return;
+            }
+
+            // 2. Проверка кулдауна между объявлениями (2 минуты по МСК)
+            let user = getCurrentUser();
+            let lastAdTimeKey = 'arizona_last_ad_time_' + user.id;
+            let lastAdTimestamp = Number(localStorage.getItem(lastAdTimeKey) || 0);
+            let currentTimestamp = mskDate.getTime();
+            let cooldownMs = 2 * 60 * 1000; // 2 минуты
+
+            if (currentTimestamp - lastAdTimestamp < cooldownMs) {
+                let remainingSec = Math.ceil((cooldownMs - (currentTimestamp - lastAdTimestamp)) / 1000);
+                let remMin = Math.floor(remainingSec / 60);
+                let remSec = remainingSec % 60;
+                alert(`⏳ Кулдаун между объявлениями 2 минуты!\nПодождите еще ${remMin} мин. ${remSec} сек.`);
+                return;
+            }
+
             let mode = document.getElementById('mode').value;
             let server = document.getElementById('server').value;
             let category = document.getElementById('category').value;
@@ -1529,8 +1652,7 @@
                 return;
             }
 
-            let currentUser = getCurrentUser();
-            let authorName = currentUser.username || currentUser.first_name || 'Игрок';
+            let authorName = user.username || user.first_name || 'Игрок';
             if (!authorName.startsWith('@') && authorName !== 'Игрок' && !authorName.startsWith('id_')) {
                 authorName = '@' + authorName;
             }
@@ -1547,7 +1669,7 @@
                 textContent: textContent,
                 image: imageUrl,
                 author: authorName,
-                authorId: currentUser.id,
+                authorId: user.id,
                 date: new Date().toLocaleDateString(),
                 status: 'pending'
             };
@@ -1560,6 +1682,9 @@
                 let pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
                 pendingAds.unshift(adItem);
                 localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
+
+                // Сохраняем время успешной отправки для КД
+                localStorage.setItem(lastAdTimeKey, currentTimestamp);
             } catch(e){}
 
             document.getElementById('text').value = '';
@@ -1592,14 +1717,65 @@
                         ${imgHtml}
                         <div class="ad-header"><span class="forum-badge badge-pending">Ожидает модерации</span><b>${escapeHtml(ad.server)}</b> | ${escapeHtml(ad.author)}</div>
                         <div style="margin-bottom:8px;">${buildAdTextHtml(ad)}</div>
-                        <div style="display: flex; gap: 6px;">
-                            <button onclick="approveAd('${ad.id}')" class="btn-success" style="padding:6px; font-size:11px; margin:0;">✅ Одобрить</button>
-                            <button onclick="rejectAd('${ad.id}')" class="btn-danger" style="padding:6px; font-size:11px; margin:0;">❌ Отклонить</button>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button onclick="approveAd('${ad.id}')" class="btn-success" style="padding:6px; font-size:11px; margin:0; flex:1;">✅ Одобрить</button>
+                            <button onclick="openEditModalFromAdmin('${ad.id}')" class="btn-secondary" style="padding:6px; font-size:11px; margin:0; flex:1; border-color: var(--anime-purple);">✏️ Редактировать</button>
+                            <button onclick="rejectAd('${ad.id}')" class="btn-danger" style="padding:6px; font-size:11px; margin:0; flex:1;">❌ Отклонить</button>
                         </div>
                     </div>
                 `;
             });
             container.innerHTML = html;
+        }
+
+        // Функции модального окна редактирования объявления для админа
+        function openEditModalFromAdmin(adId) {
+            triggerHaptic('light');
+            let pending = [];
+            try {
+                pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+            } catch(e){}
+
+            let ad = pending.find(a => a.id === adId);
+            if (!ad) return;
+
+            document.getElementById('editAdId').value = ad.id;
+            document.getElementById('editAdTitle').value = ad.title || '';
+            document.getElementById('editAdPrice').value = ad.price || '';
+            document.getElementById('editAdText').value = ad.textContent || ad.text || '';
+            document.getElementById('editAdModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editAdModal').style.display = 'none';
+        }
+
+        function saveEditedAd() {
+            triggerHaptic('medium');
+            let adId = document.getElementById('editAdId').value;
+            let newTitle = document.getElementById('editAdTitle').value.trim();
+            let newPrice = document.getElementById('editAdPrice').value.trim();
+            let newText = document.getElementById('editAdText').value.trim();
+
+            if (containsProfanity(newTitle) || containsProfanity(newText)) {
+                alert('🚫 Запрещено использовать мат в названии или описании товара!');
+                return;
+            }
+
+            try {
+                let pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+                let ad = pending.find(a => a.id === adId);
+                if (ad) {
+                    ad.title = newTitle;
+                    ad.price = newPrice !== '' ? newPrice : null;
+                    ad.textContent = newText;
+                    localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
+                }
+
+                closeEditModal();
+                renderAdminPendingAds();
+                alert('✅ Объявление успешно отредактировано!');
+            } catch(e){}
         }
 
         function approveAd(adId) {
@@ -1621,7 +1797,12 @@
 
                 let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
                 let myAd = myAds.find(a => a.id === adId);
-                if (myAd) myAd.status = 'approved';
+                if (myAd) {
+                    myAd.status = 'approved';
+                    myAd.title = ad.title;
+                    myAd.price = ad.price;
+                    myAd.textContent = ad.textContent;
+                }
                 localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
 
                 renderAdminPendingAds();
@@ -1989,4 +2170,3 @@
     </script>
 </body>
 </html>
-

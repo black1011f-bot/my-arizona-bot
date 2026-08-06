@@ -661,9 +661,6 @@
                 <div class="admin-section-title">🛡️ Модерация объявлений (Ожидают проверки)</div>
                 <div id="pendingAdsContainer" style="margin-bottom: 15px;"></div>
 
-                <div class="admin-section-title">⚙️ Управление базой</div>
-                <button class="btn-danger" onclick="clearGlobalFeedAdmin()" style="margin-top: 5px; margin-bottom: 10px;">🗑 Очистить всю ленту</button>
-
                 <div id="ownerSection" style="display: none; margin-top: 15px;">
                     <div class="admin-section-title">👑 Панель Управления Владельца (@bounqy)</div>
                     
@@ -677,6 +674,11 @@
                         <button class="btn-danger" onclick="sendTargetAction('remove_admin')">➖ Снять с адм</button>
                         <button class="btn-danger" onclick="sendTargetAction('ban')">🚫 Забанить</button>
                         <button class="btn-success" onclick="sendTargetAction('unban')">✅ Разбанить</button>
+                    </div>
+
+                    <div class="admin-controls-card" style="margin-bottom: 10px;">
+                        <label>Управление базой:</label>
+                        <button class="btn-danger" onclick="clearGlobalFeedAdmin()" style="margin-top: 5px; margin-bottom: 0;">🗑 Очистить всю ленту</button>
                     </div>
 
                     <div class="admin-controls-card">
@@ -2101,6 +2103,10 @@
         }
 
         function clearGlobalFeedAdmin() {
+            if (!checkIsOwner()) {
+                alert('🚫 Эта функция доступна только владельцу бота (@bounqy)!');
+                return;
+            }
             triggerHaptic('heavy');
             if (!confirm('⚠️ Полностью очистить всю базу предметов?')) return;
             localStorage.removeItem('arizona_global_feed');
@@ -2116,11 +2122,9 @@
 
             let mskTime = getMSKDate().getTime();
 
-            // Сохраняем для баннера
             localStorage.setItem('arizona_broadcast_text', text);
             localStorage.setItem('arizona_broadcast_time', mskTime);
 
-            // Сохраняем в глобальный список рассылок для колокольчика всем пользователям
             let broadcastNotifs = [];
             try {
                 broadcastNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
@@ -2204,12 +2208,6 @@
         }
         function closeNotificationsModal() { document.getElementById('notificationsModal').style.display = 'none'; }
         function openChatsModal() { renderChatsList(); document.getElementById('chatsModal').style.display = 'flex'; }
-        function closeChatsModal() { document.getElementById('chatsModal').style.display = 'none'; }
-        function openSearchModal() { 
-            switchTab('feed');
-            let searchInput = document.getElementById('searchInput');
-            if (searchInput) searchInput.focus();
-        }
     </script>
 </body>
 </html>

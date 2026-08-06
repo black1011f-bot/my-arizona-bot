@@ -32,6 +32,31 @@
             100% { border-color: #06b6d4; }
         }
 
+        @keyframes plasmaWave {
+            0% { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.7); }
+            50% { border-color: #8b5cf6; box-shadow: 0 0 25px rgba(139, 92, 246, 0.9); }
+            100% { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.7); }
+        }
+
+        @keyframes fireSpark {
+            0% { border-color: #f97316; box-shadow: 0 0 15px rgba(249, 115, 22, 0.7); }
+            50% { border-color: #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.9); }
+            100% { border-color: #f97316; box-shadow: 0 0 15px rgba(249, 115, 22, 0.7); }
+        }
+
+        @keyframes matrixGreen {
+            0% { border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.7); }
+            50% { border-color: #06b6d4; box-shadow: 0 0 25px rgba(6, 182, 212, 0.9); }
+            100% { border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.7); }
+        }
+
+        @keyframes rainbowSpectrum {
+            0% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+            33% { border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.8); }
+            66% { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); }
+            100% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+        }
+
         :root {
             --forum-bg: #0b0c14;
             --forum-card-bg: rgba(20, 22, 36, 0.88);
@@ -67,7 +92,15 @@
         .container {
             max-width: 440px;
             margin: 0 auto;
+            transition: max-width 0.3s ease;
         }
+
+        body.device-tablet .container { max-width: 740px; }
+        body.device-tablet .ads-container:not(.grid-view) { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+        body.device-pc .container { max-width: 1100px; }
+        body.device-pc .ads-container:not(.grid-view) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        body.device-pc .modal-content { max-width: 500px; }
 
         #banOverlay {
             display: none;
@@ -250,6 +283,10 @@
         .frame-neon { border: 3px solid #ec4899 !important; animation: pulseGlow 1.8s infinite alternate !important; }
         .frame-anime { border: 3px solid #06b6d4 !important; animation: rotateBorder 3s infinite linear !important; box-shadow: 0 0 20px #06b6d4, 0 0 35px #a855f7 !important; }
         .frame-gold { border: 3px solid #f59e0b !important; box-shadow: 0 0 20px #f59e0b, 0 0 35px #d97706 !important; }
+        .frame-plasma { border: 3px solid #3b82f6 !important; animation: plasmaWave 2.5s infinite ease-in-out !important; }
+        .frame-fire { border: 3px solid #f97316 !important; animation: fireSpark 2s infinite ease-in-out !important; }
+        .frame-matrix { border: 3px solid #10b981 !important; animation: matrixGreen 2.2s infinite ease-in-out !important; }
+        .frame-rainbow { border: 3px solid #ef4444 !important; animation: rainbowSpectrum 3s infinite linear !important; }
 
         .az-user-name {
             font-size: 18px;
@@ -563,6 +600,10 @@
                             <button class="frame-option-btn" id="frameBtn_frame-neon" onclick="changeAvatarFrame('frame-neon')">💖 Neon Pulse</button>
                             <button class="frame-option-btn" id="frameBtn_frame-anime" onclick="changeAvatarFrame('frame-anime')">🌌 Anime Cyber</button>
                             <button class="frame-option-btn" id="frameBtn_frame-gold" onclick="changeAvatarFrame('frame-gold')">👑 Gold Legend</button>
+                            <button class="frame-option-btn" id="frameBtn_frame-plasma" onclick="changeAvatarFrame('frame-plasma')">⚡ Plasma Wave</button>
+                            <button class="frame-option-btn" id="frameBtn_frame-fire" onclick="changeAvatarFrame('frame-fire')">🔥 Fire Spark</button>
+                            <button class="frame-option-btn" id="frameBtn_frame-matrix" onclick="changeAvatarFrame('frame-matrix')">🟢 Matrix Green</button>
+                            <button class="frame-option-btn" id="frameBtn_frame-rainbow" onclick="changeAvatarFrame('frame-rainbow')">🌈 Rainbow Spectrum</button>
                         </div>
                     </div>
 
@@ -804,6 +845,17 @@
         let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
         if (typeof tg.expand === 'function') { tg.expand(); }
         if (typeof tg.ready === 'function') { tg.ready(); }
+
+        // Автоопределение устройства для адаптивности
+        try {
+            let ua = navigator.userAgent || '';
+            let width = window.innerWidth;
+            if (/tablet|ipad|playbook|silk/i.test(ua) || (width >= 768 && width < 1024)) {
+                document.body.classList.add('device-tablet');
+            } else if (!/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(ua) || width >= 1024) {
+                document.body.classList.add('device-pc');
+            }
+        } catch(e) {}
 
         const OWNER_USERNAME = 'bounqy';
         let ADMIN_USERNAMES = [];
@@ -1494,7 +1546,7 @@
                 if (clickerData.balance >= clickerData.powerCost) {
                     clickerData.balance -= clickerData.powerCost;
                     clickerData.powerLevel += 1;
-                    clickerData.power += 1; // Увеличиваем сложнее
+                    clickerData.power += 1;
                     clickerData.powerCost = Math.round(clickerData.powerCost * 2.8);
                     updateClickerUI();
                     saveClickerData();

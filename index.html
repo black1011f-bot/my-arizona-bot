@@ -962,7 +962,6 @@
                 updateMSKTime();
                 setInterval(updateMSKTime, 1000);
 
-                // Очистка старых зависших рассылок/логов при старте (если рассылка висела дольше 10 секунд)
                 let savedBroadcastTime = Number(localStorage.getItem('arizona_broadcast_time') || 0);
                 let mskNow = getMSKDate().getTime();
                 let banner = document.getElementById('broadcastBanner');
@@ -1006,10 +1005,12 @@
             }
         });
 
-        function addNotification(text, timestamp) {
+        function addNotification(text, timestamp, userId = null) {
+            let uId = userId || getCurrentUser().id;
+            let key = 'arizona_notifications_' + uId;
             let notifs = [];
             try {
-                notifs = JSON.parse(localStorage.getItem('arizona_notifications') || '[]');
+                notifs = JSON.parse(localStorage.getItem(key) || '[]');
             } catch(e) { notifs = []; }
 
             notifs.unshift({
@@ -1018,30 +1019,45 @@
                 timestamp: timestamp
             });
 
-            saveAndCleanNotifications(notifs);
+            saveAndCleanNotifications(notifs, uId);
         }
 
-        function saveAndCleanNotifications(notifs) {
+        function saveAndCleanNotifications(notifs, userId = null) {
+            let uId = userId || getCurrentUser().id;
+            let key = 'arizona_notifications_' + uId;
             let mskNow = getMSKDate().getTime();
             let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
             let validNotifs = notifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-            localStorage.setItem('arizona_notifications', JSON.stringify(validNotifs));
+            localStorage.setItem(key, JSON.stringify(validNotifs));
             updateNotifBadge();
         }
 
         function updateNotifBadge() {
             try {
-                let notifs = JSON.parse(localStorage.getItem('arizona_notifications') || '[]');
+                let user = getCurrentUser();
+                let key = 'arizona_notifications_' + user.id;
+                let notifs = JSON.parse(localStorage.getItem(key) || '[]');
+                
+                let bNotifs = [];
+                try {
+                    bNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
+                } catch(e){}
+
                 let mskNow = getMSKDate().getTime();
                 let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+                
                 notifs = notifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-                localStorage.setItem('arizona_notifications', JSON.stringify(notifs));
+                bNotifs = bNotifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
 
+                localStorage.setItem(key, JSON.stringify(notifs));
+                localStorage.setItem('arizona_global_broadcast_notifs', JSON.stringify(bNotifs));
+
+                let totalCount = notifs.length + bNotifs.length;
                 let dot = document.getElementById('notifDot');
                 if (dot) {
-                    if (notifs.length > 0) {
-                        dot.innerText = notifs.length;
+                    if (totalCount > 0) {
+                        dot.innerText = totalCount;
                         dot.style.display = 'inline-block';
                     } else {
                         dot.style.display = 'none';
@@ -1054,20 +1070,31 @@
             let container = document.getElementById('notificationsList');
             if (!container) return;
             try {
-                let notifs = JSON.parse(localStorage.getItem('arizona_notifications') || '[]');
+                let user = getCurrentUser();
+                let key = 'arizona_notifications_' + user.id;
+                let notifs = JSON.parse(localStorage.getItem(key) || '[]');
+                
+                let bNotifs = [];
+                try {
+                    bNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
+                } catch(e){}
+
                 let mskNow = getMSKDate().getTime();
                 let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+                
                 notifs = notifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-                localStorage.setItem('arizona_notifications', JSON.stringify(notifs));
-                updateNotifBadge();
+                bNotifs = bNotifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
 
-                if (notifs.length === 0) {
+                let allNotifs = [...notifs, ...bNotifs];
+                allNotifs.sort((a, b) => b.timestamp - a.timestamp);
+
+                if (allNotifs.length === 0) {
                     container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:12px; padding:10px;">У вас пока нет новых уведомлений.</div>';
                     return;
                 }
 
                 let html = '';
-                notifs.forEach(n => {
+                allNotifs.forEach(n => {
                     let dateStr = new Date(n.timestamp).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                     html += `
                         <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--forum-card-border); border-radius: 10px; padding: 10px; margin-bottom: 8px; text-align: left;">
@@ -1672,8 +1699,7 @@
             document.getElementById('price').value = '';
             document.getElementById('itemImage').value = '';
             
-            // Добавляем уведомление в колокольчик о создании объявления
-            addNotification(`📝 Ваше объявление "${itemName || 'Товар'}" отправлено на модерацию.`, getMSKDate().getTime());
+            addNotification(`📝 Ваше объявление "${itemName || 'Товар'}" отправлено на модерацию.`, getMSKDate().getTime(), user.id);
 
             alert('✅ Объявление успешно отправлено на проверку администрации!');
             switchTab('myAds');
@@ -1789,8 +1815,7 @@
                 }
                 localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
 
-                // Отправка уведомления в колокольчик игроку
-                addNotification(`✅ Ваше объявление "${ad.title || 'Товар'}" успешно одобрено и опубликовано в ленте!`, getMSKDate().getTime());
+                addNotification(`✅ Ваше объявление "${ad.title || 'Товар'}" успешно одобрено и опубликовано в ленте!`, getMSKDate().getTime(), ad.authorId);
 
                 renderAdminPendingAds();
                 alert('✅ Объявление одобрено и опубликовано в ленту поиска!');
@@ -1803,6 +1828,9 @@
 
             try {
                 let pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+                let ad = pending.find(a => a.id === adId);
+                let authorId = ad ? ad.authorId : null;
+
                 pending = pending.filter(a => a.id !== adId);
                 localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
 
@@ -1810,8 +1838,9 @@
                 myAds = myAds.filter(a => a.id !== adId);
                 localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
 
-                // Отправка уведомления об отклонении в колокольчик
-                addNotification(`❌ Ваше объявление было отклонено администрацией.`, getMSKDate().getTime());
+                if (authorId) {
+                    addNotification(`❌ Ваше объявление было отклонено администрацией.`, getMSKDate().getTime(), authorId);
+                }
 
                 renderAdminPendingAds();
                 alert('Объявление отклонено.');
@@ -2087,14 +2116,31 @@
 
             let mskTime = getMSKDate().getTime();
 
+            // Сохраняем для баннера
             localStorage.setItem('arizona_broadcast_text', text);
             localStorage.setItem('arizona_broadcast_time', mskTime);
 
-            addNotification(`📢 Рассылка: ${text}`, mskTime);
+            // Сохраняем в глобальный список рассылок для колокольчика всем пользователям
+            let broadcastNotifs = [];
+            try {
+                broadcastNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
+            } catch(e) { broadcastNotifs = []; }
+
+            broadcastNotifs.unshift({
+                id: 'bnotif_' + Date.now(),
+                text: '📢 Рассылка от администрации: ' + text,
+                timestamp: mskTime
+            });
+
+            let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+            broadcastNotifs = broadcastNotifs.filter(n => (mskTime - n.timestamp) < sevenDaysMs);
+            localStorage.setItem('arizona_global_broadcast_notifs', JSON.stringify(broadcastNotifs));
+
             showAndAutoHideBroadcast(text);
+            updateNotifBadge();
 
             input.value = '';
-            alert('📢 Рассылка успешно отправлена!');
+            alert('📢 Рассылка успешно отправлена и добавлена в колокольчик всем игрокам!');
         }
 
         function sendTargetAction(action) {
@@ -2111,7 +2157,6 @@
                     localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
                 }
                 if (checkIsAdmin() && adminBtn) adminBtn.style.display = 'block';
-                addNotification(`👑 Вы были назначены администратором бота.`, getMSKDate().getTime());
                 alert(`👑 Пользователь @${cleanTarget} успешно назначен администратором!`);
             } else if (action === 'remove_admin') {
                 if (cleanTarget === OWNER_USERNAME.toLowerCase() || cleanTarget === '777') {
@@ -2127,7 +2172,6 @@
                         switchTab('feed');
                     }
                 }
-                addNotification(`⚙️ Вы были сняты с должности администратора.`, getMSKDate().getTime());
                 alert(`⚙️ Пользователь @${cleanTarget} снят с должности администратора.`);
             } else if (action === 'ban') {
                 try {
@@ -2136,7 +2180,6 @@
                         bannedList.push(cleanTarget);
                         localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
                     }
-                    addNotification(`🚫 Ваш аккаунт был заблокирован администрацией.`, getMSKDate().getTime());
                     alert(`🚫 Пользователь @${cleanTarget} заблокирован!`);
                 } catch(e){}
             } else if (action === 'unban') {
@@ -2144,7 +2187,6 @@
                     let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
                     bannedList = bannedList.filter(u => u !== cleanTarget);
                     localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
-                    addNotification(`✅ Ваш аккаунт был разблокирован администрацией.`, getMSKDate().getTime());
                     alert(`✅ Пользователь @${cleanTarget} разблокирован.`);
                 } catch(e){}
             }

@@ -3,2234 +3,1363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arizona RP Item Search Mini App</title>
+    <title>Arizona RP - Неофициальный бот</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        @keyframes tabSwitchAnimation {
-            0% { opacity: 0; transform: scale(0.97) translateY(6px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        @keyframes pulseGlow {
-            0% { box-shadow: 0 0 12px rgba(168, 85, 247, 0.6), 0 0 25px rgba(236, 72, 153, 0.4); }
-            100% { box-shadow: 0 0 22px rgba(236, 72, 153, 0.9), 0 0 40px rgba(6, 182, 212, 0.7); }
-        }
-
-        @keyframes rotateBorder {
-            0% { border-color: #a855f7; }
-            50% { border-color: #ec4899; }
-            100% { border-color: #06b6d4; }
-        }
-
-        @keyframes plasmaWave {
-            0% { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.7); }
-            50% { border-color: #8b5cf6; box-shadow: 0 0 25px rgba(139, 92, 246, 0.9); }
-            100% { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.7); }
-        }
-
-        @keyframes fireSpark {
-            0% { border-color: #f97316; box-shadow: 0 0 15px rgba(249, 115, 22, 0.7); }
-            50% { border-color: #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.9); }
-            100% { border-color: #f97316; box-shadow: 0 0 15px rgba(249, 115, 22, 0.7); }
-        }
-
-        @keyframes matrixGreen {
-            0% { border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.7); }
-            50% { border-color: #06b6d4; box-shadow: 0 0 25px rgba(6, 182, 212, 0.9); }
-            100% { border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.7); }
-        }
-
-        @keyframes rainbowSpectrum {
-            0% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
-            33% { border-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.8); }
-            66% { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); }
-            100% { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
-        }
-
         :root {
-            --forum-bg: #0b0c14;
-            --forum-card-bg: rgba(20, 22, 36, 0.88);
-            --forum-header-bg: #141624;
-            --forum-card-border: rgba(168, 85, 247, 0.22);
-            
-            --anime-purple: #a855f7;
-            --anime-pink: #ec4899;
-            --anime-cyan: #06b6d4;
-            
-            --accent-red: #ef4444;
-            --accent-green: #10b981;
-            --accent-gold: #f59e0b;
-            
+            --bg-color: #0b0c14;
+            --card-bg: rgba(18, 20, 32, 0.7);
+            --card-border: rgba(139, 92, 246, 0.2);
+            --accent-gradient: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #ec4899;
+            --danger: #ef4444;
+            --success: #10b981;
+            --gold: #f59e0b;
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
-            
-            --role-gradient: linear-gradient(135deg, #b91c1c 0%, #ef4444 50%, #7f1d1d 100%);
-            --btn-anime-gradient: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: var(--forum-bg);
-            background-image: radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.15) 0%, transparent 75%);
+            background-color: var(--bg-color);
             color: var(--text-main);
-            margin: 0;
-            padding: 12px;
             min-height: 100vh;
-            box-sizing: border-box;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
         }
 
-        .container {
-            max-width: 440px;
-            margin: 0 auto;
-            transition: max-width 0.3s ease;
-        }
-
-        body.device-tablet .container { max-width: 740px; }
-        body.device-tablet .ads-container:not(.grid-view) { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-
-        body.device-pc .container { max-width: 1100px; }
-        body.device-pc .ads-container:not(.grid-view) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        body.device-pc .modal-content { max-width: 500px; }
-
-        #banOverlay {
-            display: none;
+        /* Баннер блокировки */
+        #ban-screen {
             position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #0b0c14;
-            z-index: 99999;
-            justify-content: center;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             text-align: center;
             padding: 20px;
-            box-sizing: border-box;
         }
+        #ban-screen h1 { color: var(--danger); font-family: 'Orbitron', sans-serif; margin-bottom: 10px; }
 
-        .broadcast-banner {
-            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
-            color: #ffffff;
-            padding: 10px 14px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 14px;
-            cursor: pointer;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
-            animation: fadeIn 0.3s ease-out;
-            display: none;
-        }
-
-        .forum-topbar {
+        /* Шапка */
+        header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: var(--forum-header-bg);
-            padding: 10px 14px;
-            border-radius: 14px;
-            border: 1px solid var(--forum-card-border);
-            margin-bottom: 14px;
-            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            background: rgba(11, 12, 20, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        .forum-brand { display: flex; align-items: center; gap: 10px; }
-        .forum-subtitle {
-            font-size: 9px;
-            color: var(--anime-pink);
-            text-transform: lowercase;
-            letter-spacing: 0.8px;
-            font-weight: 700;
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
         }
-        .forum-brand-title {
-            font-weight: 900;
-            font-size: 16px;
-            color: #ffffff;
-            letter-spacing: 0.3px;
-            text-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
-        }
-        .forum-time-msk {
+
+        .logo-sub {
             font-size: 10px;
-            color: var(--anime-cyan);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
             font-weight: 600;
-            margin-top: 2px;
         }
-        .forum-top-icons { display: flex; align-items: center; gap: 6px; }
-        .forum-icon-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: var(--text-main);
+
+        .logo-main {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 900;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             position: relative;
-            padding: 6px;
-            width: 34px; height: 34px;
-            border-radius: 10px;
-            transition: all 0.2s;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 14px;
-            text-decoration: none;
+            color: var(--text-main);
+            transition: 0.2s;
         }
-        .forum-icon-btn:hover {
-            border-color: var(--anime-purple);
-            box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
-        }
-        .forum-icon-btn span.badge-dot {
+        .icon-btn:active { transform: scale(0.92); }
+
+        .badge-counter {
             position: absolute;
-            top: -2px; right: -2px;
-            background: var(--anime-pink);
+            top: -4px; right: -4px;
+            background: var(--danger);
             color: white;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 700;
-            padding: 1px 4px;
+            padding: 2px 5px;
             border-radius: 10px;
         }
 
+        /* Время МСК */
+        .msk-time-bar {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 4px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        /* Навигационное меню (Вкладки) */
         .nav-tabs {
             display: flex;
-            gap: 4px;
-            margin-bottom: 16px;
-            background: var(--forum-header-bg);
-            padding: 6px;
-            border-radius: 14px;
-            border: 1px solid var(--forum-card-border);
             overflow-x: auto;
+            gap: 8px;
+            padding: 12px 20px;
+            background: rgba(15, 17, 26, 0.5);
+            scrollbar-width: none;
         }
-        .nav-tab {
-            flex: 1;
-            padding: 8px 6px;
-            background-color: transparent;
-            border: none;
-            border-radius: 10px;
+        .nav-tabs::-webkit-scrollbar { display: none; }
+
+        .tab-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             color: var(--text-muted);
-            font-weight: 700;
-            text-align: center;
-            cursor: pointer;
-            font-size: 11px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
             white-space: nowrap;
-            transition: background 0.2s ease, color 0.2s ease;
+            cursor: pointer;
+            transition: 0.2s;
         }
-        .nav-tab.active {
-            background: var(--btn-anime-gradient);
-            color: #ffffff;
-            box-shadow: 0 2px 12px rgba(139, 92, 246, 0.4);
+        .tab-btn.active {
+            background: var(--accent-gradient);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
         }
 
-        .section { display: none; }
-        .section.active { display: block; animation: tabSwitchAnimation 0.25s ease forwards; }
+        /* Контентные секции */
+        .view-section {
+            display: none;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .view-section.active { display: block; }
 
-        .profile-card-az {
-            background: var(--forum-card-bg);
-            border: 1px solid var(--forum-card-border);
+        /* Поиск и фильтры */
+        .search-bar-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .search-input {
+            flex: 1;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+        }
+        .search-input:focus { border-color: var(--accent-cyan); }
+
+        .view-toggle-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 0 14px;
+            border-radius: 12px;
+            color: var(--text-main);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* Карточки товаров */
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        .items-grid.list-view {
+            grid-template-columns: 1fr;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
             border-radius: 16px;
-            padding: 18px 14px;
-            text-align: center;
-            margin-bottom: 12px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(12px);
-        }
-        .az-avatar-wrapper {
+            padding: 15px;
+            backdrop-filter: blur(10px);
             position: relative;
-            width: 84px; height: 84px;
-            margin: 0 auto 12px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: transform 0.2s;
         }
-        .az-avatar-img {
-            width: 80px; height: 80px;
+        .card:hover { border-color: rgba(139, 92, 246, 0.4); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .card-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-main);
+        }
+        .card-tag {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .tag-sell { background: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .tag-buy { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+        .tag-auction { background: rgba(245, 158, 11, 0.2); color: var(--gold); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .tag-exchange { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.3); }
+
+        .card-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .card-price {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 10px;
+            margin-top: 5px;
+        }
+        .card-author {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .card-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .action-icon-btn {
+            background: rgba(255,255,255,0.05);
+            border: none;
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .action-icon-btn:hover { background: rgba(255,255,255,0.1); }
+
+        /* Формы создания */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        .form-control {
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+        }
+        .form-control:focus { border-color: var(--accent-purple); }
+
+        textarea.form-control { resize: vertical; min-height: 90px; }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--accent-gradient);
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+            transition: 0.2s;
+        }
+        .btn-primary:active { transform: scale(0.98); }
+
+        /* Профиль */
+        .profile-box {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .avatar-wrapper {
+            width: 90px; height: 90px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            padding: 3px;
+            position: relative;
+        }
+        .avatar-img {
+            width: 100%; height: 100%;
             border-radius: 50%;
             object-fit: cover;
-            border: 2px solid var(--anime-purple);
-            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
-            background: #1a1c2e;
-            transition: all 0.3s ease;
+            background: #202336;
         }
+        /* Анимированные рамки */
+        .frame-neon { background: linear-gradient(45deg, var(--accent-cyan), var(--accent-pink)); animation: neonSpin 3s linear infinite; }
+        .frame-cyber { background: linear-gradient(90deg, var(--accent-purple), var(--gold)); animation: cyberPulse 2s ease-in-out infinite alternate; }
+        .frame-gold { background: linear-gradient(135deg, #f59e0b, #fff, #f59e0b); }
+        .frame-plasma { background: linear-gradient(60deg, #ef4444, #8b5cf6, #06b6d4); animation: plasmaWave 4s linear infinite; }
+        .frame-fire { background: linear-gradient(0deg, #f59e0b, #ef4444); }
+        .frame-matrix { background: linear-gradient(180deg, #10b981, #06b6d4); }
+        .frame-rainbow { background: linear-gradient(to right, red,orange,yellow,green,blue,indigo,violet); animation: rainbowShift 5s linear infinite; }
 
-        .frame-none { border: 2px solid var(--anime-purple) !important; }
-        .frame-neon { border: 3px solid #ec4899 !important; animation: pulseGlow 1.8s infinite alternate !important; }
-        .frame-anime { border: 3px solid #06b6d4 !important; animation: rotateBorder 3s infinite linear !important; box-shadow: 0 0 20px #06b6d4, 0 0 35px #a855f7 !important; }
-        .frame-gold { border: 3px solid #f59e0b !important; box-shadow: 0 0 20px #f59e0b, 0 0 35px #d97706 !important; }
-        .frame-plasma { border: 3px solid #3b82f6 !important; animation: plasmaWave 2s infinite ease-in-out !important; }
-        .frame-fire { border: 3px solid #f97316 !important; animation: fireSpark 1.5s infinite ease-in-out !important; }
-        .frame-matrix { border: 3px solid #10b981 !important; animation: matrixGreen 2s infinite ease-in-out !important; }
-        .frame-rainbow { border: 3px solid #ef4444 !important; animation: rainbowSpectrum 3s infinite linear !important; }
+        @keyframes neonSpin { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+        @keyframes cyberPulse { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
+        @keyframes plasmaWave { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+        @keyframes rainbowShift { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
 
-        .az-user-name {
-            font-size: 18px;
-            font-weight: 900;
-            color: #ef4444;
-            margin: 0 0 2px 0;
-            text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        .profile-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .profile-stats { font-size: 13px; color: var(--text-muted); margin-bottom: 15px; }
+        .frames-picker {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
         }
-        .az-custom-status {
+        .frame-choice-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--card-border);
+            padding: 6px 10px;
+            border-radius: 8px;
             font-size: 11px;
-            color: var(--anime-cyan);
-            font-style: italic;
-            margin-bottom: 8px;
-            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
         }
-        .az-role-badge {
-            display: inline-flex;
-            align-items: center; gap: 6px;
-            background: var(--role-gradient);
-            color: #ffffff;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 10px; font-weight: 800;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            margin-bottom: 12px;
-        }
-        .az-meta-info { font-size: 11px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5; }
-        .az-stats-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr);
-            gap: 8px; background: rgba(10, 11, 18, 0.6);
-            padding: 10px; border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            margin-bottom: 14px;
-        }
-        .az-stat-item { display: flex; flex-direction: column; align-items: center; }
-        .az-stat-label { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; }
-        .az-stat-value { font-size: 15px; font-weight: 800; color: #ffffff; }
+        .frame-choice-btn.active { border-color: var(--accent-cyan); background: rgba(6,182,212,0.1); }
 
-        .frame-selector-container {
-            display: grid; grid-template-columns: repeat(2, 1fr);
-            gap: 6px; margin-top: 6px; margin-bottom: 10px;
-        }
-        .frame-option-btn {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--forum-card-border);
-            border-radius: 10px; padding: 8px 6px;
-            color: var(--text-main); font-size: 10px; font-weight: 700;
-            cursor: pointer; transition: all 0.2s; text-align: center;
-        }
-        .frame-option-btn:hover { border-color: var(--anime-purple); background: rgba(168, 85, 247, 0.15); }
-        .frame-option-btn.active {
-            background: var(--btn-anime-gradient);
-            border-color: #fff; color: #fff;
-            box-shadow: 0 0 12px rgba(168, 85, 247, 0.6);
-        }
-
-        .profile-subtabs { display: flex; border-bottom: 1px solid var(--forum-card-border); margin-bottom: 12px; }
-        .profile-subtab {
-            padding: 8px 12px; font-size: 11px; font-weight: 700;
-            color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent;
-        }
-        .profile-subtab.active { color: var(--anime-pink); border-bottom-color: var(--anime-pink); }
-
+        /* Стена и росписи */
+        .wall-section { margin-top: 20px; text-align: left; }
+        .wall-input-box { display: flex; gap: 8px; margin-bottom: 12px; }
         .wall-comment {
-            background: rgba(15, 17, 26, 0.7);
-            border: 1px solid var(--forum-card-border);
-            border-radius: 10px; padding: 10px; margin-bottom: 8px; font-size: 12px;
+            background: rgba(0,0,0,0.2);
+            border-left: 2px solid var(--accent-purple);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
         }
-        .wall-comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-        .wall-author { font-weight: 700; color: var(--anime-cyan); }
-        .wall-date { font-size: 9px; color: var(--text-muted); }
-        .wall-reply-box { margin-top: 6px; padding-left: 10px; border-left: 2px solid var(--anime-purple); font-size: 11px; }
+        .wall-comment-author { font-weight: 600; font-size: 12px; color: var(--accent-cyan); margin-bottom: 2px; }
+        .wall-comment-footer { display: flex; gap: 15px; font-size: 11px; color: var(--text-muted); margin-top: 6px; cursor: pointer; }
 
-        .form-group { margin-bottom: 14px; }
-        label {
-            display: block; margin-bottom: 5px;
-            font-size: 11px; font-weight: 700;
-            color: var(--anime-purple); text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        input, textarea, select, .custom-select-trigger {
-            width: 100%; padding: 11px 13px;
-            border-radius: 10px;
-            border: 1px solid var(--forum-card-border);
-            background: rgba(12, 14, 24, 0.9);
-            color: var(--text-main); box-sizing: border-box;
-            font-size: 13px; outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        input:focus, textarea:focus, select:focus { border-color: var(--anime-pink); box-shadow: 0 0 10px rgba(236, 72, 153, 0.3); }
-        
-        .custom-select-trigger { display: flex; justify-content: space-between; cursor: pointer; position: relative; overflow: hidden; }
-
-        button {
-            width: 100%; padding: 12px;
-            background: var(--btn-anime-gradient);
-            color: #ffffff; border: none; border-radius: 10px;
-            font-weight: 800; font-size: 13px; cursor: pointer;
-            margin-top: 6px; margin-bottom: 10px; transition: transform 0.1s;
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-        }
-        button:active { transform: scale(0.98); }
-        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
-        .btn-success { background: linear-gradient(135deg, #10b981 0%, #047857 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
-        .btn-secondary { background: rgba(255, 255, 255, 0.08); color: var(--text-main); border: 1px solid var(--forum-card-border); box-shadow: none; }
-
-        .ad-card {
-            background: var(--forum-card-bg);
-            border: 1px solid var(--forum-card-border);
-            border-radius: 14px; padding: 12px 14px;
-            margin-bottom: 10px; font-size: 12px; position: relative;
-            backdrop-filter: blur(10px); display: flex; flex-direction: column;
-            justify-content: space-between; animation: fadeIn 0.3s ease-out;
-        }
-
-        .ad-header { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-
-        .forum-badge {
-            display: inline-block; font-size: 9px; font-weight: 800;
-            padding: 2px 6px; border-radius: 6px; text-transform: uppercase; margin-right: 6px;
-        }
-        .badge-success { background: var(--accent-green); color: #fff; }
-        .badge-auction { background: #3b82f6; color: #fff; }
-        .badge-pending { background: #f59e0b; color: #fff; }
-
-        .feed-controls { display: flex; gap: 6px; margin-bottom: 10px; }
-        .feed-controls input { margin-bottom: 0; }
-        .view-mode-btns { display: flex; gap: 6px; margin-bottom: 12px; }
-        .view-mode-btn {
-            flex: 1; padding: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--forum-card-border);
-            color: var(--text-muted); border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; box-shadow: none; margin: 0;
-            transition: all 0.2s ease;
-        }
-        .view-mode-btn.active { background: var(--anime-purple); color: #ffffff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4); }
-
-        .ads-container.grid-view { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        body.device-pc .ads-container.grid-view { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-        .ads-container.grid-view .ad-card { margin-bottom: 0; font-size: 11px; padding: 10px; }
-        .ads-container.grid-view img { height: 85px !important; }
-
-        .card-actions-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
-
-        .write-seller-btn, .share-btn, .fav-btn {
-            background: rgba(168, 85, 247, 0.12); border: 1px solid var(--forum-card-border);
-            border-radius: 8px; padding: 7px 6px; display: flex; align-items: center; justify-content: center; gap: 4px;
-            color: var(--text-main); font-size: 10px; font-weight: 700; cursor: pointer; transition: background 0.2s;
-            margin: 0; width: 100%; box-shadow: none;
-        }
-        .write-seller-btn:hover, .share-btn:hover, .fav-btn:hover { background: rgba(168, 85, 247, 0.25); }
-        .share-btn { background: rgba(6, 182, 212, 0.12); border-color: rgba(6, 182, 212, 0.3); }
-        .fav-btn { background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.3); }
-        .fav-btn.active { background: var(--accent-gold); color: #000; }
-
-        .admin-section-title {
-            font-size: 13px; font-weight: 800; color: var(--anime-pink); margin-top: 16px; margin-bottom: 8px;
-            border-bottom: 1px solid var(--forum-card-border); padding-bottom: 5px; display: flex; align-items: center; gap: 6px;
-        }
-
-        .chat-item-row {
-            display: flex; align-items: center; justify-content: space-between;
-            background: rgba(20, 22, 36, 0.9); border: 1px solid var(--forum-card-border);
-            padding: 10px; border-radius: 10px; margin-bottom: 8px;
-        }
-        .chat-item-info { flex: 1; cursor: pointer; overflow: hidden; margin-right: 8px; }
-        .chat-item-actions { display: flex; gap: 4px; }
-        .chat-action-btn {
-            background: rgba(255, 255, 255, 0.08); border: 1px solid var(--forum-card-border);
-            border-radius: 6px; padding: 5px 7px; font-size: 11px; cursor: pointer; color: var(--text-main);
-            margin: 0; width: auto; box-shadow: none;
-        }
-
-        .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(6, 7, 12, 0.88); backdrop-filter: blur(8px); z-index: 1000;
-            justify-content: center; align-items: center; padding: 16px; box-sizing: border-box; animation: fadeIn 0.2s ease;
+        /* Модальные окна */
+        .modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
         .modal-content {
-            background: #121422; padding: 20px; border-radius: 16px; max-width: 360px; width: 100%;
-            text-align: center; border: 1px solid var(--forum-card-border); box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
-            max-height: 85vh; overflow-y: auto; box-sizing: border-box;
-            animation: fadeIn 0.25s ease;
+            background: var(--bg-color);
+            border: 1px solid var(--card-border);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            border-radius: 20px;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: rgba(255,255,255,0.05);
+            border: none;
+            color: var(--text-main);
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
         }
 
-        .picker-list { display: flex; flex-direction: column; gap: 6px; text-align: left; margin-top: 10px; max-height: 250px; overflow-y: auto; }
-        .picker-item {
-            background: rgba(255,255,255,0.05); border: 1px solid var(--forum-card-border); padding: 10px 12px;
-            border-radius: 10px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
-            font-size: 13px; font-weight: 700; color: var(--text-main);
-            transition: background 0.15s ease, border-color 0.15s ease;
+        /* Чаты */
+        .chat-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
         }
-        .picker-item:hover { background: rgba(168, 85, 247, 0.2); border-color: var(--anime-purple); }
-        .picker-item.selected { border-color: var(--anime-pink); background: rgba(236, 72, 153, 0.2); box-shadow: 0 0 12px rgba(236, 72, 153, 0.3); }
-        
-        .admin-controls-card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px dashed var(--anime-purple);
-            border-radius: 12px; padding: 10px; margin-top: 10px;
+        .chat-avatar { width: 40px; height: 40px; border-radius: 50%; background: #202336; object-fit: cover; }
+        .chat-info { flex: 1; }
+        .chat-name { font-weight: 600; font-size: 14px; }
+        .chat-preview { font-size: 12px; color: var(--text-muted); }
+
+        .chat-window-box {
+            display: flex;
+            flex-direction: column;
+            height: 350px;
         }
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .msg-bubble {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.3;
+        }
+        .msg-in { background: rgba(255,255,255,0.05); align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-out { background: var(--accent-gradient); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+
+        .chat-input-bar {
+            display: flex;
+            gap: 8px;
+            padding-top: 10px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        /* Уведомления */
+        .notif-item {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .notif-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+        /* Админ панель */
+        .admin-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--gold);
+            margin: 15px 0 8px;
+            text-transform: uppercase;
+        }
+        .admin-controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .admin-btn {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .admin-btn.success { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: var(--success); }
     </style>
 </head>
 <body>
-    <div id="banOverlay">
-        <div>
-            <h2 style="color: #ef4444; font-size: 22px; margin-bottom: 8px;">🚫 ВЫ ЗАБЛОКИРОВАНЫ</h2>
-            <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
-                Доступ к функциям бота, созданию тем и чатам ограничен администрацией.<br>Дождитесь снятия блокировки.
-            </p>
-            <button onclick="location.reload()" class="btn-secondary" style="width: auto; padding: 8px 16px; font-size: 11px;">🔄 Проверить статус</button>
+
+    <!-- Экран блокировки при бане -->
+    <div id="ban-screen">
+        <h1>ДОСТУП ОГРАНИЧЕН</h1>
+        <p id="ban-reason" style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Вы были занесены в черный список бота (arizona_banned_list).</p>
+        <button class="btn-primary" style="max-width: 200px;" onclick="checkBanStatus()">🔄 Проверить статус</button>
+    </div>
+
+    <!-- Шапка приложения -->
+    <header>
+        <div class="logo-container">
+            <span class="logo-sub">Неофициальный бот</span>
+            <span class="logo-main">Arizona RP</span>
+        </div>
+        <div class="header-icons">
+            <div class="icon-btn" onclick="openManager()" title="Менеджер">👔</div>
+            <div class="icon-btn" onclick="openProfileModal()" title="Профиль">👤</div>
+            <div class="icon-btn" onclick="openNotifsModal()" title="Уведомления">
+                🔔<span class="badge-counter" id="notif-counter">0</span>
+            </div>
+            <div class="icon-btn" onclick="openChatsModal()" title="Чаты">
+                💬<span class="badge-counter" id="chat-counter">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Полоса времени МСК -->
+    <div class="msk-time-bar" id="msk-time-display">МСК: 00:00:00</div>
+
+    <!-- Навигационные вкладки -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('search', this)">🌍 Поиск</button>
+        <button class="tab-btn" onclick="switchTab('create', this)">📝 Создать</button>
+        <button class="tab-btn" onclick="switchTab('my-threads', this)">📂 Мои темы</button>
+        <button class="tab-btn" onclick="switchTab('bookmarks', this)">❤️ Закладки</button>
+        <button class="tab-btn" id="admin-tab-btn" style="display:none;" onclick="switchTab('admin', this)">⚙️ Админ</button>
+    </div>
+
+    <!-- ОСНОВНЫЕ ВКЛАДКИ -->
+
+    <!-- Вкладка: Поиск -->
+    <div id="tab-search" class="view-section active">
+        <div class="search-bar-box">
+            <input type="text" class="search-input" id="search-box-input" placeholder="Поиск по названию, автору или серверу..." oninput="renderFeed()">
+            <button class="view-toggle-btn" id="view-mode-toggle" onclick="toggleViewMode()" title="Переключить вид">🧮</button>
+        </div>
+        <div class="items-grid" id="main-feed-grid">
+            <!-- Карточки рендерятся через JS -->
         </div>
     </div>
 
-    <div class="container">
-        <div id="broadcastBanner" class="broadcast-banner" onclick="openBroadcastModal()">
-            📢 <span id="broadcastText"><b>Уведомление от администрации!</b> Нажмите, чтобы открыть.</span>
+    <!-- Вкладка: Создать -->
+    <div id="tab-create" class="view-section">
+        <div class="card">
+            <h3 style="margin-bottom: 12px; font-size: 16px;">Новая заявка</h3>
+            <div class="form-group">
+                <label class="form-label">Тип темы</label>
+                <select class="form-control" id="create-type">
+                    <option value="sell">Продажа</option>
+                    <option value="buy">Покупка</option>
+                    <option value="auction">Аукцион</option>
+                    <option value="exchange">Обмен</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Сервер</label>
+                <select class="form-control" id="create-server">
+                    <option value="Phoenix">01 | Phoenix</option>
+                    <option value="Tucson">02 | Tucson</option>
+                    <option value="Scottdale">03 | Scottdale</option>
+                    <option value="Chandler">04 | Chandler</option>
+                    <option value="Brainburg">05 | Brainburg</option>
+                    <option value="SaintRose">06 | SaintRose</option>
+                    <option value="Mesa">07 | Mesa</option>
+                    <option value="RedRock">08 | Red-Rock</option>
+                    <option value="Holiday">23 | Holiday</option>
+                    <option value="Faraway">26 | Faraway</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Название предмета / суть</label>
+                <input type="text" class="form-control" id="create-title" placeholder="Например: Шлем Ужаса +12">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Цена (поддерживает 50кк, 10kk)</label>
+                <input type="text" class="form-control" id="create-price" placeholder="Например: 50кк">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Описание и условия</label>
+                <textarea class="form-control" id="create-desc" placeholder="Укажите детали сделки..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ссылка на скриншот (необязательно)</label>
+                <input type="text" class="form-control" id="create-img" placeholder="https://...">
+            </div>
+            <button class="btn-primary" onclick="submitNewAd()">Отправить на модерацию</button>
+        </div>
+    </div>
+
+    <!-- Вкладка: Мои темы -->
+    <div id="tab-my-threads" class="view-section">
+        <h3 style="margin-bottom: 15px; font-size: 16px;">Ваши активные темы и заявки</h3>
+        <div class="items-grid" id="my-threads-grid"></div>
+    </div>
+
+    <!-- Вкладка: Закладки -->
+    <div id="tab-bookmarks" class="view-section">
+        <h3 style="margin-bottom: 15px; font-size: 16px;">Избранные объявления</h3>
+        <div class="items-grid" id="bookmarks-grid"></div>
+    </div>
+
+    <!-- Вкладка: Админ -->
+    <div id="tab-admin" class="view-section">
+        <h3 style="margin-bottom: 15px; font-size: 16px; color: var(--gold);">Панель администратора</h3>
+        
+        <div class="admin-section-title">Модерация заявок (<span id="pending-count">0</span>)</div>
+        <div id="admin-pending-grid" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 20px;"></div>
+
+        <div class="admin-section-title">Управление пользователями</div>
+        <div class="form-group">
+            <input type="text" class="form-control" id="admin-target-user" placeholder="@username или Telegram ID">
+        </div>
+        <div class="admin-controls-grid">
+            <button class="admin-btn success" onclick="adminAction('add_admin')">➕ Добавить на адм</button>
+            <button class="admin-btn" onclick="adminAction('remove_admin')">➖ Снять с адм</button>
+            <button class="admin-btn" onclick="adminAction('ban')">🚫 Забанить</button>
+            <button class="admin-btn success" onclick="adminAction('unban')">✅ Разбанить</button>
         </div>
 
-        <div class="forum-topbar">
-            <div class="forum-brand">
-                <div class="forum-brand-info">
-                    <div class="forum-subtitle">поиск предметов Arizona RP • anime style</div>
-                    <div class="forum-brand-title">Arizona RP 🔍</div>
-                    <div id="mskTime" class="forum-time-msk">🕒 --:--:-- (МСК)</div>
+        <div class="admin-section-title">Рассылка и База данных</div>
+        <div class="form-group">
+            <textarea class="form-control" id="admin-broadcast-text" placeholder="Текст глобального уведомления..."></textarea>
+        </div>
+        <button class="btn-primary" style="margin-bottom: 10px;" onclick="adminSendBroadcast()">📢 Отправить Рассылку</button>
+        <button class="admin-btn" style="width:100%; padding: 12px;" onclick="adminClearFeed()">🗑 Очистить всю ленту</button>
+    </div>
+
+    <!-- МОДАЛЬНЫЕ ОКНА -->
+
+    <!-- Модальное окно: Профиль -->
+    <div class="modal" id="modal-profile">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('modal-profile')">✕</button>
+            <div class="profile-box">
+                <div class="avatar-wrapper" id="user-avatar-frame">
+                    <img src="" id="user-avatar-img" class="avatar-img" alt="Avatar">
                 </div>
-            </div>
-            <div class="forum-top-icons">
-                <a class="forum-icon-btn" href="https://t.me/bounqy31" target="_blank" title="Менеджер (@bounqy31)">👔</a>
-                <button class="forum-icon-btn" onclick="switchTab('profile')" title="Профиль">👤</button>
-                <button class="forum-icon-btn" onclick="openNotificationsModal()" title="Уведомления">🔔<span class="badge-dot" id="notifDot" style="display:none;">0</span></button>
-                <button class="forum-icon-btn" onclick="openChatsModal()" title="Переписки">💬<span class="badge-dot" id="chatDot" style="display:none;">0</span></button>
-                <button class="forum-icon-btn" onclick="openSearchModal()" title="Поиск">🔍</button>
-            </div>
-        </div>
-
-        <div class="nav-tabs" id="navTabs">
-            <button class="nav-tab active" onclick="switchTab('feed')">🌍 Поиск</button>
-            <button class="nav-tab" onclick="switchTab('app')">📝 Создать</button>
-            <button class="nav-tab" onclick="switchTab('myAds')">📂 Мои темы</button>
-            <button class="nav-tab" onclick="switchTab('favorites')">❤️ Закладки</button>
-            <button class="nav-tab" id="adminTabBtn" style="display: none;" onclick="switchTab('admin')">⚙️ Админ</button>
-        </div>
-
-        <div id="tabFeed" class="section active">
-            <div class="admin-section-title">🌍 Главный раздел бота (Поиск предметов)</div>
-            
-            <div class="feed-controls">
-                <input type="text" id="searchInput" placeholder="🔍 Введите название предмета (аксессуар, шар, скин)..." oninput="renderFeed()">
-            </div>
-
-            <div class="view-mode-btns">
-                <button class="view-mode-btn active" id="btnListView" onclick="setViewMode('list')">📄 Списком</button>
-                <button class="view-mode-btn" id="btnGridView" onclick="setViewMode('grid')">🧮 Плиткой</button>
-            </div>
-
-            <div id="feedContainer" class="ads-container"></div>
-        </div>
-
-        <div id="tabProfile" class="section">
-            <div class="profile-card-az">
-                <div class="az-avatar-wrapper">
-                    <img id="azAvatarImg" class="az-avatar-img" src="" alt="Avatar">
-                </div>
-                <h3 id="azUserName" class="az-user-name">Игрок</h3>
-                <div id="azCustomStatus" class="az-custom-status">Статус не установлен</div>
+                <div class="profile-name" id="profile-display-name">Игрок</div>
+                <div class="profile-stats" id="profile-stats-text">Заявок: 0 | Репутация: 0</div>
                 
-                <div>
-                    <div id="azRoleBadge" class="az-role-badge">👤 Игрок</div>
-                </div>
-
-                <div class="az-meta-info">
-                    <div>Регистрация: <span id="azRegDate">Сегодня</span></div>
-                    <div>Статус: <span id="azActivity">В сети</span></div>
-                </div>
-                
-                <div class="az-stats-grid">
-                    <div class="az-stat-item">
-                        <span class="az-stat-label">Заявки</span>
-                        <span class="az-stat-value" id="azStatMsgs">0</span>
-                    </div>
-                    <div class="az-stat-item">
-                        <span class="az-stat-label">Реакции</span>
-                        <span class="az-stat-value" id="azStatReacts">0</span>
-                    </div>
-                    <div class="az-stat-item">
-                        <span class="az-stat-label">Баллы</span>
-                        <span class="az-stat-value" id="azStatPoints">0</span>
+                <div class="form-group" style="text-align: left;">
+                    <label class="form-label">Статус профиля</label>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" class="form-control" id="profile-status-input" placeholder="Ваш статус...">
+                        <button class="btn-primary" style="width: auto; padding: 0 15px;" onclick="saveProfileStatus()">Сохранить</button>
                     </div>
                 </div>
 
-                <div class="admin-controls-card" style="margin-top: 10px; text-align: left;">
-                    <div style="font-weight: 800; font-size: 11px; color: var(--anime-purple); margin-bottom: 6px;">🎨 КАСТОМИЗАЦИЯ РАМОК ПРОФИЛЯ</div>
-                    
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 9px; margin-bottom: 4px;">Выберите анимированную рамку:</label>
-                        <div class="frame-selector-container">
-                            <button class="frame-option-btn" id="frameBtn_none" onclick="changeAvatarFrame('none')">⚪ Без рамки</button>
-                            <button class="frame-option-btn" id="frameBtn_frame-neon" onclick="changeAvatarFrame('frame-neon')">💖 Neon Pulse</button>
-                            <button class="frame-option-btn" id="frameBtn_frame-anime" onclick="changeAvatarFrame('frame-anime')">🌌 Anime Cyber</button>
-                            <button class="frame-option-btn" id="frameBtn_frame-gold" onclick="changeAvatarFrame('frame-gold')">👑 Gold Legend</button>
-                            <button class="frame-option-btn" id="frameBtn_frame-plasma" onclick="changeAvatarFrame('frame-plasma')">⚡ Plasma Wave</button>
-                            <button class="frame-option-btn" id="frameBtn_frame-fire" onclick="changeAvatarFrame('frame-fire')">🔥 Fire Spark</button>
-                            <button class="frame-option-btn" id="frameBtn_frame-matrix" onclick="changeAvatarFrame('frame-matrix')">💻 Matrix Green</button>
-                            <button class="frame-option-btn" id="frameBtn_frame-rainbow" onclick="changeAvatarFrame('frame-rainbow')">🌈 Rainbow</button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label style="font-size: 9px;">Ваш статус / подпись:</label>
-                        <div style="display: flex; gap: 4px;">
-                            <input type="text" id="customStatusInput" placeholder="Например: Скупщик века..." style="margin:0; padding: 6px; font-size: 11px;">
-                            <button onclick="saveCustomStatus()" style="width: auto; margin:0; padding: 6px 10px; font-size: 11px;">Сохранить</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="ad-card">
-                <div class="profile-subtabs">
-                    <div class="profile-subtab active" id="subtabWall" onclick="switchProfileSubtab('wall')">💬 Росписи на стене</div>
-                    <div class="profile-subtab" id="subtabActivity" onclick="switchProfileSubtab('activity')">🕒 Активность</div>
+                <label class="form-label" style="text-align: left;">Выбор рамки аватара</label>
+                <div class="frames-picker" id="frames-picker-container">
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-neon')">Neon Pulse</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-cyber')">Anime Cyber</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-gold')">Gold Legend</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-plasma')">Plasma Wave</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-fire')">Fire Spark</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-matrix')">Matrix Green</button>
+                    <button class="frame-choice-btn" onclick="setAvatarFrame('frame-rainbow')">Rainbow</button>
                 </div>
 
-                <div id="profileWallContent">
-                    <div class="form-group" style="margin-bottom: 8px;">
-                        <input type="text" id="wallCommentInput" placeholder="Напишите роспись в профиле...">
+                <!-- Стена профиля -->
+                <div class="wall-section">
+                    <label class="form-label">Стена профиля (Росписи)</label>
+                    <div class="wall-input-box">
+                        <input type="text" class="form-control" id="wall-comment-input" placeholder="Оставить роспись...">
+                        <button class="btn-primary" style="width: auto; padding: 0 14px;" onclick="postWallComment()">Отпр</button>
                     </div>
-                    <button onclick="postWallComment()" style="padding: 8px; font-size: 11px; margin-top:0;">Оставить роспись</button>
-                    <div id="wallCommentsContainer" style="margin-top: 12px;"></div>
-                </div>
-
-                <div id="profileActivityContent" style="display: none; font-size: 11px; color: var(--text-muted); text-align: center; padding: 10px;">
-                    Последняя активность: проверка цен на сервере.
-                </div>
-            </div>
-        </div>
-
-        <div id="tabApp" class="section">
-            <div class="admin-section-title">📝 Создать объявление (требует модерации)</div>
-
-            <div class="form-group">
-                <label>Тип темы:</label>
-                <div class="custom-select-trigger" id="triggerMode" onclick="openPicker('mode')">
-                    <span id="selectedModeText">Продажа</span> <span>▼</span>
-                </div>
-                <input type="hidden" id="mode" value="sell">
-            </div>
-
-            <div class="form-group" id="categoryGroup">
-                <label>Раздел бота:</label>
-                <div class="custom-select-trigger" id="triggerCategory" onclick="openPicker('category')">
-                    <span id="selectedCategoryText">💍 Аксессуары и вещи</span> <span>▼</span>
-                </div>
-                <input type="hidden" id="category" value="💍 Аксессуары и вещи">
-            </div>
-
-            <div class="form-group" id="itemGroup">
-                <label for="itemName">Название предмета / товара:</label>
-                <input type="text" id="itemName" placeholder="Например: Магический шар +12">
-            </div>
-
-            <div class="form-group" id="priceGroup">
-                <label for="price" id="priceLabel">Цена ($):</label>
-                <input type="text" id="price" placeholder="Например: 50кк или 50000000">
-            </div>
-
-            <div class="form-group" id="textGroup">
-                <label for="text">Описание / характеристики предмета:</label>
-                <textarea id="text" rows="4" placeholder="Опишите состояние предмета или условия..."></textarea>
-            </div>
-
-            <div class="form-group" id="imageGroup">
-                <label for="itemImage">Ссылка на скриншот предмета:</label>
-                <input type="url" id="itemImage" placeholder="https://i.imgur.com/...">
-            </div>
-
-            <div class="form-group">
-                <label>Игровой сервер:</label>
-                <div class="custom-select-trigger" id="triggerServer" onclick="openPicker('server')">
-                    <span id="selectedServerText">🔥 Phoenix</span> <span>▼</span>
-                </div>
-                <input type="hidden" id="server" value="🔥 Phoenix">
-            </div>
-
-            <button onclick="submitData()">Отправить на модерацию</button>
-            <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 6px;">
-                🕒 Время отправки объявлений: с 08:00 до 22:00 по МСК
-            </div>
-        </div>
-
-        <div id="tabMyAds" class="section">
-            <div class="admin-section-title">📂 Ваши размещенные товары</div>
-            <div id="myAdsContainer" class="ads-container"></div>
-            <button onclick="clearMyAds()" class="btn-danger" style="margin-top: 14px;">Очистить архив</button>
-        </div>
-
-        <div id="tabFavorites" class="section">
-            <div class="admin-section-title">❤️ Ваши закладки (Избранные предметы)</div>
-            <div id="favoritesContainer" class="ads-container"></div>
-        </div>
-
-        <div id="tabAdmin" class="section">
-            <div id="adminContent">
-                <div class="admin-section-title">🛡️ Модерация объявлений (Ожидают проверки)</div>
-                <div id="pendingAdsContainer" style="margin-bottom: 15px;"></div>
-
-                <div id="ownerSection" style="display: none; margin-top: 15px;">
-                    <div class="admin-section-title">👑 Панель Управления Владельца (@bounqy)</div>
-                    
-                    <div class="form-group">
-                        <label>Целевой игрок (@username или ID):</label>
-                        <input type="text" id="targetUser" placeholder="Например: @bounqy или 777">
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
-                        <button class="btn-success" onclick="sendTargetAction('make_admin')">➕ Добавить на адм</button>
-                        <button class="btn-danger" onclick="sendTargetAction('remove_admin')">➖ Снять с адм</button>
-                        <button class="btn-danger" onclick="sendTargetAction('ban')">🚫 Забанить</button>
-                        <button class="btn-success" onclick="sendTargetAction('unban')">✅ Разбанить</button>
-                    </div>
-
-                    <div class="admin-controls-card" style="margin-bottom: 10px;">
-                        <label>Управление базой:</label>
-                        <button class="btn-danger" onclick="clearGlobalFeedAdmin()" style="margin-top: 5px; margin-bottom: 0;">🗑 Очистить всю ленту</button>
-                    </div>
-
-                    <div class="admin-controls-card">
-                        <label>Редактировать системный баннер:</label>
-                        <input type="text" id="newBroadcastInput" placeholder="Новый текст уведомления..." style="margin-bottom: 6px;">
-                        <button onclick="updateBroadcastMessage()" class="btn-success">📢 Отправить Рассылку</button>
-                    </div>
+                    <div id="wall-comments-list"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно редактирования объявления для админов -->
-    <div id="editAdModal" class="modal-overlay" onclick="handleOverlayClick(event, 'editAdModal')">
-        <div class="modal-content" style="text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">✏️ Редактирование объявления (Админ)</h3>
-                <button class="btn-secondary" onclick="closeEditModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
-            </div>
-            <input type="hidden" id="editAdId">
-            <div class="form-group">
-                <label>Название / Заголовок:</label>
-                <input type="text" id="editAdTitle">
-            </div>
-            <div class="form-group">
-                <label>Цена ($):</label>
-                <input type="text" id="editAdPrice">
-            </div>
-            <div class="form-group">
-                <label>Описание:</label>
-                <textarea id="editAdText" rows="4"></textarea>
-            </div>
-            <div style="display: flex; gap: 6px;">
-                <button onclick="saveEditedAd()" class="btn-success" style="margin:0;">💾 Сохранить</button>
-                <button onclick="closeEditModal()" class="btn-secondary" style="margin:0;">Отмена</button>
-            </div>
+    <!-- Модальное окно: Уведомления -->
+    <div class="modal" id="modal-notifs">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('modal-notifs')">✕</button>
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Уведомления</h3>
+            <div id="notifs-container"></div>
         </div>
     </div>
 
-    <div id="chatsModal" class="modal-overlay" onclick="handleOverlayClick(event, 'chatsModal')">
-        <div class="modal-content" style="text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">💬 Переписки с продавцами</h3>
-                <button class="btn-secondary" onclick="closeChatsModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
-            </div>
-            <div style="margin-bottom: 10px; display: flex; gap: 6px;">
-                <input type="text" id="findUserChatInput" placeholder="Найти по юзеру (@username)..." style="margin-bottom:0; font-size:11px;">
-                <button onclick="startChatByUsername()" style="width: 70px; margin:0; padding: 10px; font-size:11px;">Найти</button>
-            </div>
-            <div id="chatsList"></div>
+    <!-- Модальное окно: Чаты -->
+    <div class="modal" id="modal-chats">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('modal-chats')">✕</button>
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Сообщения</h3>
+            <div id="chats-list-container"></div>
         </div>
     </div>
 
-    <div id="chatDetailModal" class="modal-overlay" onclick="handleOverlayClick(event, 'chatDetailModal')">
-        <div class="modal-content" style="text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 id="chatTitle" style="color: #ffffff; margin: 0; font-size: 14px;">Чат</h3>
-                <div style="display:flex; gap:4px;">
-                    <button class="btn-secondary" onclick="clearActiveChatHistory()" style="width: auto; margin:0; padding: 4px 8px; font-size: 11px;">🧹</button>
-                    <button class="btn-secondary" onclick="closeChatDetail()" style="width: auto; margin:0; padding: 4px 8px; font-size: 11px;">Закрыть</button>
+    <!-- Модальное окно: Активный чат с игроком -->
+    <div class="modal" id="modal-active-chat">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('modal-active-chat')">✕</button>
+            <h3 style="margin-bottom: 10px; font-size: 16px;" id="active-chat-title">Чат с игроком</h3>
+            <div class="chat-window-box">
+                <div class="messages-container" id="chat-messages-container"></div>
+                <div class="chat-input-bar">
+                    <input type="text" class="form-control" id="chat-msg-input" placeholder="Написать сообщение...">
+                    <button class="btn-primary" style="width: auto; padding: 0 15px;" onclick="sendChatMessage()">Отпр</button>
                 </div>
             </div>
-            <div id="chatMessages" style="background: rgba(10, 11, 18, 0.92); padding: 12px; border-radius: 12px; height: 220px; overflow-y: auto; font-size: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--forum-card-border); background-image: radial-gradient(circle, rgba(168,85,247,0.06) 0%, transparent 80%);"></div>
-            <div style="display: flex; gap: 6px;">
-                <input type="text" id="chatInputMessage" placeholder="Написать сообщение..." style="margin-bottom:0;" onkeypress="if(event.key === 'Enter') sendChatMessage()">
-                <button onclick="sendChatMessage()" style="width: 70px; margin-top:0; padding: 10px;">Отпр</button>
+            <div style="display:flex; justify-content: space-between; margin-top: 10px;">
+                <button class="admin-btn" style="width: 48%;" onclick="clearActiveChatHistory()">🧹 Очистить</button>
+                <button class="admin-btn" style="width: 48%;" onclick="deleteActiveChat()">🗑 Удалить чат</button>
             </div>
-        </div>
-    </div>
-
-    <div id="pickerModal" class="modal-overlay" onclick="handleOverlayClick(event, 'pickerModal')">
-        <div class="modal-content" style="text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 id="pickerTitle" style="color: #ffffff; margin: 0; font-size: 15px;">Выберите</h3>
-                <button class="btn-secondary" onclick="closePicker()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
-            </div>
-            <div id="pickerList" class="picker-list"></div>
-        </div>
-    </div>
-
-    <div id="notificationsModal" class="modal-overlay" onclick="handleOverlayClick(event, 'notificationsModal')">
-        <div class="modal-content" style="text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">🔔 Уведомления</h3>
-                <button class="btn-secondary" onclick="closeNotificationsModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
-            </div>
-            <div id="notificationsList" style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 10px;">У вас пока нет новых уведомлений.</div>
         </div>
     </div>
 
     <script>
-        let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
-        if (typeof tg.expand === 'function') { tg.expand(); }
-        if (typeof tg.ready === 'function') { tg.ready(); }
+        // --- ИНИЦИАЛИЗАЦИЯ TELEGRAM WEBAPP ---
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
 
-        function detectDeviceType() {
-            let body = document.body;
-            body.classList.remove('device-pc', 'device-tablet', 'device-mobile');
+        // Пользовательские данные
+        let currentUser = {
+            id: tg.initDataUnsafe?.user?.id || 12345678,
+            username: tg.initDataUnsafe?.user?.username || "bounqy",
+            first_name: tg.initDataUnsafe?.user?.first_name || "Majorka",
+            avatar: tg.initDataUnsafe?.user?.photo_url || "https://via.placeholder.com/90"
+        };
 
-            let platform = (tg.platform || '').toLowerCase();
-            let width = window.innerWidth;
+        // Владелец бота по ТЗ
+        const OWNER_USERNAME = "bounqy";
 
-            if (platform === 'tdesktop' || platform === 'weba' || platform === 'webk' || width >= 1024) {
-                body.classList.add('device-pc');
-            } else if ((width >= 768 && width < 1024) || platform === 'ipad' || /ipad|tablet/i.test(navigator.userAgent)) {
-                body.classList.add('device-tablet');
+        // Хранилище состояния в localStorage
+        let db = {
+            bannedList: JSON.parse(localStorage.getItem('arizona_banned_list') || '[]'),
+            admins: JSON.parse(localStorage.getItem('arizona_admins') || '["bounqy", "12345678"]'),
+            ads: JSON.parse(localStorage.getItem('arizona_ads') || '[]'),
+            pendingAds: JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'),
+            bookmarks: JSON.parse(localStorage.getItem('arizona_bookmarks') || '[]'),
+            notifs: JSON.parse(localStorage.getItem('arizona_notifs') || '[]'),
+            chats: JSON.parse(localStorage.getItem('arizona_chats') || '{}'),
+            userProfiles: JSON.parse(localStorage.getItem('arizona_profiles') || '{}'),
+            lastPostTime: parseInt(localStorage.getItem('arizona_last_post') || '0'),
+            lastCleanupDate: localStorage.getItem('arizona_last_cleanup') || ''
+        };
+
+        let currentViewMode = 'grid'; // 'grid' или 'list'
+        let activeChatPeer = null;
+
+        // Профиль текущего пользователя в БД
+        if (!db.userProfiles[currentUser.id]) {
+            db.userProfiles[currentUser.id] = {
+                frame: 'frame-cyber',
+                status: 'Играю на Arizona RP Phoenix ⚡',
+                wall: [],
+                stats: { adsCount: 0, likes: 0 }
+            };
+            saveDB();
+        }
+
+        function saveDB() {
+            localStorage.setItem('arizona_banned_list', JSON.stringify(db.bannedList));
+            localStorage.setItem('arizona_admins', JSON.stringify(db.admins));
+            localStorage.setItem('arizona_ads', JSON.stringify(db.ads));
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(db.pendingAds));
+            localStorage.setItem('arizona_bookmarks', JSON.stringify(db.bookmarks));
+            localStorage.setItem('arizona_notifs', JSON.stringify(db.notifs));
+            localStorage.setItem('arizona_chats', JSON.stringify(db.chats));
+            localStorage.setItem('arizona_profiles', JSON.stringify(db.userProfiles));
+            localStorage.setItem('arizona_last_post', db.lastPostTime);
+            localStorage.setItem('arizona_last_cleanup', db.lastCleanupDate);
+        }
+
+        // --- СИСТЕМА ВРЕМЕНИ МСК И СУТОЧНАЯ ОЧИСТКА ---
+        function updateMoscowTime() {
+            const now = new Date();
+            const options = { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' };
+            const formatter = new Intl.DateTimeFormat('ru-RU', options);
+            const parts = formatter.formatToParts(now);
+            let timeStr = '', dateStr = '';
+            parts.forEach(p => {
+                if (['hour', 'minute', 'second'].includes(p.type)) timeStr += p.value + (p.type !== 'second' ? ':' : '');
+                if (['day', 'month', 'year'].includes(p.type)) dateStr += p.value + (p.type !== 'year' ? '.' : '');
+            });
+            document.getElementById('msk-time-display').innerText = `МСК: ${dateStr} ${timeStr}`;
+
+            // Суточная очистка после 07:00 МСК
+            const mskHour = parseInt(new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', hour: 'numeric', hour12: false }).format(now));
+            const currentDateKey = dateStr;
+            if (mskHour >= 7 && db.lastCleanupDate !== currentDateKey) {
+                db.ads = [];
+                db.pendingAds = [];
+                db.lastCleanupDate = currentDateKey;
+                saveDB();
+                renderAll();
+            }
+        }
+        setInterval(updateMoscowTime, 1000);
+        updateMoscowTime();
+
+        // --- АВТОРИЗАЦИЯ, РОЛИ И БАНЫ ---
+        function checkBanStatus() {
+            const isBanned = db.bannedList.includes(String(currentUser.id)) || db.bannedList.includes(currentUser.username);
+            if (isBanned) {
+                document.getElementById('ban-screen').style.display = 'flex';
             } else {
-                body.classList.add('device-mobile');
+                document.getElementById('ban-screen').style.display = 'none';
             }
         }
+        checkBanStatus();
 
-        window.addEventListener('resize', detectDeviceType);
-
-        const OWNER_USERNAME = 'bounqy';
-        let ADMIN_USERNAMES = [];
-        try {
-            ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || JSON.stringify(['bounqy', 'arizona_admin']));
-        } catch(e) {
-            ADMIN_USERNAMES = ['bounqy', 'arizona_admin'];
+        function isAdmin() {
+            return currentUser.username === OWNER_USERNAME || db.admins.includes(String(currentUser.id)) || db.admins.includes(currentUser.username);
         }
-        
-        let currentViewMode = 'list';
-        let activeChatName = '';
-        let broadcastTimer = null;
 
-        const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%238b5cf6'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='%23ffffff' font-family='sans-serif'>A</text></svg>";
-
-        const ALL_SERVERS = [
-            { value: '🔥 Phoenix', label: '🔥 Phoenix' },
-            { value: '🌴 Tucson', label: '🌴 Tucson' },
-            { value: '🌵 Scottdale', label: '🌵 Scottdale' },
-            { value: '⚜️ Chandler', label: '⚜️ Chandler' },
-            { value: '❄️ Brainburg', label: '❄️ Brainburg' },
-            { value: '🌊 Yuma', label: '🌊 Yuma' },
-            { value: '✨ Saint-Rose', label: '✨ Saint-Rose' },
-            { value: '🏛 Mesa', label: '🏛 Mesa' },
-            { value: '❤️ Red-Rock', label: '❤️ Red-Rock' },
-            { value: '🍀 Surprise', label: '🍀 Surprise' },
-            { value: '⚡️ Prescott', label: '⚡️ Prescott' },
-            { value: '🌲 Glendale', label: '🌲 Glendale' },
-            { value: '👑 Kingman', label: '👑 Kingman' },
-            { value: '⚓️ Winslow', label: '⚓️ Winslow' },
-            { value: '🌴 Payson', label: '🌴 Payson' },
-            { value: '💎 Gilbert', label: '💎 Gilbert' },
-            { value: '🔥 Show-Low', label: '🔥 Show-Low' },
-            { value: '🌴 Casa-Grande', label: '🌴 Casa-Grande' },
-            { value: '📜 Page', label: '📜 Page' },
-            { value: '☀️ Sun-City', label: '☀️ Sun-City' },
-            { value: '👑 Queen-Creek', label: '👑 Queen-Creek' },
-            { value: '🌵 Sedona', label: '🌵 Sedona' },
-            { value: '🎄 Holiday', label: '🎄 Holiday' },
-            { value: '🍀 Wednesday', label: '🍀 Wednesday' },
-            { value: '⚡️ Yava', label: '⚡️ Yava' },
-            { value: '🌌 Faraway', label: '🌌 Faraway' },
-            { value: '🎁 Christmas', label: '🎁 Christmas' },
-            { value: '🐝 Bumble Bee', label: '🐝 Bumble Bee' },
-            { value: '💎 Mirage', label: '💎 Mirage' },
-            { value: '💖 Love', label: '💖 Love' },
-            { value: '📱 Mobile I', label: '📱 Mobile I' },
-            { value: '📱 Mobile II', label: '📱 Mobile II' },
-            { value: '📱 Mobile III', label: '📱 Mobile III' }
-        ];
-
-        function parseShorthandPrice(inputStr) {
-            if (!inputStr) return null;
-            if (typeof inputStr === 'number') return inputStr;
-            let clean = String(inputStr).trim().toLowerCase().replace(/\s+/g, '').replace(/,/g, '.');
-            if (!clean) return null;
-
-            let multiplier = 1;
-            if (clean.endsWith('kkk') || clean.endsWith('ккк') || clean.endsWith('млрд')) {
-                multiplier = 1000000000;
-                clean = clean.replace(/kkk|ккк|млрд/g, '');
-            } else if (clean.endsWith('kk') || clean.endsWith('кк') || clean.endsWith('млн')) {
-                multiplier = 1000000;
-                clean = clean.replace(/kk|кк|млн/g, '');
-            } else if (clean.endsWith('k') || clean.endsWith('к')) {
-                multiplier = 1000;
-                clean = clean.replace(/k|к/g, '');
+        function initRolesUI() {
+            if (isAdmin() || currentUser.username === OWNER_USERNAME) {
+                document.getElementById('admin-tab-btn').style.display = 'block';
             }
+        }
+        initRolesUI();
 
-            let num = parseFloat(clean);
-            if (isNaN(num)) return null;
-            return Math.round(num * multiplier);
+        // --- НАВИГАЦИЯ ПО ВКЛАДКАМ ---
+        function switchTab(tabName, btnElement) {
+            if (tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            btnElement.classList.add('active');
+            renderAll();
         }
 
+        // --- ПАРСЕР ЦЕН (50кк -> 50,000,000) ---
+        function parsePrice(priceStr) {
+            if (!priceStr) return 'Договорная';
+            let clean = priceStr.toLowerCase().trim();
+            clean = clean.replace(/кк/g, '000000').replace(/kk/g, '000000').replace(/к/g, '000').replace(/k/g, '000').replace(/\s+/g, '');
+            let num = parseInt(clean);
+            if (!isNaN(num)) {
+                return num.toLocaleString('ru-RU') + ' $';
+            }
+            return priceStr;
+        }
+
+        // --- ПАРСЕР МАТА И ЗАЩИТА ---
         function containsProfanity(text) {
-            if (!text) return false;
-            const badWordsRegex = /(хуй|пизд|блять|бляд|ебат|ебал|ебан|пидор|сука|чмо|гандон|презерватив|сцука|ебп|нах)/i;
-            return badWordsRegex.test(text);
+            const badWords = ['хуй', 'пизд', 'еб', 'бля', 'сука', 'залуп', 'анал'];
+            const lower = text.toLowerCase();
+            return badWords.some(word => lower.includes(word));
         }
 
-        function getMSKDate() {
-            let now = new Date();
-            let mskString = now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' });
-            return new Date(mskString);
-        }
-
-        function updateMSKTime() {
-            let mskDate = getMSKDate();
-            let timeStr = mskDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            let el = document.getElementById('mskTime');
-            if (el) el.innerText = '🕒 ' + timeStr + ' (МСК)';
-
-            checkDailyCleanup(mskDate);
-            updateNotifBadge();
-        }
-
-        function checkDailyCleanup(mskDate) {
-            let hours = mskDate.getHours();
-            let lastCleanDate = localStorage.getItem('arizona_last_auto_clean');
-            let todayStr = mskDate.toDateString();
-
-            if (hours >= 7 && lastCleanDate !== todayStr) {
-                localStorage.setItem('arizona_last_auto_clean', todayStr);
-                localStorage.removeItem('arizona_global_feed');
-                localStorage.removeItem('arizona_pending_ads');
-            }
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            return String(text)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        function triggerHaptic(style = 'light') {
-            if (tg.HapticFeedback && typeof tg.HapticFeedback.impactOccurred === 'function') {
-                try { tg.HapticFeedback.impactOccurred(style); } catch(e){}
-            }
-        }
-
-        function getCurrentUser() {
-            let tgObj = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
-            if (tgObj.initDataUnsafe && tgObj.initDataUnsafe.user) {
-                let u = tgObj.initDataUnsafe.user;
-                return {
-                    id: u.id,
-                    username: u.username ? '@' + u.username : 'id_' + u.id,
-                    first_name: u.first_name || 'Игрок',
-                    photo_url: u.photo_url
-                };
-            }
-            return { id: 777, username: '@bounqy', first_name: 'bounqy', photo_url: '' };
-        }
-
-        function checkIsOwner() {
-            let user = getCurrentUser();
-            let cleanName = (user.username || '').replace('@', '').toLowerCase();
-            return cleanName === OWNER_USERNAME.toLowerCase() || String(user.id) === '777';
-        }
-
-        function checkIsAdmin() {
-            let user = getCurrentUser();
-            let cleanName = (user.username || '').replace('@', '').toLowerCase();
-            let userIdStr = String(user.id);
-            return checkIsOwner() || ADMIN_USERNAMES.includes(cleanName) || ADMIN_USERNAMES.includes(userIdStr);
-        }
-
-        function checkIsBanned() {
-            let user = getCurrentUser();
-            let cleanName = (user.username || '').replace('@', '').toLowerCase();
-            let bannedList = [];
-            try {
-                bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
-            } catch(e) { bannedList = []; }
-            return bannedList.includes(cleanName) || bannedList.includes(String(user.id));
-        }
-
-        function handleOverlayClick(e, modalId) {
-            if (e.target.id === modalId) {
-                document.getElementById(modalId).style.display = 'none';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                detectDeviceType();
-                updateMSKTime();
-                setInterval(updateMSKTime, 1000);
-
-                let savedBroadcastTime = Number(localStorage.getItem('arizona_broadcast_time') || 0);
-                let mskNow = getMSKDate().getTime();
-                let banner = document.getElementById('broadcastBanner');
-
-                if (mskNow - savedBroadcastTime > 10000) {
-                    localStorage.removeItem('arizona_broadcast_text');
-                    localStorage.removeItem('arizona_broadcast_time');
-                    if (banner) banner.style.display = 'none';
-                }
-
-                if (checkIsBanned()) {
-                    document.getElementById('banOverlay').style.display = 'flex';
-                    return;
-                }
-
-                if (checkIsAdmin()) {
-                    let adminBtn = document.getElementById('adminTabBtn');
-                    if (adminBtn) adminBtn.style.display = 'block';
-                }
-                if (checkIsOwner()) {
-                    let ownerSec = document.getElementById('ownerSection');
-                    if (ownerSec) ownerSec.style.display = 'block';
-                }
-                
-                let savedBroadcast = localStorage.getItem('arizona_broadcast_text');
-                if (savedBroadcast && (mskNow - savedBroadcastTime <= 10000)) {
-                    document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${escapeHtml(savedBroadcast)}`;
-                    banner.style.display = 'block';
-                    broadcastTimer = setTimeout(() => {
-                        banner.style.display = 'none';
-                    }, 10000 - (mskNow - savedBroadcastTime));
-                } else {
-                    if (banner) banner.style.display = 'none';
-                }
-
-                updateNotifBadge();
-                updateChatDotBadge();
-                switchTab('feed');
-            } catch (e) {
-                console.error('Ошибка при загрузке:', e);
-            }
-        });
-
-        function addNotification(text, timestamp, userId = null) {
-            let uId = userId || getCurrentUser().id;
-            let key = 'arizona_notifications_' + uId;
-            let notifs = [];
-            try {
-                notifs = JSON.parse(localStorage.getItem(key) || '[]');
-            } catch(e) { notifs = []; }
-
-            notifs.unshift({
-                id: 'notif_' + Date.now(),
-                text: text,
-                timestamp: timestamp
-            });
-
-            saveAndCleanNotifications(notifs, uId);
-        }
-
-        function saveAndCleanNotifications(notifs, userId = null) {
-            let uId = userId || getCurrentUser().id;
-            let key = 'arizona_notifications_' + uId;
-            let mskNow = getMSKDate().getTime();
-            let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-
-            let validNotifs = notifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-            localStorage.setItem(key, JSON.stringify(validNotifs));
-            updateNotifBadge();
-        }
-
-        function updateNotifBadge() {
-            try {
-                let user = getCurrentUser();
-                let key = 'arizona_notifications_' + user.id;
-                let notifs = JSON.parse(localStorage.getItem(key) || '[]');
-                
-                let bNotifs = [];
-                try {
-                    bNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
-                } catch(e){}
-
-                let mskNow = getMSKDate().getTime();
-                let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-                
-                notifs = notifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-                bNotifs = bNotifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-
-                localStorage.setItem(key, JSON.stringify(notifs));
-                localStorage.setItem('arizona_global_broadcast_notifs', JSON.stringify(bNotifs));
-
-                let totalCount = notifs.length + bNotifs.length;
-                let dot = document.getElementById('notifDot');
-                if (dot) {
-                    if (totalCount > 0) {
-                        dot.innerText = totalCount;
-                        dot.style.display = 'inline-block';
-                    } else {
-                        dot.style.display = 'none';
-                    }
-                }
-            } catch(e){}
-        }
-
-        function renderNotifications() {
-            let container = document.getElementById('notificationsList');
-            if (!container) return;
-            try {
-                let user = getCurrentUser();
-                let key = 'arizona_notifications_' + user.id;
-                let notifs = JSON.parse(localStorage.getItem(key) || '[]');
-                
-                let bNotifs = [];
-                try {
-                    bNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
-                } catch(e){}
-
-                let mskNow = getMSKDate().getTime();
-                let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-                
-                notifs = notifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-                bNotifs = bNotifs.filter(n => (mskNow - n.timestamp) < sevenDaysMs);
-
-                let allNotifs = [...notifs, ...bNotifs];
-                allNotifs.sort((a, b) => b.timestamp - a.timestamp);
-
-                if (allNotifs.length === 0) {
-                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:12px; padding:10px;">У вас пока нет новых уведомлений.</div>';
-                    return;
-                }
-
-                let html = '';
-                allNotifs.forEach(n => {
-                    let dateStr = new Date(n.timestamp).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                    html += `
-                        <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--forum-card-border); border-radius: 10px; padding: 10px; margin-bottom: 8px; text-align: left;">
-                            <div style="font-size: 10px; color: var(--anime-cyan); margin-bottom: 4px;">🕒 ${dateStr} (МСК)</div>
-                            <div style="color: #fff; font-size: 12px; word-break: break-word;">${escapeHtml(n.text)}</div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            } catch(e){}
-        }
-
-        function showAndAutoHideBroadcast(text) {
-            let banner = document.getElementById('broadcastBanner');
-            let textSpan = document.getElementById('broadcastText');
-            if (!banner || !textSpan) return;
-
-            textSpan.innerHTML = `<b>Уведомление от администрации!</b> ${escapeHtml(text)}`;
-            banner.style.display = 'block';
-
-            if (broadcastTimer) clearTimeout(broadcastTimer);
-
-            broadcastTimer = setTimeout(() => {
-                banner.style.display = 'none';
-                localStorage.removeItem('arizona_broadcast_text');
-                localStorage.removeItem('arizona_broadcast_time');
-            }, 10000);
-        }
-
-        function updateChatDotBadge() {
-            try {
-                let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
-                let count = Object.keys(chatsData).length;
-                let dot = document.getElementById('chatDot');
-                if (dot) {
-                    if (count > 0) {
-                        dot.innerText = count;
-                        dot.style.display = 'inline-block';
-                    } else {
-                        dot.style.display = 'none';
-                    }
-                }
-            } catch(e){}
-        }
-
-        function initProfile() {
-            let user = getCurrentUser();
-            let name = user.first_name || 'Игрок';
-            
-            document.getElementById('azUserName').innerText = name;
-            let avatarImg = document.getElementById('azAvatarImg');
-            avatarImg.src = user.photo_url || DEFAULT_AVATAR;
-
-            let savedFrame = localStorage.getItem('arizona_avatar_frame_' + user.id) || 'none';
-            avatarImg.className = 'az-avatar-img ' + savedFrame;
-            
-            document.querySelectorAll('.frame-option-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            let activeBtn = document.getElementById('frameBtn_' + savedFrame);
-            if (activeBtn) activeBtn.classList.add('active');
-
-            let savedStatus = localStorage.getItem('arizona_custom_status_' + user.id) || 'Статус не установлен';
-            document.getElementById('azCustomStatus').innerText = savedStatus;
-
-            let roleBadge = document.getElementById('azRoleBadge');
-            if (checkIsOwner()) {
-                roleBadge.innerText = '👑 Владелец бота @bounqy';
-            } else if (checkIsAdmin()) {
-                roleBadge.innerText = '⚙️ Админ';
-            } else {
-                roleBadge.innerText = '👤 Игрок';
-            }
-
-            renderWallComments();
-
-            let myAds = [], wallComments = [];
-            try {
-                myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-                wallComments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]');
-            } catch(e){}
-
-            let msgsCount = myAds.length + wallComments.length;
-            let reactionsCount = wallComments.reduce((acc, curr) => acc + (curr.likes || 0), 0);
-            let pointsCount = msgsCount * 5 + reactionsCount * 2;
-
-            document.getElementById('azStatMsgs').innerText = msgsCount;
-            document.getElementById('azStatReacts').innerText = reactionsCount;
-            document.getElementById('azStatPoints').innerText = pointsCount;
-        }
-
-        function changeAvatarFrame(frameClass) {
-            triggerHaptic('light');
-            let user = getCurrentUser();
-            localStorage.setItem('arizona_avatar_frame_' + user.id, frameClass);
-            initProfile();
-        }
-
-        function saveCustomStatus() {
-            triggerHaptic('medium');
-            let input = document.getElementById('customStatusInput');
-            let text = input.value.trim();
-            if (!text) return;
-            let user = getCurrentUser();
-            localStorage.setItem('arizona_custom_status_' + user.id, text);
-            input.value = '';
-            initProfile();
-        }
-
-        function switchProfileSubtab(tab) {
-            let wallTab = document.getElementById('subtabWall');
-            let activityTab = document.getElementById('subtabActivity');
-            let wallContent = document.getElementById('profileWallContent');
-            let activityContent = document.getElementById('profileActivityContent');
-
-            if (tab === 'wall') {
-                wallTab.classList.add('active');
-                activityTab.classList.remove('active');
-                wallContent.style.display = 'block';
-                activityContent.style.display = 'none';
-            } else {
-                activityTab.classList.add('active');
-                wallTab.classList.remove('active');
-                wallContent.style.display = 'none';
-                activityContent.style.display = 'block';
-            }
-        }
-
-        function postWallComment(replyToId = null) {
-            triggerHaptic('medium');
-            let inputId = replyToId ? 'wallReplyInput_' + replyToId : 'wallCommentInput';
-            let input = document.getElementById(inputId);
-            if (!input) return;
-            let text = input.value.trim();
-            if (!text) return;
-
-            let currentUser = getCurrentUser();
-            let authorName = currentUser.username || (currentUser.first_name || 'Игрок');
-            if (!authorName.startsWith('@') && authorName !== 'Игрок') authorName = '@' + authorName;
-
-            let wallComments = [];
-            try {
-                wallComments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]');
-            } catch(e) { wallComments = []; }
-
-            if (replyToId) {
-                let parent = wallComments.find(c => c.id === replyToId);
-                if (parent) {
-                    if (!parent.replies) parent.replies = [];
-                    parent.replies.push({
-                        author: authorName,
-                        text: text,
-                        date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-                    });
-                }
-            } else {
-                let newComment = {
-                    id: 'wall_' + Date.now(),
-                    author: authorName,
-                    text: text,
-                    date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                    likes: 0,
-                    replies: []
-                };
-                wallComments.unshift(newComment);
-            }
-
-            localStorage.setItem('arizona_profile_wall', JSON.stringify(wallComments));
-            input.value = '';
-            initProfile();
-        }
-
-        function showReplyForm(commentId) {
-            let box = document.getElementById('replyBox_' + commentId);
-            if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
-        }
-
-        function likeWallComment(id) {
-            triggerHaptic('light');
-            try {
-                let wallComments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]');
-                let item = wallComments.find(c => c.id === id);
-                if (item) {
-                    item.likes = (item.likes || 0) + 1;
-                    localStorage.setItem('arizona_profile_wall', JSON.stringify(wallComments));
-                    initProfile();
-                }
-            } catch(e){}
-        }
-
-        function renderWallComments() {
-            let container = document.getElementById('wallCommentsContainer');
-            if (!container) return;
-
-            let wallComments = [];
-            try {
-                wallComments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]');
-            } catch(e) { wallComments = []; }
-
-            if (wallComments.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:10px; font-size:11px;">На стене пока нет росписей. Будьте первым!</div>';
+        // --- СОЗДАНИЕ ОБЪЯВЛЕНИЙ ---
+        function submitNewAd() {
+            const now = Date.now();
+            // Кулдаун 2 минуты (120000 мс)
+            if (!isAdmin() && now - db.lastPostTime < 120000) {
+                const leftSec = Math.ceil((120000 - (now - db.lastPostTime)) / 1000);
+                alert(`Подождите еще ${leftSec} сек. перед созданием новой заявки.`);
                 return;
             }
 
-            let html = '';
-            wallComments.forEach(c => {
-                let formattedText = escapeHtml(c.text).replace(/\n/g, '<br>');
-                let repliesHtml = '';
-                if (c.replies && c.replies.length > 0) {
-                    c.replies.forEach(r => {
-                        repliesHtml += `
-                            <div class="wall-reply-box">
-                                <b style="color: var(--anime-pink);">${escapeHtml(r.author)}:</b> ${escapeHtml(r.text)}
-                                <div style="font-size: 8px; color: var(--text-muted);">${escapeHtml(r.date)}</div>
-                            </div>
-                        `;
-                    });
-                }
-
-                html += `
-                    <div class="wall-comment">
-                        <div class="wall-comment-header">
-                            <span class="wall-author">${escapeHtml(c.author)}</span>
-                            <span class="wall-date">${escapeHtml(c.date)}</span>
-                        </div>
-                        <div style="color: #fff; margin-bottom: 6px;">${formattedText}</div>
-                        
-                        <div style="display: flex; gap: 4px; align-items: center;">
-                            <button onclick="likeWallComment('${c.id}')" style="width: auto; padding: 3px 8px; font-size: 10px; margin: 0;" class="btn-secondary">👍 Like (${c.likes || 0})</button>
-                            <button onclick="showReplyForm('${c.id}')" style="width: auto; padding: 3px 8px; font-size: 10px; margin: 0;" class="btn-secondary">↩ Ответить</button>
-                        </div>
-
-                        ${repliesHtml}
-
-                        <div id="replyBox_${c.id}" style="display:none; margin-top:6px;">
-                            <input type="text" id="wallReplyInput_${c.id}" placeholder="Ваш ответ..." style="padding: 6px; font-size: 11px; margin-bottom: 4px;">
-                            <button onclick="postWallComment('${c.id}')" style="padding: 4px 8px; font-size: 10px; margin: 0;">Отправить ответ</button>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function renderChatsList() {
-            let container = document.getElementById('chatsList');
-            if (!container) return;
-            try {
-                let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
-                let html = '';
-
-                if (Object.keys(chatsData).length === 0) {
-                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:11px; padding:10px;">Нет активных диалогов.</div>';
-                    return;
-                }
-
-                for (let chatName in chatsData) {
-                    let msgs = chatsData[chatName];
-                    let lastMsg = (msgs && msgs.length > 0) ? msgs[msgs.length - 1].text : 'История очищена';
-                    let safeName = escapeHtml(chatName);
-                    let encodedChatName = encodeURIComponent(chatName);
-                    html += `
-                        <div class="chat-item-row">
-                            <div class="chat-item-info" data-chat-name="${encodedChatName}">
-                                <div style="font-weight: 800; font-size: 12px; color: #fff;">💬 ${safeName}</div>
-                                <div style="font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(lastMsg)}</div>
-                            </div>
-                            <div class="chat-item-actions">
-                                <button class="chat-action-btn btn-clear-chat" data-chat-name="${encodedChatName}" title="Очистить">🧹</button>
-                                <button class="chat-action-btn btn-del-chat" data-chat-name="${encodedChatName}" title="Удалить">🗑</button>
-                            </div>
-                        </div>
-                    `;
-                }
-                container.innerHTML = html;
-
-                container.querySelectorAll('.chat-item-info').forEach(el => {
-                    el.addEventListener('click', () => openChat(decodeURIComponent(el.dataset.chatName)));
-                });
-                container.querySelectorAll('.btn-clear-chat').forEach(el => {
-                    el.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        clearChatHistory(decodeURIComponent(el.dataset.chatName));
-                    });
-                });
-                container.querySelectorAll('.btn-del-chat').forEach(el => {
-                    el.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        deleteChatCompletely(decodeURIComponent(el.dataset.chatName));
-                    });
-                });
-            } catch(e){}
-        }
-
-        function openChat(name) {
-            triggerHaptic('light');
-            if (!name) return;
-            activeChatName = name;
-            document.getElementById('chatsModal').style.display = 'none';
-            document.getElementById('chatTitle').innerText = '💬 Чат с ' + name;
-            renderChatMessages();
-            document.getElementById('chatDetailModal').style.display = 'flex';
-        }
-
-        function renderChatMessages() {
-            let container = document.getElementById('chatMessages');
-            if (!container) return;
-            try {
-                let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
-                let messages = chatsData[activeChatName] || [];
-                let currentUser = getCurrentUser();
-                let myNameClean = (currentUser.username || '').replace('@', '').toLowerCase();
-                
-                if (messages.length === 0) {
-                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:11px; padding:20px;">Начните общение! Сообщения сохраняются в реальном времени.</div>';
-                    return;
-                }
-
-                let html = '';
-                messages.forEach(m => {
-                    let senderClean = (m.sender || '').replace('@', '').toLowerCase();
-                    let isMe = (m.senderId === currentUser.id) || (senderClean && senderClean === myNameClean);
-                    html += `
-                        <div style="display: flex; flex-direction: column; align-items: ${isMe ? 'flex-end' : 'flex-start'}; margin-bottom: 4px;">
-                            <span style="font-size: 9px; color: var(--anime-pink); margin-bottom: 2px;">${escapeHtml(m.sender || (isMe ? 'Вы' : activeChatName))}</span>
-                            <div style="background: ${isMe ? 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' : 'rgba(255,255,255,0.08)'}; padding: 8px 12px; border-radius: 12px; color: #fff; max-width: 82%; font-size: 12px; word-break: break-word; box-shadow: 0 2px 8px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);">
-                                ${escapeHtml(m.text).replace(/\n/g, '<br>')}
-                            </div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-                container.scrollTop = container.scrollHeight;
-            } catch(e){}
-        }
-
-        function sendChatMessage() {
-            triggerHaptic('light');
-            let input = document.getElementById('chatInputMessage');
-            let text = input.value.trim();
-            if (!text || !activeChatName) return;
-
-            let currentUser = getCurrentUser();
-            let chatsData = {};
-            try {
-                chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
-            } catch(e) { chatsData = {}; }
-
-            if (!chatsData[activeChatName]) chatsData[activeChatName] = [];
-            
-            let senderName = currentUser.username || currentUser.first_name || 'Вы';
-            if (!senderName.startsWith('@') && senderName !== 'Вы' && !senderName.startsWith('id_')) {
-                senderName = '@' + senderName;
-            }
-
-            chatsData[activeChatName].push({
-                senderId: currentUser.id,
-                sender: senderName,
-                text: text
-            });
-
-            localStorage.setItem('arizona_chats_data', JSON.stringify(chatsData));
-            updateChatDotBadge();
-            input.value = '';
-            renderChatMessages();
-        }
-
-        function clearChatHistory(chatName) {
-            triggerHaptic('medium');
-            try {
-                let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
-                if (chatsData[chatName]) {
-                    chatsData[chatName] = [];
-                    localStorage.setItem('arizona_chats_data', JSON.stringify(chatsData));
-                    renderChatsList();
-                    if (activeChatName === chatName) renderChatMessages();
-                }
-            } catch(e){}
-        }
-
-        function clearActiveChatHistory() {
-            if (activeChatName) clearChatHistory(activeChatName);
-        }
-
-        function deleteChatCompletely(chatName) {
-            triggerHaptic('medium');
-            if (!confirm(`Удалить чат с ${chatName}?`)) return;
-
-            try {
-                let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
-                delete chatsData[chatName];
-                localStorage.setItem('arizona_chats_data', JSON.stringify(chatsData));
-                updateChatDotBadge();
-                renderChatsList();
-            } catch(e){}
-        }
-
-        function closeChatDetail() {
-            document.getElementById('chatDetailModal').style.display = 'none';
-        }
-
-        function startChatByUsername() {
-            triggerHaptic('light');
-            let input = document.getElementById('findUserChatInput');
-            let username = input.value.trim();
-            if (!username) return;
-            if (!username.startsWith('@')) username = '@' + username;
-            
-            try {
-                let chatsData = JSON.parse(localStorage.getItem('arizona_chats_data') || '{}');
-                if (!chatsData[username]) chatsData[username] = [];
-                localStorage.setItem('arizona_chats_data', JSON.stringify(chatsData));
-                
-                updateChatDotBadge();
-                input.value = '';
-                openChat(username);
-            } catch(e){}
-        }
-
-        const pickerData = {
-            mode: [
-                { value: 'sell', label: 'Продажа' },
-                { value: 'buy', label: 'Скупка' },
-                { value: 'auction', label: 'Аукцион' },
-                { value: 'barter', label: 'Бартер / Обмен' }
-            ],
-            category: [
-                { value: '💍 Аксессуары и вещи', label: '💍 Аксессуары и вещи' },
-                { value: '🚗 Транспорт и тюнинг', label: '🚗 Транспорт и тюнинг' },
-                { value: '👕 Скины и охранники', label: '👕 Скины и охранники' },
-                { value: '🏠 Недвижимость и бизнесы', label: '🏠 Недвижимость и бизнесы' }
-            ],
-            server: ALL_SERVERS
-        };
-
-        const pickerTitles = {
-            mode: 'Выберите тип темы',
-            category: 'Выберите раздел бота',
-            server: 'Выберите игровой сервер'
-        };
-
-        let currentPickerField = '';
-        function openPicker(field) {
-            triggerHaptic('light');
-            currentPickerField = field;
-            let currentVal = document.getElementById(field).value;
-            let listEl = document.getElementById('pickerList');
-            let items = pickerData[field] || [];
-
-            document.getElementById('pickerTitle').innerText = pickerTitles[field] || 'Выберите';
-
-            let html = '';
-            items.forEach((item, index) => {
-                let isSelected = item.value === currentVal;
-                html += `
-                    <div class="picker-item ${isSelected ? 'selected' : ''}" onclick="selectPickerItemByIndex(${index})">
-                        <span>${escapeHtml(item.label)}</span>
-                    </div>
-                `;
-            });
-            listEl.innerHTML = html;
-            document.getElementById('pickerModal').style.display = 'flex';
-        }
-
-        function closePicker() { document.getElementById('pickerModal').style.display = 'none'; }
-        
-        function selectPickerItemByIndex(index) {
-            let items = pickerData[currentPickerField] || [];
-            let item = items[index];
-            if (!item) return;
-
-            document.getElementById(currentPickerField).value = item.value;
-
-            if (currentPickerField === 'mode') {
-                document.getElementById('selectedModeText').innerText = item.label;
-                let priceLabel = document.getElementById('priceLabel');
-                if (item.value === 'auction') {
-                    priceLabel.innerText = 'Стартовая цена ($):';
-                } else {
-                    priceLabel.innerText = 'Цена ($):';
-                }
-            }
-            if (currentPickerField === 'category') document.getElementById('selectedCategoryText').innerText = item.label;
-            if (currentPickerField === 'server') document.getElementById('selectedServerText').innerText = item.label;
-            closePicker();
-        }
-
-        function switchTab(tabName) {
-            triggerHaptic('light');
-
-            if (tabName === 'admin' && !checkIsAdmin()) {
-                alert('У вас нет доступа к административной панели!');
+            // Суточный таймер работы (с 08:00 до 22:00 МСК)
+            const mskHour = parseInt(new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', hour: 'numeric', hour12: false }).format(new Date()));
+            if (!isAdmin() && (mskHour < 8 || mskHour >= 22)) {
+                alert('Публикация объявлений доступна только с 08:00 до 22:00 МСК!');
                 return;
             }
 
-            let tabs = document.querySelectorAll('.nav-tab');
-            let sections = document.querySelectorAll('.section');
-            
-            tabs.forEach(t => t.classList.remove('active'));
-            sections.forEach(s => s.classList.remove('active'));
+            const type = document.getElementById('create-type').value;
+            const server = document.getElementById('create-server').value;
+            const title = document.getElementById('create-title').value.trim();
+            const priceInput = document.getElementById('create-price').value.trim();
+            const desc = document.getElementById('create-desc').value.trim();
+            const img = document.getElementById('create-img').value.trim();
 
-            let tabMap = { 'feed': 0, 'app': 1, 'myAds': 2, 'favorites': 3, 'admin': 4 };
-            let index = tabMap[tabName];
-            if (index !== undefined && tabs[index] && tabs[index].style.display !== 'none') {
-                tabs[index].classList.add('active');
-            }
-
-            let targetSec = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
-            if (targetSec) targetSec.classList.add('active');
-
-            if (tabName === 'profile') initProfile();
-            if (tabName === 'myAds') renderMyAds();
-            if (tabName === 'feed') renderFeed();
-            if (tabName === 'favorites') renderFavorites();
-            if (tabName === 'admin') renderAdminPendingAds();
-        }
-
-        function submitData() {
-            triggerHaptic('medium');
-            
-            let mskDate = getMSKDate();
-            let hours = mskDate.getHours();
-            let minutes = mskDate.getMinutes();
-            let seconds = mskDate.getSeconds();
-            let totalSecondsNow = hours * 3600 + minutes * 60 + seconds;
-            
-            let startAllowed = 8 * 3600;
-            let endAllowed = 22 * 3600;
-
-            if (totalSecondsNow < startAllowed || totalSecondsNow > endAllowed) {
-                alert('⏰ Отправка объявлений разрешена только с 08:00:00 по 22:00:00 по МСК!');
+            if (!title) {
+                alert('Введите название предмета!');
                 return;
             }
 
-            let user = getCurrentUser();
-            let lastAdTimeKey = 'arizona_last_ad_time_' + user.id;
-            let lastAdTimestamp = Number(localStorage.getItem(lastAdTimeKey) || 0);
-            let currentTimestamp = mskDate.getTime();
-            let cooldownMs = 2 * 60 * 1000;
-
-            if (currentTimestamp - lastAdTimestamp < cooldownMs) {
-                let remainingSec = Math.ceil((cooldownMs - (currentTimestamp - lastAdTimestamp)) / 1000);
-                let remMin = Math.floor(remainingSec / 60);
-                let remSec = remainingSec % 60;
-                alert(`⏳ Кулдаун между объявлениями 2 минуты!\nПодождите еще ${remMin} мин. ${remSec} сек.`);
+            if (containsProfanity(title) || containsProfanity(desc)) {
+                alert('Обнаружены запрещенные слова (мат). Отредактируйте текст.');
                 return;
             }
 
-            let mode = document.getElementById('mode').value;
-            let server = document.getElementById('server').value;
-            let category = document.getElementById('category').value;
-            let itemName = document.getElementById('itemName').value.trim();
-            let rawPrice = document.getElementById('price').value.trim();
-            let textContent = document.getElementById('text').value.trim();
-            let imageUrl = document.getElementById('itemImage').value.trim();
-
-            if (!textContent && !itemName) { alert('Введите название или описание предмета!'); return; }
-
-            if (containsProfanity(itemName) || containsProfanity(textContent)) {
-                alert('🚫 Запрещено использовать мат в названии или описании товара!');
-                return;
-            }
-
-            let parsedPrice = rawPrice ? parseShorthandPrice(rawPrice) : null;
-
-            let authorName = user.username || user.first_name || 'Игрок';
-            if (!authorName.startsWith('@') && authorName !== 'Игрок' && !authorName.startsWith('id_')) {
-                authorName = '@' + authorName;
-            }
-
-            let adItem = {
+            const newAd = {
                 id: 'ad_' + Date.now(),
-                mode: mode,
-                server: server,
-                category: category,
-                title: itemName,
-                price: parsedPrice,
-                currentBid: mode === 'auction' ? Number(parsedPrice || 0) : null,
-                highestBidder: null,
-                textContent: textContent,
-                image: imageUrl,
-                author: authorName,
-                authorId: user.id,
-                date: new Date().toLocaleDateString(),
-                status: 'pending'
+                userId: currentUser.id,
+                author: '@' + currentUser.username,
+                type, server, title,
+                rawPrice: priceInput,
+                price: parsePrice(priceInput),
+                desc, img,
+                bids: [],
+                currentBidValue: parseInt(priceInput.replace(/\D/g, '')) || 0,
+                time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
             };
 
-            try {
-                let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-                myAds.unshift(adItem);
-                localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
+            db.pendingAds.push(newAd);
+            db.lastPostTime = now;
+            saveDB();
 
-                let pendingAds = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-                pendingAds.unshift(adItem);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAds));
-
-                localStorage.setItem(lastAdTimeKey, currentTimestamp);
-            } catch(e){}
-
-            document.getElementById('text').value = '';
-            document.getElementById('itemName').value = '';
-            document.getElementById('price').value = '';
-            document.getElementById('itemImage').value = '';
-            
-            addNotification(`📝 Ваше объявление "${itemName || 'Товар'}" отправлено на модерацию.`, getMSKDate().getTime(), user.id);
-
-            alert('✅ Объявление успешно отправлено на проверку администрации!');
-            switchTab('myAds');
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            alert('Заявка успешно отправлена на модерацию администраторам!');
+            document.getElementById('create-title').value = '';
+            document.getElementById('create-price').value = '';
+            document.getElementById('create-desc').value = '';
+            document.getElementById('create-img').value = '';
+            switchTab('search', document.querySelector('.tab-btn'));
         }
 
-        function renderAdminPendingAds() {
-            let container = document.getElementById('pendingAdsContainer');
-            if (!container) return;
-            let pending = [];
-            try {
-                pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-            } catch(e) { pending = []; }
-
-            if (pending.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:11px; padding:10px;">Нет объявлений, ожидающих проверки.</div>';
-                return;
-            }
-
-            let html = '';
-            pending.forEach(ad => {
-                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:90px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
-                html += `
-                    <div class="ad-card" style="border-color: #f59e0b;">
-                        ${imgHtml}
-                        <div class="ad-header"><span class="forum-badge badge-pending">Ожидает модерации</span><b>${escapeHtml(ad.server)}</b> | ${escapeHtml(ad.author)}</div>
-                        <div style="margin-bottom:8px;">${buildAdTextHtml(ad)}</div>
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                            <button onclick="approveAd('${ad.id}')" class="btn-success" style="padding:6px; font-size:11px; margin:0; flex:1;">✅ Одобрить</button>
-                            <button onclick="openEditModalFromAdmin('${ad.id}')" class="btn-secondary" style="padding:6px; font-size:11px; margin:0; flex:1; border-color: var(--anime-purple);">✏️ Редактировать</button>
-                            <button onclick="rejectAd('${ad.id}')" class="btn-danger" style="padding:6px; font-size:11px; margin:0; flex:1;">❌ Отклонить</button>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function openEditModalFromAdmin(adId) {
-            triggerHaptic('light');
-            let pending = [];
-            try {
-                pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-            } catch(e){}
-
-            let ad = pending.find(a => a.id === adId);
-            if (!ad) return;
-
-            document.getElementById('editAdId').value = ad.id;
-            document.getElementById('editAdTitle').value = ad.title || '';
-            document.getElementById('editAdPrice').value = ad.price || '';
-            document.getElementById('editAdText').value = ad.textContent || ad.text || '';
-            document.getElementById('editAdModal').style.display = 'flex';
-        }
-
-        function closeEditModal() {
-            document.getElementById('editAdModal').style.display = 'none';
-        }
-
-        function saveEditedAd() {
-            triggerHaptic('medium');
-            let adId = document.getElementById('editAdId').value;
-            let newTitle = document.getElementById('editAdTitle').value.trim();
-            let rawPrice = document.getElementById('editAdPrice').value.trim();
-            let newText = document.getElementById('editAdText').value.trim();
-
-            if (containsProfanity(newTitle) || containsProfanity(newText)) {
-                alert('🚫 Запрещено использовать мат в названии или описании товара!');
-                return;
-            }
-
-            let parsedPrice = rawPrice ? parseShorthandPrice(rawPrice) : null;
-
-            try {
-                let pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-                let ad = pending.find(a => a.id === adId);
-                if (ad) {
-                    ad.title = newTitle;
-                    ad.price = parsedPrice;
-                    ad.textContent = newText;
-                    localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
-                }
-
-                closeEditModal();
-                renderAdminPendingAds();
-                alert('✅ Объявление успешно отредактировано!');
-            } catch(e){}
-        }
-
-        function approveAd(adId) {
-            triggerHaptic('medium');
-            try {
-                let pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-                let adIndex = pending.findIndex(a => a.id === adId);
-                if (adIndex === -1) return;
-
-                let ad = pending[adIndex];
-                pending.splice(adIndex, 1);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
-
-                ad.status = 'approved';
-
-                let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
-                feed.unshift(ad);
-                localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-
-                let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-                let myAd = myAds.find(a => a.id === adId);
-                if (myAd) {
-                    myAd.status = 'approved';
-                    myAd.title = ad.title;
-                    myAd.price = ad.price;
-                    myAd.textContent = ad.textContent;
-                }
-                localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
-
-                addNotification(`✅ Ваше объявление "${ad.title || 'Товар'}" успешно одобрено и опубликовано в ленте!`, getMSKDate().getTime(), ad.authorId);
-
-                renderAdminPendingAds();
-                alert('✅ Объявление одобрено и опубликовано в ленту поиска!');
-            } catch(e){}
-        }
-
-        function rejectAd(adId) {
-            triggerHaptic('heavy');
-            if (!confirm('Отклонить и удалить это объявление?')) return;
-
-            try {
-                let pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-                let ad = pending.find(a => a.id === adId);
-                let authorId = ad ? ad.authorId : null;
-
-                pending = pending.filter(a => a.id !== adId);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
-
-                let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-                myAds = myAds.filter(a => a.id !== adId);
-                localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
-
-                if (authorId) {
-                    addNotification(`❌ Ваше объявление было отклонено администрацией.`, getMSKDate().getTime(), authorId);
-                }
-
-                renderAdminPendingAds();
-                alert('Объявление отклонено.');
-            } catch(e){}
-        }
-
-        function placeAuctionBid(adId) {
-            triggerHaptic('medium');
-            try {
-                let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
-                let ad = feed.find(a => a.id === adId);
-                if (!ad) return;
-
-                let currentPrice = Number(ad.currentBid || ad.price || 0);
-                let minBid = currentPrice + 5000000;
-
-                let userBidInput = prompt(`🔨 Аукцион! Текущая ставка: ${currentPrice.toLocaleString('ru-RU')}$\nВведите вашу ставку (например: 50кк):`, minBid);
-                if (!userBidInput) return;
-
-                let userBid = parseShorthandPrice(userBidInput);
-                if (isNaN(userBid) || userBid < minBid) {
-                    alert(`Минимальная ставка должна быть не менее ${minBid.toLocaleString('ru-RU')}$!`);
-                    return;
-                }
-
-                let currentUser = getCurrentUser();
-                let bidderName = currentUser.username || currentUser.first_name || 'Игрок';
-                if (!bidderName.startsWith('@') && bidderName !== 'Игрок' && !bidderName.startsWith('id_')) {
-                    bidderName = '@' + bidderName;
-                }
-
-                ad.currentBid = userBid;
-                ad.highestBidder = bidderName;
-
-                localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-                renderFeed();
-                alert(`✅ Ваша ставка в размере ${userBid.toLocaleString('ru-RU')}$ принята!`);
-            } catch(e){}
-        }
-
-        function deleteMyAdAnytime(adId) {
-            triggerHaptic('heavy');
-            if (!confirm('Вы уверены, что хотите удалить это объявление?')) return;
-
-            try {
-                let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
-                feed = feed.filter(a => a.id !== adId);
-                localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-
-                let pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-                pending = pending.filter(a => a.id !== adId);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
-
-                let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-                myAds = myAds.filter(a => a.id !== adId);
-                localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
-
-                renderFeed();
-                if (document.getElementById('tabMyAds').classList.contains('active')) renderMyAds();
-                alert('✅ Объявление успешно удалено.');
-            } catch(e){}
-        }
-
-        function toggleFavorite(adId) {
-            triggerHaptic('light');
-            try {
-                let favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
-                let index = favorites.indexOf(adId);
-                if (index > -1) {
-                    favorites.splice(index, 1);
-                } else {
-                    favorites.push(adId);
-                }
-                localStorage.setItem('arizona_favorites', JSON.stringify(favorites));
-                renderFeed();
-                if (document.getElementById('tabFavorites').classList.contains('active')) renderFavorites();
-            } catch(e){}
-        }
-
-        function shareAdTopic(encodedTitle, encodedServer, encodedPrice) {
-            triggerHaptic('light');
-            let title = decodeURIComponent(encodedTitle);
-            let server = decodeURIComponent(encodedServer);
-            let price = decodeURIComponent(encodedPrice);
-            let shareText = `🔍 Товар на Arizona RP [${server}]!\n📦 ${title || 'Предмет'}\n💰 Цена: ${price || 'Договорная'}\n\nНайдено через бот поиска!`;
-            let shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(shareText);
-            if (tg.openTelegramLink) {
-                tg.openTelegramLink(shareUrl);
-            } else {
-                window.open(shareUrl, '_blank');
-            }
-        }
-
-        function buildAdTextHtml(ad) {
-            let titlePrefix = ad.title ? `<b>[${escapeHtml(ad.title)}]</b> ` : '';
-            let rawText = ad.textContent || ad.text || '';
-            let mainContent = escapeHtml(rawText).replace(/\n/g, '<br>');
-            
-            let priceText = '';
-            if (ad.mode === 'auction') {
-                let cur = Number(ad.currentBid || ad.price || 0);
-                let topBidder = ad.highestBidder ? ` (Лидер: ${escapeHtml(ad.highestBidder)})` : ' (Ставок нет)';
-                priceText = ` <br>🔨 <b>Текущая ставка:</b> ${cur.toLocaleString('ru-RU')}$${topBidder}`;
-            } else if (ad.price !== '' && ad.price !== null && ad.price !== undefined && ad.price !== 0 && !isNaN(ad.price)) {
-                priceText = ` <br>💰 <b>Цена:</b> ${Number(ad.price).toLocaleString('ru-RU')}$`;
-            }
-
-            return titlePrefix + mainContent + priceText;
-        }
-
-        function renderMyAds() {
-            let container = document.getElementById('myAdsContainer');
-            if (!container) return;
-            let myAds = [];
-            try {
-                myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
-            } catch(e) { myAds = []; }
-            
-            if (myAds.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">У вас нет созданных предложений.</div>';
-                return;
-            }
-
-            let html = '';
-            myAds.forEach(ad => {
-                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
-                let statusBadge = ad.status === 'approved' ? `<span class="forum-badge badge-success">Опубликовано</span>` : `<span class="forum-badge badge-pending">На модерации ⏳</span>`;
-                let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : '';
-                
-                html += `
-                    <div class="ad-card">
-                        ${imgHtml}
-                        <div class="ad-header"><span>${statusBadge}${modeBadge}<b>${escapeHtml(ad.server)}</b></span><span>${escapeHtml(ad.date)}</span></div>
-                        <div>${buildAdTextHtml(ad)}</div>
-                        <button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="font-size:10px; padding:6px; margin-top:8px;">❌ Удалить объявление</button>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
+        // --- ЛЕНТА И ПОИСК ---
+        function toggleViewMode() {
+            currentViewMode = currentViewMode === 'grid' ? 'list' : 'grid';
+            document.getElementById('view-mode-toggle').innerText = currentViewMode === 'grid' ? '🧮' : '📄';
+            renderFeed();
         }
 
         function renderFeed() {
-            let container = document.getElementById('feedContainer');
-            if (!container) return;
+            const query = document.getElementById('search-box-input').value.toLowerCase();
+            const feedContainer = document.getElementById('main-feed-grid');
+            feedContainer.className = currentViewMode === 'grid' ? 'items-grid' : 'items-grid list-view';
 
-            if (currentViewMode === 'grid') container.classList.add('grid-view');
-            else container.classList.remove('grid-view');
+            const filtered = db.ads.filter(ad => 
+                ad.title.toLowerCase().includes(query) || 
+                ad.author.toLowerCase().includes(query) || 
+                ad.server.toLowerCase().includes(query) ||
+                ad.desc.toLowerCase().includes(query)
+            );
 
-            let feed = [];
-            try {
-                feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
-            } catch(e) { feed = []; }
-
-            let query = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
-            if (query) {
-                feed = feed.filter(ad => {
-                    let fullText = (ad.title || '') + ' ' + (ad.textContent || ad.text || '');
-                    return fullText.toLowerCase().includes(query) || 
-                           (ad.author && ad.author.toLowerCase().includes(query)) || 
-                           (ad.server && ad.server.toLowerCase().includes(query));
-                });
-            }
-
-            let favorites = [];
-            try {
-                favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
-            } catch(e) { favorites = []; }
-
-            let html = '';
-            let isAdmin = checkIsAdmin();
-            let currentUser = getCurrentUser();
-
-            feed.forEach(ad => {
-                let isFav = favorites.includes(ad.id);
-                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
-                let modeBadge = ad.mode === 'auction' ? `<span class="forum-badge badge-auction">🔨 Аукцион</span>` : '';
-                let safeAuthor = escapeHtml(ad.author);
-                
-                let isOwnerOfAd = (ad.authorId === currentUser.id) || (ad.author === currentUser.username);
-                let adminOrOwnerDeleteBtn = (isAdmin || isOwnerOfAd) ? `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin:0; width:auto;">🗑 Удалить</button>` : '';
-
-                let auctionActionBtn = '';
-                if (ad.mode === 'auction') {
-                    if (isOwnerOfAd) {
-                        auctionActionBtn = `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="font-size:10px; padding:6px; margin-top:6px;">❌ Снять аукцион</button>`;
-                    } else {
-                        auctionActionBtn = `<button onclick="placeAuctionBid('${ad.id}')" class="btn-success" style="font-size:10px; padding:6px; margin-top:6px;">🔨 Сделать ставку</button>`;
-                    }
-                }
-
-                let encodedTitle = encodeURIComponent(ad.title || 'Предмет');
-                let encodedServer = encodeURIComponent(ad.server || '');
-                let encodedPrice = encodeURIComponent(ad.currentBid || ad.price || '');
-
-                html += `
-                    <div class="ad-card">
-                        <div>
-                            ${imgHtml}
-                            <div class="ad-header">
-                                <span>${modeBadge}<span class="forum-badge badge-success">Проверено</span><b>${escapeHtml(ad.server)}</b> | ${safeAuthor}</span>
-                                ${adminOrOwnerDeleteBtn}
-                            </div>
-                            <div style="margin-bottom:6px;">${buildAdTextHtml(ad)}</div>
-                            ${auctionActionBtn}
-                        </div>
-                        
-                        <div class="card-actions-grid">
-                            <div class="write-seller-btn" data-author="${safeAuthor}">💬 В ЛС</div>
-                            <div class="fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${ad.id}')">${isFav ? '❤️ В избранном' : '🤍 В избранное'}</div>
-                            <div class="share-btn" onclick="shareAdTopic('${encodedTitle}', '${encodedServer}', '${encodedPrice}')">🔗 Поделиться</div>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html || '<div style="text-align:center; color:var(--text-muted); padding:15px;">Предметы не найдены или ожидают одобрения администратора.</div>';
-
-            container.querySelectorAll('.write-seller-btn').forEach(btn => {
-                btn.addEventListener('click', () => openChat(btn.dataset.author));
-            });
-        }
-
-        function renderFavorites() {
-            let container = document.getElementById('favoritesContainer');
-            if (!container) return;
-            let feed = [], favorites = [];
-            try {
-                feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
-                favorites = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
-            } catch(e){}
-
-            let favAds = feed.filter(ad => favorites.includes(ad.id));
-
-            if (favAds.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:15px;">У вас нет сохраненных закладок.</div>';
+            if (filtered.length === 0) {
+                feedContainer.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: var(--text-muted); padding: 40px;">Активных объявлений не найдено</div>`;
                 return;
             }
 
-            let html = '';
-            favAds.forEach(ad => {
-                let imgHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" loading="lazy" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin-bottom:6px;">` : '';
-                html += `
-                    <div class="ad-card">
-                        ${imgHtml}
-                        <div class="ad-header"><span><b>${escapeHtml(ad.server)}</b> | ${escapeHtml(ad.author)}</span></div>
-                        <div>${buildAdTextHtml(ad)}</div>
-                        <button onclick="toggleFavorite('${ad.id}'); renderFavorites();" class="btn-danger" style="font-size:10px; padding:6px; margin-top:8px;">❌ Удалить из закладок</button>
+            feedContainer.innerHTML = filtered.map(ad => createCardHTML(ad)).join('');
+            renderMyThreads();
+            renderBookmarks();
+            updateCounters();
+        }
+
+        function createCardHTML(ad) {
+            const isBookmarked = db.bookmarks.includes(ad.id);
+            const tagClass = `tag-${ad.type}`;
+            const tagNames = { sell: 'Продажа', buy: 'Покупка', auction: 'Аукцион', exchange: 'Обмен' };
+
+            let auctionBlock = '';
+            if (ad.type === 'auction') {
+                auctionBlock = `<div style="font-size:12px; color: var(--gold); margin-top:4px;">Мин. ставка: <b>${(ad.currentBidValue + 5000000).toLocaleString('ru-RU')} $</b></div>
+                                <button class="btn-primary" style="padding: 8px; font-size: 13px; margin-top: 6px;" onclick="placeBid('${ad.id}')">🔨 Сделать ставку (+5 млн)</button>`;
+            }
+
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">${ad.title}</span>
+                        <span class="card-tag ${tagClass}">${tagNames[ad.type]}</span>
                     </div>
-                `;
-            });
-            container.innerHTML = html;
+                    <div style="font-size: 12px; color: var(--accent-cyan);">🌐 Сервер: ${ad.server}</div>
+                    <div class="card-desc">${ad.desc || 'Без описания'}</div>
+                    <div class="card-price">Цена: ${ad.price}</div>
+                    ${auctionBlock}
+                    <div class="card-footer">
+                        <span class="card-author">${ad.author} (${ad.time})</span>
+                        <div class="card-actions">
+                            <button class="action-icon-btn" onclick="openChatWith('${ad.author}')" title="В ЛС">💬</button>
+                            <button class="action-icon-btn" onclick="toggleBookmark('${ad.id}')" title="Закладка">${isBookmarked ? '❤️' : '🤍'}</button>
+                            <button class="action-icon-btn" onclick="shareAd('${ad.title}', '${ad.price}')" title="Поделиться">🔗</button>
+                            ${(ad.userId === currentUser.id || isAdmin()) ? `<button class="action-icon-btn" onclick="deleteAd('${ad.id}')" title="Удалить">🗑</button>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        function setViewMode(mode) {
-            currentViewMode = mode;
-            document.getElementById('btnListView').classList.toggle('active', mode === 'list');
-            document.getElementById('btnGridView').classList.toggle('active', mode === 'grid');
+        // --- СИСТЕМА АУКЦИОНОВ ---
+        function placeBid(adId) {
+            let ad = db.ads.find(item => item.id === adId);
+            if (!ad) return;
+            ad.currentBidValue += 5000000;
+            ad.price = ad.currentBidValue.toLocaleString('ru-RU') + ' $ (Аукцион)';
+            saveDB();
             renderFeed();
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            alert('Ваша ставка успешно принята!');
         }
 
-        function clearGlobalFeedAdmin() {
-            if (!checkIsOwner()) {
-                alert('🚫 Эта функция доступна только владельцу бота (@bounqy)!');
-                return;
-            }
-            triggerHaptic('heavy');
-            if (!confirm('⚠️ Полностью очистить всю базу предметов?')) return;
-            localStorage.removeItem('arizona_global_feed');
-            renderFeed();
-            alert('База полностью очищена.');
-        }
-
-        function updateBroadcastMessage() {
-            triggerHaptic('medium');
-            let input = document.getElementById('newBroadcastInput');
-            let text = input.value.trim();
-            if (!text) { alert('Введите текст сообщения!'); return; }
-
-            let mskTime = getMSKDate().getTime();
-
-            localStorage.setItem('arizona_broadcast_text', text);
-            localStorage.setItem('arizona_broadcast_time', mskTime);
-
-            let broadcastNotifs = [];
-            try {
-                broadcastNotifs = JSON.parse(localStorage.getItem('arizona_global_broadcast_notifs') || '[]');
-            } catch(e) { broadcastNotifs = []; }
-
-            broadcastNotifs.unshift({
-                id: 'bnotif_' + Date.now(),
-                text: '📢 Рассылка от администрации: ' + text,
-                timestamp: mskTime
-            });
-
-            let sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-            broadcastNotifs = broadcastNotifs.filter(n => (mskTime - n.timestamp) < sevenDaysMs);
-            localStorage.setItem('arizona_global_broadcast_notifs', JSON.stringify(broadcastNotifs));
-
-            showAndAutoHideBroadcast(text);
-            updateNotifBadge();
-
-            input.value = '';
-            alert('📢 Рассылка успешно отправлена и добавлена в колокольчик всем игрокам!');
-        }
-
-        function sendTargetAction(action) {
-            triggerHaptic('medium');
-            let target = document.getElementById('targetUser').value.trim();
-            if (!target) { alert('Введите ID или username пользователя!'); return; }
-            let cleanTarget = target.replace('@', '').toLowerCase();
-
-            let adminBtn = document.getElementById('adminTabBtn');
-
-            if (action === 'make_admin') {
-                if (!ADMIN_USERNAMES.includes(cleanTarget)) {
-                    ADMIN_USERNAMES.push(cleanTarget);
-                    localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
-                }
-                if (checkIsAdmin() && adminBtn) adminBtn.style.display = 'block';
-                alert(`👑 Пользователь @${cleanTarget} успешно назначен администратором!`);
-            } else if (action === 'remove_admin') {
-                if (cleanTarget === OWNER_USERNAME.toLowerCase() || cleanTarget === '777') {
-                    alert('Нельзя снять владельца бота с админки!');
-                    return;
-                }
-                ADMIN_USERNAMES = ADMIN_USERNAMES.filter(u => u !== cleanTarget);
-                localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
-                
-                if (!checkIsAdmin()) {
-                    if (adminBtn) adminBtn.style.display = 'none';
-                    if (document.getElementById('tabAdmin').classList.contains('active')) {
-                        switchTab('feed');
-                    }
-                }
-                alert(`⚙️ Пользователь @${cleanTarget} снят с должности администратора.`);
-            } else if (action === 'ban') {
-                try {
-                    let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
-                    if (!bannedList.includes(cleanTarget)) {
-                        bannedList.push(cleanTarget);
-                        localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
-                    }
-                    alert(`🚫 Пользователь @${cleanTarget} заблокирован!`);
-                } catch(e){}
-            } else if (action === 'unban') {
-                try {
-                    let bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
-                    bannedList = bannedList.filter(u => u !== cleanTarget);
-                    localStorage.setItem('arizona_banned_list', JSON.stringify(bannedList));
-                    alert(`✅ Пользователь @${cleanTarget} разблокирован!`);
-                } catch(e){}
-            }
-        }
-
-        function openSearchModal() {
-            switchTab('feed');
-            let searchInput = document.getElementById('searchInput');
-            if (searchInput) {
-                searchInput.focus();
-                searchInput.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-
-        function openNotificationsModal() {
-            renderNotifications();
-            document.getElementById('notificationsModal').style.display = 'flex';
-        }
-
-        function closeNotificationsModal() {
-            document.getElementById('notificationsModal').style.display = 'none';
-        }
-
-        function openChatsModal() {
-            renderChatsList();
-            document.getElementById('chatsModal').style.display = 'flex';
-        }
-
-        function closeChatsModal() {
-            document.getElementById('chatsModal').style.display = 'none';
-        }
-
-        function openBroadcastModal() {
-            let savedBroadcast = localStorage.getItem('arizona_broadcast_text');
-            if (savedBroadcast) {
-                alert('📢 Уведомление от администрации:\n\n' + savedBroadcast);
+        // --- ЗАКЛАДКИ ---
+        function toggleBookmark(adId) {
+            const index = db.bookmarks.indexOf(adId);
+            if (index > -1) {
+                db.bookmarks.splice(index, 1);
             } else {
-                alert('📢 Нет активных уведомлений от администрации.');
+                db.bookmarks.push(adId);
+            }
+            saveDB();
+            renderFeed();
+        }
+
+        function renderBookmarks() {
+            const container = document.getElementById('bookmarks-grid');
+            const bookmarkedAds = db.ads.filter(ad => db.bookmarks.includes(ad.id));
+            if (bookmarkedAds.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: var(--text-muted); padding: 40px;">Список закладок пуст</div>`;
+                return;
+            }
+            container.innerHTML = bookmarkedAds.map(ad => createCardHTML(ad)).join('');
+        }
+
+        // --- МОИ ТЕМЫ ---
+        function renderMyThreads() {
+            const container = document.getElementById('my-threads-grid');
+            const myAds = db.ads.filter(ad => ad.userId === currentUser.id);
+            if (myAds.length === 0) {
+                container.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: var(--text-muted); padding: 40px;">У вас нет активных тем</div>`;
+                return;
+            }
+            container.innerHTML = myAds.map(ad => createCardHTML(ad)).join('');
+        }
+
+        function deleteAd(adId) {
+            db.ads = db.ads.filter(item => item.id !== adId);
+            db.pendingAds = db.pendingAds.filter(item => item.id !== adId);
+            saveDB();
+            renderFeed();
+        }
+
+        function shareAd(title, price) {
+            const text = `🛒 Товар на Arizona RP: ${title} | Цена: ${price}. Найдено в неофициальном боте @samp_trader_bot`;
+            if (navigator.share) {
+                navigator.share({ title: 'Arizona RP Маркет', text: text, url: window.location.href }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(text);
+                alert('Ссылка скопирована в буфер обмена!');
             }
         }
+
+        // --- ПРОФИЛЬ И РАМКИ ---
+        function openProfileModal() {
+            const p = db.userProfiles[currentUser.id];
+            document.getElementById('user-avatar-img').src = currentUser.avatar;
+            document.getElementById('profile-display-name').innerText = '@' + currentUser.username;
+            document.getElementById('profile-stats-text').innerText = `Заявок: ${db.ads.filter(a=>a.userId===currentUser.id).length} | Репутация: ${p.stats.likes}`;
+            document.getElementById('profile-status-input').value = p.status;
+            setAvatarFrame(p.frame, false);
+            renderWallComments();
+            document.getElementById('modal-profile').style.display = 'flex';
+        }
+
+        function setAvatarFrame(frameClass, save = true) {
+            document.getElementById('user-avatar-frame').className = `avatar-wrapper ${frameClass}`;
+            document.querySelectorAll('.frame-choice-btn').forEach(btn => btn.classList.remove('active'));
+            event && event.target && event.target.classList.add('active');
+            if (save) {
+                db.userProfiles[currentUser.id].frame = frameClass;
+                saveDB();
+            }
+        }
+
+        function saveProfileStatus() {
+            const newStatus = document.getElementById('profile-status-input').value.trim();
+            db.userProfiles[currentUser.id].status = newStatus;
+            saveDB();
+            alert('Статус успешно сохранен!');
+        }
+
+        // Росписи на стене
+        function postWallComment() {
+            const text = document.getElementById('wall-comment-input').value.trim();
+            if (!text) return;
+            const p = db.userProfiles[currentUser.id];
+            if (!p.wall) p.wall = [];
+            p.wall.unshift({
+                id: Date.now(),
+                author: '@' + currentUser.username,
+                text,
+                likes: 0,
+                replies: []
+            });
+            saveDB();
+            document.getElementById('wall-comment-input').value = '';
+            renderWallComments();
+        }
+
+        function renderWallComments() {
+            const p = db.userProfiles[currentUser.id];
+            const container = document.getElementById('wall-comments-list');
+            if (!p.wall || p.wall.length === 0) {
+                container.innerHTML = `<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:10px;">Пока нет росписей</div>`;
+                return;
+            }
+            container.innerHTML = p.wall.map(comm => `
+                <div class="wall-comment">
+                    <div class="wall-comment-author">${comm.author}</div>
+                    <div>${comm.text}</div>
+                    <div class="wall-comment-footer">
+                        <span onclick="likeWallComment(${comm.id})">👍 ${comm.likes} Like</span>
+                        <span onclick="replyWallComment(${comm.id})">↩ Ответить</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function likeWallComment(id) {
+            const p = db.userProfiles[currentUser.id];
+            const comm = p.wall.find(c => c.id === id);
+            if (comm) {
+                comm.likes++;
+                saveDB();
+                renderWallComments();
+            }
+        }
+
+        function replyWallComment(id) {
+            const replyText = prompt('Введите ваш ответ на роспись:');
+            if (!replyText) return;
+            const p = db.userProfiles[currentUser.id];
+            const comm = p.wall.find(c => c.id === id);
+            if (comm) {
+                comm.text += `<br><span style="color:var(--accent-cyan); font-size:11px;">Ответ от @${currentUser.username}: ${replyText}</span>`;
+                saveDB();
+                renderWallComments();
+            }
+        }
+
+        // --- ИТЕРАКТИВНЫЕ ЧАТЫ ---
+        function openChatsModal() {
+            const container = document.getElementById('chats-list-container');
+            const chatKeys = Object.keys(db.chats);
+            if (chatKeys.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 30px;">Нет активных диалогов</div>`;
+            } else {
+                container.innerHTML = chatKeys.map(peer => {
+                    const messages = db.chats[peer];
+                    const lastMsg = messages[messages.length - 1] || { text: '' };
+                    return `
+                        <div class="chat-list-item" onclick="openActiveChat('${peer}')">
+                            <div class="chat-avatar"></div>
+                            <div class="chat-info">
+                                <div class="chat-name">${peer}</div>
+                                <div class="chat-preview">${lastMsg.text}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            document.getElementById('modal-chats').style.display = 'flex';
+        }
+
+        function openChatWith(username) {
+            activeChatPeer = username;
+            if (!db.chats[activeChatPeer]) db.chats[activeChatPeer] = [];
+            document.getElementById('active-chat-title').innerText = `Диалог с ${username}`;
+            renderChatMessages();
+            document.getElementById('modal-active-chat').style.display = 'flex';
+        }
+
+        function openActiveChat(peer) {
+            activeChatPeer = peer;
+            document.getElementById('active-chat-title').innerText = `Диалог с ${peer}`;
+            renderChatMessages();
+            document.getElementById('modal-active-chat').style.display = 'flex';
+        }
+
+        function renderChatMessages() {
+            const container = document.getElementById('chat-messages-container');
+            const messages = db.chats[activeChatPeer] || [];
+            container.innerHTML = messages.map(m => `
+                <div class="msg-bubble ${m.out ? 'msg-out' : 'msg-in'}">${m.text}</div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const input = document.getElementById('chat-msg-input');
+            const text = input.value.trim();
+            if (!text) return;
+            if (!db.chats[activeChatPeer]) db.chats[activeChatPeer] = [];
+            db.chats[activeChatPeer].push({ text, out: true, time: Date.now() });
+            saveDB();
+            input.value = '';
+            renderChatMessages();
+            updateCounters();
+        }
+
+        function clearActiveChatHistory() {
+            if (activeChatPeer && db.chats[activeChatPeer]) {
+                db.chats[activeChatPeer] = [];
+                saveDB();
+                renderChatMessages();
+            }
+        }
+
+        function deleteActiveChat() {
+            if (activeChatPeer && db.chats[activeChatPeer]) {
+                delete db.chats[activeChatPeer];
+                saveDB();
+                closeModal('modal-active-chat');
+                openChatsModal();
+            }
+        }
+
+        // --- УВЕДОМЛЕНИЯ ---
+        function openNotifsModal() {
+            const container = document.getElementById('notifs-container');
+            if (db.notifs.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 30px;">Нет новых уведомлений</div>`;
+            } else {
+                container.innerHTML = db.notifs.map(n => `
+                    <div class="notif-item">
+                        <div>${n.text}</div>
+                        <div class="notif-time">${n.time}</div>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('modal-notifs').style.display = 'flex';
+        }
+
+        // --- АДМИН ПАНЕЛЬ ---
+        function renderAdminPending() {
+            const container = document.getElementById('admin-pending-grid');
+            document.getElementById('pending-count').innerText = db.pendingAds.length;
+            if (db.pendingAds.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color: var(--text-muted); font-size:13px; padding:15px;">Нет заявок на модерацию</div>`;
+                return;
+            }
+            container.innerHTML = db.pendingAds.map(ad => `
+                <div class="card" style="margin-bottom:0;">
+                    <div class="card-header">
+                        <span class="card-title">${ad.title}</span>
+                        <span class="card-tag tag-sell">${ad.type}</span>
+                    </div>
+                    <div style="font-size:12px; color:var(--text-muted);">От: ${ad.author} | Сервер: ${ad.server}</div>
+                    <div style="font-size:13px;">${ad.desc}</div>
+                    <div style="font-family:'Orbitron'; font-size:13px; color:var(--gold);">Цена: ${ad.price}</div>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button class="admin-btn success" style="flex:1;" onclick="approveAd('${ad.id}')">✅ Одобрить</button>
+                        <button class="admin-btn" style="flex:1;" onclick="rejectAd('${ad.id}')">❌ Отклонить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function approveAd(id) {
+            const ad = db.pendingAds.find(item => item.id === id);
+            if (!ad) return;
+            db.pendingAds = db.pendingAds.filter(item => item.id !== id);
+            db.ads.unshift(ad);
+            
+            // Уведомление автору
+            db.notifs.unshift({
+                text: `Ваша заявка "${ad.title}" успешно одобрена и опубликована в ленте!`,
+                time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+            saveDB();
+            renderAll();
+        }
+
+        function rejectAd(id) {
+            const ad = db.pendingAds.find(item => item.id === id);
+            if (!ad) return;
+            db.pendingAds = db.pendingAds.filter(item => item.id !== id);
+            db.notifs.unshift({
+                text: `К сожалению, ваша заявка "${ad.title}" была отклонена модератором.`,
+                time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+            saveDB();
+            renderAll();
+        }
+
+        function adminAction(actionType) {
+            const target = document.getElementById('admin-target-user').value.trim();
+            if (!target) {
+                alert('Введите юзернейм или ID пользователя!');
+                return;
+            }
+            if (actionType === 'add_admin') {
+                if (!db.admins.includes(target)) db.admins.push(target);
+                alert(`Пользователь ${target} назначен администратором.`);
+            } else if (actionType === 'remove_admin') {
+                db.admins = db.admins.filter(a => a !== target);
+                alert(`Пользователь ${target} снят с поста администратора.`);
+            } else if (actionType === 'ban') {
+                if (!db.bannedList.includes(target)) db.bannedList.push(target);
+                alert(`Пользователь ${target} занесен в черный список.`);
+            } else if (actionType === 'unban') {
+                db.bannedList = db.bannedList.filter(b => b !== target);
+                alert(`Пользователь ${target} разбанен.`);
+            }
+            saveDB();
+            document.getElementById('admin-target-user').value = '';
+        }
+
+        function adminSendBroadcast() {
+            const text = document.getElementById('admin-broadcast-text').value.trim();
+            if (!text) return;
+            db.notifs.unshift({
+                text: `📢 Рассылка администрации: ${text}`,
+                time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+            });
+            saveDB();
+            alert('Глобальная рассылка успешно отправлена всем пользователям!');
+            document.getElementById('admin-broadcast-text').value = '';
+            updateCounters();
+        }
+
+        function adminClearFeed() {
+            if (confirm('Вы уверены, что хотите полностью очистить всю ленту объявлений?')) {
+                db.ads = [];
+                saveDB();
+                renderFeed();
+            }
+        }
+
+        // --- УТИЛИТЫ И СЧЕТЧИКИ ---
+        function updateCounters() {
+            document.getElementById('notif-counter').innerText = db.notifs.length;
+            document.getElementById('chat-counter').innerText = Object.keys(db.chats).length;
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function openManager() {
+            alert('Связь с главным менеджером/владельцем бота: @' + OWNER_USERNAME);
+        }
+
+        function renderAll() {
+            renderFeed();
+            renderAdminPending();
+            updateCounters();
+        }
+
+        // Первичный запуск рендеринга
+        renderAll();
     </script>
 </body>
 </html>

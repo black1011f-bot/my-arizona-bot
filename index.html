@@ -1252,7 +1252,7 @@
                     actionButtons += `<button onclick="placeAuctionBid('${ad.id}')" class="write-seller-btn" style="background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.4);">🔨 Ставка</button>`;
                 }
                 actionButtons += `<button onclick="openChat('${escapeHtml(ad.author)}')" class="write-seller-btn">💬 Написать</button>`;
-                actionButtons += `<button onclick="shareAdTopic('${encodeURIComponent(ad.title || 'Товар')}','${encodeURIComponent(ad.server)}','${encodeURIComponent(ad.price || 'Договорная')} ')" class="share-btn">🔗 Поделиться</button>`;
+                actionButtons += `<button onclick="shareAdTopic('${encodeURIComponent(ad.title || 'Товар')}','${encodeURIComponent(ad.server)}','${encodeURIComponent(ad.price || 'Договорная')}')" class="share-btn">🔗 Поделиться</button>`;
                 actionButtons += `<button onclick="toggleFavorite('${ad.id}')" class="fav-btn ${isFav ? 'active' : ''}">${isFav ? '★ В избранном' : '☆ В закладки'}</button>`;
 
                 let deleteBtn = isMyAd || checkIsAdmin() ? `<button onclick="deleteMyAdAnytime('${ad.id}')" class="btn-danger" style="padding:4px 8px; font-size:10px; margin-top:6px; width:auto;">🗑 Удалить</button>` : '';
@@ -2147,30 +2147,25 @@
             let input = document.getElementById('chatInputMessage');
             let text = input ? input.value.trim() : '';
             if (!text || !activeChatName) return;
-            if (containsProfanity(text)) { alert('Недопустимый текст!'); return; }
 
-            let user = getCurrentUser();
-            let sender = user.username || user.first_name;
-            let key = getChatStorageKey(activeChatName);
-
-            let msgs = [];
-            try { msgs = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){}
-
-            msgs.push({
-                sender: sender,
-                text: text,
-                time: getMSKDate().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-            });
-
-            localStorage.setItem(key, JSON.stringify(msgs));
-
-            let chatsList = [];
-            try { chatsList = JSON.parse(localStorage.getItem('az_user_chats_list_' + user.id) || '[]'); } catch(e){}
-            if (!chatsList.includes(activeChatName)) {
-                chatsList.unshift(activeChatName);
-                localStorage.setItem('az_user_chats_list_' + user.id, JSON.stringify(chatsList));
+            if (containsProfanity(text)) {
+                alert('Недопустимая лексика!');
+                return;
             }
 
+            let user = getCurrentUser();
+            let key = getChatStorageKey(activeChatName);
+            let messages = [];
+            try { messages = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){}
+
+            messages.push({
+                id: 'msg_' + Date.now(),
+                sender: user.username || user.first_name,
+                text: text,
+                timestamp: getMSKDate().getTime()
+            });
+
+            localStorage.setItem(key, JSON.stringify(messages));
             input.value = '';
             renderChatMessages();
             updateChatDotBadge();
@@ -2181,11 +2176,11 @@
             if (!container || !activeChatName) return;
 
             let key = getChatStorageKey(activeChatName);
-            let msgs = [];
-            try { msgs = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){}
+            let messages = [];
+            try { messages = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){}
 
-            if (msgs.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:10px;">Сообщений пока нет. Напишите первым!</div>';
+            if (messages.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px;">История сообщений пуста. Напишите первым!</div>';
                 return;
             }
 
@@ -2193,11 +2188,12 @@
             let myName = (user.username || user.first_name).replace('@', '').toLowerCase();
 
             let html = '';
-            msgs.forEach(m => {
+            messages.forEach(m => {
                 let isMe = (m.sender || '').replace('@', '').toLowerCase() === myName;
+                let dateStr = new Date(m.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                 html += `
-                    <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; max-width: 80%; background: ${isMe ? 'var(--btn-anime-gradient)' : 'rgba(255,255,255,0.08)'}; padding: 8px 10px; border-radius: 10px; color: #fff;">
-                        <div style="font-size: 10px; opacity: 0.8; margin-bottom: 2px;">${escapeHtml(m.sender)} • ${escapeHtml(m.time)}</div>
+                    <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; max-width: 80%; background: ${isMe ? 'var(--anime-purple)' : 'rgba(255,255,255,0.08)'}; color: #fff; padding: 8px 12px; border-radius: 12px; font-size: 12px;">
+                        <div style="font-weight: 700; font-size: 10px; opacity: 0.8; margin-bottom: 2px;">${escapeHtml(m.sender)} • ${dateStr}</div>
                         <div>${escapeHtml(m.text)}</div>
                     </div>
                 `;
@@ -2206,54 +2202,72 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        function clearActiveChatHistory() {
-            triggerHaptic('medium');
-            if (!confirm('Очистить историю сообщений с этим пользователем?')) return;
-            if (!activeChatName) return;
-            let key = getChatStorageKey(activeChatName);
-            localStorage.removeItem(key);
-            renderChatMessages();
-        }
-
         function renderChatsList() {
             let container = document.getElementById('chatsList');
             if (!container) return;
 
-            let user = getCurrentUser();
-            let chatsList = [];
-            try { chatsList = JSON.parse(localStorage.getItem('az_user_chats_list_' + user.id) || '[]'); } catch(e){}
+            let chats = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key && key.startsWith('az_chat_')) {
+                    let partner = key.replace('az_chat_', '').split('_');
+                    let user = getCurrentUser();
+                    let myName = (user.username || user.first_name).replace('@', '').toLowerCase();
+                    let other = partner.find(p => p !== myName) || partner[0];
+                    if (!chats.includes(other)) chats.push(other);
+                }
+            }
 
-            if (chatsList.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); font-size:12px; padding:10px;">У вас пока нет открытых чатов.</div>';
+            if (chats.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:10px;">У вас пока нет активных чатов.</div>';
                 return;
             }
 
             let html = '';
-            chatsList.forEach(chatUser => {
+            chats.forEach(chatUser => {
                 html += `
                     <div class="chat-item-row">
                         <div class="chat-item-info" onclick="openChat('${escapeHtml(chatUser)}')">
-                            <div style="font-weight: 800; color: #fff;">💬 @${escapeHtml(chatUser)}</div>
-                            <div style="font-size:11px; color:var(--text-muted);">Нажмите, чтобы открыть диалог</div>
+                            <div style="font-weight:800; color:#fff;">💬 @${escapeHtml(chatUser)}</div>
                         </div>
+                        <button onclick="openChat('${escapeHtml(chatUser)}')" class="btn-success" style="width:auto; margin:0; padding:6px 12px; font-size:11px;">Открыть</button>
                     </div>
                 `;
             });
             container.innerHTML = html;
         }
 
+        function clearActiveChatHistory() {
+            triggerHaptic('medium');
+            if (!activeChatName) return;
+            if (!confirm(`Очистить историю чата с @${activeChatName}?`)) return;
+
+            let key = getChatStorageKey(activeChatName);
+            localStorage.removeItem(key);
+            renderChatMessages();
+            renderChatsList();
+            updateChatDotBadge();
+        }
+
         function updateChatDotBadge() {
-            let dot = document.getElementById('chatDot');
-            if (!dot) return;
-            let user = getCurrentUser();
-            let chatsList = [];
-            try { chatsList = JSON.parse(localStorage.getItem('az_user_chats_list_' + user.id) || '[]'); } catch(e){}
-            if (chatsList.length > 0) {
-                dot.innerText = chatsList.length;
-                dot.style.display = 'inline-block';
-            } else {
-                dot.style.display = 'none';
-            }
+            try {
+                let totalChats = 0;
+                for (let i = 0; i < localStorage.length; i++) {
+                    let key = localStorage.key(i);
+                    if (key && key.startsWith('az_chat_')) {
+                        totalChats++;
+                    }
+                }
+                let dot = document.getElementById('chatDot');
+                if (dot) {
+                    if (totalChats > 0) {
+                        dot.innerText = totalChats;
+                        dot.style.display = 'inline-block';
+                    } else {
+                        dot.style.display = 'none';
+                    }
+                }
+            } catch(e){}
         }
     </script>
 </body>

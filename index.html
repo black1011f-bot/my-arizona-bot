@@ -344,7 +344,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно: Выбор сервера (Все 33 сервера из бота) -->
+    <!-- Модальное окно: Выбор сервера -->
     <div id="serverPickerModal" class="modal-overlay" onclick="closeServerPicker()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 style="margin-top:0; margin-bottom:12px;">Выбор сервера</h3>
@@ -353,7 +353,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно: Боковое Меню (три точки) -->
+    <!-- Модальное окно: Боковое Меню -->
     <div id="mainMenuModal" class="modal-overlay" onclick="closeMainMenuPicker()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 style="margin-top:0; margin-bottom:12px;">Инструменты и Меню</h3>
@@ -367,7 +367,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно: Игра "Барыга" (открывается из бокового меню) -->
+    <!-- Модальное окно: Игра "Барыга" -->
     <div id="barygaModal" class="modal-overlay" onclick="closeBarygaModal()">
         <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh;">
             <h3 style="margin-top:0; text-align:center;">💼 Симулятор Барыги</h3>
@@ -421,23 +421,23 @@
             <h3 style="margin-top:0; margin-bottom:12px;">👤 Профиль игрока</h3>
             <div style="background: #121318; padding: 12px; border-radius: 10px; border: 1px solid var(--forum-card-border); margin-bottom: 12px;">
                 <div style="font-size: 11px; color: var(--text-muted);">Никнейм в игре:</div>
-                <input type="text" id="profileUsername" value="Player_Arizona" style="width:100%; padding:8px; background:#0a0a0c; border:1px solid var(--forum-card-border); color:#fff; border-radius:6px; margin-top:4px; box-sizing:border-box;">
+                <input type="text" id="profileUsername" style="width:100%; padding:8px; background:#0a0a0c; border:1px solid var(--forum-card-border); color:#fff; border-radius:6px; margin-top:4px; box-sizing:border-box;">
                 
                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Основной сервер:</div>
-                <input type="text" id="profileServer" value="Phoenix [01]" style="width:100%; padding:8px; background:#0a0a0c; border:1px solid var(--forum-card-border); color:#fff; border-radius:6px; margin-top:4px; box-sizing:border-box;">
+                <input type="text" id="profileServer" style="width:100%; padding:8px; background:#0a0a0c; border:1px solid var(--forum-card-border); color:#fff; border-radius:6px; margin-top:4px; box-sizing:border-box;">
             </div>
             <button class="btn-main btn-green" onclick="saveProfile()">Сохранить профиль</button>
             <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:8px;" onclick="closeProfileModal()">Закрыть</button>
         </div>
     </div>
 
-    <!-- Модальное окно: Админ-панель (Управление объявлениями) -->
+    <!-- Модальное окно: Админ-панель -->
     <div id="adminModal" class="modal-overlay" onclick="closeAdminModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 style="margin-top:0; margin-bottom:8px; color: var(--anime-pink);">🛠️ Панель Администратора</h3>
             <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Управление всеми активными объявлениями на сервере:</p>
             <div id="adminItemsList" class="picker-list" style="max-height: 40vh;">
-                <!-- Список объявлений для удаления/редактирования -->
+                <!-- Список объявлений -->
             </div>
             <button class="btn-main btn-red" onclick="clearAllFeed()" style="margin-top: 5px;">⚠️ Очистить всю ленту</button>
             <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:8px;" onclick="closeAdminModal()">Закрыть</button>
@@ -451,7 +451,7 @@
             window.Telegram.WebApp.expand();
         }
 
-        // Актуальные 33 сервера Arizona RP из @arizona_coin_bot
+        // 33 сервера Arizona RP
         const arizonaServers = [
             { id: 1, name: "Phoenix", emoji: "🔥" },
             { id: 2, name: "Tucson", emoji: "🌴" },
@@ -496,7 +496,12 @@
         ];
         let favoriteIds = JSON.parse(localStorage.getItem('arizona_favorites')) || [];
 
-        // Инициализация серверов в пикере
+        // Управление профилем игрока с персистентностью
+        let userProfile = JSON.parse(localStorage.getItem('arizona_profile')) || {
+            username: "Player_Arizona",
+            server: "Phoenix [01]"
+        };
+
         function initServerPicker() {
             const container = document.getElementById('serverListContainer');
             container.innerHTML = '';
@@ -519,7 +524,6 @@
             closeServerPicker();
         }
 
-        // Переключение вкладок главной страницы
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
@@ -535,7 +539,6 @@
             }
         }
 
-        // Рендер главной ленты объявлений
         function renderFeed() {
             const container = document.getElementById('feedListContainer');
             const searchQuery = document.getElementById('searchInput').value.toLowerCase();
@@ -570,7 +573,6 @@
             });
         }
 
-        // Рендер избранного
         function renderFavorites() {
             const container = document.getElementById('favoritesListContainer');
             container.innerHTML = '';
@@ -611,7 +613,6 @@
             renderFavorites();
         }
 
-        // Публикация объявления
         function publishItem() {
             const nameInput = document.getElementById('newItemName');
             const priceInput = document.getElementById('newItemPrice');
@@ -640,24 +641,29 @@
             alert('Объявление успешно опубликовано!');
         }
 
-        // Боковое меню и модалки
         function openMainMenuPicker() { document.getElementById('mainMenuModal').style.display = 'flex'; }
         function closeMainMenuPicker() { document.getElementById('mainMenuModal').style.display = 'none'; }
         function selectMenuItem(name) { alert('Открыт раздел: ' + name); closeMainMenuPicker(); }
 
-        // Игра Барыга в модалке
         function openBarygaModal() { closeMainMenuPicker(); document.getElementById('barygaModal').style.display = 'flex'; updateBarygaUI(); }
         function closeBarygaModal() { document.getElementById('barygaModal').style.display = 'none'; }
 
-        // Профиль в модалке
-        function openProfileModal() { closeMainMenuPicker(); document.getElementById('profileModal').style.display = 'flex'; }
+        function openProfileModal() { 
+            document.getElementById('profileUsername').value = userProfile.username;
+            document.getElementById('profileServer').value = userProfile.server;
+            closeMainMenuPicker(); 
+            document.getElementById('profileModal').style.display = 'flex'; 
+        }
         function closeProfileModal() { document.getElementById('profileModal').style.display = 'none'; }
+        
         function saveProfile() {
+            userProfile.username = document.getElementById('profileUsername').value.trim() || "Player_Arizona";
+            userProfile.server = document.getElementById('profileServer').value.trim() || "Phoenix [01]";
+            localStorage.setItem('arizona_profile', JSON.stringify(userProfile));
             alert('Профиль успешно сохранен!');
             closeProfileModal();
         }
 
-        // Админ-панель в модалке
         function openAdminModal() {
             closeMainMenuPicker();
             renderAdminList();
@@ -675,12 +681,13 @@
             feedItems.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'picker-item';
+                div.style.cursor = 'default';
                 div.style.justifyContent = 'space-between';
                 div.innerHTML = `
-                    <div style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:230px;">
+                    <div style="font-size:11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px;">
                         <b>${item.server}</b>: ${item.name} (${item.price})
                     </div>
-                    <button onclick="deleteItem(${item.id})" class="btn-main btn-red" style="width:auto; padding:4px 8px; font-size:10px; margin:0;">Удалить</button>
+                    <button onclick="deleteItem(${item.id})" class="btn-main btn-red" style="width:auto; padding:4px 8px; font-size:10px; margin:0; flex-shrink: 0;">Удалить</button>
                 `;
                 container.appendChild(div);
             });
@@ -709,10 +716,17 @@
             }
         }
 
-        // Переменные симулятора Барыга с сохранением
+        // Симулятор "Барыга" с оффлайн-прогрессом
         let barygaMoney = parseInt(localStorage.getItem('baryga_money')) || 0;
         let barygaClickPower = parseInt(localStorage.getItem('baryga_click_power')) || 10;
         let barygaPassiveIncome = parseInt(localStorage.getItem('baryga_passive')) || 0;
+        let barygaLastSave = parseInt(localStorage.getItem('baryga_last_save')) || Date.now();
+
+        // Начисление пассивного дохода за время отсутствия (оффлайн)
+        const offlineSeconds = Math.floor((Date.now() - barygaLastSave) / 1000);
+        if (offlineSeconds > 0 && barygaPassiveIncome > 0) {
+            barygaMoney += offlineSeconds * barygaPassiveIncome;
+        }
 
         function clickBaryga() {
             barygaMoney += barygaClickPower;
@@ -737,6 +751,7 @@
             localStorage.setItem('baryga_money', barygaMoney);
             localStorage.setItem('baryga_click_power', barygaClickPower);
             localStorage.setItem('baryga_passive', barygaPassiveIncome);
+            localStorage.setItem('baryga_last_save', Date.now());
         }
 
         function updateBarygaUI() {

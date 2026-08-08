@@ -570,14 +570,11 @@
             </div>
 
             <div class="forum-top-right">
-                <a class="forum-icon-btn" href="https://t.me/bounqy31" target="_blank" title="Менеджер / Связь">💬</a>
-                
                 <button class="forum-icon-btn" onclick="toggleDropdownMenu(event)" title="Меню">⋮</button>
                 <div id="threeDotsDropdown" class="dropdown-menu">
                     <button class="dropdown-item" onclick="openBarygaModal(); closeDropdowns();">🎮 Игра "Барыга" (Кликер)</button>
                     <button class="dropdown-item" onclick="openNotificationsModal(); closeDropdowns();">🔔 Уведомления <span class="badge-dot" id="notifDotDrop" style="display:none; position:static; margin-left:auto;">0</span></button>
                     <button class="dropdown-item" onclick="openChatsModal(); closeDropdowns();">💬 Переписки <span class="badge-dot" id="chatDotDrop" style="display:none; position:static; margin-left:auto;">0</span></button>
-                    <a class="dropdown-item" href="https://t.me/bounqy31" target="_blank" onclick="closeDropdowns();">💬 Менеджер (Связь)</a>
                     <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
                     <button class="dropdown-item" onclick="openSearchModal(); closeDropdowns();">🔍 Поиск предметов/игроков</button>
                 </div>
@@ -761,12 +758,11 @@
                 <div id="pendingAdsContainer" style="margin-bottom: 15px;"></div>
 
                 <div id="ownerSection" style="display: none; margin-top: 15px;">
-                    <!-- Раздел владельца без лишнего слова "юз" -->
-                    <div class="admin-section-title">👑 Панель Управления Владельца • @bounqy</div>
+                    <div class="admin-section-title">👑 Панель Управления Владельца</div>
                     
                     <div class="form-group">
                         <label>🎯 Целевой игрок (@username или ID):</label>
-                        <input type="text" id="targetUser" placeholder="Например: @bounqy или 777">
+                        <input type="text" id="targetUser" placeholder="Например: @username или 777">
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
@@ -857,7 +853,7 @@
             </div>
             <div class="form-group" style="text-align: left;">
                 <label>🏷 Введите название предмета или ник игрока:</label>
-                <input type="text" id="modalSearchInput" placeholder="Например: Шар или @bounqy">
+                <input type="text" id="modalSearchInput" placeholder="Например: Шар или ник игрока">
             </div>
             <button onclick="executePlayerSearch()" class="btn-success">🔍 Найти</button>
         </div>
@@ -931,7 +927,7 @@
     </div>
 
     <script>
-        const CURRENT_APP_BUILD = '2026.08.08-v6';
+        const CURRENT_APP_BUILD = '2026.08.08-v7';
 
         let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
         if (typeof tg.expand === 'function') { tg.expand(); }
@@ -954,12 +950,12 @@
 
         window.addEventListener('resize', detectDeviceType);
 
-        const OWNER_USERNAME = 'bounqy';
+        const OWNER_ID = '777';
         let ADMIN_USERNAMES = [];
         try {
-            ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || JSON.stringify(['bounqy', 'arizona_admin']));
+            ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || JSON.stringify(['admin', 'arizona_admin']));
         } catch(e) {
-            ADMIN_USERNAMES = ['bounqy', 'arizona_admin'];
+            ADMIN_USERNAMES = ['admin', 'arizona_admin'];
         }
         
         let activeChatName = '';
@@ -1082,13 +1078,12 @@
                     photo_url: u.photo_url
                 };
             }
-            return { id: 777, username: '@bounqy', telegram_nickname: '@bounqy', first_name: 'ArizonaUser', photo_url: '' };
+            return { id: 777, username: '@admin', telegram_nickname: '@admin', first_name: 'ArizonaUser', photo_url: '' };
         }
 
         function checkIsOwner() {
             let user = getCurrentUser();
-            let cleanName = (user.username || '').replace('@', '').toLowerCase();
-            return cleanName === OWNER_USERNAME.replace('@','').toLowerCase() || String(user.id) === '777';
+            return String(user.id) === OWNER_ID;
         }
 
         function checkIsAdmin() {
@@ -1287,7 +1282,7 @@
 
             document.getElementById('azCustomStatus').innerText = localStorage.getItem('arizona_custom_status_' + user.id) || '✨ Скупщик на ЦР';
             let roleBadge = document.getElementById('azRoleBadge');
-            roleBadge.innerText = checkIsOwner() ? '👑 Владелец @bounqy' : (checkIsAdmin() ? '⚙️ Админ' : '👤 Игрок');
+            roleBadge.innerText = checkIsOwner() ? '👑 Владелец' : (checkIsAdmin() ? '⚙️ Админ' : '👤 Игрок');
 
             let myAds = [];
             try { myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]'); } catch(e){}
@@ -1360,6 +1355,19 @@
 
         function submitData() {
             triggerHaptic('medium');
+
+            // Проверка КД (2 минуты)
+            let lastAdTime = parseInt(localStorage.getItem('arizona_last_ad_time') || '0');
+            let now = Date.now();
+            let cooldownTime = 2 * 60 * 1000; // 2 минуты
+            if (now - lastAdTime < cooldownTime) {
+                let timeLeft = Math.ceil((cooldownTime - (now - lastAdTime)) / 1000);
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
+                alert(`⏳ Подождите! Действует КД на публикацию объявлений. Осталось: ${minutes} мин. ${seconds} сек.`);
+                return;
+            }
+
             let mode = document.getElementById('mode').value;
             let category = document.getElementById('category').value;
             let itemName = document.getElementById('itemName').value.trim();
@@ -1387,6 +1395,9 @@
                 authorId: user.id
             };
 
+            // Сохраняем время последней отправки для КД
+            localStorage.setItem('arizona_last_ad_time', Date.now().toString());
+
             let pending = [];
             try { pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch(e){}
             pending.push(newAd);
@@ -1405,7 +1416,7 @@
             switchTab('feed');
         }
 
-        // --- УДАЛЕНИЕ ОБЪЯВЛЕНИЙ (Продавец / Админ) ---
+        // --- УДАЛЕНИЕ ОБЪЯВЛЕНИЙ ---
         function deleteAdById(id) {
             if (!confirm('Вы уверены, что хотите удалить это объявление?')) return;
             triggerHaptic('heavy');
@@ -1443,6 +1454,16 @@
                 favs = favs.filter(f => f.id !== id);
                 localStorage.setItem('arizona_favorites', JSON.stringify(favs));
             } catch(e){}
+        }
+
+        // --- СВЯЗЬ С ПРОДАВЦОМ ---
+        function contactSeller(author) {
+            triggerHaptic('light');
+            if (author && author.startsWith('@')) {
+                window.open('https://t.me/' + author.replace('@', ''), '_blank');
+            } else {
+                alert('✉️ Связь с продавцом: ' + (author || 'Игрок'));
+            }
         }
 
         // --- ИЗБРАННОЕ ---
@@ -1496,7 +1517,7 @@
                         <div style="color: var(--accent-gold); font-weight: 800; font-size: 12px; margin-bottom: 4px;">💰 Цена: ${priceFormatted}</div>
                         <div style="color: var(--text-main); font-size: 11px; margin-bottom: 8px; line-height: 1.4;">📄 ${escapeHtml(item.text)}</div>
                         <div style="display: flex; gap: 6px;">
-                            <a href="https://t.me/bounqy31" target="_blank" class="btn-success" style="text-decoration:none; text-align:center; margin:0; padding:6px; font-size:11px; flex:1;">💬 Связаться с менеджером</a>
+                            <button onclick="contactSeller('${escapeHtml(item.author)}')" class="btn-success" style="margin:0; padding:6px; font-size:11px; flex:1;">✉️ Связаться с продавцом</button>
                             <button onclick="toggleFavorite('${item.id}')" class="btn-danger" style="margin:0; padding:6px; font-size:11px;">🗑 Удалить</button>
                         </div>
                     </div>
@@ -1572,7 +1593,7 @@
 
             if (feed.length === 0) {
                 feed = [
-                    { id: 'demo_1', mode: 'sell', category: '💍 Аксессуары и вещи', itemName: 'Магический шар +12', price: '50000000', text: 'Продам шар с точкой +12.', server: '🔥 Phoenix', author: '@bounqy', authorId: 777, image: '' }
+                    { id: 'demo_1', mode: 'sell', category: '💍 Аксессуары и вещи', itemName: 'Магический шар +12', price: '50000000', text: 'Продам шар с точкой +12.', server: '🔥 Phoenix', author: '@seller', authorId: 777, image: '' }
                 ];
                 localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
             }
@@ -1624,7 +1645,7 @@
                         <div style="color: var(--text-main); font-size: 12px; margin-bottom: 6px; line-height: 1.4;">${escapeHtml(item.text)}</div>
                         ${safeImage}
                         <div style="display: flex; gap: 6px; margin-top: 10px;">
-                            <a href="https://t.me/bounqy31" target="_blank" class="btn-success" style="text-decoration:none; text-align:center; margin:0; padding:6px; font-size:11px; flex:1;">💬 Связаться с менеджером</a>
+                            <button onclick="contactSeller('${escapeHtml(item.author)}')" class="btn-success" style="margin:0; padding:6px; font-size:11px; flex:1;">✉️ Связаться с продавцом</button>
                             <button onclick="toggleFavorite('${item.id}')" class="btn-secondary" style="margin:0; padding:6px 10px; font-size:11px;" title="В избранное">❤️</button>
                             ${deleteBtnHtml}
                         </div>
@@ -1704,11 +1725,6 @@
                 renderPendingAds();
                 alert('❌ Объявление отклонено.');
             }
-        }
-
-        function openChat(username) {
-            triggerHaptic('light');
-            window.open('https://t.me/bounqy31', '_blank');
         }
     </script>
 </body>

@@ -662,7 +662,7 @@
             
             <div class="topbar-center">
                 <div class="forum-subtitle">🔍 поиск предметов/профилей • arizona rp</div>
-                <div class="forum-brand-title">Arizona RP Tucson</div>
+                <div class="forum-brand-title">Arizona RP</div>
                 <div id="mskTime" class="forum-time-msk">🕒 --:--:-- (МСК)</div>
             </div>
 
@@ -779,7 +779,7 @@
                 </div>
 
                 <div id="profileActivityContent" style="display: none; font-size: 11px; color: var(--text-muted); text-align: center; padding: 10px;">
-                    🕒 Последняя активность: проверка цен на сервере Tucson.
+                    🕒 Последняя активность: проверка цен на сервере.
                 </div>
             </div>
         </div>
@@ -1050,7 +1050,7 @@
                 Поделитесь скриншотом своего сета аксессуаров (Шар, Крылья, Бронежилет)!
             </div>
             <div class="form-group">
-                <input type="text" id="fashionSetTitle" placeholder="Название сета (например: Ангел Tucson)">
+                <input type="text" id="fashionSetTitle" placeholder="Название сета (например: Ангел)">
             </div>
             <div class="form-group">
                 <input type="url" id="fashionSetImage" placeholder="Ссылка на скриншот (Imgur / Postimages)">
@@ -1149,8 +1149,48 @@
         const OWNER_USERNAME = 'bounqy';
         const OWNER_ID = '777';
         
-        let currentUserUsername = (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.username) ? '@' + tg.initDataUnsafe.user.username : ('@user_' + Math.floor(Math.random() * 89999 + 10000));
-        let currentUserNameDisplay = (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name) ? tg.initDataUnsafe.user.first_name : 'Игрок Tucson';
+        let tgUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
+        let currentUserId = tgUser && tgUser.id ? tgUser.id.toString() : 'default_user';
+        let currentUserUsername = (tgUser && tgUser.username) ? '@' + tgUser.username : ('@user_' + currentUserId);
+        let currentUserNameDisplay = (tgUser && tgUser.first_name) ? tgUser.first_name : 'Игрок';
+
+        function getUserKey(key) {
+            return `arizona_${currentUserId}_${key}`;
+        }
+
+        // АВТОМАТИЧЕСКАЯ ОЧИСТКА СТАРЫХ ОБЪЯВЛЕНИЙ И СЕТОВ КАЖДЫЙ ДЕНЬ В 07:50:00 ПО МСК
+        function checkAndPerformAutoCleanup() {
+            let now = new Date();
+            // Вычисляем текущее время по МСК (UTC+3)
+            let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            let currentHours = mskTime.getHours();
+            let currentMinutes = mskTime.getMinutes();
+            let currentDateStr = mskTime.toISOString().split('T')[0]; // YYYY-MM-DD
+
+            let lastResetDate = localStorage.getItem('arizona_last_auto_reset_date') || '';
+
+            // Если уже наступило 07:50 или позже, и сегодня сброс еще не производился
+            if ((currentHours > 7 || (currentHours === 7 && currentMinutes >= 50)) && lastResetDate !== currentDateStr) {
+                // Очищаем старые объявления, модерацию и ленту луков/сетов
+                localStorage.removeItem('arizona_ads_feed');
+                localStorage.removeItem('arizona_pending_ads');
+                localStorage.removeItem('arizona_fashion_looks'); // Сеты аксессуаров
+                
+                // Также очищаем персональные архивы объявлений для всех пользователей (не трогая игроков/админов/владельца)
+                for (let i = 0; i < localStorage.length; i++) {
+                    let key = localStorage.key(i);
+                    if (key && key.includes('_my_ads')) {
+                        localStorage.setItem(key, JSON.stringify([]));
+                    }
+                }
+
+                // Фиксируем, что на сегодня сброс выполнен
+                localStorage.setItem('arizona_last_auto_reset_date', currentDateStr);
+                console.log('🧹 Автоматическая очистка старых объявлений и сетов выполнена в 07:50 по МСК.');
+            }
+        }
+        checkAndPerformAutoCleanup();
+        setInterval(checkAndPerformAutoCleanup, 60000); // Проверяем каждую минуту
 
         let ADMIN_USERNAMES = [];
         try {
@@ -1165,9 +1205,8 @@
         let currentViewMode = 'list';
         let activePickerType = '';
 
-        // Проверка прав владельца и админа
         function checkUserPermissions() {
-            let isOwner = (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) || (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id.toString() === OWNER_ID);
+            let isOwner = (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) || (tgUser && tgUser.id.toString() === OWNER_ID);
             let isAdmin = isOwner || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(currentUserUsername.replace('@', '').toLowerCase());
 
             let adminTabBtn = document.getElementById('adminTabBtn');
@@ -1181,14 +1220,12 @@
                 if (ownerSection) ownerSection.style.display = 'block';
             }
 
-            // Проверка: упоминался ли юзернейм владельца в опубликованных им обьявах
-            let hasOwnerPostedAd = localStorage.getItem('arizona_owner_has_posted_ad') === 'true';
+            let hasOwnerPostedAd = localStorage.getItem(getUserKey('owner_has_posted_ad')) === 'true';
             if (hasOwnerPostedAd && ownerContactDropdown) {
                 ownerContactDropdown.style.display = 'block';
             }
         }
 
-        // АУДИО ЭФФЕКТЫ
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playSfx(type) {
             try {
@@ -1332,12 +1369,11 @@
             }
         }
 
-        // Профиль и кастомизация (Рамки, статусы, стены)
         let userProfileData = {
             username: currentUserNameDisplay,
             tgUser: currentUserUsername,
-            frame: localStorage.getItem('az_profile_frame') || 'none',
-            status: localStorage.getItem('az_profile_status') || '✨ В поиске редких аксов на Tucson',
+            frame: localStorage.getItem(getUserKey('profile_frame')) || 'none',
+            status: localStorage.getItem(getUserKey('profile_status')) || '✨ В поиске редких аксов',
             role: '👤 Игрок',
             regDate: 'Август 2026',
             stats: { msgs: 0, reacts: 0, points: 15 }
@@ -1360,7 +1396,7 @@
 
         function changeAvatarFrame(frameName) {
             userProfileData.frame = frameName;
-            localStorage.setItem('az_profile_frame', frameName);
+            localStorage.setItem(getUserKey('profile_frame'), frameName);
             applyAvatarFrameToElement(document.getElementById('azAvatarImg'), frameName);
             highlightActiveFrameButton(frameName);
             playSfx('success');
@@ -1385,7 +1421,7 @@
             let val = document.getElementById('customStatusInput').value.trim();
             if (val) {
                 userProfileData.status = val;
-                localStorage.setItem('az_profile_status', val);
+                localStorage.setItem(getUserKey('profile_status'), val);
                 document.getElementById('azCustomStatus').innerText = val;
                 playSfx('success');
                 alert('✨ Статус успешно сохранен!');
@@ -1404,7 +1440,7 @@
             }
         }
 
-        let wallComments = JSON.parse(localStorage.getItem('az_wall_comments') || '[]');
+        let wallComments = JSON.parse(localStorage.getItem(getUserKey('wall_comments')) || '[]');
         function postWallComment() {
             let input = document.getElementById('wallCommentInput');
             let text = input.value.trim();
@@ -1414,7 +1450,7 @@
                 text: text,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             });
-            localStorage.setItem('az_wall_comments', JSON.stringify(wallComments));
+            localStorage.setItem(getUserKey('wall_comments'), JSON.stringify(wallComments));
             input.value = '';
             renderWallComments();
             playSfx('success');
@@ -1438,8 +1474,7 @@
             `).join('');
         }
 
-        // Система чатов между пользователями
-        let chatsDatabase = JSON.parse(localStorage.getItem('arizona_chats_db') || '{}');
+        let chatsDatabase = JSON.parse(localStorage.getItem(getUserKey('chats_db')) || '{}');
 
         function openChatWithUser(targetUser) {
             if (!targetUser) return;
@@ -1482,7 +1517,7 @@
                 text: text,
                 time: timeStr
             });
-            localStorage.setItem('arizona_chats_db', JSON.stringify(chatsDatabase));
+            localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
             input.value = '';
             renderActiveChatMessages();
             playSfx('success');
@@ -1491,7 +1526,7 @@
         function clearActiveChatHistory() {
             if (activeChatUser && chatsDatabase[activeChatUser]) {
                 chatsDatabase[activeChatUser] = [];
-                localStorage.setItem('arizona_chats_db', JSON.stringify(chatsDatabase));
+                localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
                 renderActiveChatMessages();
             }
         }
@@ -1524,7 +1559,6 @@
             openChatWithUser(inputVal);
         }
 
-        // Поиск игроков и профилей по TG юзернейму
         function executeAdvancedSearch(type) {
             let query = document.getElementById('modalSearchInput').value.trim();
             closeSearchModal();
@@ -1533,9 +1567,7 @@
             if (type === 'profile') {
                 inspectUserProfile(query);
             } else {
-                // Поиск по предмету в ленте
                 switchTab('feed');
-                // Можно фильтровать или показать уведомление
                 alert(`🔍 Поиск предметов по запросу "${query}" выполнен в ленте объявлений.`);
             }
         }
@@ -1544,7 +1576,7 @@
             let cleanUser = usernameQuery.startsWith('@') ? usernameQuery : '@' + usernameQuery;
             activeInspectedUser = cleanUser;
             document.getElementById('inspectUsername').innerText = cleanUser;
-            document.getElementById('inspectStatus').innerText = '✨ Активный игрок Arizona RP Tucson';
+            document.getElementById('inspectStatus').innerText = '✨ Активный игрок Arizona RP';
             document.getElementById('profileInspectModal').style.display = 'flex';
         }
 
@@ -1559,18 +1591,16 @@
             openChatWithUser(activeInspectedUser);
         }
 
-        // Создание объявлений (с КД 2 минуты и временным окном 09:00 - 22:00 МСК)
         let globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || JSON.stringify([
             { id: 1, mode: 'sell', category: '💍 Аксессуары и вещи', itemName: 'Магический воздушный шар +12', price: '450.000.000 $', text: 'Продам шар с заточкой +12, цвет красный. Торг уместен.', image: 'https://i.ibb.co/1YLcDKVk/banner.png', server: '🌴 Tucson', author: '@bounqy', status: 'approved' },
             { id: 2, mode: 'buy', category: '🚗 Транспорт', itemName: 'Бронированный Brabus 700', price: '380кк', text: 'Куплю брабус в хорошем состоянии, фт сп+. Жду предложений.', image: '', server: '🌴 Tucson', author: '@player_sample', status: 'approved' }
         ]));
 
-        let myAdsList = JSON.parse(localStorage.getItem('arizona_my_ads') || '[]');
-        let favoritesList = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
+        let myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+        let favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
         let pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
 
         function submitData() {
-            // Проверка временного окна (09:00 - 22:00 МСК)
             let now = new Date();
             let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
             let mskHour = mskTime.getHours();
@@ -1580,8 +1610,7 @@
                 return;
             }
 
-            // Проверка КД 2 минуты
-            let lastAdTime = parseInt(localStorage.getItem('arizona_last_ad_time') || '0');
+            let lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
             let currentTime = Date.now();
             if (currentTime - lastAdTime < 120000) {
                 let leftSec = Math.ceil((120000 - (currentTime - lastAdTime)) / 1000);
@@ -1610,12 +1639,13 @@
             };
 
             pendingAdsList.push(newAd);
+            myAdsList.push(newAd);
             localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-            localStorage.setItem('arizona_last_ad_time', currentTime.toString());
+            localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            localStorage.setItem(getUserKey('last_ad_time'), currentTime.toString());
 
-            // Если владелец публикует объявление первый раз, фиксируем для отображения его контактов
             if (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) {
-                localStorage.setItem('arizona_owner_has_posted_ad', 'true');
+                localStorage.setItem(getUserKey('owner_has_posted_ad'), 'true');
             }
 
             alert('🚀 Ваше объявление отправлено на модерацию администрации!');
@@ -1623,15 +1653,14 @@
             switchTab('feed');
             renderFeed();
             renderPendingAds();
+            renderMyAds();
             
-            // Сброс полей
             document.getElementById('itemName').value = '';
             document.getElementById('price').value = '';
             document.getElementById('text').value = '';
             document.getElementById('itemImage').value = '';
         }
 
-        // Рендер ленты
         function renderFeed() {
             let container = document.getElementById('feedContainer');
             if (!container) return;
@@ -1644,7 +1673,6 @@
 
             container.innerHTML = approvedAds.slice(0, feedDisplayLimit).map(ad => {
                 let isFav = favoritesList.some(f => f.id === ad.id);
-                // ИСПРАВЛЕНИЕ БАГА С КАРТИНОЙ: если image пустой, не выводим тег img вообще или ставим заглушку, НИКОГДА не используем системный баннер
                 let imageHtml = ad.image ? `<img src="${ad.image}" style="width:100%; height:130px; object-fit:cover; border-radius:10px; margin-bottom:8px;" onerror="this.style.display='none';">` : '';
 
                 return `
@@ -1655,7 +1683,7 @@
                                     <span class="forum-badge ${ad.mode === 'sell' ? 'badge-success' : 'badge-auction'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
                                     <span>${ad.server}</span>
                                 </div>
-                                <span style="color:var(--accent-secondary); font-weight:700;" onclick="inspectUserProfile('${ad.author}')" style="cursor:pointer;">${ad.author}</span>
+                                <span style="color:var(--accent-secondary); font-weight:700; cursor:pointer;" onclick="inspectUserProfile('${ad.author}')">${ad.author}</span>
                             </div>
                             ${imageHtml}
                             <div style="font-weight:900; font-size:14px; color:#fff; margin-bottom:4px;">${ad.itemName}</div>
@@ -1698,7 +1726,7 @@
             } else {
                 favoritesList.push(ad);
             }
-            localStorage.setItem('arizona_favorites', JSON.stringify(favoritesList));
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
             renderFeed();
             renderFavorites();
             playSfx('success');
@@ -1718,6 +1746,31 @@
                     <button onclick="toggleFavorite(${ad.id})" class="btn-danger" style="padding:6px; font-size:11px; margin-top:6px;">❌ Удалить из избранного</button>
                 </div>
             `).join('');
+        }
+
+        function renderMyAds() {
+            let container = document.getElementById('myAdsContainer');
+            if (!container) return;
+            if (myAdsList.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:20px; font-size:12px;">Вы еще не создавали объявлений.</div>';
+                return;
+            }
+            container.innerHTML = myAdsList.map(ad => `
+                <div class="ad-card">
+                    <div style="font-weight:900; color:#fff; font-size:13px; margin-bottom:4px;">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:10px; color:var(--accent-secondary); margin-bottom:6px;">Статус: ${ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации'}</div>
+                    <div style="color:var(--text-muted); font-size:11px; margin-bottom:6px;">${ad.text}</div>
+                </div>
+            `).join('');
+        }
+
+        function clearMyAds() {
+            if (confirm('⚠️ Очистить ваши размещенные темы?')) {
+                myAdsList = [];
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                renderMyAds();
+                playSfx('success');
+            }
         }
 
         function renderPendingAds() {
@@ -1763,40 +1816,10 @@
             pendingAdsList.splice(idx, 1);
             localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
             renderPendingAds();
-            playSfx('success');
+            playSfx('click');
         }
 
-        // Админские действия
-        function sendTargetAction(actionType) {
-            let target = document.getElementById('targetUser').value.trim();
-            if (!target) {
-                alert('⚠️ Укажите целевого игрока!');
-                return;
-            }
-            alert(`🛡️ Действие "${actionType}" успешно применено к ${target}!`);
-            playSfx('success');
-        }
-
-        function clearGlobalFeedAdmin() {
-            if (confirm('⚠️ Вы уверены, что хотите полностью очистить всю ленту объявлений?')) {
-                globalAdsFeed = [];
-                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-                renderFeed();
-                playSfx('success');
-            }
-        }
-
-        function updateBroadcastMessage() {
-            let msg = document.getElementById('newBroadcastInput').value.trim();
-            if (!msg) return;
-            localStorage.setItem('arizona_broadcast_msg', msg);
-            document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${msg}`;
-            document.getElementById('broadcastBanner').style.display = 'block';
-            alert('📢 Рассылка успешно отправлена!');
-            playSfx('success');
-        }
-
-        // 20 ТЕМ ОФОРМЛЕНИЯ
+        // Остальные вспомогательные функции (темы, музыка, модальные пикеры и т.д.)
         function setAppTheme(themeName) {
             document.body.className = document.body.className.replace(/theme-\S+/g, '');
             if (themeName !== 'red') {
@@ -1807,7 +1830,9 @@
             playSfx('success');
         }
 
-        // Пикеры (селекты)
+        let savedTheme = localStorage.getItem('arizona_app_theme') || 'red';
+        if (savedTheme !== 'red') { document.body.classList.add('theme-' + savedTheme); }
+
         function openPicker(type) {
             activePickerType = type;
             let titleEl = document.getElementById('pickerTitle');
@@ -1817,187 +1842,244 @@
             if (type === 'mode') {
                 titleEl.innerText = '📌 Выберите тип темы';
                 let items = [
-                    { value: 'sell', label: 'Продажа' },
-                    { value: 'buy', label: 'Покупка' }
+                    { value: 'sell', label: '💍 Продажа' },
+                    { value: 'buy', label: '🛍 Покупка' }
                 ];
-                items.forEach(i => {
-                    listEl.innerHTML += `<div class="picker-item" onclick="selectPickerItem('${type}', '${i.value}', '${i.label}')"><span>${i.label}</span></div>`;
-                });
+                listEl.innerHTML = items.map(i => `
+                    <div class="picker-item" onclick="selectPickerValue('mode', '${i.value}', '${i.label}')">
+                        <span>${i.label}</span>
+                    </div>
+                `).join('');
             } else if (type === 'category') {
-                titleEl.innerText = '🗂 Выберите раздел';
-                let cats = [
-                    '💍 Аксессуары и вещи',
-                    '🚗 Транспорт',
-                    '🏢 Недвижимость',
-                    '💼 Услуги / Скупка',
-                    '⚡ Редкие детали тюнинга'
+                titleEl.innerText = '🗂 Выберите раздел бота';
+                let items = [
+                    { value: '💍 Аксессуары и вещи', label: '💍 Аксессуары и вещи' },
+                    { value: '🚗 Транспорт', label: '🚗 Транспорт' },
+                    { value: '🏠 Недвижимость', label: '🏠 Недвижимость' },
+                    { value: '💼 Бизнесы', label: '💼 Бизнесы' },
+                    { value: '🎟 Редкие предметы', label: '🎟 Редкие предметы' }
                 ];
-                cats.forEach(c => {
-                    listEl.innerHTML += `<div class="picker-item" onclick="selectPickerItem('${type}', '${c}', '${c}')"><span>${c}</span></div>`;
-                });
+                listEl.innerHTML = items.map(i => `
+                    <div class="picker-item" onclick="selectPickerValue('category', '${i.value}', '${i.label}')">
+                        <span>${i.label}</span>
+                    </div>
+                `).join('');
             } else if (type === 'server') {
                 titleEl.innerText = '🌐 Выберите сервер';
-                ALL_SERVERS.forEach(s => {
-                    listEl.innerHTML += `<div class="picker-item" onclick="selectPickerItem('${type}', '${s.value}', '${s.label}')"><span>${s.label}</span></div>`;
-                });
+                listEl.innerHTML = ALL_SERVERS.map(s => `
+                    <div class="picker-item" onclick="selectPickerValue('server', '${s.value}', '${s.label}')">
+                        <span>${s.label}</span>
+                    </div>
+                `).join('');
             }
 
             document.getElementById('pickerModal').style.display = 'flex';
         }
 
-        function selectPickerItem(type, val, label) {
-            if (type === 'mode') {
-                document.getElementById('mode').value = val;
-                document.getElementById('selectedModeText').innerText = label;
-            } else if (type === 'category') {
-                document.getElementById('category').value = val;
-                document.getElementById('selectedCategoryText').innerText = label;
-            } else if (type === 'server') {
-                document.getElementById('server').value = val;
-                document.getElementById('selectedServerText').innerText = label;
-            }
+        function selectPickerValue(type, val, label) {
+            document.getElementById(type).value = val;
+            document.getElementById('selected' + type.charAt(0).toUpperCase() + type.slice(1) + 'Text').innerText = label;
             closePicker();
             playSfx('click');
         }
 
-        // Фоновая музыка
-        let bgAudio = document.getElementById('bgMusic');
-        function toggleMusicPlayback() {
-            if (bgAudio.paused) {
-                bgAudio.play();
-                document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
-            } else {
-                bgAudio.pause();
-                document.getElementById('musicPlayToggleBtn').innerText = '▶️ Играть';
-            }
+        let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || JSON.stringify({ money: 0, clickPower: 1, autoIncome: 0, costs: { click: 50, auto: 200, pro: 800, shop: 3000, elite: 10000, oil: 35000, crypto: 150000 } }));
+        
+        function updateBarygaUI() {
+            let moneyEl = document.getElementById('clickerMoney');
+            if (moneyEl) moneyEl.innerText = barygaData.money.toLocaleString() + ' $';
+            let powEl = document.getElementById('clickPowerLabel');
+            if (powEl) powEl.innerText = `+${barygaData.clickPower} $ / клик`;
+            let autoEl = document.getElementById('autoIncomeLabel');
+            if (autoEl) autoEl.innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
+            
+            document.getElementById('clickCostLabel').innerText = `Цена: ${barygaData.costs.click.toLocaleString()} $`;
+            document.getElementById('autoCostLabel').innerText = `Цена: ${barygaData.costs.auto.toLocaleString()} $`;
+            document.getElementById('proCostLabel').innerText = `Цена: ${barygaData.costs.pro.toLocaleString()} $`;
+            document.getElementById('shopCostLabel').innerText = `Цена: ${barygaData.costs.shop.toLocaleString()} $`;
+            document.getElementById('eliteCostLabel').innerText = `Цена: ${barygaData.costs.elite.toLocaleString()} $`;
+            document.getElementById('oilCostLabel').innerText = `Цена: ${barygaData.costs.oil.toLocaleString()} $`;
+            document.getElementById('cryptoCostLabel').innerText = `Цена: ${barygaData.costs.crypto.toLocaleString()} $`;
         }
-        function loadCustomBackgroundMusic(e) {
-            let file = e.target.files[0];
-            if (file) {
-                let url = URL.createObjectURL(file);
-                bgAudio.src = url;
-                bgAudio.play();
-                alert('🎵 Аудио успешно загружено и воспроизводится!');
-            }
-        }
-        function resetDefaultMusic() {
-            bgAudio.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
-            bgAudio.play();
-            alert('🔄 Музыка сброшена по умолчанию.');
-        }
-
-        // Дополнительные фичи (Луки и Попутчики)
-        let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
-        function postFashionLook() {
-            let title = document.getElementById('fashionSetTitle').value.trim();
-            let img = document.getElementById('fashionSetImage').value.trim();
-            if (!title || !img) return;
-            fashionLooks.unshift({ title, img, author: currentUserUsername });
-            localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks));
-            renderFashionLooks();
-            alert('📸 Лук успешно опубликован в ленте!');
-            playSfx('success');
-        }
-        function renderFashionLooks() {
-            let c = document.getElementById('fashionContainer');
-            if (!c) return;
-            c.innerHTML = fashionLooks.map(l => `
-                <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:10px; margin-bottom:6px;">
-                    <img src="${l.img}" style="width:100%; height:100px; object-fit:cover; border-radius:6px; margin-bottom:4px;" onerror="this.style.display='none';">
-                    <div style="font-weight:800; font-size:11px; color:#fff;">${l.title} (${l.author})</div>
-                </div>
-            `).join('');
-        }
-
-        let travelBuddies = JSON.parse(localStorage.getItem('arizona_travel_buddies') || '[]');
-        function postTravelAd() {
-            let act = document.getElementById('travelActivity').value.trim();
-            let desc = document.getElementById('travelDesc').value.trim();
-            if (!act) return;
-            travelBuddies.unshift({ act, desc, author: currentUserUsername });
-            localStorage.setItem('arizona_travel_buddies', JSON.stringify(travelBuddies));
-            renderTravelBuddies();
-            alert('📢 Объявление о поиске попутчиков размещено!');
-            playSfx('success');
-        }
-        function renderTravelBuddies() {
-            let c = document.getElementById('travelContainer');
-            if (!c) return;
-            c.innerHTML = travelBuddies.map(t => `
-                <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:10px; margin-bottom:6px; font-size:11px;">
-                    <div style="color:var(--accent-secondary); font-weight:800;">🎯 ${t.act} (${t.author})</div>
-                    <div style="color:var(--text-muted);">${t.desc}</div>
-                    <button onclick="openChatWithUser('${t.author}')" class="btn-success" style="margin-top:6px; padding:4px; font-size:10px;">💬 Позвать</button>
-                </div>
-            `).join('');
-        }
-
-        // Кликер "Барыга"
-        let barygaMoney = 0;
-        let barygaClickPower = 1;
-        let barygaAutoIncome = 0;
-        let clickCost = 50;
-        let autoCost = 200;
-        let proCost = 800;
-        let shopCost = 3000;
-        let eliteCost = 10000;
-        let oilCost = 35000;
-        let cryptoCost = 150000;
 
         function barygaClick() {
-            barygaMoney += barygaClickPower;
+            barygaData.money += barygaData.clickPower;
             updateBarygaUI();
             playSfx('cash');
         }
 
-        function updateBarygaUI() {
-            document.getElementById('clickerMoney').innerText = barygaMoney.toLocaleString() + ' $';
-            document.getElementById('clickPowerLabel').innerText = `+${barygaClickPower} $ / клик`;
-            document.getElementById('autoIncomeLabel').innerText = `${barygaAutoIncome} $ / сек`;
-            document.getElementById('clickCostLabel').innerText = `Цена: ${clickCost.toLocaleString()} $`;
-            document.getElementById('autoCostLabel').innerText = `Цена: ${autoCost.toLocaleString()} $`;
-            document.getElementById('proCostLabel').innerText = `Цена: ${proCost.toLocaleString()} $`;
-            document.getElementById('shopCostLabel').innerText = `Цена: ${shopCost.toLocaleString()} $`;
-            document.getElementById('eliteCostLabel').innerText = `Цена: ${eliteCost.toLocaleString()} $`;
-            document.getElementById('oilCostLabel').innerText = `Цена: ${oilCost.toLocaleString()} $`;
-            document.getElementById('cryptoCostLabel').innerText = `Цена: ${cryptoCost.toLocaleString()} $`;
+        function buyClickUpgrade() {
+            if (barygaData.money >= barygaData.costs.click) {
+                barygaData.money -= barygaData.costs.click;
+                barygaData.clickPower += 1;
+                barygaData.costs.click = Math.round(barygaData.costs.click * 1.5);
+                updateBarygaUI();
+                playSfx('success');
+            }
+        }
+        function buyAutoUpgrade() {
+            if (barygaData.money >= barygaData.costs.auto) {
+                barygaData.money -= barygaData.costs.auto;
+                barygaData.autoIncome += 5;
+                barygaData.costs.auto = Math.round(barygaData.costs.auto * 1.5);
+                updateBarygaUI();
+                playSfx('success');
+            }
+        }
+        function buyProUpgrade() {
+            if (barygaData.money >= barygaData.costs.pro) {
+                barygaData.money -= barygaData.costs.pro;
+                barygaData.autoIncome += 20;
+                barygaData.costs.pro = Math.round(barygaData.costs.pro * 1.5);
+                updateBarygaUI();
+                playSfx('success');
+            }
+        }
+        function buyShopUpgrade() {
+            if (barygaData.money >= barygaData.costs.shop) {
+                barygaData.money -= barygaData.costs.shop;
+                barygaData.autoIncome += 50;
+                barygaData.costs.shop = Math.round(barygaData.costs.shop * 1.5);
+                updateBarygaUI();
+                playSfx('success');
+            }
+        }
+        function buyEliteUpgrade() {
+            if (barygaData.money >= barygaData.costs.elite) {
+                barygaData.money -= barygaData.costs.elite;
+                barygaData.clickPower += 10;
+                barygaData.costs.elite = Math.round(barygaData.costs.elite * 1.6);
+                updateBarygaUI();
+                playSfx('success');
+            }
+        }
+        function buyOilRigUpgrade() {
+            if (barygaData.money >= barygaData.costs.oil) {
+                barygaData.money -= barygaData.costs.oil;
+                barygaData.autoIncome += 200;
+                barygaData.costs.oil = Math.round(barygaData.costs.oil * 1.6);
+                updateBarygaUI();
+                playSfx('success');
+            }
+        }
+        function buyCryptoUpgrade() {
+            if (barygaData.money >= barygaData.costs.crypto) {
+                barygaData.money -= barygaData.costs.crypto;
+                barygaData.autoIncome += 1000;
+                barygaData.costs.crypto = Math.round(barygaData.costs.crypto * 1.6);
+                updateBarygaUI();
+                playSfx('success');
+            }
         }
 
         setInterval(() => {
-            if (barygaAutoIncome > 0) {
-                barygaMoney += barygaAutoIncome;
+            if (barygaData.autoIncome > 0) {
+                barygaData.money += Math.round(barygaData.autoIncome / 10);
                 updateBarygaUI();
+                localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
             }
-        }, 1000);
+        }, 100);
 
-        function buyClickUpgrade() { if (barygaMoney >= clickCost) { barygaMoney -= clickCost; barygaClickPower += 1; clickCost = Math.floor(clickCost * 1.5); updateBarygaUI(); playSfx('success'); } }
-        function buyAutoUpgrade() { if (barygaMoney >= autoCost) { barygaMoney -= autoCost; barygaAutoIncome += 5; autoCost = Math.floor(autoCost * 1.6); updateBarygaUI(); playSfx('success'); } }
-        function buyProUpgrade() { if (barygaMoney >= proCost) { barygaMoney -= proCost; barygaAutoIncome += 20; proCost = Math.floor(proCost * 1.6); updateBarygaUI(); playSfx('success'); } }
-        function buyShopUpgrade() { if (barygaMoney >= shopCost) { barygaMoney -= shopCost; barygaAutoIncome += 50; shopCost = Math.floor(shopCost * 1.7); updateBarygaUI(); playSfx('success'); } }
-        function buyEliteUpgrade() { if (barygaMoney >= eliteCost) { barygaMoney -= eliteCost; barygaClickPower += 10; eliteCost = Math.floor(eliteCost * 1.8); updateBarygaUI(); playSfx('success'); } }
-        function buyOilRigUpgrade() { if (barygaMoney >= oilCost) { barygaMoney -= oilCost; barygaAutoIncome += 200; oilCost = Math.floor(oilCost * 1.8); updateBarygaUI(); playSfx('success'); } }
-        function buyCryptoUpgrade() { if (barygaMoney >= cryptoCost) { barygaMoney -= cryptoCost; barygaAutoIncome += 1000; cryptoCost = Math.floor(cryptoCost * 2); updateBarygaUI(); playSfx('success'); } }
+        let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
+        function postFashionLook() {
+            let title = document.getElementById('fashionSetTitle').value.trim();
+            let image = document.getElementById('fashionSetImage').value.trim();
+            if (!title || !image) { alert('⚠️ Заполните название и ссылку на скриншот сета!'); return; }
+            fashionLooks.unshift({ title, image, author: currentUserUsername });
+            localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks));
+            document.getElementById('fashionSetTitle').value = '';
+            document.getElementById('fashionSetImage').value = '';
+            renderFashionLooks();
+            playSfx('success');
+        }
+
+        function renderFashionLooks() {
+            let container = document.getElementById('fashionContainer');
+            if (!container) return;
+            if (fashionLooks.length === 0) {
+                container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center;">Пока нет опубликованных сетов.</div>';
+                return;
+            }
+            container.innerHTML = fashionLooks.map(l => `
+                <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:10px; margin-bottom:6px;">
+                    <div style="font-weight:800; color:#fff; font-size:11px; margin-bottom:4px;">${l.title} (${l.author})</div>
+                    <img src="${l.image}" style="width:100%; height:90px; object-fit:cover; border-radius:8px;" onerror="this.style.display='none';">
+                </div>
+            `).join('');
+        }
+        renderFashionLooks();
+
+        let travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
+        function postTravelAd() {
+            let activity = document.getElementById('travelActivity').value.trim();
+            let desc = document.getElementById('travelDesc').value.trim();
+            if (!activity || !desc) { alert('⚠️ Заполните все поля поиска попутчиков!'); return; }
+            travelAds.unshift({ activity, desc, author: currentUserUsername });
+            localStorage.setItem('arizona_travel_ads', JSON.stringify(travelAds));
+            document.getElementById('travelActivity').value = '';
+            document.getElementById('travelDesc').value = '';
+            renderTravelAds();
+            playSfx('success');
+        }
+
+        function renderTravelAds() {
+            let container = document.getElementById('travelContainer');
+            if (!container) return;
+            if (travelAds.length === 0) {
+                container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center;">Нет активных заявок.</div>';
+                return;
+            }
+            container.innerHTML = travelAds.map(t => `
+                <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:10px; margin-bottom:6px; font-size:11px;">
+                    <div style="font-weight:800; color:var(--accent-secondary);">🎯 ${t.activity} (${t.author})</div>
+                    <div style="color:var(--text-main); margin-top:2px;">${t.desc}</div>
+                    <button onclick="openChatWithUser('${t.author}')" class="btn-success" style="margin-top:6px; padding:4px; font-size:10px;">💬 Откликнуться</button>
+                </div>
+            `).join('');
+        }
+        renderTravelAds();
+
+        function loadCustomBackgroundMusic(event) {
+            let file = event.target.files[0];
+            if (file) {
+                let url = URL.createObjectURL(file);
+                let audio = document.getElementById('bgMusic');
+                audio.src = url;
+                audio.play();
+                alert('🎵 Трек успешно загружен и играет!');
+            }
+        }
+
+        let isMusicPlaying = true;
+        function toggleMusicPlayback() {
+            let audio = document.getElementById('bgMusic');
+            let btn = document.getElementById('musicPlayToggleBtn');
+            if (isMusicPlaying) {
+                audio.pause();
+                btn.innerText = '▶️ Воспроизвести';
+                isMusicPlaying = false;
+            } else {
+                audio.play();
+                btn.innerText = '⏸ Пауза';
+                isMusicPlaying = true;
+            }
+        }
+
+        function resetDefaultMusic() {
+            let audio = document.getElementById('bgMusic');
+            audio.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
+            audio.play();
+            alert('🔄 Музыка сброшена на стандартную лоу-фай мелодию.');
+        }
 
         // Инициализация при загрузке страницы
-        window.addEventListener('DOMContentLoaded', () => {
-            let savedTheme = localStorage.getItem('arizona_app_theme');
-            if (savedTheme) {
-                setAppTheme(savedTheme);
-            }
-            checkUserPermissions();
-            initProfileUI();
-            renderFeed();
-            renderFavorites();
-            renderPendingAds();
-            renderFashionLooks();
-            renderTravelBuddies();
-
-            let broadcastMsg = localStorage.getItem('arizona_broadcast_msg');
-            if (broadcastMsg) {
-                document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${broadcastMsg}`;
-                document.getElementById('broadcastBanner').style.display = 'block';
-            }
-        });
+        checkUserPermissions();
+        initProfileUI();
+        renderFeed();
+        renderFavorites();
+        renderMyAds();
+        renderPendingAds();
+        updateBarygaUI();
     </script>
 </body>
 </html>

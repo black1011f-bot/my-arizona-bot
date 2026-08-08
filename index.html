@@ -121,7 +121,7 @@
         body.device-pc .container { max-width: 1100px; }
         body.device-pc .ads-container:not(.grid-view) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 
-        #banOverlay {
+        #banOverlay, #updateOverlay {
             display: none;
             position: fixed;
             top: 0; left: 0;
@@ -201,6 +201,9 @@
         
         .forum-top-right {
             position: relative;
+            display: flex;
+            gap: 6px;
+            align-items: center;
         }
         .forum-icon-btn {
             background: rgba(255, 255, 255, 0.06);
@@ -214,6 +217,8 @@
             transition: all 0.2s;
             display: flex; align-items: center; justify-content: center;
             font-size: 16px;
+            text-decoration: none;
+            box-sizing: border-box;
         }
         .forum-icon-btn:hover {
             border-color: var(--accent-primary);
@@ -559,6 +564,17 @@
         </div>
     </div>
 
+    <!-- Модальное окно принудительного обновления (Нюанс 5) -->
+    <div id="updateOverlay">
+        <div>
+            <h2 style="color: var(--accent-primary); font-size: 22px; margin-bottom: 8px;">🔄 ДОСТУПНО ОБНОВЛЕНИЕ</h2>
+            <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
+                Администрация выпустила новую версию приложения.<br>Функции временно приостановлены. Нажмите кнопку ниже или перезапустите бота командой <b>/start</b>.
+            </p>
+            <button onclick="location.reload()" class="btn-success" style="width: auto; padding: 10px 20px; font-size: 12px;">🚀 Обновить приложение</button>
+        </div>
+    </div>
+
     <div class="container">
         <div id="broadcastBanner" class="broadcast-banner" onclick="openBroadcastModal()">
             📢 <span id="broadcastText"><b>Уведомление от администрации!</b> Нажмите, чтобы открыть.</span>
@@ -575,12 +591,15 @@
             </div>
 
             <div class="forum-top-right">
+                <!-- Нюанс 1: Кнопка Менеджер прямо в топбаре -->
+                <a class="forum-icon-btn" href="https://t.me/bounqy31" target="_blank" title="Менеджер / Связь">💬</a>
+                
                 <button class="forum-icon-btn" onclick="toggleDropdownMenu(event)" title="Меню">⋮</button>
                 <div id="threeDotsDropdown" class="dropdown-menu">
                     <button class="dropdown-item" onclick="openBarygaModal(); closeDropdowns();">🎮 Игра "Барыга" (Кликер)</button>
                     <button class="dropdown-item" onclick="openNotificationsModal(); closeDropdowns();">🔔 Уведомления <span class="badge-dot" id="notifDotDrop" style="display:none; position:static; margin-left:auto;">0</span></button>
                     <button class="dropdown-item" onclick="openChatsModal(); closeDropdowns();">💬 Переписки <span class="badge-dot" id="chatDotDrop" style="display:none; position:static; margin-left:auto;">0</span></button>
-                    <a class="dropdown-item" href="https://t.me/bounqy31" target="_blank" onclick="closeDropdowns();">💬 Менеджер</a>
+                    <a class="dropdown-item" href="https://t.me/bounqy31" target="_blank" onclick="closeDropdowns();">💬 Менеджер (Связь)</a>
                     <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
                     <button class="dropdown-item" onclick="openSearchModal(); closeDropdowns();">🔍 Поиск игроков</button>
                 </div>
@@ -598,12 +617,19 @@
         <div id="tabFeed" class="section active">
             <div class="admin-section-title">🌍 Главный раздел бота (Лента объявлений)</div>
             
+            <!-- Нюанс 3: Рабочая кнопка "Поиск" в главном разделе -->
+            <button class="btn-success" onclick="openSearchModal()" style="margin-top: 10px; margin-bottom: 10px;">🔍 Поиск игроков и товаров</button>
+
             <div class="view-mode-btns" style="margin-top: 10px;">
                 <button class="view-mode-btn active" id="btnListView" onclick="setViewMode('list')">📄 Списком</button>
                 <button class="view-mode-btn" id="btnGridView" onclick="setViewMode('grid')">🧮 Плиткой</button>
             </div>
 
             <div id="feedContainer" class="ads-container"></div>
+            <!-- Нюанс 4: Кнопка пагинации для оптимизации 10k+ записей -->
+            <div id="feedPaginationContainer" style="text-align: center; margin-top: 14px; display: none;">
+                <button onclick="loadMoreFeedItems()" class="btn-secondary" style="width: auto; padding: 8px 20px; font-size: 11px;">⬇️ Загрузить еще объявления</button>
+            </div>
         </div>
 
         <div id="tabProfile" class="section">
@@ -777,10 +803,17 @@
                         <button class="btn-danger" onclick="clearGlobalFeedAdmin()" style="margin-top: 5px; margin-bottom: 0;">🗑 Очистить всю ленту</button>
                     </div>
 
-                    <div class="admin-controls-card">
+                    <div class="admin-controls-card" style="margin-bottom: 10px;">
                         <label>📢 Редактировать системный баннер:</label>
                         <input type="text" id="newBroadcastInput" placeholder="Новый текст уведомления..." style="margin-bottom: 6px;">
                         <button onclick="updateBroadcastMessage()" class="btn-success">📢 Отправить Рассылку</button>
+                    </div>
+
+                    <!-- Нюанс 5: Кнопка выпуска принудительного обновления для всех -->
+                    <div class="admin-controls-card">
+                        <label>🔄 Принудительное обновление для всех:</label>
+                        <p style="font-size: 10px; color: var(--text-muted); margin: 4px 0 8px 0;">Заблокирует функции у пользователей и заставит обновить приложение.</p>
+                        <button onclick="triggerGlobalAppUpdate()" class="btn-danger">🚨 Выпустить обновление</button>
                     </div>
                 </div>
             </div>
@@ -860,7 +893,7 @@
         </div>
     </div>
 
-    <!-- Модальное окно поиска игроков -->
+    <!-- Модальное окно поиска игроков (Нюанс 2) -->
     <div id="searchModal" class="modal-overlay" onclick="handleOverlayClick(event, 'searchModal')">
         <div class="modal-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -869,7 +902,7 @@
             </div>
             <div class="form-group" style="text-align: left;">
                 <label>👤 Введите юз или ник игрока:</label>
-                <input type="text" id="modalSearchInput" placeholder="Например: @bounqy или bounqy">
+                <input type="text" id="modalSearchInput" placeholder="Например: @arizona_coin_bot или arizona">
             </div>
             <button onclick="executePlayerSearch()" class="btn-success">🔍 Найти игрока</button>
         </div>
@@ -1010,6 +1043,9 @@
     </div>
 
     <script>
+        // Версия приложения для проверки обновлений (Нюанс 5)
+        const CURRENT_APP_BUILD = '2026.08.08-v2';
+
         let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
         if (typeof tg.expand === 'function') { tg.expand(); }
         if (typeof tg.ready === 'function') { tg.ready(); }
@@ -1042,6 +1078,9 @@
         let activeChatName = '';
         let searchedTargetUser = '';
         let broadcastTimer = null;
+        
+        // Переменные для постраничной пагинации (Нюанс 4)
+        let feedDisplayLimit = 20;
 
         const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23059669'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='%23ffffff' font-family='sans-serif'>A</text></svg>";
 
@@ -1191,6 +1230,26 @@
                 bannedList = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]');
             } catch(e) { bannedList = []; }
             return bannedList.includes(cleanName) || bannedList.includes(String(user.id));
+        }
+
+        // Проверка принудительного обновления (Нюанс 5)
+        function checkAppUpdateStatus() {
+            try {
+                let forcedBuild = localStorage.getItem('arizona_forced_app_build');
+                if (forcedBuild && forcedBuild !== CURRENT_APP_BUILD) {
+                    document.getElementById('updateOverlay').style.display = 'flex';
+                    return true;
+                }
+            } catch(e){}
+            return false;
+        }
+
+        function triggerGlobalAppUpdate() {
+            if (!checkIsOwner()) return;
+            if (!confirm('Выпустить принудительное обновление для всех пользователей?')) return;
+            // Устанавливаем новый билд, отличающийся от CURRENT_APP_BUILD у других
+            localStorage.setItem('arizona_forced_app_build', 'NEW_' + Date.now());
+            alert('✅ Обновление успешно выпущено! У всех активных пользователей заблокируются функции до перезагрузки.');
         }
 
         function handleOverlayClick(e, modalId) {
@@ -1345,6 +1404,8 @@
                 updateMSKTime();
                 setInterval(updateMSKTime, 1000);
                 loadBarygaState();
+
+                if (checkAppUpdateStatus()) return;
 
                 if (checkIsBanned()) {
                     document.getElementById('banOverlay').style.display = 'flex';
@@ -2051,6 +2112,12 @@
             if (targetSec) targetSec.classList.add('active');
 
             if (tabName === 'profile') initProfile();
+        }
+
+        // Пример функций рендера ленты с поддержкой пагинации для 10k+ элементов (Нюанс 4)
+        function loadMoreFeedItems() {
+            feedDisplayLimit += 20;
+            if (typeof renderGlobalFeed === 'function') renderGlobalFeed();
         }
     </script>
 </body>

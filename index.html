@@ -523,7 +523,6 @@
         }
         input:focus, textarea:focus, select:focus { border-color: var(--accent-red); }
         
-        /* Исправление стилей селектов для единообразия */
         select option {
             background: var(--forum-card-bg);
             color: var(--text-main);
@@ -681,6 +680,7 @@
             <input type="hidden" id="editAdId">
             <div class="form-group"><label>Заголовок:</label><input type="text" id="editAdTitle"></div>
             <div class="form-group"><label>Цена:</label><input type="text" id="editAdPrice"></div>
+            <div class="form-group"><label>Ссылка на картинку:</label><input type="text" id="editAdImage" placeholder="https://..."></div>
             <div class="form-group"><label>Описание:</label><textarea id="editAdDesc" rows="3"></textarea></div>
             <button onclick="saveEditedAd()" class="btn-success">💾 Сохранить</button>
         </div>
@@ -823,6 +823,7 @@
             </div>
             <div class="form-group"><label>🏷️ Название:</label><input type="text" id="adTitleInput" placeholder="Шар +12"></div>
             <div class="form-group"><label>💵 Цена:</label><input type="text" id="adPriceInput" placeholder="150,000,000 $"></div>
+            <div class="form-group"><label>🖼️ Ссылка на картинку (необязательно):</label><input type="text" id="adImageInput" placeholder="https://i.ibb.co/..."></div>
             <div class="form-group"><label>📄 Описание:</label><textarea id="adDescInput" rows="3" placeholder="Связь в игре..."></textarea></div>
             <button onclick="submitNewAd()" class="btn-success">📤 Опубликовать</button>
         </div>
@@ -878,7 +879,7 @@
 
         // Кэширование данных через localStorage
         let adsData = JSON.parse(localStorage.getItem('arizona_ads')) || [
-            { id: 1, server: "02 Tucson", category: "💍 Аксессуары и вещи", title: "Ангельское кольцо +12", price: "450,000,000 $", image: "https://i.ibb.co/1YLcDKVk/banner.png", desc: "Звоните: 777333", author: "@bounqy", status: "approved" }
+            { id: 1, server: "02 Tucson", category: "💍 Аксессуары и вещи", title: "Ангельское кольцо +12", price: "450,000,000 $", image: "", desc: "Звоните: 777333", author: "@bounqy", status: "approved" }
         ];
 
         let travelBuddiesData = JSON.parse(localStorage.getItem('arizona_buddies')) || [];
@@ -1089,13 +1090,14 @@
             let category = document.getElementById('adCategorySelect').value;
             let title = document.getElementById('adTitleInput').value.trim();
             let price = document.getElementById('adPriceInput').value.trim();
+            let image = document.getElementById('adImageInput').value.trim();
             let desc = document.getElementById('adDescInput').value.trim();
 
             if (!title || !price) { alert("Заполните название и цену!"); return; }
 
             adsData.unshift({
                 id: Date.now(), server, category, title, price,
-                image: "https://i.ibb.co/1YLcDKVk/banner.png",
+                image: image || "", // Картинка будет только если продавец вставил ссылку
                 desc: desc || "Без описания",
                 author: currentUser,
                 status: (currentUser === "@bounqy") ? "approved" : "pending"
@@ -1123,7 +1125,7 @@
                         <span><span class="forum-badge badge-success">${ad.server}</span> ${ad.category}</span>
                         <span onclick="event.stopPropagation(); toggleFavorite(${ad.id});" style="cursor:pointer; font-size:14px;">❤️</span>
                     </div>
-                    <img src="${ad.image}" style="width:100%; height:110px; object-fit:cover; border-radius:10px; margin-bottom:8px;" loading="lazy" onerror="handleImgError(this, '${ad.title}')">
+                    ${ad.image ? `<img src="${ad.image}" style="width:100%; height:110px; object-fit:cover; border-radius:10px; margin-bottom:8px;" loading="lazy" onerror="handleImgError(this, '${ad.title}')">` : ''}
                     <div style="font-weight:800; font-size:13px; color:#fff; margin-bottom:4px;">${ad.title}</div>
                     <div style="font-size:12px; color:var(--accent-gold); font-weight:700;">💰 ${ad.price}</div>
                 </div>
@@ -1211,19 +1213,23 @@
             document.getElementById('editAdId').value = ad.id;
             document.getElementById('editAdTitle').value = ad.title;
             document.getElementById('editAdPrice').value = ad.price;
+            document.getElementById('editAdImage').value = ad.image || '';
             document.getElementById('editAdDesc').value = ad.desc || '';
             document.getElementById('adminEditModal').style.display = 'flex';
         }
         function closeAdminEditModal() { document.getElementById('adminEditModal').style.display = 'none'; }
+        
         function saveEditedAd() {
             let id = parseInt(document.getElementById('editAdId').value);
             let title = document.getElementById('editAdTitle').value.trim();
             let price = document.getElementById('editAdPrice').value.trim();
+            let image = document.getElementById('editAdImage').value.trim();
             let desc = document.getElementById('editAdDesc').value.trim();
             let ad = adsData.find(a => a.id === id);
             if (ad) {
                 ad.title = title || ad.title;
                 ad.price = price || ad.price;
+                ad.image = image;
                 ad.desc = desc || ad.desc;
                 saveToStorage();
                 renderFeed(); renderMyAds(); renderAdminPanel();
@@ -1236,7 +1242,8 @@
             let ad = adsData.find(a => a.id === id);
             if (!ad) return;
             document.getElementById('detailTitle').innerText = ad.title;
-            document.getElementById('detailContentBody').innerHTML = `<b>Цена:</b> ${ad.price}<br><b>Описание:</b> ${ad.desc}`;
+            let imageHtml = ad.image ? `<img src="${ad.image}" style="width:100%; height:130px; object-fit:cover; border-radius:10px; margin-bottom:8px;" onerror="handleImgError(this, '${ad.title}')">` : '';
+            document.getElementById('detailContentBody').innerHTML = `${imageHtml}<b>Сервер:</b> ${ad.server}<br><b>Цена:</b> ${ad.price}<br><b>Описание:</b> ${ad.desc}<br><b>Продавец:</b> ${ad.author}`;
             document.getElementById('adDetailModal').style.display = 'flex';
         }
         function closeAdDetailModal() { document.getElementById('adDetailModal').style.display = 'none'; }

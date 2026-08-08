@@ -251,6 +251,7 @@
             border: none;
             width: 100%;
             text-align: left;
+            box-sizing: border-box;
         }
         .dropdown-item:hover {
             background: rgba(16, 185, 129, 0.2);
@@ -579,6 +580,7 @@
                     <button class="dropdown-item" onclick="openBarygaModal(); closeDropdowns();">🎮 Игра "Барыга" (Кликер)</button>
                     <button class="dropdown-item" onclick="openNotificationsModal(); closeDropdowns();">🔔 Уведомления <span class="badge-dot" id="notifDotDrop" style="display:none; position:static; margin-left:auto;">0</span></button>
                     <button class="dropdown-item" onclick="openChatsModal(); closeDropdowns();">💬 Переписки <span class="badge-dot" id="chatDotDrop" style="display:none; position:static; margin-left:auto;">0</span></button>
+                    <a class="dropdown-item" href="https://t.me/bounqy31" target="_blank" onclick="closeDropdowns();">💬 Менеджер</a>
                     <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
                     <button class="dropdown-item" onclick="openSearchModal(); closeDropdowns();">🔍 Поиск игроков</button>
                 </div>
@@ -880,13 +882,41 @@
                 <h3 style="color: #ffffff; margin: 0; font-size: 15px;">👤 Профиль игрока</h3>
                 <button class="btn-secondary" onclick="closePlayerProfileModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
             </div>
-            <div style="text-align: center; margin-bottom: 12px;">
+            
+            <div class="profile-card-az" style="margin-bottom: 10px; padding: 12px;">
                 <div class="az-avatar-wrapper" style="width: 74px; height: 74px; margin: 0 auto 8px auto;">
                     <img id="searchedAvatarImg" class="az-avatar-img" src="" alt="Avatar" style="width: 70px; height: 70px;">
                 </div>
-                <h4 id="searchedUserName" style="color: var(--accent-primary); margin: 0 0 4px 0; font-size: 16px;">@username</h4>
-                <div id="searchedUserStatus" style="color: var(--accent-secondary); font-size: 11px; font-style: italic;">Статус игрока...</div>
+                <h4 id="searchedUserName" style="color: var(--accent-primary); margin: 0 0 2px 0; font-size: 16px;">@username</h4>
+                <div id="searchedUserStatus" class="az-custom-status" style="margin-bottom: 6px;">Статус игрока...</div>
+                <div><div id="searchedRoleBadge" class="az-role-badge" style="margin-bottom: 8px;">👤 Игрок</div></div>
+
+                <div class="az-meta-info" style="margin-bottom: 10px;">
+                    <div>📅 Регистрация: <span id="searchedRegDate">Недавно</span></div>
+                    <div>🟢 Статус: <span id="searchedActivity">В сети</span></div>
+                </div>
+
+                <div class="az-stats-grid" style="margin-bottom: 10px;">
+                    <div class="az-stat-item">
+                        <span class="az-stat-label">📦 Заявки</span>
+                        <span class="az-stat-value" id="searchedStatMsgs">0</span>
+                    </div>
+                    <div class="az-stat-item">
+                        <span class="az-stat-label">❤️ Реакции</span>
+                        <span class="az-stat-value" id="searchedStatReacts">0</span>
+                    </div>
+                    <div class="az-stat-item">
+                        <span class="az-stat-label">⭐ Баллы</span>
+                        <span class="az-stat-value" id="searchedStatPoints">0</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 10px; border-top: 1px solid var(--forum-card-border); padding-top: 8px;">
+                    <div style="font-weight: 800; font-size: 11px; color: var(--accent-secondary); margin-bottom: 6px;">💬 Стена игрока:</div>
+                    <div id="searchedWallContainer" style="max-height: 120px; overflow-y: auto; text-align: left; font-size: 11px;"></div>
+                </div>
             </div>
+
             <div style="display: flex; gap: 6px;">
                 <button onclick="startChatWithSearchedUser()" class="btn-success" style="margin:0; font-size: 11px;">💬 Написать / Чат</button>
                 <button onclick="closePlayerProfileModal()" class="btn-secondary" style="margin:0; font-size: 11px;">❌ Закрыть</button>
@@ -1188,7 +1218,7 @@
         });
 
         // Кликер "Барыга"
-        let barygaState = {
+        const defaultBarygaState = {
             money: 100,
             clickPower: 1,
             autoClickerPower: 0,
@@ -1201,12 +1231,20 @@
             eliteUpgradeCost: 10000,
             elitePower: 10
         };
+        let barygaState = Object.assign({}, defaultBarygaState);
 
         function loadBarygaState() {
             try {
                 let saved = localStorage.getItem('arizona_baryga_clicker');
-                if (saved) barygaState = JSON.parse(saved);
-            } catch(e){}
+                if (saved) {
+                    let parsed = JSON.parse(saved);
+                    barygaState = Object.assign({}, defaultBarygaState, parsed);
+                } else {
+                    barygaState = Object.assign({}, defaultBarygaState);
+                }
+            } catch(e) {
+                barygaState = Object.assign({}, defaultBarygaState);
+            }
         }
 
         function saveBarygaState() {
@@ -1282,14 +1320,14 @@
         }
 
         function renderBarygaUI() {
-            document.getElementById('clickerMoney').innerText = barygaState.money.toLocaleString('ru-RU') + ' $';
-            document.getElementById('clickPowerLabel').innerText = `+${barygaState.clickPower} $ / клик`;
-            document.getElementById('autoIncomeLabel').innerText = `${barygaState.autoClickerPower} $ / сек`;
-            document.getElementById('clickCostLabel').innerText = `Цена: ${barygaState.clickUpgradeCost.toLocaleString('ru-RU')} $`;
-            document.getElementById('autoCostLabel').innerText = `Цена: ${barygaState.autoUpgradeCost.toLocaleString('ru-RU')} $`;
-            document.getElementById('proCostLabel').innerText = `Цена: ${barygaState.proUpgradeCost.toLocaleString('ru-RU')} $`;
-            document.getElementById('shopCostLabel').innerText = `Цена: ${barygaState.shopUpgradeCost.toLocaleString('ru-RU')} $`;
-            document.getElementById('eliteCostLabel').innerText = `Цена: ${barygaState.eliteUpgradeCost.toLocaleString('ru-RU')} $`;
+            document.getElementById('clickerMoney').innerText = Number(barygaState.money || 0).toLocaleString('ru-RU') + ' $';
+            document.getElementById('clickPowerLabel').innerText = `+${barygaState.clickPower || 1} $ / клик`;
+            document.getElementById('autoIncomeLabel').innerText = `${barygaState.autoClickerPower || 0} $ / сек`;
+            document.getElementById('clickCostLabel').innerText = `Цена: ${Number(barygaState.clickUpgradeCost || 50).toLocaleString('ru-RU')} $`;
+            document.getElementById('autoCostLabel').innerText = `Цена: ${Number(barygaState.autoUpgradeCost || 200).toLocaleString('ru-RU')} $`;
+            document.getElementById('proCostLabel').innerText = `Цена: ${Number(barygaState.proUpgradeCost || 800).toLocaleString('ru-RU')} $`;
+            document.getElementById('shopCostLabel').innerText = `Цена: ${Number(barygaState.shopUpgradeCost || 3000).toLocaleString('ru-RU')} $`;
+            document.getElementById('eliteCostLabel').innerText = `Цена: ${Number(barygaState.eliteUpgradeCost || 10000).toLocaleString('ru-RU')} $`;
         }
 
         setInterval(() => {
@@ -1306,6 +1344,7 @@
                 detectDeviceType();
                 updateMSKTime();
                 setInterval(updateMSKTime, 1000);
+                loadBarygaState();
 
                 if (checkIsBanned()) {
                     document.getElementById('banOverlay').style.display = 'flex';
@@ -1329,7 +1368,7 @@
             }
         });
 
-        // Поиск игроков
+        // Поиск игроков и просмотр профиля другого игрока
         function openSearchModal() {
             triggerHaptic('light');
             document.getElementById('searchModal').style.display = 'flex';
@@ -1337,20 +1376,79 @@
         function closeSearchModal() {
             document.getElementById('searchModal').style.display = 'none';
         }
+
         function executePlayerSearch() {
             triggerHaptic('medium');
             let q = document.getElementById('modalSearchInput').value.trim();
             if (!q) { alert('❌ Введите ник или юзер игрока!'); return; }
             if (!q.startsWith('@')) q = '@' + q;
-            searchedTargetUser = q;
             closeSearchModal();
+            viewPlayerProfile(q);
+        }
 
-            document.getElementById('searchedUserName').innerText = q;
-            document.getElementById('searchedUserStatus').innerText = '✨ Игрок платформы Arizona RP / Telegram';
+        function viewPlayerProfile(username) {
+            triggerHaptic('light');
+            if (!username) return;
+            searchedTargetUser = username.startsWith('@') ? username : '@' + username;
+
+            let profileKey = 'arizona_user_profile_' + searchedTargetUser.toLowerCase();
+            let pData = {};
+            try {
+                pData = JSON.parse(localStorage.getItem(profileKey) || 'null');
+            } catch(e){}
+
+            if (!pData) {
+                pData = {
+                    username: searchedTargetUser,
+                    status: '✨ Игрок платформы Arizona RP / Telegram',
+                    role: searchedTargetUser.replace('@','') === OWNER_USERNAME ? '👑 Владелец бота' : '👤 Игрок',
+                    regDate: 'Недавно',
+                    activity: 'В сети',
+                    msgs: Math.floor(Math.random() * 10) + 1,
+                    reacts: Math.floor(Math.random() * 20) + 2,
+                    points: Math.floor(Math.random() * 50) + 10
+                };
+                localStorage.setItem(profileKey, JSON.stringify(pData));
+            }
+
+            document.getElementById('searchedUserName').innerText = pData.username;
+            document.getElementById('searchedUserStatus').innerText = pData.status;
+            document.getElementById('searchedRoleBadge').innerText = pData.role;
+            document.getElementById('searchedRegDate').innerText = pData.regDate;
+            document.getElementById('searchedActivity').innerText = pData.activity;
+            document.getElementById('searchedStatMsgs').innerText = pData.msgs;
+            document.getElementById('searchedStatReacts').innerText = pData.reacts;
+            document.getElementById('searchedStatPoints').innerText = pData.points;
+
             let sAvatar = document.getElementById('searchedAvatarImg');
             sAvatar.src = DEFAULT_AVATAR;
 
+            renderSearchedWall();
             document.getElementById('playerProfileModal').style.display = 'flex';
+        }
+
+        function renderSearchedWall() {
+            let container = document.getElementById('searchedWallContainer');
+            if (!container) return;
+            try {
+                let wallComments = [];
+                try { wallComments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]'); } catch(e){}
+
+                if (wallComments.length === 0) {
+                    container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:6px;">💬 На стене пока нет росписей.</div>';
+                    return;
+                }
+
+                let html = '';
+                wallComments.slice(0, 5).forEach(c => {
+                    html += `
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--forum-card-border); padding: 6px 8px; border-radius: 6px; margin-bottom: 4px;">
+                            <b style="color: var(--accent-secondary);">${escapeHtml(c.author)}:</b> ${escapeHtml(c.text)}
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch(e){}
         }
 
         function closePlayerProfileModal() {
@@ -1362,16 +1460,6 @@
             if (searchedTargetUser) {
                 openChat(searchedTargetUser);
             }
-        }
-
-        function viewPlayerProfile(username) {
-            triggerHaptic('light');
-            if (!username) return;
-            searchedTargetUser = username.startsWith('@') ? username : '@' + username;
-            document.getElementById('searchedUserName').innerText = searchedTargetUser;
-            document.getElementById('searchedUserStatus').innerText = '✨ Игрок платформы Arizona RP / Telegram';
-            document.getElementById('searchedAvatarImg').src = DEFAULT_AVATAR;
-            document.getElementById('playerProfileModal').style.display = 'flex';
         }
 
         function addNotification(text, timestamp, userId = null) {
@@ -1647,7 +1735,7 @@
             container.innerHTML = html;
         }
 
-        // Переписки (с Telegram никнеймом и кнопкой глянуть профиль)
+        // Переписки
         function openChatsModal() {
             triggerHaptic('light');
             renderChatsList();
@@ -1709,7 +1797,7 @@
                 for (let chatName in chatsData) {
                     let msgs = chatsData[chatName];
                     let lastMsg = (msgs && msgs.length > 0) ? msgs[msgs.length - 1].text : 'Нет сообщений';
-                    let safeName = escapeHtml(chatName); // Telegram никнейм игрока
+                    let safeName = escapeHtml(chatName);
                     let encodedChatName = encodeURIComponent(chatName);
 
                     html += `
@@ -1967,4 +2055,3 @@
     </script>
 </body>
 </html>
-

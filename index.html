@@ -531,6 +531,7 @@
     </style>
 </head>
 <body>
+    <!-- Фоновая музыка с файла / трека -->
     <audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" autoplay loop preload="auto"></audio>
 
     <div id="banOverlay">
@@ -560,7 +561,7 @@
 
         <!-- ТОПБАР -->
         <div class="forum-topbar">
-            <a class="topbar-left" href="https://t.me/bounqy" target="_blank">🤖 @bounqy</a>
+            <a class="topbar-left" href="https://t.me/arizona_coin_bot" target="_blank">🤖 @arizona_coin_bot</a>
             
             <div class="topbar-center">
                 <div class="forum-subtitle">🔍 поиск предметов/игроков • black style</div>
@@ -569,14 +570,14 @@
             </div>
 
             <div class="forum-top-right">
-                <a class="forum-icon-btn" href="https://t.me/bounqy" target="_blank" title="Менеджер / Связь">💬</a>
+                <a class="forum-icon-btn" href="https://t.me/bounqy31" target="_blank" title="Менеджер / Связь">💬</a>
                 
                 <button class="forum-icon-btn" onclick="toggleDropdownMenu(event)" title="Меню">⋮</button>
                 <div id="threeDotsDropdown" class="dropdown-menu">
                     <button class="dropdown-item" onclick="openBarygaModal(); closeDropdowns();">🎮 Игра "Барыга" (Кликер)</button>
                     <button class="dropdown-item" onclick="openNotificationsModal(); closeDropdowns();">🔔 Уведомления <span class="badge-dot" id="notifDotDrop" style="display:none; position:static; margin-left:auto;">0</span></button>
                     <button class="dropdown-item" onclick="openChatsModal(); closeDropdowns();">💬 Переписки <span class="badge-dot" id="chatDotDrop" style="display:none; position:static; margin-left:auto;">0</span></button>
-                    <a class="dropdown-item" href="https://t.me/bounqy" target="_blank" onclick="closeDropdowns();">💬 Менеджер (Связь)</a>
+                    <a class="dropdown-item" href="https://t.me/bounqy31" target="_blank" onclick="closeDropdowns();">💬 Менеджер (Связь)</a>
                     <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
                     <button class="dropdown-item" onclick="openSearchModal(); closeDropdowns();">🔍 Поиск предметов/игроков</button>
                 </div>
@@ -760,7 +761,8 @@
                 <div id="pendingAdsContainer" style="margin-bottom: 15px;"></div>
 
                 <div id="ownerSection" style="display: none; margin-top: 15px;">
-                    <div class="admin-section-title">👑 Панель Управления Владельца (@bounqy)</div>
+                    <!-- Раздел владельца без лишнего слова "юз" -->
+                    <div class="admin-section-title">👑 Панель Управления Владельца • @bounqy</div>
                     
                     <div class="form-group">
                         <label>🎯 Целевой игрок (@username или ID):</label>
@@ -789,7 +791,7 @@
         </div>
 
         <div class="app-footer">
-            🤖 наш бот @bounqy
+            🤖 наш бот @arizona_coin_bot
         </div>
     </div>
 
@@ -1408,28 +1410,24 @@
             if (!confirm('Вы уверены, что хотите удалить это объявление?')) return;
             triggerHaptic('heavy');
 
-            // Удаляем из ленты
             try {
                 let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
                 feed = feed.filter(i => i.id !== id);
                 localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
             } catch(e){}
 
-            // Удаляем из очереди модерации
             try {
                 let pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
                 pending = pending.filter(i => i.id !== id);
                 localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
             } catch(e){}
 
-            // Удаляем из "Моих тем"
             try {
                 let myAds = JSON.parse(localStorage.getItem('my_arizona_ads') || '[]');
                 myAds = myAds.filter(i => i.id !== id);
                 localStorage.setItem('my_arizona_ads', JSON.stringify(myAds));
             } catch(e){}
 
-            // Автоматически удаляем из избранного у всех
             removeFromFavoritesStorage(id);
 
             renderGlobalFeed();
@@ -1498,7 +1496,7 @@
                         <div style="color: var(--accent-gold); font-weight: 800; font-size: 12px; margin-bottom: 4px;">💰 Цена: ${priceFormatted}</div>
                         <div style="color: var(--text-main); font-size: 11px; margin-bottom: 8px; line-height: 1.4;">📄 ${escapeHtml(item.text)}</div>
                         <div style="display: flex; gap: 6px;">
-                            <button onclick="openChat('${escapeHtml(item.author)}')" class="btn-success" style="margin:0; padding:6px; font-size:11px;">💬 Написать продавцу</button>
+                            <a href="https://t.me/bounqy31" target="_blank" class="btn-success" style="text-decoration:none; text-align:center; margin:0; padding:6px; font-size:11px; flex:1;">💬 Связаться с менеджером</a>
                             <button onclick="toggleFavorite('${item.id}')" class="btn-danger" style="margin:0; padding:6px; font-size:11px;">🗑 Удалить</button>
                         </div>
                     </div>
@@ -1605,7 +1603,6 @@
                 let priceFormatted = numericPrice ? numericPrice.toLocaleString('ru-RU') + ' $' : escapeHtml(item.price);
                 let safeImage = item.image ? `<img src="${escapeHtml(item.image)}" style="width:100%; height:120px; object-fit:cover; border-radius:10px; margin-top:8px;" onerror="this.style.display='none'">` : '';
 
-                // Проверка прав на удаление (админ или автор объявления)
                 let isAdmin = checkIsAdmin();
                 let isAuthor = (item.authorId && String(item.authorId) === String(currentUser.id)) || (item.author && item.author === currentUser.username);
 
@@ -1627,7 +1624,7 @@
                         <div style="color: var(--text-main); font-size: 12px; margin-bottom: 6px; line-height: 1.4;">${escapeHtml(item.text)}</div>
                         ${safeImage}
                         <div style="display: flex; gap: 6px; margin-top: 10px;">
-                            <button onclick="openChat('${escapeHtml(item.author)}')" class="btn-success" style="margin:0; padding:6px; font-size:11px;">💬 Связаться</button>
+                            <a href="https://t.me/bounqy31" target="_blank" class="btn-success" style="text-decoration:none; text-align:center; margin:0; padding:6px; font-size:11px; flex:1;">💬 Связаться с менеджером</a>
                             <button onclick="toggleFavorite('${item.id}')" class="btn-secondary" style="margin:0; padding:6px 10px; font-size:11px;" title="В избранное">❤️</button>
                             ${deleteBtnHtml}
                         </div>
@@ -1711,7 +1708,7 @@
 
         function openChat(username) {
             triggerHaptic('light');
-            alert('💬 Открытие чата с продавцом: ' + username);
+            window.open('https://t.me/bounqy31', '_blank');
         }
     </script>
 </body>

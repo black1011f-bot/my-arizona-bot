@@ -35,6 +35,7 @@
             --btn-orange: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
             --btn-green: linear-gradient(135deg, #10b981 0%, #059669 100%);
             --btn-purple: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            --btn-red: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
         }
 
         body {
@@ -160,6 +161,7 @@
         }
 
         button.btn-green { background: var(--btn-green); }
+        button.btn-red { background: var(--btn-red); }
 
         .baryga-stats {
             display: grid;
@@ -201,6 +203,7 @@
         .modal-content {
             background: #0a0a0c; padding: 20px; border-radius: 16px; max-width: 360px; width: 100%;
             border: 1px solid var(--forum-card-border); color: #fff; max-height: 80vh; display: flex; flex-direction: column;
+            overflow-y: auto;
         }
 
         .picker-list {
@@ -236,6 +239,35 @@
             align-items: center;
         }
 
+        .feed-items-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .feed-item-card {
+            background: #121318;
+            border: 1px solid var(--forum-card-border);
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .search-input-box {
+            width: 100%;
+            padding: 10px;
+            background: #121318;
+            border: 1px solid var(--forum-card-border);
+            color: #fff;
+            border-radius: 8px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
         .footer-bot-tag {
             text-align: center;
             font-size: 11px;
@@ -263,61 +295,27 @@
         <!-- Навигационные вкладки -->
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="switchTab('feed')">🌍 Поиск</button>
-            <button class="nav-tab" onclick="switchTab('baryga')">🎮 Игра "Барыга"</button>
+            <button class="nav-tab" onclick="switchTab('favorites')">⭐ Избранное</button>
             <button class="nav-tab" onclick="switchTab('app')">📝 Создать</button>
         </div>
 
         <!-- Раздел: Поиск предметов -->
         <div id="tabFeed" class="section active">
             <div class="card">
-                <h3 style="margin-top: 0;">🌍 Главный раздел (Поиск предметов)</h3>
-                <p style="color: var(--text-muted); font-size: 12px;">Здесь отображаются свежие объявления и найденные предметы на серверах.</p>
+                <h3 style="margin-top: 0; margin-bottom: 8px;">🌍 Главный раздел (Поиск)</h3>
+                <input type="text" id="searchInput" class="search-input-box" placeholder="🔍 Найти предмет или сервер..." oninput="renderFeed()">
+                <div id="feedListContainer" class="feed-items-container">
+                    <!-- Список объявлений -->
+                </div>
             </div>
         </div>
 
-        <!-- Раздел: Игра "Барыга" -->
-        <div id="tabBaryga" class="section">
+        <!-- Раздел: Избранное -->
+        <div id="tabFavorites" class="section">
             <div class="card">
-                <h3 style="margin-top:0; text-align:center;">💼 Симулятор Барыги</h3>
-                <div class="baryga-stats">
-                    <div class="baryga-stat-box">
-                        <span style="font-size: 10px; color: var(--text-muted);">Баланс</span>
-                        <div id="barygaMoney" style="font-size: 16px; font-weight: 900; color: #10b981;">0 $</div>
-                    </div>
-                    <div class="baryga-stat-box">
-                        <span style="font-size: 10px; color: var(--text-muted);">Доход за клик</span>
-                        <div id="barygaClickPower" style="font-size: 16px; font-weight: 900; color: #f97316;">+10 $</div>
-                    </div>
-                </div>
-
-                <button class="btn-main" onclick="clickBaryga()">💰 Скупить товар (Клик)</button>
-
-                <h4 style="margin-top: 20px; margin-bottom: 8px;">🛒 Магазин предметов</h4>
-                <div class="item-shop-list">
-                    <div class="shop-item">
-                        <div>
-                            <div style="font-weight:700;">📜 Лицензия Барыги</div>
-                            <div style="font-size:10px; color:var(--text-muted);">+50$ к клику</div>
-                            <div style="font-size:11px; color:#10b981;">Цена: 1,000 $</div>
-                        </div>
-                        <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(1000, 50, 0)">Купить</button>
-                    </div>
-                    <div class="shop-item">
-                        <div>
-                            <div style="font-weight:700;">🌟 Золотой кликер</div>
-                            <div style="font-size:10px; color:var(--text-muted);">+50,000$ к клику</div>
-                            <div style="font-size:11px; color:#10b981;">Цена: 50,000,000 $</div>
-                        </div>
-                        <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(50000000, 50000, 0)">Купить</button>
-                    </div>
-                    <div class="shop-item">
-                        <div>
-                            <div style="font-weight:700;">🤖 Авто-Скупщик PRO</div>
-                            <div style="font-size:10px; color:var(--text-muted);">Пассив: +100,000$/сек</div>
-                            <div style="font-size:11px; color:#10b981;">Цена: 150,000,000 $</div>
-                        </div>
-                        <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(150000000, 0, 100000)">Купить</button>
-                    </div>
+                <h3 style="margin-top: 0; margin-bottom: 8px;">⭐ Избранные объявления</h3>
+                <div id="favoritesListContainer" class="feed-items-container">
+                    <!-- Избранное -->
                 </div>
             </div>
         </div>
@@ -331,8 +329,13 @@
                     <span id="selectedServerText">🔥 [01] Phoenix</span>
                     <span>▼</span>
                 </button>
-                <input type="text" placeholder="Название предмета..." style="width:100%; padding:10px; background:#121318; border:1px solid var(--forum-card-border); color:#fff; border-radius:8px; box-sizing:border-box; margin-bottom:8px;">
-                <button class="btn-main">Опубликовать</button>
+                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px; margin-top: 8px;">Название предмета:</label>
+                <input type="text" id="newItemName" placeholder="Например: Шар +12, НФТ контейнер..." style="width:100%; padding:10px; background:#121318; border:1px solid var(--forum-card-border); color:#fff; border-radius:8px; box-sizing:border-box; margin-bottom:8px;">
+                
+                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Цена / Бюджет:</label>
+                <input type="text" id="newItemPrice" placeholder="Например: 50.000.000 $" style="width:100%; padding:10px; background:#121318; border:1px solid var(--forum-card-border); color:#fff; border-radius:8px; box-sizing:border-box; margin-bottom:12px;">
+
+                <button class="btn-main" onclick="publishItem()">Опубликовать</button>
             </div>
         </div>
 
@@ -345,26 +348,109 @@
     <div id="serverPickerModal" class="modal-overlay" onclick="closeServerPicker()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 style="margin-top:0; margin-bottom:12px;">Выбор сервера</h3>
-            <div class="picker-list" id="serverListContainer">
-                <!-- Скрипт заполнит список 33 серверов автоматически -->
-            </div>
+            <div class="picker-list" id="serverListContainer"></div>
             <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:5px;" onclick="closeServerPicker()">Закрыть</button>
         </div>
     </div>
 
-    <!-- Модальное окно Меню -->
+    <!-- Модальное окно: Боковое Меню (три точки) -->
     <div id="mainMenuModal" class="modal-overlay" onclick="closeMainMenuPicker()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 style="margin-top:0; margin-bottom:12px;">Инструменты и Меню</h3>
+            <div class="picker-item" onclick="openBarygaModal()"><span>🎮</span> <span>Игра "Барыга"</span></div>
+            <div class="picker-item" onclick="openProfileModal()"><span>👤</span> <span>Профиль</span></div>
             <div class="picker-item" onclick="selectMenuItem('🔔 Уведомления')"><span>🔔</span> <span>Уведомления</span></div>
-            <div class="picker-item" onclick="selectMenuItem('💬 Сообщения')"><span>💬</span> <span>Сообщения / Переписки</span></div>
-            <div class="picker-item" onclick="selectMenuItem('👤 Профиль')"><span>👤</span> <span>Профиль</span></div>
+            <div class="picker-item" onclick="selectMenuItem('💬 Сообщения / Переписки')"><span>💬</span> <span>Сообщения / Переписки</span></div>
             <div class="picker-item" onclick="selectMenuItem('👔 Менеджер')"><span>👔</span> <span>Менеджер</span></div>
+            <div class="picker-item" onclick="openAdminModal()" style="border-color: var(--anime-purple);"><span>🛠️</span> <span>Админ-панель (Управление)</span></div>
             <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:10px;" onclick="closeMainMenuPicker()">Закрыть</button>
         </div>
     </div>
 
+    <!-- Модальное окно: Игра "Барыга" (открывается из бокового меню) -->
+    <div id="barygaModal" class="modal-overlay" onclick="closeBarygaModal()">
+        <div class="modal-content" onclick="event.stopPropagation()" style="max-height: 85vh;">
+            <h3 style="margin-top:0; text-align:center;">💼 Симулятор Барыги</h3>
+            <div class="baryga-stats">
+                <div class="baryga-stat-box">
+                    <span style="font-size: 10px; color: var(--text-muted);">Баланс</span>
+                    <div id="barygaMoney" style="font-size: 16px; font-weight: 900; color: #10b981;">0 $</div>
+                </div>
+                <div class="baryga-stat-box">
+                    <span style="font-size: 10px; color: var(--text-muted);">Доход за клик</span>
+                    <div id="barygaClickPower" style="font-size: 16px; font-weight: 900; color: #f97316;">+10 $</div>
+                </div>
+            </div>
+
+            <button class="btn-main" onclick="clickBaryga()">💰 Скупить товар (Клик)</button>
+
+            <h4 style="margin-top: 20px; margin-bottom: 8px;">🛒 Магазин предметов</h4>
+            <div class="item-shop-list">
+                <div class="shop-item">
+                    <div>
+                        <div style="font-weight:700;">📜 Лицензия Барыги</div>
+                        <div style="font-size:10px; color:var(--text-muted);">+50$ к клику</div>
+                        <div style="font-size:11px; color:#10b981;">Цена: 1,000 $</div>
+                    </div>
+                    <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(1000, 50, 0)">Купить</button>
+                </div>
+                <div class="shop-item">
+                    <div>
+                        <div style="font-weight:700;">🌟 Золотой кликер</div>
+                        <div style="font-size:10px; color:var(--text-muted);">+50,000$ к клику</div>
+                        <div style="font-size:11px; color:#10b981;">Цена: 50,000,000 $</div>
+                    </div>
+                    <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(50000000, 50000, 0)">Купить</button>
+                </div>
+                <div class="shop-item">
+                    <div>
+                        <div style="font-weight:700;">🤖 Авто-Скупщик PRO</div>
+                        <div style="font-size:10px; color:var(--text-muted);">Пассив: +100,000$/сек</div>
+                        <div style="font-size:11px; color:#10b981;">Цена: 150,000,000 $</div>
+                    </div>
+                    <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(150000000, 0, 100000)">Купить</button>
+                </div>
+            </div>
+            <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:15px;" onclick="closeBarygaModal()">Закрыть игру</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Профиль -->
+    <div id="profileModal" class="modal-overlay" onclick="closeProfileModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 style="margin-top:0; margin-bottom:12px;">👤 Профиль игрока</h3>
+            <div style="background: #121318; padding: 12px; border-radius: 10px; border: 1px solid var(--forum-card-border); margin-bottom: 12px;">
+                <div style="font-size: 11px; color: var(--text-muted);">Никнейм в игре:</div>
+                <input type="text" id="profileUsername" value="Player_Arizona" style="width:100%; padding:8px; background:#0a0a0c; border:1px solid var(--forum-card-border); color:#fff; border-radius:6px; margin-top:4px; box-sizing:border-box;">
+                
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Основной сервер:</div>
+                <input type="text" id="profileServer" value="Phoenix [01]" style="width:100%; padding:8px; background:#0a0a0c; border:1px solid var(--forum-card-border); color:#fff; border-radius:6px; margin-top:4px; box-sizing:border-box;">
+            </div>
+            <button class="btn-main btn-green" onclick="saveProfile()">Сохранить профиль</button>
+            <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:8px;" onclick="closeProfileModal()">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Админ-панель (Управление объявлениями) -->
+    <div id="adminModal" class="modal-overlay" onclick="closeAdminModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 style="margin-top:0; margin-bottom:8px; color: var(--anime-pink);">🛠️ Панель Администратора</h3>
+            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Управление всеми активными объявлениями на сервере:</p>
+            <div id="adminItemsList" class="picker-list" style="max-height: 40vh;">
+                <!-- Список объявлений для удаления/редактирования -->
+            </div>
+            <button class="btn-main btn-red" onclick="clearAllFeed()" style="margin-top: 5px;">⚠️ Очистить всю ленту</button>
+            <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:8px;" onclick="closeAdminModal()">Закрыть</button>
+        </div>
+    </div>
+
     <script>
+        // Инициализация Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
+
         // Актуальные 33 сервера Arizona RP из @arizona_coin_bot
         const arizonaServers = [
             { id: 1, name: "Phoenix", emoji: "🔥" },
@@ -404,7 +490,13 @@
 
         let selectedServer = arizonaServers[0];
 
-        // Инициализация списка серверов в модальном окне
+        // Данные ленты и избранного из localStorage
+        let feedItems = JSON.parse(localStorage.getItem('arizona_feed_items')) || [
+            { id: 1, server: "🔥 [01] Phoenix", name: "Магический шар №3", price: "450.000.000 $", date: "Только что" }
+        ];
+        let favoriteIds = JSON.parse(localStorage.getItem('arizona_favorites')) || [];
+
+        // Инициализация серверов в пикере
         function initServerPicker() {
             const container = document.getElementById('serverListContainer');
             container.innerHTML = '';
@@ -418,14 +510,8 @@
             });
         }
 
-        function openServerPicker() {
-            document.getElementById('serverPickerModal').style.display = 'flex';
-        }
-
-        function closeServerPicker() {
-            document.getElementById('serverPickerModal').style.display = 'none';
-        }
-
+        function openServerPicker() { document.getElementById('serverPickerModal').style.display = 'flex'; }
+        function closeServerPicker() { document.getElementById('serverPickerModal').style.display = 'none'; }
         function selectServer(srv) {
             selectedServer = srv;
             const formattedId = String(srv.id).padStart(2, '0');
@@ -433,39 +519,204 @@
             closeServerPicker();
         }
 
-        // Игровые переменные "Барыга"
-        let barygaMoney = 0;
-        let barygaClickPower = 10;
-        let barygaPassiveIncome = 0;
-
+        // Переключение вкладок главной страницы
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
 
             if(tabId === 'feed') {
                 document.getElementById('tabFeed').classList.add('active');
-            } else if(tabId === 'baryga') {
-                document.getElementById('tabBaryga').classList.add('active');
+                renderFeed();
+            } else if(tabId === 'favorites') {
+                document.getElementById('tabFavorites').classList.add('active');
+                renderFavorites();
             } else if(tabId === 'app') {
                 document.getElementById('tabApp').classList.add('active');
             }
         }
 
-        function openMainMenuPicker() {
-            document.getElementById('mainMenuModal').style.display = 'flex';
+        // Рендер главной ленты объявлений
+        function renderFeed() {
+            const container = document.getElementById('feedListContainer');
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            container.innerHTML = '';
+
+            const filtered = feedItems.filter(item => 
+                item.name.toLowerCase().includes(searchQuery) || 
+                item.server.toLowerCase().includes(searchQuery)
+            );
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px;">Ничего не найдено</div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const isFav = favoriteIds.includes(item.id);
+                const card = document.createElement('div');
+                card.className = 'feed-item-card';
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--anime-pink); font-weight: 700;">
+                        <span>${item.server}</span>
+                        <span style="color: var(--text-muted);">${item.date}</span>
+                    </div>
+                    <div style="font-weight: 800; font-size: 14px; margin-top: 2px;">${item.name}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                        <span style="font-size: 13px; color: #10b981; font-weight: 700;">Цена: ${item.price}</span>
+                        <button onclick="toggleFavorite(${item.id})" style="background:none; border:none; cursor:pointer; font-size: 16px;">${isFav ? '⭐' : '☆'}</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
-        function closeMainMenuPicker() {
-            document.getElementById('mainMenuModal').style.display = 'none';
+        // Рендер избранного
+        function renderFavorites() {
+            const container = document.getElementById('favoritesListContainer');
+            container.innerHTML = '';
+
+            const favItems = feedItems.filter(item => favoriteIds.includes(item.id));
+
+            if (favItems.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px;">В избранном пока ничего нет</div>`;
+                return;
+            }
+
+            favItems.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'feed-item-card';
+                card.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--anime-pink); font-weight: 700;">
+                        <span>${item.server}</span>
+                        <span style="color: var(--text-muted);">${item.date}</span>
+                    </div>
+                    <div style="font-weight: 800; font-size: 14px; margin-top: 2px;">${item.name}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                        <span style="font-size: 13px; color: #10b981; font-weight: 700;">Цена: ${item.price}</span>
+                        <button onclick="toggleFavorite(${item.id})" style="background:none; border:none; cursor:pointer; font-size: 16px;">⭐</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
-        function selectMenuItem(name) {
-            alert('Открыт раздел: ' + name);
+        function toggleFavorite(id) {
+            if (favoriteIds.includes(id)) {
+                favoriteIds = favoriteIds.filter(favId => favId !== id);
+            } else {
+                favoriteIds.push(id);
+            }
+            localStorage.setItem('arizona_favorites', JSON.stringify(favoriteIds));
+            renderFeed();
+            renderFavorites();
+        }
+
+        // Публикация объявления
+        function publishItem() {
+            const nameInput = document.getElementById('newItemName');
+            const priceInput = document.getElementById('newItemPrice');
+
+            if (!nameInput.value.trim() || !priceInput.value.trim()) {
+                alert('Пожалуйста, заполните название и цену предмета!');
+                return;
+            }
+
+            const formattedId = String(selectedServer.id).padStart(2, '0');
+            const newItem = {
+                id: Date.now(),
+                server: `${selectedServer.emoji} [${formattedId}] ${selectedServer.name}`,
+                name: nameInput.value.trim(),
+                price: priceInput.value.trim(),
+                date: "Только что"
+            };
+
+            feedItems.unshift(newItem);
+            localStorage.setItem('arizona_feed_items', JSON.stringify(feedItems));
+
+            nameInput.value = '';
+            priceInput.value = '';
+
+            switchTab('feed');
+            alert('Объявление успешно опубликовано!');
+        }
+
+        // Боковое меню и модалки
+        function openMainMenuPicker() { document.getElementById('mainMenuModal').style.display = 'flex'; }
+        function closeMainMenuPicker() { document.getElementById('mainMenuModal').style.display = 'none'; }
+        function selectMenuItem(name) { alert('Открыт раздел: ' + name); closeMainMenuPicker(); }
+
+        // Игра Барыга в модалке
+        function openBarygaModal() { closeMainMenuPicker(); document.getElementById('barygaModal').style.display = 'flex'; updateBarygaUI(); }
+        function closeBarygaModal() { document.getElementById('barygaModal').style.display = 'none'; }
+
+        // Профиль в модалке
+        function openProfileModal() { closeMainMenuPicker(); document.getElementById('profileModal').style.display = 'flex'; }
+        function closeProfileModal() { document.getElementById('profileModal').style.display = 'none'; }
+        function saveProfile() {
+            alert('Профиль успешно сохранен!');
+            closeProfileModal();
+        }
+
+        // Админ-панель в модалке
+        function openAdminModal() {
             closeMainMenuPicker();
+            renderAdminList();
+            document.getElementById('adminModal').style.display = 'flex';
         }
+        function closeAdminModal() { document.getElementById('adminModal').style.display = 'none'; }
+
+        function renderAdminList() {
+            const container = document.getElementById('adminItemsList');
+            container.innerHTML = '';
+            if (feedItems.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:11px;">Нет объявлений</div>`;
+                return;
+            }
+            feedItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'picker-item';
+                div.style.justifyContent = 'space-between';
+                div.innerHTML = `
+                    <div style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:230px;">
+                        <b>${item.server}</b>: ${item.name} (${item.price})
+                    </div>
+                    <button onclick="deleteItem(${item.id})" class="btn-main btn-red" style="width:auto; padding:4px 8px; font-size:10px; margin:0;">Удалить</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function deleteItem(id) {
+            feedItems = feedItems.filter(item => item.id !== id);
+            favoriteIds = favoriteIds.filter(favId => favId !== id);
+            localStorage.setItem('arizona_feed_items', JSON.stringify(feedItems));
+            localStorage.setItem('arizona_favorites', JSON.stringify(favoriteIds));
+            renderAdminList();
+            renderFeed();
+            renderFavorites();
+        }
+
+        function clearAllFeed() {
+            if (confirm('Вы уверены, что хотите удалить ВСЕ объявления?')) {
+                feedItems = [];
+                favoriteIds = [];
+                localStorage.removeItem('arizona_feed_items');
+                localStorage.removeItem('arizona_favorites');
+                renderAdminList();
+                renderFeed();
+                renderFavorites();
+                alert('Лента очищена!');
+            }
+        }
+
+        // Переменные симулятора Барыга с сохранением
+        let barygaMoney = parseInt(localStorage.getItem('baryga_money')) || 0;
+        let barygaClickPower = parseInt(localStorage.getItem('baryga_click_power')) || 10;
+        let barygaPassiveIncome = parseInt(localStorage.getItem('baryga_passive')) || 0;
 
         function clickBaryga() {
             barygaMoney += barygaClickPower;
+            saveBaryga();
             updateBarygaUI();
         }
 
@@ -474,11 +725,18 @@
                 barygaMoney -= price;
                 barygaClickPower += addClick;
                 barygaPassiveIncome += addPassive;
+                saveBaryga();
                 updateBarygaUI();
                 alert('Успешно куплено!');
             } else {
                 alert('Не хватает денег!');
             }
+        }
+
+        function saveBaryga() {
+            localStorage.setItem('baryga_money', barygaMoney);
+            localStorage.setItem('baryga_click_power', barygaClickPower);
+            localStorage.setItem('baryga_passive', barygaPassiveIncome);
         }
 
         function updateBarygaUI() {
@@ -489,13 +747,19 @@
         setInterval(() => {
             if (barygaPassiveIncome > 0) {
                 barygaMoney += barygaPassiveIncome;
-                updateBarygaUI();
+                saveBaryga();
+                if (document.getElementById('barygaModal').style.display === 'flex') {
+                    updateBarygaUI();
+                }
             }
         }, 1000);
 
-        // Запуск инициализации при загрузке
+        // Инициализация при загрузке
         window.onload = () => {
             initServerPicker();
+            updateBarygaUI();
+            renderFeed();
+            renderFavorites();
         };
     </script>
 </body>

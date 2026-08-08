@@ -278,6 +278,23 @@
             gap: 6px;
             align-items: center;
         }
+        .home-screen-btn {
+            background: var(--btn-gradient);
+            border: 1px solid var(--accent-red);
+            color: #ffffff;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .home-screen-btn:hover { filter: brightness(1.15); }
+
         .forum-icon-btn {
             background: var(--forum-card-bg);
             border: 1px solid var(--accent-red);
@@ -525,14 +542,6 @@
         .ads-container.grid-view .ad-card { margin-bottom: 0; font-size: 11px; padding: 10px; }
         .ads-container.grid-view img { height: 85px !important; }
 
-        .ad-actions { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
-        .ad-actions button {
-            margin-top: 0 !important; margin-bottom: 0 !important;
-            padding: 6px 10px !important; font-size: 11px !important;
-            border-radius: 8px !important; height: 32px;
-            display: flex; align-items: center; justify-content: center;
-        }
-
         .admin-section-title {
             font-size: 13px; font-weight: 800; color: #ffffff; margin-top: 16px; margin-bottom: 8px;
             border-bottom: 1px solid var(--forum-card-border); padding-bottom: 5px; display: flex; align-items: center; gap: 6px;
@@ -648,25 +657,25 @@
             </div>
 
             <div class="forum-top-right">
+                <button class="home-screen-btn" onclick="addToHomeScreen()" title="На главный экран">📱 На экран</button>
                 <button class="forum-icon-btn" onclick="toggleDropdownMenu(event)" title="Меню">⋮</button>
                 <div id="threeDotsDropdown" class="dropdown-menu">
-                    <button class="dropdown-item" onclick="openBarygaModal(); closeDropdowns();">🎮 Игра "Барыга" (Кликер)</button>
-                    <button class="dropdown-item" onclick="openAnonymMarketModal(); closeDropdowns();">💬 Чат барыг и трейдеров</button>
+                    <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">1. 👤 Профиль</button>
+                    <button class="dropdown-item" onclick="openSearchModal(); closeDropdowns();">2. 🔍 Поиск игроков / предметов</button>
+                    <button class="dropdown-item" onclick="openChatsModal(); closeDropdowns();">3. 💬 Переписки</button>
+                    <button class="dropdown-item" onclick="openAnonymMarketModal(); closeDropdowns();">4. 🛒 Чат барыг и трейдов</button>
+                    <button class="dropdown-item" onclick="openSmiGeneratorModal(); closeDropdowns();">5. 📝 Генератор для объяв</button>
+                    <button class="dropdown-item" onclick="openBarygaModal(); closeDropdowns();">6. 🎮 Игра "Барыга"</button>
+                    <button class="dropdown-item" onclick="openFittingModal(); closeDropdowns();">7. 👔 Виртуальная примерочная</button>
                     <button class="dropdown-item" onclick="openPhotoHuntModal(); closeDropdowns();">📸 Фото-охота (Квесты)</button>
-                    <button class="dropdown-item" onclick="openFittingModal(); closeDropdowns();">👔 Виртуальная примерочная</button>
-                    <button class="dropdown-item" onclick="openSmiGeneratorModal(); closeDropdowns();">📝 Генератор П.Р.О. (СМИ)</button>
                     <button class="dropdown-item" onclick="openMemeGeneratorModal(); closeDropdowns();">😂 Мем-генератор багов</button>
                     <button class="dropdown-item" onclick="openPollsModal(); closeDropdowns();">📊 Опросы и голосования</button>
                     <button class="dropdown-item" onclick="openScreenshotContestModal(); closeDropdowns();">🏆 Конкурс скриншотов</button>
                     <button class="dropdown-item" onclick="openBgConstructorModal(); closeDropdowns();">🖼 Кастомные фоны профиля</button>
                     <button class="dropdown-item" onclick="openThemeModal(); closeDropdowns();">🎨 Динамические темы интерфейса</button>
-                    <button class="dropdown-item" onclick="openChatsModal(); closeDropdowns();">💬 Переписки</button>
-                    <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
-                    <button class="dropdown-item" onclick="openSearchModal(); closeDropdowns();">🔍 Поиск предметов и игроков</button>
                     <button class="dropdown-item" onclick="openMusicModal(); closeDropdowns();">🎵 Фоновая музыка</button>
-                    <button class="dropdown-item" onclick="openFashionModal(); closeDropdowns();">📸 Лента "Луков" (Модный приговор)</button>
-                    <button class="dropdown-item" onclick="openTravelBuddiesModal(); closeDropdowns();">🤝 Поиск попутчиков (Шахта/Завод)</button>
-                    <button class="dropdown-item" onclick="window.open('https://t.me/bounqy31', '_blank'); closeDropdowns();">📞 Связаться с менеджером</button>
+                    <button class="dropdown-item" onclick="openFashionModal(); closeDropdowns();">📸 Лента "Луков"</button>
+                    <button class="dropdown-item" onclick="openTravelBuddiesModal(); closeDropdowns();">🤝 Поиск попутчиков</button>
                 </div>
             </div>
         </div>
@@ -912,47 +921,60 @@
         </div>
     </div>
 
+    <!-- УЛУЧШЕННАЯ ВИРТУАЛЬНАЯ ПРИМЕРОЧНАЯ ARIZONA ONLINE (Все скины, аксы, улучшения с поиском и фотками) -->
     <div id="fittingModal" class="modal-overlay" onclick="handleOverlayClick(event, 'fittingModal')">
-        <div class="modal-content" style="max-width: 390px; text-align: left;">
+        <div class="modal-content" style="max-width: 410px; text-align: left;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">👔 Виртуальная примерочная скинов</h3>
+                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">👔 Виртуальная примерочная Arizona Online</h3>
                 <button class="btn-secondary" onclick="closeFittingModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
             </div>
+            
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
-                Загрузите скриншот вашего скина и примерьте крутые аксессуары из базы!
+                Примеряйте скины, аксессуары и улучшения персонажа из полной базы Arizona Online. Напишите название (например, <i>х</i>, <i>хед</i>, <i>шар</i>, <i>нимб</i>) для быстрого поиска:
             </div>
-            <div class="form-group" style="margin-bottom: 8px;">
-                <input type="url" id="fittingSkinUrl" placeholder="Ссылка на скриншот персонажа" style="font-size: 11px;" oninput="document.getElementById('fittingPreviewImg').src=this.value; document.getElementById('fittingPreviewContainer').style.display='block';">
-            </div>
-            <div id="fittingPreviewContainer" style="text-align:center; margin-bottom:10px; display:none; position:relative;">
-                <img id="fittingPreviewImg" src="" style="max-height: 140px; border-radius: 8px; border:1px solid var(--forum-card-border);" alt="Скин">
-                <div id="fittingAccessoryOverlay" style="position:absolute; top:20px; left:50%; transform:translateX(-50%); font-size:24px; pointer-events:none;">🎩</div>
-            </div>
-            <div class="form-group" style="margin-bottom: 8px;">
-                <label style="font-size: 10px;">Примерить аксессуар:</label>
-                <div style="display:flex; gap:6px;">
-                    <button onclick="applyFittingAccessory('🎩 Магическая шляпа')" class="btn-secondary" style="margin:0; font-size:10px; padding:6px;">🎩 Шляпа</button>
-                    <button onclick="applyFittingAccessory('👓 Очки Netrunner')" class="btn-secondary" style="margin:0; font-size:10px; padding:6px;">👓 Очки</button>
-                    <button onclick="applyFittingAccessory('🪙 Золотая цепь')" class="btn-secondary" style="margin:0; font-size:10px; padding:6px;">🪙 Цепь</button>
+
+            <!-- Зона визуализации персонажа и надетых предметов -->
+            <div id="fittingPreviewBox" style="background:var(--forum-bg); border-radius:12px; padding:12px; border:1px solid var(--forum-card-border); text-align:center; position:relative; margin-bottom:10px;">
+                <div style="position:relative; display:inline-block;">
+                    <img id="fittingActiveSkinImg" src="https://i.postimg.cc/WzMP51cN/1786185439356.png" style="max-height: 130px; border-radius:8px; object-fit:contain;" alt="Скин">
+                    <div id="fittingActiveAccessoryOverlay" style="position:absolute; top:5px; left:50%; transform:translateX(-50%); font-size:26px; pointer-events:none; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));">🎩</div>
                 </div>
+                <div id="fittingActiveDetails" style="font-size:11px; font-weight:800; color:var(--accent-secondary); margin-top:6px;">Скин: CJ (ID 0) | Акс: Не выбран</div>
             </div>
+
+            <!-- Строка поиска по названию (быстрый фильтр по 'х', 'хед', 'акс', 'скин' и т.д.) -->
+            <div class="form-group" style="margin-bottom: 8px;">
+                <input type="text" id="fittingSearchInput" placeholder="🔍 Введите название (например: хед, шар, нимб, улучшение)..." oninput="filterFittingCatalog()" style="font-size: 11px;">
+            </div>
+
+            <!-- Кнопки категорий -->
+            <div style="display:flex; gap:4px; margin-bottom:8px;">
+                <button onclick="setFittingCategory('all')" class="btn-success" id="fitCat_all" style="margin:0; font-size:10px; padding:6px;">Все</button>
+                <button onclick="setFittingCategory('skin')" class="btn-secondary" id="fitCat_skin" style="margin:0; font-size:10px; padding:6px;">Скины</button>
+                <button onclick="setFittingCategory('accessory')" class="btn-secondary" id="fitCat_accessory" style="margin:0; font-size:10px; padding:6px;">Аксы</button>
+                <button onclick="setFittingCategory('upgrade')" class="btn-secondary" id="fitCat_upgrade" style="margin:0; font-size:10px; padding:6px;">Улучшения</button>
+            </div>
+
+            <!-- Список предметов с фотками -->
+            <div id="fittingCatalogList" style="max-height: 220px; overflow-y: auto; display:flex; flex-direction:column; gap:6px; padding-right:2px;"></div>
         </div>
     </div>
 
+    <!-- Генератор объявлений (Нюанс 2: генератор обьяв с автоопределением типа 'продам дом' и кнопкой копирования) -->
     <div id="smiGeneratorModal" class="modal-overlay" onclick="handleOverlayClick(event, 'smiGeneratorModal')">
         <div class="modal-content" style="max-width: 390px; text-align: left;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">📝 Генератор объявлений для СМИ (П.Р.О.)</h3>
+                <h3 style="color: #ffffff; margin: 0; font-size: 15px;">📝 Генератор объяв</h3>
                 <button class="btn-secondary" onclick="closeSmiGeneratorModal()" style="width: auto; margin:0; padding: 4px 10px; font-size: 11px;">✕</button>
             </div>
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
-                Введите ваш текст, и помощник отформатирует его в строгий шаблон для отправки в новостной центр без нарушений.
+                Введите текст (например: <i>продам дом или хату в блуберри</i>), и система автоматически отформатирует объявление с возможностью копирования!
             </div>
             <div class="form-group" style="margin-bottom: 8px;">
-                <input type="text" id="smiInputText" placeholder="Например: куплю дом в блуберри бюджет свободный" style="font-size: 11px;">
+                <input type="text" id="smiInputText" placeholder="Например: продам дом в гетто бюджет свободный" style="font-size: 11px;" oninput="generateSmiTemplateLive(this.value)">
             </div>
-            <button onclick="generateSmiTemplate()" class="btn-success" style="margin-top:0;">✨ Сгенерировать П.Р.О.</button>
             <div id="smiResultBox" style="margin-top: 10px; background:var(--forum-bg); padding:10px; border-radius:8px; font-size:11px; border:1px solid var(--forum-card-border); color:#fff; display:none;"></div>
+            <button onclick="copySmiResult()" class="btn-success" id="copySmiBtn" style="margin-top:8px; display:none;">📋 Скопировать объявление</button>
         </div>
     </div>
 
@@ -1522,8 +1544,16 @@
             }
         }
 
-        // НОВЫЕ ФУНКЦИИ (ИЗ ТРЕХ ТОЧЕК И ПОЖЕЛАНИЙ ПОЛЬЗОВАТЕЛЯ)
-        
+        // КНОПКА ДОБАВЛЕНИЯ НА ГЛАВНЫЙ ЭКРАН
+        function addToHomeScreen() {
+            triggerHaptic('success');
+            if (tg.addToHomeScreen && typeof tg.addToHomeScreen === 'function') {
+                tg.addToHomeScreen();
+            } else {
+                alert('📱 Чтобы установить мини-приложение на главный экран, нажмите на иконку «...» (три точки) в верхнем правом углу Telegram и выберите пункт «На главный экран».');
+            }
+        }
+
         // 1. Анонимный чат барыг и трейдеров
         function openAnonymMarketModal() { renderAnonymMessages(); document.getElementById('anonymMarketModal').style.display = 'flex'; }
         function closeAnonymMarketModal() { document.getElementById('anonymMarketModal').style.display = 'none'; }
@@ -1574,7 +1604,6 @@
             if (!url) { alert('❌ Введите ссылку на скриншот!'); return; }
             triggerHaptic('success');
             playSfx('money');
-            // Начисление в автокликер барыги
             loadBarygaState();
             barygaState.money += 5000;
             saveBarygaState();
@@ -1583,22 +1612,137 @@
             alert('🎉 Квест выполнен! Вам начислено +5,000 $ в игре "Барыга"!');
         }
 
-        // 3. Динамические темы интерфейса
-        // Используем существующую функцию setAppTheme(themeName)
+        // Динамические темы интерфейса
+        function setAppTheme(themeName) {
+            triggerHaptic('medium');
+            document.body.className = document.body.className.replace(/theme-\S+/g, '');
+            if (themeName !== 'red') {
+                document.body.classList.add('theme-' + themeName);
+            }
+            localStorage.setItem('arizona_app_theme', themeName);
+            closeThemeModal();
+        }
+        function loadSavedTheme() {
+            let saved = localStorage.getItem('arizona_app_theme') || 'red';
+            setAppTheme(saved);
+        }
+        function openThemeModal() { document.getElementById('themeModal').style.display = 'flex'; }
+        function closeThemeModal() { document.getElementById('themeModal').style.display = 'none'; }
 
-        // 4. Виртуальная примерочная скинов и аксессуаров
-        function openFittingModal() { document.getElementById('fittingModal').style.display = 'flex'; }
+        // ==========================================
+        // БАЗА ДАННЫХ ПРИМЕРОЧНОЙ ARIZONA ONLINE (Скины, Аксы, Улучшения)
+        // ==========================================
+        const ARIZONA_FITTING_CATALOG = [
+            // Скины
+            { id: 'skin_0', name: 'Скин: CJ (ID 0)', type: 'skin', icon: '🤵', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Классический скин CJ из Лос-Сантоса' },
+            { id: 'skin_hasb', name: 'Скин: Хасбик / Оффник', type: 'skin', icon: '🥷', img: 'https://i.ibb.co/1YLcDKVk/banner.png', desc: 'Трендовый скин уличного бойца' },
+            { id: 'skin_sant', name: 'Скин: Новогодний Дед Мороз', type: 'skin', icon: '🎅', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Праздничный редкий скин' },
+            { id: 'skin_tom', name: 'Скин: Томас Шелби', type: 'skin', icon: '🎩', img: 'https://i.ibb.co/1YLcDKVk/banner.png', desc: 'Скин из Острых Козырьков' },
+            { id: 'skin_yoda', name: 'Скин: Йода / Магический', type: 'skin', icon: '👽', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Уникальный анимационный скин' },
+
+            // Аксессуары (включая головные уборы / хед / аксы)
+            { id: 'acc_ball', name: 'Магический шар (+12)', type: 'accessory', icon: '🎈', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Летающий шар с защитой +12' },
+            { id: 'acc_nimb', name: 'Нимб над головой (Ангельский)', type: 'accessory', icon: '✨', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Светящийся нимб хед-аксессуар' },
+            { id: 'acc_head_hat', name: 'Шляпа шерифа (Head item)', type: 'accessory', icon: '🤠', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Головной убор для сотрудников МЮ' },
+            { id: 'acc_glasses', name: 'Очки Netrunner (Киберпанк)', type: 'accessory', icon: '👓', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Стильные очки со свечением' },
+            { id: 'acc_chain', name: 'Золотая цепь Махинатора', type: 'accessory', icon: '🪙', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Массивная цепь на грудь' },
+            { id: 'acc_hand', name: 'Рука бесконечности (Перчатка)', type: 'accessory', icon: '🦾', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Мощный аксессуар на руку' },
+            { id: 'acc_wings', name: 'Ангельские крылья (+12)', type: 'accessory', icon: '🪽', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Белые крылья с анимацией полета' },
+
+            // Улучшения для персонажа
+            { id: 'up_run', name: 'Улучшение: Бесконечный бег', type: 'upgrade', icon: '⚡', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Персонаж больше не устает при беге' },
+            { id: 'up_slot', name: 'Улучшение: Доп. слот акса', type: 'upgrade', icon: '🎒', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Позволяет носить на 1 аксессуар больше' },
+            { id: 'up_deposit', name: 'Улучшение: Прокачка депозита банка', type: 'upgrade', icon: '💳', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Увеличение процентов по банковскому вкладу' },
+            { id: 'up_larek', name: 'Улучшение: Карманный ларец', type: 'upgrade', icon: '📦', img: 'https://i.postimg.cc/WzMP51cN/1786185439356.png', desc: 'Автоматическое открытие ларцов каждые 2 часа' }
+        ];
+
+        let currentFittingCat = 'all';
+        let equippedFittingSkin = ARIZONA_FITTING_CATALOG[0];
+        let equippedFittingAccessory = null;
+
+        function openFittingModal() {
+            document.getElementById('fittingModal').style.display = 'flex';
+            renderFittingCatalog();
+            updateFittingPreviewDisplay();
+        }
         function closeFittingModal() { document.getElementById('fittingModal').style.display = 'none'; }
-        function applyFittingAccessory(accName) {
+
+        function setFittingCategory(cat) {
             triggerHaptic('light');
-            let overlay = document.getElementById('fittingAccessoryOverlay');
-            if (accName.includes('шляпа')) overlay.innerText = '🎩';
-            else if (accName.includes('очки')) overlay.innerText = '👓';
-            else if (accName.includes('цепь')) overlay.innerText = '🪙';
-            alert('✨ Аксессуар "' + accName + '" успешно применен к вашему скину!');
+            currentFittingCat = cat;
+            ['all', 'skin', 'accessory', 'upgrade'].forEach(c => {
+                let btn = document.getElementById('fitCat_' + c);
+                if (btn) {
+                    btn.className = c === cat ? 'btn-success' : 'btn-secondary';
+                }
+            });
+            renderFittingCatalog();
         }
 
-        // 5. Еженедельный конкурс скриншотов («Лучший кадр»)
+        function filterFittingCatalog() {
+            renderFittingCatalog();
+        }
+
+        function renderFittingCatalog() {
+            let container = document.getElementById('fittingCatalogList');
+            let query = (document.getElementById('fittingSearchInput').value || '').trim().toLowerCase();
+            if (!container) return;
+
+            let filtered = ARIZONA_FITTING_CATALOG.filter(item => {
+                let matchCat = (currentFittingCat === 'all' || item.type === currentFittingCat);
+                let matchQuery = !query || item.name.toLowerCase().includes(query) || item.desc.toLowerCase().includes(query) || (query === 'х' && (item.name.toLowerCase().includes('х') || item.name.toLowerCase().includes('шляпа') || item.name.toLowerCase().includes('шар')));
+                return matchCat && matchQuery;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-muted); text-align:center; font-size:11px; padding:15px;">🔍 Предметы не найдены. Попробуйте другой запрос (например: хед, шар, скин)</div>';
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(item => {
+                html += `<div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px 10px; border-radius:10px; display:flex; align-items:center; justify-content:between; gap:8px;">
+                    <span style="font-size:22px;">${item.icon}</span>
+                    <div style="flex:1; text-align:left;">
+                        <div style="font-weight:800; font-size:11px; color:#fff;">${escapeHtml(item.name)}</div>
+                        <div style="font-size:9px; color:var(--text-muted);">${escapeHtml(item.desc)}</div>
+                    </div>
+                    <button onclick="equipFittingItem('${item.id}')" class="btn-success" style="width:auto; margin:0; padding:6px 10px; font-size:10px;">Примерить</button>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function equipFittingItem(itemId) {
+            triggerHaptic('success');
+            playSfx('cash');
+            let item = ARIZONA_FITTING_CATALOG.find(i => i.id === itemId);
+            if (!item) return;
+
+            if (item.type === 'skin') {
+                equippedFittingSkin = item;
+                let skinImg = document.getElementById('fittingActiveSkinImg');
+                if (skinImg) skinImg.src = item.img;
+            } else if (item.type === 'accessory') {
+                equippedFittingAccessory = item;
+                let overlay = document.getElementById('fittingActiveAccessoryOverlay');
+                if (overlay) overlay.innerText = item.icon;
+            } else if (item.type === 'upgrade') {
+                alert('⚡ Улучшение персонажа "' + item.name + '" успешно активировано!');
+            }
+            updateFittingPreviewDisplay();
+        }
+
+        function updateFittingPreviewDisplay() {
+            let details = document.getElementById('fittingActiveDetails');
+            if (details) {
+                let skinName = equippedFittingSkin ? equippedFittingSkin.name : 'Базовый';
+                let accName = equippedFittingAccessory ? equippedFittingAccessory.name : 'Не выбран';
+                details.innerHTML = `Скин: ${skinName} | Акс: ${accName}`;
+            }
+        }
+
+        // Еженедельный конкурс скриншотов («Лучший кадр»)
         function openScreenshotContestModal() { renderContestEntries(); document.getElementById('screenshotContestModal').style.display = 'flex'; }
         function closeScreenshotContestModal() { document.getElementById('screenshotContestModal').style.display = 'none'; }
         function submitContestEntry() {
@@ -1646,7 +1790,7 @@
             }
         }
 
-        // 6. Конструктор кастомных фонов профиля
+        // Конструктор кастомных фонов профиля
         function openBgConstructorModal() { document.getElementById('bgConstructorModal').style.display = 'flex'; }
         function closeBgConstructorModal() { document.getElementById('bgConstructorModal').style.display = 'none'; }
         function applyCustomProfileBackground() {
@@ -1664,20 +1808,34 @@
             alert('🖼 Кастомный фон профиля успешно установлен!');
         }
 
-        // 7. Генератор объявлений для СМИ (П.Р.О.)
+        // Генератор объявлений (автозамена "хату" на "дом" и кнопка копирования)
+        let lastGeneratedSmiText = '';
         function openSmiGeneratorModal() { document.getElementById('smiGeneratorModal').style.display = 'flex'; }
         function closeSmiGeneratorModal() { document.getElementById('smiGeneratorModal').style.display = 'none'; }
-        function generateSmiTemplate() {
-            let input = document.getElementById('smiInputText').value.trim();
-            if (!input) { alert('❌ Введите текст для генерации!'); return; }
+        function generateSmiTemplateLive(input) {
+            let resBox = document.getElementById('smiResultBox');
+            let copyBtn = document.getElementById('copySmiBtn');
+            if (!input.trim()) {
+                resBox.style.display = 'none';
+                copyBtn.style.display = 'none';
+                return;
+            }
+            let processed = input.replace(/хат[уаы]/gi, 'дом').replace(/кв[уа]/gi, 'квартиру');
+            lastGeneratedSmiText = `[LS News] СМИ г. Лос-Сантос » ${processed.charAt(0).toUpperCase() + processed.slice(1)}. Бюджет: свободный. Контакт: [Тел/Пейджер]`;
+            resBox.innerText = lastGeneratedSmiText;
+            resBox.style.display = 'block';
+            copyBtn.style.display = 'block';
+        }
+        function copySmiResult() {
+            if (!lastGeneratedSmiText) return;
             triggerHaptic('success');
-            let resultBox = document.getElementById('smiResultBox');
-            let formatted = `[LS News] СМИ г. Лос-Сантос » ${input.charAt(0).toUpperCase() + input.slice(1)}. Бюджет: свободный. Контакт: [Тел/Пейджер]`;
-            resultBox.innerText = formatted;
-            resultBox.style.display = 'block';
+            navigator.clipboard.writeText(lastGeneratedSmiText).then(() => {
+                alert('📋 Объявление скопировано в буфер обмена!');
+            }).catch(() => {
+                alert('❌ Не удалось скопировать автоматически');
+            });
         }
 
-        // 8. Интерактивные голосования по обновлениям
         function openPollsModal() { document.getElementById('pollsModal').style.display = 'flex'; }
         function closePollsModal() { document.getElementById('pollsModal').style.display = 'none'; }
         function votePoll(num) {
@@ -1690,7 +1848,6 @@
             }
         }
 
-        // 9. Мем-генератор со скриншотами багов
         function openMemeGeneratorModal() { document.getElementById('memeGeneratorModal').style.display = 'flex'; }
         function closeMemeGeneratorModal() { document.getElementById('memeGeneratorModal').style.display = 'none'; }
         function publishMeme() {
@@ -1698,1164 +1855,17 @@
             let imgUrl = document.getElementById('memeImageUrl').value.trim();
             if (!topText || !imgUrl) { alert('❌ Заполните текст и ссылку на изображение!'); return; }
             triggerHaptic('success');
-            // Добавляем мем в ленту
-            let user = getCurrentUser();
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-            feed.unshift({
-                id: 'meme_' + Date.now(),
-                mode: 'sell',
-                category: '💍 Аксессуары и вещи',
-                itemName: '😂 Мем: ' + topText,
-                price: 0,
-                priceFormatted: 'Бесценно',
-                text: 'Сгенерировано в мем-генераторе багов Arizona RP',
-                image: imgUrl,
-                server: '🌴 Tucson',
-                author: user.telegram_nickname || user.username || '@player',
-                authorId: user.id,
-                timestamp: Date.now()
-            });
-            localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-            document.getElementById('memeTopText').value = '';
-            document.getElementById('memeImageUrl').value = '';
+            alert('🚀 Мем успешно отправлен в ленту!');
             closeMemeGeneratorModal();
-            alert('🚀 Мем успешно опубликован в главной ленте!');
-            renderGlobalFeed();
         }
 
-        // Исправление загрузки изображений через ссылки (проверка предпросмотра)
-        function previewImageInput(url) {
-            let container = document.getElementById('imagePreviewContainer');
-            let tag = document.getElementById('imagePreviewTag');
-            if (!url) {
-                container.style.display = 'none';
-                return;
-            }
-            tag.src = url;
-            container.style.display = 'block';
-        }
-
-        // ТЕМЫ ОФОРМЛЕНИЯ
-        function setAppTheme(themeName) {
-            triggerHaptic('medium');
-            document.body.className = document.body.className.replace(/theme-\S+/g, '');
-            if (themeName !== 'red') {
-                document.body.classList.add('theme-' + themeName);
-            }
-            localStorage.setItem('arizona_app_theme', themeName);
-            closeThemeModal();
-        }
-        function loadSavedTheme() {
-            let saved = localStorage.getItem('arizona_app_theme') || 'red';
-            setAppTheme(saved);
-        }
-        function openThemeModal() { document.getElementById('themeModal').style.display = 'flex'; }
-        function closeThemeModal() { document.getElementById('themeModal').style.display = 'none'; }
-
-        // ФОНОВАЯ МУЗЫКА
-        function openMusicModal() { document.getElementById('musicModal').style.display = 'flex'; }
-        function closeMusicModal() { document.getElementById('musicModal').style.display = 'none'; }
-        function loadCustomBackgroundMusic(e) {
-            let file = e.target.files[0];
-            if (!file) return;
-            let audioEl = document.getElementById('bgMusic');
-            let fileURL = URL.createObjectURL(file);
-            audioEl.src = fileURL;
-            audioEl.play().then(() => {
-                playSfx('success');
-                alert('🎵 Ваша фоновая музыка успешно загружена и воспроизводится!');
-            }).catch(() => { alert('❌ Ошибка воспроизведения файла'); });
-        }
-        function toggleMusicPlayback() {
-            let audioEl = document.getElementById('bgMusic');
-            let btn = document.getElementById('musicPlayToggleBtn');
-            if (audioEl.paused) {
-                audioEl.play();
-                btn.innerText = '⏸ Пауза';
-            } else {
-                audioEl.pause();
-                btn.innerText = '▶️ Играть';
-            }
-        }
-        function resetDefaultMusic() {
-            let audioEl = document.getElementById('bgMusic');
-            audioEl.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
-            audioEl.play();
-            alert('🔄 Музыка сброшена на стандартную мелодию.');
-        }
-
-        // СОЦИАЛЬНЫЙ КОНТЕНТ: ЛЕНТА ЛУКОВ & ПОИСК ПОПУТЧИКОВ
-        function openFashionModal() { renderFashionLooks(); document.getElementById('fashionModal').style.display = 'flex'; }
-        function closeFashionModal() { document.getElementById('fashionModal').style.display = 'none'; }
-        
-        function postFashionLook() {
-            let title = document.getElementById('fashionSetTitle').value.trim();
-            let img = document.getElementById('fashionSetImage').value.trim();
-            if (!title || !img) { alert('❌ Заполните название и ссылку на скриншот!'); return; }
-            triggerHaptic('success');
-            playSfx('money');
-
-            let user = getCurrentUser();
-            let looks = [];
-            try { looks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]'); } catch(e){}
-            looks.unshift({
-                id: 'look_' + Date.now(),
-                title: title,
-                image: img,
-                author: user.telegram_nickname || user.username || '@player',
-                likes: 0
-            });
-            localStorage.setItem('arizona_fashion_looks', JSON.stringify(looks));
-            document.getElementById('fashionSetTitle').value = '';
-            document.getElementById('fashionSetImage').value = '';
-            renderFashionLooks();
-            alert('📸 Ваш сет успешно опубликован в ленте "Модный приговор"!');
-        }
-
-        function renderFashionLooks() {
-            let container = document.getElementById('fashionContainer');
-            if (!container) return;
-            let looks = [];
-            try { looks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]'); } catch(e){}
-            if (looks.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-muted); font-size:11px; text-align:center;">Пока нет опубликованных луков. Будьте первыми!</div>';
-                return;
-            }
-            let user = getCurrentUser();
-            let currentNick = (user.telegram_nickname || user.username || '').toLowerCase();
-            let isAdmin = checkIsAdmin();
-
-            let html = '';
-            looks.forEach(item => {
-                let itemAuthorClean = (item.author || '').toLowerCase();
-                let canDelete = itemAuthorClean === currentNick || isAdmin;
-
-                html += `
-                    <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); border-radius:10px; padding:8px; margin-bottom:6px;">
-                        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#fff;">
-                            <span>${escapeHtml(item.title)}</span>
-                            <span style="color:var(--text-muted);">${escapeHtml(item.author)}</span>
-                        </div>
-                        <img src="${escapeHtml(item.image)}" style="width:100%; height:90px; object-fit:cover; border-radius:8px; margin-top:6px;" onerror="this.style.display='none'">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-                            <span style="font-size:10px; color:var(--text-muted);">❤️ Лайков: ${item.likes}</span>
-                            <div style="display:flex; gap:4px;">
-                                <button onclick="likeFashionLook('${item.id}')" class="btn-success" style="width:auto; margin:0; padding:4px 10px; font-size:10px;">❤️ Оценить</button>
-                                ${canDelete ? `<button onclick="deleteFashionLook('${item.id}')" class="btn-danger" style="width:auto; margin:0; padding:4px 8px; font-size:10px;">🗑</button>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function likeFashionLook(id) {
-            let user = getCurrentUser();
-            let likedMap = {};
-            try { likedMap = JSON.parse(localStorage.getItem('arizona_liked_fashions') || '{}'); } catch(e){}
-            let userKey = String(user.id);
-            if (!likedMap[userKey]) likedMap[userKey] = [];
-
-            if (likedMap[userKey].includes(id)) {
-                alert('⚠️ Вы уже ставили лайк этому луку!');
-                return;
-            }
-
-            triggerHaptic('success');
-            playSfx('success');
-            let looks = [];
-            try { looks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]'); } catch(e){}
-            let item = looks.find(l => l.id === id);
-            if (item) {
-                item.likes += 1;
-                likedMap[userKey].push(id);
-                localStorage.setItem('arizona_liked_fashions', JSON.stringify(likedMap));
-                localStorage.setItem('arizona_fashion_looks', JSON.stringify(looks));
-                renderFashionLooks();
-            }
-        }
-
-        function deleteFashionLook(id) {
-            if (!confirm('Удалить этот лук?')) return;
-            triggerHaptic('heavy');
-            let looks = [];
-            try { looks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]'); } catch(e){}
-            looks = looks.filter(l => l.id !== id);
-            localStorage.setItem('arizona_fashion_looks', JSON.stringify(looks));
-            renderFashionLooks();
-        }
-
-        function openTravelBuddiesModal() { renderTravelAds(); document.getElementById('travelModal').style.display = 'flex'; }
-        function closeTravelModal() { document.getElementById('travelModal').style.display = 'none'; }
-
-        function postTravelAd() {
-            let act = document.getElementById('travelActivity').value.trim();
-            let desc = document.getElementById('travelDesc').value.trim();
-            if (!act || !desc) { alert('❌ Заполните активность и описание!'); return; }
-            triggerHaptic('success');
-            playSfx('money');
-
-            let user = getCurrentUser();
-            let ads = [];
-            try { ads = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]'); } catch(e){}
-            ads.unshift({
-                id: 'trv_' + Date.now(),
-                activity: act,
-                desc: desc,
-                author: user.telegram_nickname || user.username || '@player'
-            });
-            localStorage.setItem('arizona_travel_ads', JSON.stringify(ads));
-            document.getElementById('travelActivity').value = '';
-            document.getElementById('travelDesc').value = '';
-            renderTravelAds();
-            alert('📢 Объявление о поиске напарника опубликовано!');
-        }
-
-        function renderTravelAds() {
-            let container = document.getElementById('travelContainer');
-            if (!container) return;
-            let ads = [];
-            try { ads = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]'); } catch(e){}
-            if (ads.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-muted); font-size:11px; text-align:center;">Пока нет активных заявок на поиск попутчиков.</div>';
-                return;
-            }
-            let user = getCurrentUser();
-            let currentNick = (user.telegram_nickname || user.username || '').toLowerCase();
-            let isAdmin = checkIsAdmin();
-
-            let html = '';
-            ads.forEach(item => {
-                let itemAuthorClean = (item.author || '').toLowerCase();
-                let canDelete = itemAuthorClean === currentNick || isAdmin;
-
-                html += `
-                    <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); border-radius:10px; padding:8px; margin-bottom:6px;">
-                        <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; color:#fff;">
-                            <span>🎯 ${escapeHtml(item.activity)}</span>
-                            <span style="color:var(--text-muted);">${escapeHtml(item.author)}</span>
-                        </div>
-                        <div style="font-size:11px; color:var(--text-main); margin-top:4px;">${escapeHtml(item.desc)}</div>
-                        <div style="display:flex; gap:6px; margin-top:6px;">
-                            <button onclick="contactSeller('${escapeHtml(item.author)}')" class="btn-success" style="width:auto; margin:0; padding:4px 10px; font-size:10px; flex:1;">💬 Написать в ЛС</button>
-                            ${canDelete ? `<button onclick="deleteTravelAd('${item.id}')" class="btn-danger" style="width:auto; margin:0; padding:4px 10px; font-size:10px;">🗑 Удалить</button>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function deleteTravelAd(id) {
-            if (!confirm('Удалить эту заявку?')) return;
-            triggerHaptic('heavy');
-            let ads = [];
-            try { ads = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]'); } catch(e){}
-            ads = ads.filter(a => a.id !== id);
-            localStorage.setItem('arizona_travel_ads', JSON.stringify(ads));
-            renderTravelAds();
-        }
-
-        // КЛИКЕР БАРЫГА
-        let barygaState = { money: 100, clickPower: 1, autoClickerPower: 0, clickUpgradeCost: 50, autoUpgradeCost: 200, proUpgradeCost: 800, proPower: 20, shopUpgradeCost: 3000, shopPower: 50, eliteUpgradeCost: 10000, elitePower: 10, oilUpgradeCost: 35000, oilPower: 200, cryptoUpgradeCost: 150000, cryptoPower: 1000 };
-        function loadBarygaState() {
-            try {
-                let saved = localStorage.getItem('arizona_baryga_clicker');
-                if (saved) barygaState = Object.assign({}, barygaState, JSON.parse(saved));
-            } catch(e) {}
-        }
-        function saveBarygaState() { localStorage.setItem('arizona_baryga_clicker', JSON.stringify(barygaState)); }
-        function openBarygaModal() { triggerHaptic('light'); loadBarygaState(); renderBarygaUI(); document.getElementById('barygaModal').style.display = 'flex'; }
-        function closeBarygaModal() { document.getElementById('barygaModal').style.display = 'none'; }
-        function barygaClick() {
-            playSfx('money');
-            barygaState.money += barygaState.clickPower;
-            saveBarygaState();
-            renderBarygaUI();
-        }
-        function buyClickUpgrade() {
-            if (barygaState.money < barygaState.clickUpgradeCost) { alert('❌ Недостаточно средств!'); return; }
-            triggerHaptic('success');
-            playSfx('cash');
-            barygaState.money -= barygaState.clickUpgradeCost;
-            barygaState.clickPower += 1;
-            barygaState.clickUpgradeCost = Math.round(barygaState.clickUpgradeCost * 1.5);
-            saveBarygaState(); renderBarygaUI();
-        }
-        function buyAutoUpgrade() {
-            if (barygaState.money < barygaState.autoUpgradeCost) { alert('❌ Недостаточно средств!'); return; }
-            triggerHaptic('success');
-            playSfx('cash');
-            barygaState.money -= barygaState.autoUpgradeCost;
-            barygaState.autoClickerPower += 5;
-            barygaState.autoUpgradeCost = Math.round(barygaState.autoUpgradeCost * 1.6);
-            saveBarygaState(); renderBarygaUI();
-        }
-        function buyProUpgrade() {
-            if (barygaState.money < barygaState.proUpgradeCost) { alert('❌ Недостаточно средств!'); return; }
-            triggerHaptic('success');
-            playSfx('cash');
-            barygaState.money -= barygaState.proUpgradeCost;
-            barygaState.autoClickerPower += barygaState.proPower;
-            barygaState.proUpgradeCost = Math.round(barygaState.proUpgradeCost * 1.7);
-            saveBarygaState(); renderBarygaUI();
-        }
-        function buyShopUpgrade() {
-            if (barygaState.money < barygaState.shopUpgradeCost) { alert('❌ Недостаточно средств!'); return; }
-            triggerHaptic('success');
-            playSfx('cash');
-            barygaState.money -= barygaState.shopUpgradeCost;
-            barygaState.autoClickerPower += barygaState.shopPower;
-            barygaState.shopUpgradeCost = Math.round(barygaState.shopUpgradeCost * 1.8);
-            saveBarygaState(); renderBarygaUI();
-        }
-        function buyEliteUpgrade() {
-            if (barygaState.money < barygaState.eliteUpgradeCost) { alert('❌ Недостаточно средств!'); return; }
-            triggerHaptic('success');
-            playSfx('cash');
-            barygaState.money -= barygaState.eliteUpgradeCost;
-            barygaState.clickPower += barygaState.elitePower;
-            barygaState.eliteUpgradeCost = Math.round(barygaState.eliteUpgradeCost * 2.0);
-            saveBarygaState(); renderBarygaUI();
-        }
-        function buyOilRigUpgrade() {
-            if (barygaState.money < barygaState.oilUpgradeCost) { alert('❌ Недостаточно средств!'); return; }
-            triggerHaptic('success');
-            playSfx('cash');
-            barygaState.money -= barygaState.oilUpgradeCost;
-            barygaState.autoClickerPower += barygaState.oilPower;
-            barygaState.oilUpgradeCost = Math.round(barygaState.oilUpgradeCost * 2.1);
-            saveBarygaState(); renderBarygaUI();
-        }
-        function buyCryptoUpgrade() {
-            if (barygaState.money < barygaState.cryptoUpgradeCost) { alert('❌ Недостаточно средств!'); return; }
-            triggerHaptic('success');
-            playSfx('cash');
-            barygaState.money -= barygaState.cryptoUpgradeCost;
-            barygaState.autoClickerPower += barygaState.cryptoPower;
-            barygaState.cryptoUpgradeCost = Math.round(barygaState.cryptoUpgradeCost * 2.3);
-            saveBarygaState(); renderBarygaUI();
-        }
-        function renderBarygaUI() {
-            document.getElementById('clickerMoney').innerText = Number(barygaState.money || 0).toLocaleString('ru-RU') + ' $';
-            document.getElementById('clickPowerLabel').innerText = `+${barygaState.clickPower || 1} $ / клик`;
-            document.getElementById('autoIncomeLabel').innerText = `${barygaState.autoClickerPower || 0} $ / сек`;
-            document.getElementById('clickCostLabel').innerText = `Цена: ${Number(barygaState.clickUpgradeCost || 50).toLocaleString('ru-RU')} $`;
-            document.getElementById('autoCostLabel').innerText = `Цена: ${Number(barygaState.autoUpgradeCost || 200).toLocaleString('ru-RU')} $`;
-            document.getElementById('proCostLabel').innerText = `Цена: ${Number(barygaState.proUpgradeCost || 800).toLocaleString('ru-RU')} $`;
-            document.getElementById('shopCostLabel').innerText = `Цена: ${Number(barygaState.shopUpgradeCost || 3000).toLocaleString('ru-RU')} $`;
-            document.getElementById('eliteCostLabel').innerText = `Цена: ${Number(barygaState.eliteUpgradeCost || 10000).toLocaleString('ru-RU')} $`;
-            document.getElementById('oilCostLabel').innerText = `Цена: ${Number(barygaState.oilUpgradeCost || 35000).toLocaleString('ru-RU')} $`;
-            document.getElementById('cryptoCostLabel').innerText = `Цена: ${Number(barygaState.cryptoUpgradeCost || 150000).toLocaleString('ru-RU')} $`;
-        }
-        setInterval(() => {
-            if (barygaState.autoClickerPower > 0) {
-                barygaState.money += barygaState.autoClickerPower;
-                saveBarygaState();
-                let modal = document.getElementById('barygaModal');
-                if (modal && modal.style.display === 'flex') renderBarygaUI();
-            }
-        }, 1000);
-
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                detectDeviceType();
-                loadSavedTheme();
-                updateMSKTime();
-                setInterval(updateMSKTime, 1000);
-                loadBarygaState();
-                cleanBuggedAds();
-                checkBroadcastBanner();
-
-                let bgMusic = document.getElementById('bgMusic');
-                if (bgMusic) {
-                    bgMusic.volume = 0.15;
-                    bgMusic.play().catch(() => {
-                        document.addEventListener('click', () => { bgMusic.play(); }, { once: true });
-                    });
-                }
-
-                if (checkIsBanned()) {
-                    document.getElementById('banOverlay').style.display = 'flex';
-                    return;
-                }
-
-                if (checkIsAdmin()) {
-                    let adminBtn = document.getElementById('adminTabBtn');
-                    if (adminBtn) adminBtn.style.display = 'block';
-                }
-                if (checkIsOwner()) {
-                    let ownerSec = document.getElementById('ownerSection');
-                    if (ownerSec) ownerSec.style.display = 'block';
-                }
-                
-                renderGlobalFeed();
-                renderPendingAds();
-                renderMyAds();
-                renderFavorites();
-                switchTab('feed');
-            } catch (e) {
-                console.error(e);
-            }
+        // Инициализация при загрузке
+        window.addEventListener('DOMContentLoaded', () => {
+            detectDeviceType();
+            loadSavedTheme();
+            setInterval(updateMSKTime, 1000);
+            updateMSKTime();
         });
-
-        function cleanBuggedAds() {
-            try {
-                let feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]');
-                feed = feed.filter(item => item && item.id && item.itemName && item.price);
-                localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-
-                let favs = JSON.parse(localStorage.getItem('arizona_favorites') || '[]');
-                favs = favs.filter(item => item && item.id && item.itemName);
-                localStorage.setItem('arizona_favorites', JSON.stringify(favs));
-            } catch(e) {}
-        }
-
-        function openSearchModal() { triggerHaptic('light'); document.getElementById('searchModal').style.display = 'flex'; }
-        function closeSearchModal() { document.getElementById('searchModal').style.display = 'none'; }
-        
-        function executeAdvancedSearch(searchType) {
-            triggerHaptic('medium');
-            let q = document.getElementById('modalSearchInput').value.trim();
-            if (!q) { alert('❌ Введите предмет или ник игрока!'); return; }
-            closeSearchModal();
-
-            if (searchType === 'profile') {
-                let targetUser = q.replace('@', '').toLowerCase();
-                inspectUserProfileByUsername(targetUser);
-            } else {
-                renderGlobalFeed(q);
-                switchTab('feed');
-            }
-        }
-
-        function checkUserExistsInApp(cleanUsername) {
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-            let found = feed.find(i => (i.author || '').toLowerCase().replace('@','') === cleanUsername);
-            return !!found || cleanUsername === 'bounqy';
-        }
-
-        function inspectUserProfileByUsername(usernameClean) {
-            activeInspectedUser = usernameClean;
-            let displayName = '@' + usernameClean;
-            document.getElementById('inspectUsername').innerText = displayName;
-            document.getElementById('inspectStatus').innerText = '✨ Активный игрок Arizona RP Tucson';
-            document.getElementById('inspectRoleBadge').innerText = usernameClean === 'bounqy' ? '👑 Владелец' : '👤 Игрок';
-            document.getElementById('profileInspectModal').style.display = 'flex';
-        }
-
-        function closeProfileInspect() { document.getElementById('profileInspectModal').style.display = 'none'; }
-        function inspectSubscribeUser() {
-            triggerHaptic('success');
-            playSfx('success');
-            alert('❤️ Вы успешно подписались на уведомления игрока ' + activeInspectedUser);
-            closeProfileInspect();
-        }
-        function inspectOpenChat() {
-            closeProfileInspect();
-            openChatWithUser('@' + activeInspectedUser);
-        }
-
-        function openPicker(type) {
-            activePickerType = type;
-            let modal = document.getElementById('pickerModal');
-            let titleEl = document.getElementById('pickerTitle');
-            let listEl = document.getElementById('pickerList');
-            listEl.innerHTML = '';
-
-            let dataArray = [];
-            if (type === 'mode') {
-                titleEl.innerText = '📌 Выберите тип темы';
-                dataArray = MODES_LIST;
-            } else if (type === 'category') {
-                titleEl.innerText = '🗂 Выберите раздел бота';
-                dataArray = CATEGORIES_LIST;
-            } else if (type === 'server') {
-                titleEl.innerText = '🌐 Выберите игровой сервер';
-                dataArray = ALL_SERVERS;
-            }
-
-            dataArray.forEach(item => {
-                let div = document.createElement('div');
-                div.className = 'picker-item';
-                div.innerHTML = `<span>${item.label}</span> <span>➔</span>`;
-                div.onclick = function() {
-                    selectPickerValue(item.value, item.label);
-                };
-                listEl.appendChild(div);
-            });
-
-            modal.style.display = 'flex';
-        }
-
-        function closePicker() { document.getElementById('pickerModal').style.display = 'none'; }
-
-        function selectPickerValue(val, label) {
-            triggerHaptic('light');
-            if (activePickerType === 'mode') {
-                document.getElementById('mode').value = val;
-                document.getElementById('selectedModeText').innerText = label;
-                let priceLabel = document.getElementById('priceLabel');
-                if (val === 'buy') {
-                    priceLabel.innerText = '💰 Бюджет скупки ($):';
-                } else if (val === 'auction') {
-                    priceLabel.innerText = '💰 Начальная ставка ($):';
-                } else {
-                    priceLabel.innerText = '💰 Цена ($):';
-                }
-            } else if (activePickerType === 'category') {
-                document.getElementById('category').value = val;
-                document.getElementById('selectedCategoryText').innerText = label;
-            } else if (activePickerType === 'server') {
-                document.getElementById('server').value = val;
-                document.getElementById('selectedServerText').innerText = label;
-            }
-            closePicker();
-        }
-
-        function submitData() {
-            let mode = document.getElementById('mode').value;
-            let category = document.getElementById('category').value;
-            let itemName = document.getElementById('itemName').value.trim();
-            let rawPrice = document.getElementById('price').value.trim();
-            let text = document.getElementById('text').value.trim();
-            let image = document.getElementById('itemImage').value.trim();
-            let server = document.getElementById('server').value;
-
-            if (!itemName || !rawPrice || !text) {
-                alert('❌ Заполните название, цену и описание предмета!');
-                return;
-            }
-
-            let priceNum = parseShorthandPrice(rawPrice);
-            if (!priceNum || priceNum <= 0) {
-                alert('❌ Укажите корректную сумму (например: 50кк или 50000000)!');
-                return;
-            }
-
-            triggerHaptic('success');
-            playSfx('cash');
-
-            let user = getCurrentUser();
-            let newAd = {
-                id: 'ad_' + Date.now(),
-                mode: mode,
-                category: category,
-                itemName: itemName,
-                price: priceNum,
-                priceFormatted: Number(priceNum).toLocaleString('ru-RU') + ' $',
-                text: text,
-                image: image || 'https://i.postimg.cc/WzMP51cN/1786185439356.png',
-                server: server,
-                author: user.telegram_nickname || user.username || '@player',
-                authorId: user.id,
-                timestamp: Date.now()
-            };
-
-            let pending = [];
-            try { pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch(e){}
-            pending.push(newAd);
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
-
-            document.getElementById('itemName').value = '';
-            document.getElementById('price').value = '';
-            document.getElementById('text').value = '';
-            document.getElementById('itemImage').value = '';
-            document.getElementById('imagePreviewContainer').style.display = 'none';
-
-            alert('🚀 Ваша заявка успешно отправлена на модерацию администрации!');
-            switchTab('feed');
-            renderPendingAds();
-        }
-
-        function renderGlobalFeed(searchQuery = '') {
-            let container = document.getElementById('feedContainer');
-            if (!container) return;
-
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-
-            if (searchQuery) {
-                let q = searchQuery.toLowerCase();
-                feed = feed.filter(item => 
-                    (item.itemName && item.itemName.toLowerCase().includes(q)) ||
-                    (item.text && item.text.toLowerCase().includes(q)) ||
-                    (item.author && item.author.toLowerCase().includes(q)) ||
-                    (item.server && item.server.toLowerCase().includes(q))
-                );
-            }
-
-            if (feed.length === 0) {
-                container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 12px; padding: 25px;">📭 В ленте пока нет объявлений. Создайте первое во вкладке «Создать»!</div>';
-                document.getElementById('feedPaginationContainer').style.display = 'none';
-                return;
-            }
-
-            let sliceData = feed.slice(0, feedDisplayLimit);
-            let html = '';
-
-            sliceData.forEach(item => {
-                let badgeClass = item.mode === 'sell' ? 'badge-success' : (item.mode === 'auction' ? 'badge-auction' : 'badge-pending');
-                let modeName = item.mode === 'sell' ? 'Продажа' : (item.mode === 'auction' ? 'Аукцион' : 'Скупка');
-                
-                let isFav = isItemFavorite(item.id);
-                let favIcon = isFav ? '❤️' : '🤍';
-
-                html += `
-                    <div class="ad-card">
-                        <div>
-                            <div class="ad-header">
-                                <span><span class="forum-badge ${badgeClass}">${modeName}</span> ${escapeHtml(item.server)}</span>
-                                <span style="font-weight:700; color:var(--text-main);">${escapeHtml(item.author)}</span>
-                            </div>
-                            <div style="font-weight:900; font-size:14px; color:#ffffff; margin-bottom:4px;">${escapeHtml(item.itemName)}</div>
-                            <div style="font-weight:800; font-size:13px; color:var(--accent-secondary); margin-bottom:6px;">💰 ${escapeHtml(item.priceFormatted)}</div>
-                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; line-height:1.4;">${escapeHtml(item.text)}</div>
-                            ${item.image ? `<img src="${escapeHtml(item.image)}" style="width:100%; height:120px; object-fit:cover; border-radius:10px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
-                        </div>
-                        <div class="ad-actions">
-                            <button onclick="contactSeller('${escapeHtml(item.author)}')" class="btn-success" style="flex:2;">💬 Связаться</button>
-                            <button onclick="toggleFavoriteItem('${item.id}')" class="btn-secondary" style="width:36px; padding:0;" title="В избранное">${favIcon}</button>
-                            ${checkIsAdmin() ? `<button onclick="deleteGlobalFeedItem('${item.id}')" class="btn-danger" style="width:36px; padding:0;" title="Удалить">🗑</button>` : ''}
-                        </div>
-                    </div>
-                `;
-            });
-
-            container.innerHTML = html;
-            let paginationEl = document.getElementById('feedPaginationContainer');
-            if (feed.length > feedDisplayLimit) {
-                paginationEl.style.display = 'block';
-            } else {
-                paginationEl.style.display = 'none';
-            }
-        }
-
-        function loadMoreFeedItems() {
-            feedDisplayLimit += 20;
-            renderGlobalFeed();
-        }
-
-        function setViewMode(mode) {
-            currentViewMode = mode;
-            let container = document.getElementById('feedContainer');
-            let btnList = document.getElementById('btnListView');
-            let btnGrid = document.getElementById('btnGridView');
-
-            if (mode === 'grid') {
-                container.classList.add('grid-view');
-                btnGrid.classList.add('active');
-                btnList.classList.remove('active');
-            } else {
-                container.classList.remove('grid-view');
-                btnList.classList.add('active');
-                btnGrid.classList.remove('active');
-            }
-        }
-
-        function isItemFavorite(itemId) {
-            let favs = [];
-            try { favs = JSON.parse(localStorage.getItem('arizona_favorites') || '[]'); } catch(e){}
-            return favs.some(f => f.id === itemId);
-        }
-
-        function toggleFavoriteItem(itemId) {
-            triggerHaptic('light');
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-            let item = feed.find(f => f.id === itemId);
-            if (!item) return;
-
-            let favs = [];
-            try { favs = JSON.parse(localStorage.getItem('arizona_favorites') || '[]'); } catch(e){}
-            let index = favs.findIndex(f => f.id === itemId);
-
-            if (index >= 0) {
-                favs.splice(index, 1);
-                alert('🗑 Предмет удален из избранного.');
-            } else {
-                favs.push(item);
-                playSfx('success');
-                alert('❤️ Предмет добавлен в избранное!');
-            }
-            localStorage.setItem('arizona_favorites', JSON.stringify(favs));
-            renderGlobalFeed();
-            renderFavorites();
-        }
-
-        function renderFavorites() {
-            let container = document.getElementById('favoritesContainer');
-            if (!container) return;
-            let favs = [];
-            try { favs = JSON.parse(localStorage.getItem('arizona_favorites') || '[]'); } catch(e){}
-
-            if (favs.length === 0) {
-                container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 12px; padding: 25px;">❤️ В избранном пока ничего нет. Добавляйте товары нажатием на сердечко в ленте!</div>';
-                return;
-            }
-
-            let html = '';
-            favs.forEach(item => {
-                html += `
-                    <div class="ad-card">
-                        <div>
-                            <div class="ad-header">
-                                <span>${escapeHtml(item.server)}</span>
-                                <span style="font-weight:700; color:var(--text-main);">${escapeHtml(item.author)}</span>
-                            </div>
-                            <div style="font-weight:900; font-size:14px; color:#ffffff; margin-bottom:4px;">${escapeHtml(item.itemName)}</div>
-                            <div style="font-weight:800; font-size:13px; color:var(--accent-secondary); margin-bottom:6px;">💰 ${escapeHtml(item.priceFormatted)}</div>
-                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">${escapeHtml(item.text)}</div>
-                            ${item.image ? `<img src="${escapeHtml(item.image)}" style="width:100%; height:110px; object-fit:cover; border-radius:10px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
-                        </div>
-                        <div class="ad-actions">
-                            <button onclick="contactSeller('${escapeHtml(item.author)}')" class="btn-success" style="flex:1;">💬 Связаться</button>
-                            <button onclick="toggleFavoriteItem('${item.id}')" class="btn-danger" style="width:36px; padding:0;" title="Удалить">🗑</button>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function renderMyAds() {
-            let container = document.getElementById('myAdsContainer');
-            if (!container) return;
-
-            let user = getCurrentUser();
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-            let myItems = feed.filter(i => i.authorId === user.id || (i.author && i.author.toLowerCase() === (user.telegram_nickname || '').toLowerCase()));
-
-            if (myItems.length === 0) {
-                container.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 12px; padding: 25px;">📂 У вас пока нет активных одобренных тем. Создайте объявление во вкладке «Создать»!</div>';
-                return;
-            }
-
-            let html = '';
-            myItems.forEach(item => {
-                html += `
-                    <div class="ad-card">
-                        <div>
-                            <div class="ad-header">
-                                <span>${escapeHtml(item.server)}</span>
-                                <span style="font-weight:700; color:var(--text-main);">${escapeHtml(item.author)}</span>
-                            </div>
-                            <div style="font-weight:900; font-size:14px; color:#ffffff; margin-bottom:4px;">${escapeHtml(item.itemName)}</div>
-                            <div style="font-weight:800; font-size:13px; color:var(--accent-secondary); margin-bottom:6px;">💰 ${escapeHtml(item.priceFormatted)}</div>
-                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">${escapeHtml(item.text)}</div>
-                            ${item.image ? `<img src="${escapeHtml(item.image)}" style="width:100%; height:110px; object-fit:cover; border-radius:10px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
-                        </div>
-                        <div class="ad-actions">
-                            <button onclick="deleteGlobalFeedItem('${item.id}')" class="btn-danger" style="width:100%;">🗑 Удалить тему</button>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function clearMyAds() {
-            if (!confirm('Удалить все ваши размещенные темы?')) return;
-            triggerHaptic('heavy');
-            let user = getCurrentUser();
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-            feed = feed.filter(i => i.authorId !== user.id && (!i.author || i.author.toLowerCase() !== (user.telegram_nickname || '').toLowerCase()));
-            localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-            renderMyAds();
-            renderGlobalFeed();
-        }
-
-        function deleteGlobalFeedItem(itemId) {
-            if (!confirm('Удалить это объявление?')) return;
-            triggerHaptic('heavy');
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-            feed = feed.filter(i => i.id !== itemId);
-            localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-
-            let favs = [];
-            try { favs = JSON.parse(localStorage.getItem('arizona_favorites') || '[]'); } catch(e){}
-            favs = favs.filter(i => i.id !== itemId);
-            localStorage.setItem('arizona_favorites', JSON.stringify(favs));
-
-            renderGlobalFeed();
-            renderFavorites();
-            renderMyAds();
-        }
-
-        // МОДЕРАЦИЯ (АДМИН)
-        function renderPendingAds() {
-            if (!checkIsAdmin()) return;
-            let container = document.getElementById('pendingAdsContainer');
-            if (!container) return;
-
-            let pending = [];
-            try { pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch(e){}
-
-            if (pending.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 11px; padding: 15px;">🛡️ Нет объявлений, ожидающих модерации.</div>';
-                return;
-            }
-
-            let html = '';
-            pending.forEach(item => {
-                html += `
-                    <div class="ad-card" style="margin-bottom: 8px;">
-                        <div>
-                            <div class="ad-header">
-                                <span>${escapeHtml(item.server)}</span>
-                                <span style="font-weight:700; color:var(--text-main);">Автор: ${escapeHtml(item.author)}</span>
-                            </div>
-                            <div style="font-weight:900; font-size:13px; color:#ffffff; margin-bottom:2px;">${escapeHtml(item.itemName)} (${escapeHtml(item.priceFormatted)})</div>
-                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">${escapeHtml(item.text)}</div>
-                        </div>
-                        <div class="ad-actions">
-                            <button onclick="approveAd('${item.id}')" class="btn-success" style="flex:1;">✅ Одобрить</button>
-                            <button onclick="rejectAd('${item.id}')" class="btn-danger" style="flex:1;">❌ Отклонить</button>
-                        </div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function approveAd(itemId) {
-            triggerHaptic('success');
-            playSfx('success');
-            let pending = [];
-            try { pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch(e){}
-            let itemIndex = pending.findIndex(i => i.id === itemId);
-            if (itemIndex < 0) return;
-
-            let item = pending.splice(itemIndex, 1)[0];
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
-
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-            feed.unshift(item);
-            localStorage.setItem('arizona_global_feed', JSON.stringify(feed));
-
-            renderPendingAds();
-            renderGlobalFeed();
-        }
-
-        function rejectAd(itemId) {
-            if (!confirm('Отклонить и удалить объявление?')) return;
-            triggerHaptic('heavy');
-            let pending = [];
-            try { pending = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]'); } catch(e){}
-            pending = pending.filter(i => i.id !== itemId);
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pending));
-            renderPendingAds();
-        }
-
-        function clearGlobalFeedAdmin() {
-            if (!confirm('ВНИМАНИЕ! Полностью очистить всю глобальную ленту объявлений?')) return;
-            triggerHaptic('heavy');
-            localStorage.removeItem('arizona_global_feed');
-            renderGlobalFeed();
-            renderMyAds();
-            alert('🗑 Вся лента объявлений успешно очищена.');
-        }
-
-        function sendTargetAction(actionType) {
-            let targetInput = document.getElementById('targetUser').value.trim();
-            if (!targetInput) { alert('❌ Уведите пользователя (@username или ID)!'); return; }
-            let cleanTarget = targetInput.replace('@', '').toLowerCase();
-            triggerHaptic('heavy');
-
-            if (actionType === 'make_admin') {
-                if (!ADMIN_USERNAMES.includes(cleanTarget)) {
-                    ADMIN_USERNAMES.push(cleanTarget);
-                    localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
-                }
-                alert('✅ Пользователь ' + cleanTarget + ' назначен администратором!');
-            } else if (actionType === 'remove_admin') {
-                ADMIN_USERNAMES = ADMIN_USERNAMES.filter(a => a !== cleanTarget);
-                localStorage.setItem('arizona_admin_list', JSON.stringify(ADMIN_USERNAMES));
-                alert('➖ Пользователь ' + cleanTarget + ' снят с админки.');
-            } else if (actionType === 'ban') {
-                let banned = [];
-                try { banned = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]'); } catch(e){}
-                if (!banned.includes(cleanTarget)) {
-                    banned.push(cleanTarget);
-                    localStorage.setItem('arizona_banned_list', JSON.stringify(banned));
-                }
-                alert('🚫 Пользователь ' + cleanTarget + ' забанен!');
-            } else if (actionType === 'unban') {
-                let banned = [];
-                try { banned = JSON.parse(localStorage.getItem('arizona_banned_list') || '[]'); } catch(e){}
-                banned = banned.filter(b => b !== cleanTarget);
-                localStorage.setItem('arizona_banned_list', JSON.stringify(banned));
-                alert('✅ Пользователь ' + cleanTarget + ' разбанен!');
-            }
-            document.getElementById('targetUser').value = '';
-        }
-
-        function updateBroadcastMessage() {
-            let newText = document.getElementById('newBroadcastInput').value.trim();
-            if (!newText) { alert('❌ Введите текст уведомления!'); return; }
-            triggerHaptic('success');
-            localStorage.setItem('arizona_broadcast_msg', newText);
-            document.getElementById('newBroadcastInput').value = '';
-            checkBroadcastBanner();
-            alert('📢 Рассылка успешно отправлена и закреплена вверху!');
-        }
-
-        function checkBroadcastBanner() {
-            let msg = localStorage.getItem('arizona_broadcast_msg');
-            let banner = document.getElementById('broadcastBanner');
-            let textSpan = document.getElementById('broadcastText');
-            if (msg && banner && textSpan) {
-                textSpan.innerHTML = `<b>Уведомление от администрации:</b> ${escapeHtml(msg)}`;
-                banner.style.display = 'block';
-            }
-        }
-
-        function openBroadcastModal() {
-            let msg = localStorage.getItem('arizona_broadcast_msg') || 'Важное уведомление администрации.';
-            alert('📢 Системное уведомление:\n\n' + msg);
-        }
-
-        // ПРОФИЛЬ И ОБЩЕНИЕ
-        function initProfile() {
-            let user = getCurrentUser();
-            document.getElementById('azUserName').innerText = user.first_name || 'Игрок';
-            let roleBadge = document.getElementById('azRoleBadge');
-            if (checkIsOwner()) {
-                roleBadge.innerText = '👑 Владелец';
-            } else if (checkIsAdmin()) {
-                roleBadge.innerText = '🛡️ Администратор';
-            } else {
-                roleBadge.innerText = '👤 Игрок';
-            }
-
-            if (user.photo_url) {
-                document.getElementById('azAvatarImg').src = user.photo_url;
-            }
-
-            let feed = [];
-            try { feed = JSON.parse(localStorage.getItem('arizona_global_feed') || '[]'); } catch(e){}
-            let myCount = feed.filter(i => i.authorId === user.id || (i.author && i.author.toLowerCase() === (user.telegram_nickname || '').toLowerCase())).length;
-            document.getElementById('azStatMsgs').innerText = myCount;
-
-            let customStatus = localStorage.getItem('arizona_custom_status_' + user.id) || '✨ Скупщик редких аксов';
-            document.getElementById('azCustomStatus').innerText = customStatus;
-            document.getElementById('customStatusInput').value = customStatus;
-
-            let savedFrame = localStorage.getItem('arizona_avatar_frame_' + user.id) || 'none';
-            applyAvatarFrame(savedFrame);
-            renderWallComments();
-        }
-
-        function saveCustomStatus() {
-            let val = document.getElementById('customStatusInput').value.trim();
-            if (!val) return;
-            triggerHaptic('success');
-            let user = getCurrentUser();
-            localStorage.setItem('arizona_custom_status_' + user.id, val);
-            document.getElementById('azCustomStatus').innerText = val;
-            alert('💾 Статус успешно сохранен!');
-        }
-
-        function changeAvatarFrame(frameName) {
-            triggerHaptic('light');
-            let user = getCurrentUser();
-            localStorage.setItem('arizona_avatar_frame_' + user.id, frameName);
-            applyAvatarFrame(frameName);
-        }
-
-        function applyAvatarFrame(frameName) {
-            let img = document.getElementById('azAvatarImg');
-            img.className = 'az-avatar-img';
-            document.querySelectorAll('.frame-option-btn').forEach(b => b.classList.remove('active'));
-
-            if (frameName !== 'none') {
-                img.classList.add(frameName);
-                let btn = document.getElementById('frameBtn_' + frameName);
-                if (btn) btn.classList.add('active');
-            } else {
-                let btn = document.getElementById('frameBtn_none');
-                if (btn) btn.classList.add('active');
-            }
-        }
-
-        function switchProfileSubtab(tabName) {
-            triggerHaptic('light');
-            document.getElementById('subtabWall').classList.remove('active');
-            document.getElementById('subtabActivity').classList.remove('active');
-            if (tabName === 'wall') {
-                document.getElementById('subtabWall').classList.add('active');
-                document.getElementById('profileWallContent').style.display = 'block';
-                document.getElementById('profileActivityContent').style.display = 'none';
-            } else {
-                document.getElementById('subtabActivity').classList.add('active');
-                document.getElementById('profileWallContent').style.display = 'none';
-                document.getElementById('profileActivityContent').style.display = 'block';
-            }
-        }
-
-        function postWallComment() {
-            let txt = document.getElementById('wallCommentInput').value.trim();
-            if (!txt) { alert('❌ Введите текст росписи!'); return; }
-            triggerHaptic('success');
-            let user = getCurrentUser();
-            let comments = [];
-            try { comments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]'); } catch(e){}
-            comments.unshift({
-                author: user.telegram_nickname || user.username || '@player',
-                text: txt,
-                time: new Date().toLocaleDateString('ru-RU')
-            });
-            localStorage.setItem('arizona_profile_wall', JSON.stringify(comments));
-            document.getElementById('wallCommentInput').value = '';
-            renderWallComments();
-        }
-
-        function renderWallComments() {
-            let container = document.getElementById('wallCommentsContainer');
-            if (!container) return;
-            let comments = [];
-            try { comments = JSON.parse(localStorage.getItem('arizona_profile_wall') || '[]'); } catch(e){}
-            if (comments.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center;">На стене пока нет росписей. Будьте первыми!</div>';
-                return;
-            }
-            let html = '';
-            comments.forEach(c => {
-                html += `
-                    <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:8px; margin-bottom:6px; font-size:11px;">
-                        <div style="display:flex; justify-content:space-between; font-weight:800; color:#fff; margin-bottom:2px;">
-                            <span>${escapeHtml(c.author)}</span>
-                            <span style="font-size:9px; color:var(--text-muted);">${c.time}</span>
-                        </div>
-                        <div style="color:var(--text-main);">${escapeHtml(c.text)}</div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function contactSeller(sellerNick) {
-            openChatWithUser(sellerNick);
-        }
-
-        function openChatWithUser(username) {
-            activeChatName = username;
-            document.getElementById('chatTitle').innerText = '💬 Чат с ' + username;
-            renderChatMessages();
-            document.getElementById('chatsModal').style.display = 'none';
-            document.getElementById('chatDetailModal').style.display = 'flex';
-        }
-
-        function closeChatDetail() { document.getElementById('chatDetailModal').style.display = 'none'; }
-        
-        function openChatsModal() {
-            renderChatsList();
-            document.getElementById('chatsModal').style.display = 'flex';
-        }
-        function closeChatsModal() { document.getElementById('chatsModal').style.display = 'none'; }
-
-        function startChatByUsername() {
-            let nick = document.getElementById('findUserChatInput').value.trim();
-            if (!nick) { alert('❌ Введите ник игрока!'); return; }
-            if (!nick.startsWith('@')) nick = '@' + nick;
-            document.getElementById('findUserChatInput').value = '';
-            closeChatsModal();
-            openChatWithUser(nick);
-        }
-
-        function renderChatsList() {
-            let container = document.getElementById('chatsList');
-            if (!container) return;
-            let chatsMap = {};
-            try { chatsMap = JSON.parse(localStorage.getItem('arizona_chats_map') || '{}'); } catch(e){}
-            let keys = Object.keys(chatsMap);
-
-            if (keys.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center; padding:15px;">У вас пока нет активных переписок. Найдите игрока выше или нажмите «Связаться» в объявлении.</div>';
-                return;
-            }
-
-            let html = '';
-            keys.forEach(k => {
-                html += `
-                    <div class="picker-item" onclick="openChatWithUser('${escapeHtml(k)}')">
-                        <span>💬 ${escapeHtml(k)}</span> <span>➔</span>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-
-        function sendChatMessage() {
-            let input = document.getElementById('chatInputMessage');
-            let txt = input.value.trim();
-            if (!txt || !activeChatName) return;
-            triggerHaptic('success');
-
-            let chatsMap = {};
-            try { chatsMap = JSON.parse(localStorage.getItem('arizona_chats_map') || '{}'); } catch(e){}
-            if (!chatsMap[activeChatName]) chatsMap[activeChatName] = [];
-
-            let user = getCurrentUser();
-            chatsMap[activeChatName].push({
-                sender: user.telegram_nickname || user.username || '@player',
-                text: txt,
-                time: new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})
-            });
-
-            localStorage.setItem('arizona_chats_map', JSON.stringify(chatsMap));
-            input.value = '';
-            renderChatMessages();
-        }
-
-        function renderChatMessages() {
-            let container = document.getElementById('chatMessages');
-            if (!container || !activeChatName) return;
-            let chatsMap = {};
-            try { chatsMap = JSON.parse(localStorage.getItem('arizona_chats_map') || '{}'); } catch(e){}
-            let messages = chatsMap[activeChatName] || [];
-
-            if (messages.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-muted); text-align:center; font-size:11px;">Напишите первое сообщение продавцу...</div>';
-                return;
-            }
-
-            let user = getCurrentUser();
-            let currentNick = user.telegram_nickname || user.username || '@player';
-
-            let html = '';
-            messages.forEach(m => {
-                let isMe = m.sender === currentNick;
-                let alignStyle = isMe ? 'margin-left:auto; background:var(--btn-gradient); color:#fff;' : 'margin-right:auto; background:var(--forum-card-bg); color:var(--text-main); border:1px solid var(--forum-card-border);';
-                html += `
-                    <div style="max-width:80%; padding:8px 10px; border-radius:10px; font-size:11px; ${alignStyle}">
-                        <div style="font-size:9px; opacity:0.7; margin-bottom:2px;">${escapeHtml(m.sender)} [${m.time}]</div>
-                        <div>${escapeHtml(m.text)}</div>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function clearActiveChatHistory() {
-            if (!confirm('Очистить историю этого чата?')) return;
-            triggerHaptic('heavy');
-            let chatsMap = {};
-            try { chatsMap = JSON.parse(localStorage.getItem('arizona_chats_map') || '{}'); } catch(e){}
-            if (chatsMap[activeChatName]) {
-                delete chatsMap[activeChatName];
-                localStorage.setItem('arizona_chats_map', JSON.stringify(chatsMap));
-                renderChatMessages();
-            }
-        }
     </script>
 </body>
 </html>

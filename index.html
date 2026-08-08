@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Arizona RP | Поиск предметов</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px) scale(0.99); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes tabSwitchAnimation {
+            0% { opacity: 0; transform: scale(0.98) translateY(4px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        :root {
+            --forum-bg: #000000;
+            --forum-card-bg: #0a0a0c;
+            --forum-header-bg: #121318;
+            --forum-card-border: #1f2029;
+            
+            --anime-purple: #9333ea;
+            --anime-pink: #ec4899;
+            --anime-cyan: #06b6d4;
+            
+            --text-main: #ffffff;
+            --text-muted: #808a9d;
+            
+            --btn-orange: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            --btn-green: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --btn-purple: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--forum-bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 12px;
+            min-height: 100vh;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 440px;
+            margin: 0 auto;
+        }
+
+        .forum-topbar {
+            display: grid;
+            grid-template-columns: 40px 1fr 40px;
+            align-items: center;
+            background: var(--forum-header-bg);
+            padding: 10px 14px;
+            border-radius: 14px;
+            border: 1px solid var(--forum-card-border);
+            margin-bottom: 14px;
+        }
+
+        .forum-brand-info {
+            text-align: center;
+        }
+
+        .forum-subtitle {
+            font-size: 9px;
+            color: var(--anime-pink);
+            text-transform: lowercase;
+            letter-spacing: 0.8px;
+            font-weight: 700;
+        }
+
+        .forum-brand-title {
+            font-weight: 900;
+            font-size: 19px;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .forum-top-actions {
+            display: flex;
+            justify-content: flex-end;
+            position: relative;
+        }
+
+        .forum-menu-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--forum-card-border);
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 6px 12px;
+            font-size: 18px;
+            border-radius: 10px;
+            width: auto;
+            margin: 0;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            background: var(--forum-header-bg);
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid var(--forum-card-border);
+            overflow-x: auto;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 8px 6px;
+            background-color: transparent;
+            border: none;
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .nav-tab.active {
+            background: var(--btn-orange);
+            color: #ffffff;
+        }
+
+        .section { display: none; }
+        .section.active { display: block; animation: tabSwitchAnimation 0.2s ease-out; }
+
+        .card {
+            background: var(--forum-card-bg);
+            border: 1px solid var(--forum-card-border);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        button.btn-main {
+            width: 100%;
+            padding: 12px;
+            background: var(--btn-orange);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 6px;
+        }
+
+        button.btn-green { background: var(--btn-green); }
+
+        .baryga-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .baryga-stat-box {
+            background: #121318;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid var(--forum-card-border);
+        }
+
+        .item-shop-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #121318;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--forum-card-border);
+        }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px); z-index: 1000;
+            justify-content: center; align-items: center; padding: 16px; box-sizing: border-box;
+        }
+
+        .modal-content {
+            background: #0a0a0c; padding: 20px; border-radius: 16px; max-width: 360px; width: 100%;
+            border: 1px solid var(--forum-card-border); color: #fff; max-height: 80vh; display: flex; flex-direction: column;
+        }
+
+        .picker-list {
+            overflow-y: auto;
+            max-height: 50vh;
+            margin-bottom: 10px;
+            padding-right: 4px;
+        }
+
+        .picker-item {
+            background: #121318; border: 1px solid var(--forum-card-border); padding: 12px;
+            border-radius: 10px; cursor: pointer; display: flex; align-items: center;
+            gap: 10px; margin-bottom: 6px; font-weight: 700; transition: border-color 0.2s;
+        }
+
+        .picker-item:hover {
+            border-color: var(--anime-pink);
+        }
+
+        .server-selector-btn {
+            width: 100%;
+            padding: 12px;
+            background: #121318;
+            border: 1px solid var(--forum-card-border);
+            color: #fff;
+            border-radius: 10px;
+            font-weight: 700;
+            text-align: left;
+            cursor: pointer;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-bot-tag {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 20px;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Шапка -->
+        <div class="forum-topbar">
+            <div></div>
+            <div class="forum-brand-info">
+                <div class="forum-subtitle">поиск предметов • anime style</div>
+                <div class="forum-brand-title">Arizona RP 🔍</div>
+            </div>
+            <div class="forum-top-actions">
+                <button class="forum-menu-btn" onclick="openMainMenuPicker()">⋮</button>
+            </div>
+        </div>
+
+        <!-- Навигационные вкладки -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('feed')">🌍 Поиск</button>
+            <button class="nav-tab" onclick="switchTab('baryga')">🎮 Игра "Барыга"</button>
+            <button class="nav-tab" onclick="switchTab('app')">📝 Создать</button>
+        </div>
+
+        <!-- Раздел: Поиск предметов -->
+        <div id="tabFeed" class="section active">
+            <div class="card">
+                <h3 style="margin-top: 0;">🌍 Главный раздел (Поиск предметов)</h3>
+                <p style="color: var(--text-muted); font-size: 12px;">Здесь отображаются свежие объявления и найденные предметы на серверах.</p>
+            </div>
+        </div>
+
+        <!-- Раздел: Игра "Барыга" -->
+        <div id="tabBaryga" class="section">
+            <div class="card">
+                <h3 style="margin-top:0; text-align:center;">💼 Симулятор Барыги</h3>
+                <div class="baryga-stats">
+                    <div class="baryga-stat-box">
+                        <span style="font-size: 10px; color: var(--text-muted);">Баланс</span>
+                        <div id="barygaMoney" style="font-size: 16px; font-weight: 900; color: #10b981;">0 $</div>
+                    </div>
+                    <div class="baryga-stat-box">
+                        <span style="font-size: 10px; color: var(--text-muted);">Доход за клик</span>
+                        <div id="barygaClickPower" style="font-size: 16px; font-weight: 900; color: #f97316;">+10 $</div>
+                    </div>
+                </div>
+
+                <button class="btn-main" onclick="clickBaryga()">💰 Скупить товар (Клик)</button>
+
+                <h4 style="margin-top: 20px; margin-bottom: 8px;">🛒 Магазин предметов</h4>
+                <div class="item-shop-list">
+                    <div class="shop-item">
+                        <div>
+                            <div style="font-weight:700;">📜 Лицензия Барыги</div>
+                            <div style="font-size:10px; color:var(--text-muted);">+50$ к клику</div>
+                            <div style="font-size:11px; color:#10b981;">Цена: 1,000 $</div>
+                        </div>
+                        <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(1000, 50, 0)">Купить</button>
+                    </div>
+                    <div class="shop-item">
+                        <div>
+                            <div style="font-weight:700;">🌟 Золотой кликер</div>
+                            <div style="font-size:10px; color:var(--text-muted);">+50,000$ к клику</div>
+                            <div style="font-size:11px; color:#10b981;">Цена: 50,000,000 $</div>
+                        </div>
+                        <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(50000000, 50000, 0)">Купить</button>
+                    </div>
+                    <div class="shop-item">
+                        <div>
+                            <div style="font-weight:700;">🤖 Авто-Скупщик PRO</div>
+                            <div style="font-size:10px; color:var(--text-muted);">Пассив: +100,000$/сек</div>
+                            <div style="font-size:11px; color:#10b981;">Цена: 150,000,000 $</div>
+                        </div>
+                        <button class="btn-main btn-green" style="width:auto; padding:6px 12px;" onclick="buyItem(150000000, 0, 100000)">Купить</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Раздел: Создать -->
+        <div id="tabApp" class="section">
+            <div class="card">
+                <h3>📝 Создать объявление</h3>
+                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Выберите сервер:</label>
+                <button class="server-selector-btn" onclick="openServerPicker()">
+                    <span id="selectedServerText">🔥 [01] Phoenix</span>
+                    <span>▼</span>
+                </button>
+                <input type="text" placeholder="Название предмета..." style="width:100%; padding:10px; background:#121318; border:1px solid var(--forum-card-border); color:#fff; border-radius:8px; box-sizing:border-box; margin-bottom:8px;">
+                <button class="btn-main">Опубликовать</button>
+            </div>
+        </div>
+
+        <div class="footer-bot-tag">
+            Наш бот: <b style="color: var(--anime-pink);">@arizona_coin_bot</b>
+        </div>
+    </div>
+
+    <!-- Модальное окно: Выбор сервера (Все 33 сервера из бота) -->
+    <div id="serverPickerModal" class="modal-overlay" onclick="closeServerPicker()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 style="margin-top:0; margin-bottom:12px;">Выбор сервера</h3>
+            <div class="picker-list" id="serverListContainer">
+                <!-- Скрипт заполнит список 33 серверов автоматически -->
+            </div>
+            <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:5px;" onclick="closeServerPicker()">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно Меню -->
+    <div id="mainMenuModal" class="modal-overlay" onclick="closeMainMenuPicker()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 style="margin-top:0; margin-bottom:12px;">Инструменты и Меню</h3>
+            <div class="picker-item" onclick="selectMenuItem('🔔 Уведомления')"><span>🔔</span> <span>Уведомления</span></div>
+            <div class="picker-item" onclick="selectMenuItem('💬 Сообщения')"><span>💬</span> <span>Сообщения / Переписки</span></div>
+            <div class="picker-item" onclick="selectMenuItem('👤 Профиль')"><span>👤</span> <span>Профиль</span></div>
+            <div class="picker-item" onclick="selectMenuItem('👔 Менеджер')"><span>👔</span> <span>Менеджер</span></div>
+            <button class="btn-main" style="background: rgba(255,255,255,0.1); margin-top:10px;" onclick="closeMainMenuPicker()">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        // Актуальные 33 сервера Arizona RP из @arizona_coin_bot
+        const arizonaServers = [
+            { id: 1, name: "Phoenix", emoji: "🔥" },
+            { id: 2, name: "Tucson", emoji: "🌴" },
+            { id: 3, name: "Scottdale", emoji: "🌵" },
+            { id: 4, name: "Chandler", emoji: "⚜️" },
+            { id: 5, name: "Brainburg", emoji: "❄️" },
+            { id: 6, name: "Yuma", emoji: "🌊" },
+            { id: 7, name: "Saint-Rose", emoji: "✨" },
+            { id: 8, name: "Mesa", emoji: "🏛️" },
+            { id: 9, name: "Red-Rock", emoji: "❤️" },
+            { id: 10, name: "Surprise", emoji: "🍀" },
+            { id: 11, name: "Prescott", emoji: "⚡" },
+            { id: 12, name: "Glendale", emoji: "🌲" },
+            { id: 13, name: "Kingman", emoji: "👑" },
+            { id: 14, name: "Winslow", emoji: "⚓" },
+            { id: 15, name: "Payson", emoji: "🌴" },
+            { id: 16, name: "Gilbert", emoji: "💎" },
+            { id: 17, name: "Show-Low", emoji: "🔥" },
+            { id: 18, name: "Casa-Grande", emoji: "🌴" },
+            { id: 19, name: "Page", emoji: "📜" },
+            { id: 20, name: "Sun-City", emoji: "☀️" },
+            { id: 21, name: "Queen-Creek", emoji: "👑" },
+            { id: 22, name: "Sedona", emoji: "🌵" },
+            { id: 23, name: "Holiday", emoji: "🎄" },
+            { id: 24, name: "Wednesday", emoji: "🍀" },
+            { id: 25, name: "Yava", emoji: "⚡" },
+            { id: 26, name: "Faraway", emoji: "📈" },
+            { id: 27, name: "Christmas", emoji: "🎁" },
+            { id: 28, name: "Bumble Bee", emoji: "🐝" },
+            { id: 29, name: "Mirage", emoji: "💠" },
+            { id: 30, name: "Love", emoji: "💖" },
+            { id: 31, name: "Mobile I", emoji: "📱" },
+            { id: 32, name: "Mobile II", emoji: "📱" },
+            { id: 33, name: "Mobile III", emoji: "📱" }
+        ];
+
+        let selectedServer = arizonaServers[0];
+
+        // Инициализация списка серверов в модальном окне
+        function initServerPicker() {
+            const container = document.getElementById('serverListContainer');
+            container.innerHTML = '';
+            arizonaServers.forEach(srv => {
+                const formattedId = String(srv.id).padStart(2, '0');
+                const item = document.createElement('div');
+                item.className = 'picker-item';
+                item.innerHTML = `<span>${srv.emoji}</span> <span>[${formattedId}] ${srv.name}</span>`;
+                item.onclick = () => selectServer(srv);
+                container.appendChild(item);
+            });
+        }
+
+        function openServerPicker() {
+            document.getElementById('serverPickerModal').style.display = 'flex';
+        }
+
+        function closeServerPicker() {
+            document.getElementById('serverPickerModal').style.display = 'none';
+        }
+
+        function selectServer(srv) {
+            selectedServer = srv;
+            const formattedId = String(srv.id).padStart(2, '0');
+            document.getElementById('selectedServerText').innerText = `${srv.emoji} [${formattedId}] ${srv.name}`;
+            closeServerPicker();
+        }
+
+        // Игровые переменные "Барыга"
+        let barygaMoney = 0;
+        let barygaClickPower = 10;
+        let barygaPassiveIncome = 0;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+
+            if(tabId === 'feed') {
+                document.getElementById('tabFeed').classList.add('active');
+            } else if(tabId === 'baryga') {
+                document.getElementById('tabBaryga').classList.add('active');
+            } else if(tabId === 'app') {
+                document.getElementById('tabApp').classList.add('active');
+            }
+        }
+
+        function openMainMenuPicker() {
+            document.getElementById('mainMenuModal').style.display = 'flex';
+        }
+
+        function closeMainMenuPicker() {
+            document.getElementById('mainMenuModal').style.display = 'none';
+        }
+
+        function selectMenuItem(name) {
+            alert('Открыт раздел: ' + name);
+            closeMainMenuPicker();
+        }
+
+        function clickBaryga() {
+            barygaMoney += barygaClickPower;
+            updateBarygaUI();
+        }
+
+        function buyItem(price, addClick, addPassive) {
+            if (barygaMoney >= price) {
+                barygaMoney -= price;
+                barygaClickPower += addClick;
+                barygaPassiveIncome += addPassive;
+                updateBarygaUI();
+                alert('Успешно куплено!');
+            } else {
+                alert('Не хватает денег!');
+            }
+        }
+
+        function updateBarygaUI() {
+            document.getElementById('barygaMoney').innerText = barygaMoney.toLocaleString() + ' $';
+            document.getElementById('barygaClickPower').innerText = '+' + barygaClickPower.toLocaleString() + ' $';
+        }
+
+        setInterval(() => {
+            if (barygaPassiveIncome > 0) {
+                barygaMoney += barygaPassiveIncome;
+                updateBarygaUI();
+            }
+        }, 1000);
+
+        // Запуск инициализации при загрузке
+        window.onload = () => {
+            initServerPicker();
+        };
+    </script>
+</body>
+</html>

@@ -1158,25 +1158,20 @@
             return `arizona_${currentUserId}_${key}`;
         }
 
-        // АВТОМАТИЧЕСКАЯ ОЧИСТКА СТАРЫХ ОБЪЯВЛЕНИЙ И СЕТОВ КАЖДЫЙ ДЕНЬ В 07:50:00 ПО МСК
         function checkAndPerformAutoCleanup() {
             let now = new Date();
-            // Вычисляем текущее время по МСК (UTC+3)
             let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
             let currentHours = mskTime.getHours();
             let currentMinutes = mskTime.getMinutes();
-            let currentDateStr = mskTime.toISOString().split('T')[0]; // YYYY-MM-DD
+            let currentDateStr = mskTime.toISOString().split('T')[0];
 
             let lastResetDate = localStorage.getItem('arizona_last_auto_reset_date') || '';
 
-            // Если уже наступило 07:50 или позже, и сегодня сброс еще не производился
             if ((currentHours > 7 || (currentHours === 7 && currentMinutes >= 50)) && lastResetDate !== currentDateStr) {
-                // Очищаем старые объявления, модерацию и ленту луков/сетов
                 localStorage.removeItem('arizona_ads_feed');
                 localStorage.removeItem('arizona_pending_ads');
-                localStorage.removeItem('arizona_fashion_looks'); // Сеты аксессуаров
+                localStorage.removeItem('arizona_fashion_looks');
                 
-                // Также очищаем персональные архивы объявлений для всех пользователей (не трогая игроков/админов/владельца)
                 for (let i = 0; i < localStorage.length; i++) {
                     let key = localStorage.key(i);
                     if (key && key.includes('_my_ads')) {
@@ -1184,13 +1179,11 @@
                     }
                 }
 
-                // Фиксируем, что на сегодня сброс выполнен
                 localStorage.setItem('arizona_last_auto_reset_date', currentDateStr);
-                console.log('🧹 Автоматическая очистка старых объявлений и сетов выполнена в 07:50 по МСК.');
             }
         }
         checkAndPerformAutoCleanup();
-        setInterval(checkAndPerformAutoCleanup, 60000); // Проверяем каждую минуту
+        setInterval(checkAndPerformAutoCleanup, 60000);
 
         let ADMIN_USERNAMES = [];
         try {
@@ -1789,207 +1782,174 @@
             }
 
             container.innerHTML = pendingAdsList.map((ad, idx) => `
-                <div class="ad-card" style="border-color:var(--accent-gold);">
-                    <div style="font-weight:900; color:#fff; font-size:13px;">${ad.itemName} (${ad.price})</div>
-                    <div style="font-size:11px; color:var(--text-muted); margin:4px 0;">Автор: ${ad.author} | Сервер: ${ad.server}</div>
-                    <div style="font-size:11px; margin-bottom:8px;">${ad.text}</div>
+                <div class="ad-card" style="border-color:var(--accent-red);">
+                    <div style="font-weight:900; color:#fff; font-size:13px; margin-bottom:4px;">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:10px; color:var(--text-muted); margin-bottom:6px;">От: ${ad.author} | Сервер: ${ad.server}</div>
+                    <div style="font-size:11px; color:var(--text-main); margin-bottom:8px;">${ad.text}</div>
                     <div style="display:flex; gap:6px;">
-                        <button onclick="approvePendingAd(${idx})" class="btn-success" style="margin:0; padding:6px; font-size:11px;">✅ Одобрить</button>
-                        <button onclick="rejectPendingAd(${idx})" class="btn-danger" style="margin:0; padding:6px; font-size:11px;">❌ Отклонить</button>
+                        <button onclick="approvePendingAd(${ad.id})" class="btn-success" style="margin:0; padding:6px; font-size:11px; flex:1;">✅ Одобрить</button>
+                        <button onclick="rejectPendingAd(${ad.id})" class="btn-danger" style="margin:0; padding:6px; font-size:11px; flex:1;">❌ Отклонить</button>
                     </div>
                 </div>
             `).join('');
         }
 
-        function approvePendingAd(idx) {
-            let ad = pendingAdsList.splice(idx, 1)[0];
-            ad.status = 'approved';
-            globalAdsFeed.unshift(ad);
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-            renderPendingAds();
-            renderFeed();
-            playSfx('success');
-        }
-
-        function rejectPendingAd(idx) {
-            pendingAdsList.splice(idx, 1);
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-            renderPendingAds();
-            playSfx('click');
-        }
-
-        // Остальные вспомогательные функции (темы, музыка, модальные пикеры и т.д.)
-        function setAppTheme(themeName) {
-            document.body.className = document.body.className.replace(/theme-\S+/g, '');
-            if (themeName !== 'red') {
-                document.body.classList.add('theme-' + themeName);
+        function approvePendingAd(id) {
+            let idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx > -1) {
+                let ad = pendingAdsList.splice(idx, 1)[0];
+                ad.status = 'approved';
+                globalAdsFeed.unshift(ad);
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderPendingAds();
+                renderFeed();
+                playSfx('success');
             }
-            localStorage.setItem('arizona_app_theme', themeName);
-            closeThemeModal();
+        }
+
+        function rejectPendingAd(id) {
+            let idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx > -1) {
+                pendingAdsList.splice(idx, 1);
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                renderPendingAds();
+                playSfx('success');
+            }
+        }
+
+        function clearGlobalFeedAdmin() {
+            if (confirm('⚠️ Вы уверены, что хотите очистить всю ленту объявлений?')) {
+                globalAdsFeed = [];
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderFeed();
+                playSfx('success');
+            }
+        }
+
+        function updateBroadcastMessage() {
+            let text = document.getElementById('newBroadcastInput').value.trim();
+            if (!text) return;
+            localStorage.setItem('arizona_broadcast_msg', text);
+            document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${text}`;
+            document.getElementById('broadcastBanner').style.display = 'block';
+            alert('📢 Рассылка успешно отправлена!');
             playSfx('success');
         }
 
-        let savedTheme = localStorage.getItem('arizona_app_theme') || 'red';
-        if (savedTheme !== 'red') { document.body.classList.add('theme-' + savedTheme); }
+        function sendTargetAction(action) {
+            let target = document.getElementById('targetUser').value.trim();
+            if (!target) {
+                alert('⚠️ Укажите целевого игрока!');
+                return;
+            }
+            alert(`🛡️ Действие "${action}" для игрока ${target} выполнено.`);
+            playSfx('success');
+        }
 
         function openPicker(type) {
             activePickerType = type;
             let titleEl = document.getElementById('pickerTitle');
             let listEl = document.getElementById('pickerList');
-            listEl.innerHTML = '';
+            let modal = document.getElementById('pickerModal');
 
             if (type === 'mode') {
                 titleEl.innerText = '📌 Выберите тип темы';
-                let items = [
-                    { value: 'sell', label: '💍 Продажа' },
-                    { value: 'buy', label: '🛍 Покупка' }
-                ];
-                listEl.innerHTML = items.map(i => `
-                    <div class="picker-item" onclick="selectPickerValue('mode', '${i.value}', '${i.label}')">
-                        <span>${i.label}</span>
-                    </div>
-                `).join('');
+                listEl.innerHTML = `
+                    <div class="picker-item" onclick="selectPickerValue('mode', 'sell', 'Продажа')"><span>💎 Продажа</span></div>
+                    <div class="picker-item" onclick="selectPickerValue('mode', 'buy', 'Покупка')"><span>🛒 Покупка</span></div>
+                `;
             } else if (type === 'category') {
                 titleEl.innerText = '🗂 Выберите раздел бота';
-                let items = [
-                    { value: '💍 Аксессуары и вещи', label: '💍 Аксессуары и вещи' },
-                    { value: '🚗 Транспорт', label: '🚗 Транспорт' },
-                    { value: '🏠 Недвижимость', label: '🏠 Недвижимость' },
-                    { value: '💼 Бизнесы', label: '💼 Бизнесы' },
-                    { value: '🎟 Редкие предметы', label: '🎟 Редкие предметы' }
-                ];
-                listEl.innerHTML = items.map(i => `
-                    <div class="picker-item" onclick="selectPickerValue('category', '${i.value}', '${i.label}')">
-                        <span>${i.label}</span>
-                    </div>
-                `).join('');
+                listEl.innerHTML = `
+                    <div class="picker-item" onclick="selectPickerValue('category', '💍 Аксессуары и вещи', '💍 Аксессуары и вещи')"><span>💍 Аксессуары и вещи</span></div>
+                    <div class="picker-item" onclick="selectPickerValue('category', '🚗 Транспорт', '🚗 Транспорт')"><span>🚗 Транспорт</span></div>
+                    <div class="picker-item" onclick="selectPickerValue('category', '🏠 Недвижимость', '🏠 Недвижимость')"><span>🏠 Недвижимость</span></div>
+                    <div class="picker-item" onclick="selectPickerValue('category', '💼 Бизнесы', '💼 Бизнесы')"><span>💼 Бизнесы</span></div>
+                    <div class="picker-item" onclick="selectPickerValue('category', '🔫 Оружие и материалы', '🔫 Оружие и материалы')"><span>🔫 Оружие и материалы</span></div>
+                `;
             } else if (type === 'server') {
                 titleEl.innerText = '🌐 Выберите сервер';
                 listEl.innerHTML = ALL_SERVERS.map(s => `
-                    <div class="picker-item" onclick="selectPickerValue('server', '${s.value}', '${s.label}')">
-                        <span>${s.label}</span>
-                    </div>
+                    <div class="picker-item" onclick="selectPickerValue('server', '${s.value}', '${s.label}')"><span>${s.label}</span></div>
                 `).join('');
             }
-
-            document.getElementById('pickerModal').style.display = 'flex';
+            modal.style.display = 'flex';
         }
 
-        function selectPickerValue(type, val, label) {
+        function selectPickerValue(type, val, text) {
             document.getElementById(type).value = val;
-            document.getElementById('selected' + type.charAt(0).toUpperCase() + type.slice(1) + 'Text').innerText = label;
+            if (type === 'mode') document.getElementById('selectedModeText').innerText = text;
+            if (type === 'category') document.getElementById('selectedCategoryText').innerText = text;
+            if (type === 'server') document.getElementById('selectedServerText').innerText = text;
             closePicker();
             playSfx('click');
         }
 
-        let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || JSON.stringify({ money: 0, clickPower: 1, autoIncome: 0, costs: { click: 50, auto: 200, pro: 800, shop: 3000, elite: 10000, oil: 35000, crypto: 150000 } }));
-        
-        function updateBarygaUI() {
-            let moneyEl = document.getElementById('clickerMoney');
-            if (moneyEl) moneyEl.innerText = barygaData.money.toLocaleString() + ' $';
-            let powEl = document.getElementById('clickPowerLabel');
-            if (powEl) powEl.innerText = `+${barygaData.clickPower} $ / клик`;
-            let autoEl = document.getElementById('autoIncomeLabel');
-            if (autoEl) autoEl.innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
-            
-            document.getElementById('clickCostLabel').innerText = `Цена: ${barygaData.costs.click.toLocaleString()} $`;
-            document.getElementById('autoCostLabel').innerText = `Цена: ${barygaData.costs.auto.toLocaleString()} $`;
-            document.getElementById('proCostLabel').innerText = `Цена: ${barygaData.costs.pro.toLocaleString()} $`;
-            document.getElementById('shopCostLabel').innerText = `Цена: ${barygaData.costs.shop.toLocaleString()} $`;
-            document.getElementById('eliteCostLabel').innerText = `Цена: ${barygaData.costs.elite.toLocaleString()} $`;
-            document.getElementById('oilCostLabel').innerText = `Цена: ${barygaData.costs.oil.toLocaleString()} $`;
-            document.getElementById('cryptoCostLabel').innerText = `Цена: ${barygaData.costs.crypto.toLocaleString()} $`;
+        function setAppTheme(themeName) {
+            document.body.className = '';
+            if (themeName !== 'red') {
+                document.body.classList.add('theme-' + themeName);
+            }
+            localStorage.setItem(getUserKey('app_theme'), themeName);
+            closeThemeModal();
+            playSfx('success');
         }
 
-        function barygaClick() {
-            barygaData.money += barygaData.clickPower;
-            updateBarygaUI();
-            playSfx('cash');
-        }
+        let savedTheme = localStorage.getItem(getUserKey('app_theme')) || 'red';
+        setAppTheme(savedTheme);
 
-        function buyClickUpgrade() {
-            if (barygaData.money >= barygaData.costs.click) {
-                barygaData.money -= barygaData.costs.click;
-                barygaData.clickPower += 1;
-                barygaData.costs.click = Math.round(barygaData.costs.click * 1.5);
-                updateBarygaUI();
+        let bgMusic = document.getElementById('bgMusic');
+        let musicPlaying = true;
+
+        function loadCustomBackgroundMusic(event) {
+            let file = event.target.files[0];
+            if (file) {
+                let url = URL.createObjectURL(file);
+                bgMusic.src = url;
+                bgMusic.play();
+                musicPlaying = true;
+                document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
                 playSfx('success');
-            }
-        }
-        function buyAutoUpgrade() {
-            if (barygaData.money >= barygaData.costs.auto) {
-                barygaData.money -= barygaData.costs.auto;
-                barygaData.autoIncome += 5;
-                barygaData.costs.auto = Math.round(barygaData.costs.auto * 1.5);
-                updateBarygaUI();
-                playSfx('success');
-            }
-        }
-        function buyProUpgrade() {
-            if (barygaData.money >= barygaData.costs.pro) {
-                barygaData.money -= barygaData.costs.pro;
-                barygaData.autoIncome += 20;
-                barygaData.costs.pro = Math.round(barygaData.costs.pro * 1.5);
-                updateBarygaUI();
-                playSfx('success');
-            }
-        }
-        function buyShopUpgrade() {
-            if (barygaData.money >= barygaData.costs.shop) {
-                barygaData.money -= barygaData.costs.shop;
-                barygaData.autoIncome += 50;
-                barygaData.costs.shop = Math.round(barygaData.costs.shop * 1.5);
-                updateBarygaUI();
-                playSfx('success');
-            }
-        }
-        function buyEliteUpgrade() {
-            if (barygaData.money >= barygaData.costs.elite) {
-                barygaData.money -= barygaData.costs.elite;
-                barygaData.clickPower += 10;
-                barygaData.costs.elite = Math.round(barygaData.costs.elite * 1.6);
-                updateBarygaUI();
-                playSfx('success');
-            }
-        }
-        function buyOilRigUpgrade() {
-            if (barygaData.money >= barygaData.costs.oil) {
-                barygaData.money -= barygaData.costs.oil;
-                barygaData.autoIncome += 200;
-                barygaData.costs.oil = Math.round(barygaData.costs.oil * 1.6);
-                updateBarygaUI();
-                playSfx('success');
-            }
-        }
-        function buyCryptoUpgrade() {
-            if (barygaData.money >= barygaData.costs.crypto) {
-                barygaData.money -= barygaData.costs.crypto;
-                barygaData.autoIncome += 1000;
-                barygaData.costs.crypto = Math.round(barygaData.costs.crypto * 1.6);
-                updateBarygaUI();
-                playSfx('success');
+                alert('🎵 Фоновая музыка успешно загружена!');
             }
         }
 
-        setInterval(() => {
-            if (barygaData.autoIncome > 0) {
-                barygaData.money += Math.round(barygaData.autoIncome / 10);
-                updateBarygaUI();
-                localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
+        function toggleMusicPlayback() {
+            if (musicPlaying) {
+                bgMusic.pause();
+                musicPlaying = false;
+                document.getElementById('musicPlayToggleBtn').innerText = '▶️ Играть';
+            } else {
+                bgMusic.play();
+                musicPlaying = true;
+                document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
             }
-        }, 100);
+            playSfx('click');
+        }
+
+        function resetDefaultMusic() {
+            bgMusic.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
+            bgMusic.play();
+            musicPlaying = true;
+            document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+            playSfx('success');
+        }
 
         let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
         function postFashionLook() {
             let title = document.getElementById('fashionSetTitle').value.trim();
             let image = document.getElementById('fashionSetImage').value.trim();
-            if (!title || !image) { alert('⚠️ Заполните название и ссылку на скриншот сета!'); return; }
-            fashionLooks.unshift({ title, image, author: currentUserUsername });
+            if (!title || !image) {
+                alert('⚠️ Заполните название сета и ссылку на скриншот!');
+                return;
+            }
+            fashionLooks.unshift({ author: currentUserUsername, title, image, time: new Date().toLocaleDateString() });
             localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks));
+            renderFashionLooks();
             document.getElementById('fashionSetTitle').value = '';
             document.getElementById('fashionSetImage').value = '';
-            renderFashionLooks();
+            alert('📸 Ваш лук успешно опубликован в ленте!');
             playSfx('success');
         }
 
@@ -1997,13 +1957,13 @@
             let container = document.getElementById('fashionContainer');
             if (!container) return;
             if (fashionLooks.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center;">Пока нет опубликованных сетов.</div>';
+                container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center;">Лента пуста. Выложите первый лук!</div>';
                 return;
             }
             container.innerHTML = fashionLooks.map(l => `
-                <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:10px; margin-bottom:6px;">
-                    <div style="font-weight:800; color:#fff; font-size:11px; margin-bottom:4px;">${l.title} (${l.author})</div>
-                    <img src="${l.image}" style="width:100%; height:90px; object-fit:cover; border-radius:8px;" onerror="this.style.display='none';">
+                <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:10px; margin-bottom:8px;">
+                    <div style="font-weight:800; color:var(--accent-secondary); font-size:11px; margin-bottom:4px;">${l.author}: ${l.title}</div>
+                    <img src="${l.image}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;" onerror="this.style.display='none';">
                 </div>
             `).join('');
         }
@@ -2013,12 +1973,16 @@
         function postTravelAd() {
             let activity = document.getElementById('travelActivity').value.trim();
             let desc = document.getElementById('travelDesc').value.trim();
-            if (!activity || !desc) { alert('⚠️ Заполните все поля поиска попутчиков!'); return; }
-            travelAds.unshift({ activity, desc, author: currentUserUsername });
+            if (!activity) {
+                alert('⚠️ Укажите активность!');
+                return;
+            }
+            travelAds.unshift({ author: currentUserUsername, activity, desc, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
             localStorage.setItem('arizona_travel_ads', JSON.stringify(travelAds));
+            renderTravelAds();
             document.getElementById('travelActivity').value = '';
             document.getElementById('travelDesc').value = '';
-            renderTravelAds();
+            alert('🤝 Заявка на поиск попутчиков опубликована!');
             playSfx('success');
         }
 
@@ -2030,56 +1994,158 @@
                 return;
             }
             container.innerHTML = travelAds.map(t => `
-                <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:10px; margin-bottom:6px; font-size:11px;">
-                    <div style="font-weight:800; color:var(--accent-secondary);">🎯 ${t.activity} (${t.author})</div>
-                    <div style="color:var(--text-main); margin-top:2px;">${t.desc}</div>
-                    <button onclick="openChatWithUser('${t.author}')" class="btn-success" style="margin-top:6px; padding:4px; font-size:10px;">💬 Откликнуться</button>
+                <div style="background:var(--forum-bg); border:1px solid var(--forum-card-border); padding:8px; border-radius:10px; margin-bottom:8px; font-size:11px;">
+                    <div style="display:flex; justify-content:space-between; color:var(--accent-gold); font-weight:800; margin-bottom:2px;">
+                        <span>${t.activity} (${t.author})</span>
+                        <span style="font-size:9px; color:var(--text-muted);">${t.time}</span>
+                    </div>
+                    <div style="color:var(--text-main);">${t.desc || 'Без описания'}</div>
                 </div>
             `).join('');
         }
         renderTravelAds();
 
-        function loadCustomBackgroundMusic(event) {
-            let file = event.target.files[0];
-            if (file) {
-                let url = URL.createObjectURL(file);
-                let audio = document.getElementById('bgMusic');
-                audio.src = url;
-                audio.play();
-                alert('🎵 Трек успешно загружен и играет!');
-            }
+        let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || JSON.stringify({
+            money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800, shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000
+        }));
+
+        function saveBarygaState() {
+            localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
         }
 
-        let isMusicPlaying = true;
-        function toggleMusicPlayback() {
-            let audio = document.getElementById('bgMusic');
-            let btn = document.getElementById('musicPlayToggleBtn');
-            if (isMusicPlaying) {
-                audio.pause();
-                btn.innerText = '▶️ Воспроизвести';
-                isMusicPlaying = false;
+        function updateBarygaUI() {
+            document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString() + ' $';
+            document.getElementById('clickPowerLabel').innerText = `+${barygaData.clickPower} $ / клик`;
+            document.getElementById('autoIncomeLabel').innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
+            document.getElementById('clickCostLabel').innerText = `Цена: ${barygaData.clickCost.toLocaleString()} $`;
+            document.getElementById('autoCostLabel').innerText = `Цена: ${barygaData.autoCost.toLocaleString()} $`;
+            document.getElementById('proCostLabel').innerText = `Цена: ${barygaData.proCost.toLocaleString()} $`;
+            document.getElementById('shopCostLabel').innerText = `Цена: ${barygaData.shopCost.toLocaleString()} $`;
+            document.getElementById('eliteCostLabel').innerText = `Цена: ${barygaData.eliteCost.toLocaleString()} $`;
+            document.getElementById('oilCostLabel').innerText = `Цена: ${barygaData.oilCost.toLocaleString()} $`;
+            document.getElementById('cryptoCostLabel').innerText = `Цена: ${barygaData.cryptoCost.toLocaleString()} $`;
+        }
+
+        function barygaClick() {
+            barygaData.money += barygaData.clickPower;
+            updateBarygaUI();
+            saveBarygaState();
+            playSfx('cash');
+        }
+
+        function buyClickUpgrade() {
+            if (barygaData.money >= barygaData.clickCost) {
+                barygaData.money -= barygaData.clickCost;
+                barygaData.clickPower += 1;
+                barygaData.clickCost = Math.floor(barygaData.clickCost * 1.5);
+                updateBarygaUI();
+                saveBarygaState();
+                playSfx('success');
             } else {
-                audio.play();
-                btn.innerText = '⏸ Пауза';
-                isMusicPlaying = true;
+                alert('❌ Недостаточно средств!');
             }
         }
 
-        function resetDefaultMusic() {
-            let audio = document.getElementById('bgMusic');
-            audio.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
-            audio.play();
-            alert('🔄 Музыка сброшена на стандартную лоу-фай мелодию.');
+        function buyAutoUpgrade() {
+            if (barygaData.money >= barygaData.autoCost) {
+                barygaData.money -= barygaData.autoCost;
+                barygaData.autoIncome += 5;
+                barygaData.autoCost = Math.floor(barygaData.autoCost * 1.5);
+                updateBarygaUI();
+                saveBarygaState();
+                playSfx('success');
+            } else {
+                alert('❌ Недостаточно средств!');
+            }
         }
 
-        // Инициализация при загрузке страницы
+        function buyProUpgrade() {
+            if (barygaData.money >= barygaData.proCost) {
+                barygaData.money -= barygaData.proCost;
+                barygaData.autoIncome += 20;
+                barygaData.proCost = Math.floor(barygaData.proCost * 1.5);
+                updateBarygaUI();
+                saveBarygaState();
+                playSfx('success');
+            } else {
+                alert('❌ Недостаточно средств!');
+            }
+        }
+
+        function buyShopUpgrade() {
+            if (barygaData.money >= barygaData.shopCost) {
+                barygaData.money -= barygaData.shopCost;
+                barygaData.autoIncome += 50;
+                barygaData.shopCost = Math.floor(barygaData.shopCost * 1.5);
+                updateBarygaUI();
+                saveBarygaState();
+                playSfx('success');
+            } else {
+                alert('❌ Недостаточно средств!');
+            }
+        }
+
+        function buyEliteUpgrade() {
+            if (barygaData.money >= barygaData.eliteCost) {
+                barygaData.money -= barygaData.eliteCost;
+                barygaData.clickPower += 10;
+                barygaData.eliteCost = Math.floor(barygaData.eliteCost * 1.5);
+                updateBarygaUI();
+                saveBarygaState();
+                playSfx('success');
+            } else {
+                alert('❌ Недостаточно средств!');
+            }
+        }
+
+        function buyOilRigUpgrade() {
+            if (barygaData.money >= barygaData.oilCost) {
+                barygaData.money -= barygaData.oilCost;
+                barygaData.autoIncome += 200;
+                barygaData.oilCost = Math.floor(barygaData.oilCost * 1.5);
+                updateBarygaUI();
+                saveBarygaState();
+                playSfx('success');
+            } else {
+                alert('❌ Недостаточно средств!');
+            }
+        }
+
+        function buyCryptoUpgrade() {
+            if (barygaData.money >= barygaData.cryptoCost) {
+                barygaData.money -= barygaData.cryptoCost;
+                barygaData.autoIncome += 1000;
+                barygaData.cryptoCost = Math.floor(barygaData.cryptoCost * 1.5);
+                updateBarygaUI();
+                saveBarygaState();
+                playSfx('success');
+            } else {
+                alert('❌ Недостаточно средств!');
+            }
+        }
+
+        setInterval(() => {
+            if (barygaData.autoIncome > 0) {
+                barygaData.money += Math.floor(barygaData.autoIncome / 10);
+                updateBarygaUI();
+                saveBarygaState();
+            }
+        }, 100);
+
+        updateBarygaUI();
+
         checkUserPermissions();
         initProfileUI();
         renderFeed();
+        renderPendingAds();
         renderFavorites();
         renderMyAds();
-        renderPendingAds();
-        updateBarygaUI();
+
+        let savedBroadcast = localStorage.getItem('arizona_broadcast_msg');
+        if (savedBroadcast) {
+            document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${savedBroadcast}`;
+            document.getElementById('broadcastBanner').style.display = 'block';
+        }
     </script>
 </body>
 </html>

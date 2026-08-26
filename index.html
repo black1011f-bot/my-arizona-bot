@@ -3363,3 +3363,460 @@
         container.appendChild(fragment);
     };
 </script>
+<style>
+    /* ============ ГЛОБАЛЬНАЯ АДАПТИВНОСТЬ ============ */
+    /* Используем clamp() для плавного масштабирования */
+    :root {
+        --app-font-size-xs: clamp(8px, 2vw, 12px);
+        --app-font-size-sm: clamp(10px, 2.5vw, 14px);
+        --app-font-size-md: clamp(12px, 3vw, 16px);
+        --app-font-size-lg: clamp(14px, 3.5vw, 18px);
+        --app-font-size-xl: clamp(18px, 4vw, 22px);
+        --app-font-size-xxl: clamp(22px, 5vw, 28px);
+        --app-btn-padding: clamp(6px, 2vw, 10px) clamp(12px, 3vw, 16px);
+        --app-input-padding: clamp(6px, 1.5vw, 10px) clamp(10px, 2.5vw, 14px);
+        --app-card-radius: clamp(8px, 3vw, 16px);
+        --app-modal-radius: clamp(12px, 4vw, 20px);
+    }
+
+    /* Мобильные устройства (ширина до 480px) */
+    @media (max-width: 480px) {
+        .app-container { padding: 0 4px 60px; }
+        .app-header { padding: 4px 6px; }
+        .app-header-brand { font-size: 15px; }
+        .app-header-brand-img { width: 28px; height: 28px; }
+        .app-icon-btn { width: 32px; height: 32px; font-size: 16px; }
+        .tab-bar-item .tab-icon { font-size: 20px; }
+        .ad-card .ad-image { height: 80px; }
+        .clicker-big-btn { height: 120px; font-size: 20px; }
+        .modal-content { padding: 10px; }
+    }
+
+    /* Очень большие экраны (4K) */
+    @media (min-width: 1920px) {
+        :root {
+            --app-max-width: 1600px;
+            --app-tab-bar-height: 70px;
+            --app-header-height: 60px;
+        }
+        .app-container { padding: 0 16px 80px; }
+        .ads-container:not(.grid-view) { grid-template-columns: repeat(4, 1fr); }
+        .ads-container.grid-view { grid-template-columns: repeat(5, 1fr); }
+        .ad-card .ad-image { height: 200px; }
+    }
+
+    /* Планшеты (портрет и ландшафт) */
+    @media (min-width: 768px) and (max-width: 1024px) {
+        .app-container { padding: 0 12px 70px; }
+        .ads-container:not(.grid-view) { grid-template-columns: repeat(2, 1fr); }
+        .ads-container.grid-view { grid-template-columns: repeat(3, 1fr); }
+        .ad-card .ad-image { height: 150px; }
+    }
+
+    /* Ноутбуки и MacBook */
+    @media (min-width: 1280px) and (max-width: 1440px) {
+        .app-container { max-width: 1200px; }
+    }
+</style>
+<script>
+    // ==========================================================================
+    // ОФЛАЙН-РЕЖИМ: УЛУЧШЕННАЯ ОБРАБОТКА СЕТЕВОГО СТАТУСА
+    // ==========================================================================
+    let isOffline = false;
+
+    function updateOnlineStatus() {
+        const indicator = document.getElementById('offlineIndicator');
+        if (!indicator) return;
+        if (navigator.onLine) {
+            indicator.classList.remove('visible');
+            if (isOffline) {
+                // Соединение восстановлено, пробуем синхронизировать
+                syncNow();
+            }
+            isOffline = false;
+        } else {
+            indicator.classList.add('visible');
+            isOffline = true;
+        }
+    }
+
+    // Создаём индикатор, если его нет
+    document.addEventListener('DOMContentLoaded', () => {
+        let indicator = document.getElementById('offlineIndicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = 'offlineIndicator';
+            indicator.className = 'offline-indicator';
+            indicator.innerText = 'Нет соединения с интернетом';
+            document.body.appendChild(indicator);
+        }
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus();
+    });
+
+    // ==========================================================================
+    // ОЧЕРЕДЬ ДЕЙСТВИЙ ДЛЯ ОТЛОЖЕННОЙ СИНХРОНИЗАЦИИ
+    // ==========================================================================
+    const pendingActionsKey = 'arizona_pending_actions';
+    let pendingActions = JSON.parse(localStorage.getItem(pendingActionsKey) || '[]');
+
+    function enqueueAction(action) {
+        pendingActions.push({
+            type: action.type,
+            payload: action.payload,
+            timestamp: Date.now()
+        });
+        localStorage.setItem(pendingActionsKey, JSON.stringify(pendingActions));
+    }
+
+    function processPendingActions() {
+        if (pendingActions.length === 0) return;
+        // Здесь должна быть отправка на сервер (заглушка)
+        console.log('Обработка отложенных действий:', pendingActions.length);
+        // После успешной обработки очищаем очередь
+        pendingActions = [];
+        localStorage.setItem(pendingActionsKey, JSON.stringify(pendingActions));
+    }
+
+    // При восстановлении связи обрабатываем очередь
+    window.addEventListener('online', () => {
+        processPendingActions();
+        updateOnlineStatus();
+    });
+
+    // При попытке отправить объявление в офлайне — ставим в очередь
+    const originalSubmitData = window.submitData;
+    window.submitData = function() {
+        if (!navigator.onLine) {
+            alert('Вы офлайн. Объявление будет отправлено при восстановлении связи.');
+            const draft = {
+                itemName: document.getElementById('itemName').value,
+                price: document.getElementById('price').value,
+                text: document.getElementById('text').value,
+                image: document.getElementById('itemImage').value,
+                server: document.getElementById('server').value,
+                mode: document.getElementById('mode').value,
+                category: document.getElementById('category').value
+            };
+            enqueueAction({ type: 'create_ad', payload: draft });
+            return;
+        }
+        originalSubmitData();
+    };
+</script>
+<script>
+    // ==========================================================================
+    // DEBOUNCE ДЛЯ ПОИСКА И СОХРАНЕНИЯ ЧЕРНОВИКОВ
+    // ==========================================================================
+    function debounce(func, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    // Применяем к поиску (если есть поле поиска)
+    // В нашем случае поиск выполняется по кнопке, но можно добавить живой поиск
+    // Для примера: debounce на ввод в поле поиска модалки
+    document.addEventListener('input', function(e) {
+        if (e.target.id === 'modalSearchInput') {
+            debounce(() => {
+                // Здесь мог бы быть живой поиск, но пока пропускаем
+                console.log('Поиск с задержкой');
+            }, 300)();
+        }
+    });
+
+    // Debounce для сохранения черновика (вместо сохранения при каждом вводе)
+    const saveDraftDebounced = debounce(saveDraft, 500);
+    document.addEventListener('input', function(e) {
+        if (e.target.closest('#tabApp')) {
+            saveDraftDebounced();
+        }
+    });
+
+    // ==========================================================================
+    // THROTTLE ДЛЯ КЛИКОВ В ИГРЕ "БАРЫГА"
+    // ==========================================================================
+    function throttle(func, limit) {
+        let inThrottle;
+        return function(...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    }
+
+    // Ограничиваем клики в игре до 10 в секунду
+    const originalBarygaClick = window.barygaClick;
+    window.barygaClick = throttle(function() {
+        originalBarygaClick();
+    }, 100); // 10 кликов в секунду
+
+    // ==========================================================================
+    // ИСПОЛЬЗОВАНИЕ DOCUMENTFRAGMENT ДЛЯ РЕНДЕРИНГА СПИСКОВ
+    // ==========================================================================
+    function renderListWithFragment(containerId, items, itemRenderer) {
+        const container = document.getElementById(containerId);
+        const fragment = document.createDocumentFragment();
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.innerHTML = itemRenderer(item);
+            fragment.appendChild(div.firstElementChild);
+        });
+        container.innerHTML = '';
+        container.appendChild(fragment);
+    }
+
+    // Переопределяем renderFeed для использования фрагмента (улучшение производительности)
+    const originalRenderFeed3 = window.renderFeed;
+    window.renderFeed = function() {
+        const container = document.getElementById('feedContainer');
+        const approved = globalAdsFeed.filter(ad => ad.status === 'approved');
+        if (approved.length === 0) {
+            container.innerHTML = '<p>Лента пуста</p>';
+            return;
+        }
+        const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@', '').toLowerCase()) ||
+            currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME;
+        const fragment = document.createDocumentFragment();
+        approved.slice(0, feedDisplayLimit).forEach(ad => {
+            const isFav = favoritesList.some(f => f.id === ad.id);
+            const imageHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" class="ad-image" loading="lazy" onerror="this.style.display='none'">` : '';
+            const deleteBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteApprovedAd(${ad.id})">🗑</button>` : '';
+            const card = document.createElement('div');
+            card.className = 'ad-card';
+            card.setAttribute('onclick', `openAdDetail(${ad.id})`);
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${escapeHtml(ad.mode === 'sell' ? 'Продажа' : 'Покупка')}</span>
+                    <span>${escapeHtml(ad.server)}</span>
+                </div>
+                ${imageHtml}
+                <div class="ad-title">${escapeHtml(ad.itemName)}</div>
+                <div class="ad-price">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+                <div>${escapeHtml(ad.text)}</div>
+                <div class="ad-actions" onclick="event.stopPropagation();">
+                    <button class="btn btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">${isFav ? '❤️' : '🤍'}</button>
+                    <button class="btn btn-success btn-sm" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать</button>
+                    ${deleteBtn}
+                </div>
+            `;
+            fragment.appendChild(card);
+        });
+        container.innerHTML = '';
+        container.appendChild(fragment);
+    };
+</script>
+<script>
+    // Предотвращаем повторное нажатие на кнопки отправки, покупки и т.д.
+    let isProcessing = false;
+
+    function withLock(fn) {
+        if (isProcessing) return;
+        isProcessing = true;
+        fn();
+        setTimeout(() => { isProcessing = false; }, 300); // разблокировка через 300 мс
+    }
+
+    // Оборачиваем submitData
+    const originalSubmitData = window.submitData;
+    window.submitData = function() {
+        withLock(() => originalSubmitData());
+    };
+
+    // Оборачиваем покупки в игре (все buy-функции)
+    ['buyClickUpgrade', 'buyAutoUpgrade', 'buyProUpgrade', 'buyShopUpgrade',
+     'buyEliteUpgrade', 'buyOilRigUpgrade', 'buyCryptoUpgrade'].forEach(fnName => {
+        if (typeof window[fnName] === 'function') {
+            const originalFn = window[fnName];
+            window[fnName] = function() {
+                withLock(() => originalFn());
+            };
+        }
+    });
+</script>
+<script>
+    // Счётчик непрочитанных сообщений
+    let unreadCounts = JSON.parse(localStorage.getItem('arizona_unread_counts') || '{}');
+
+    function updateChatBadge() {
+        const totalUnread = Object.values(unreadCounts).reduce((sum, val) => sum + val, 0);
+        const chatIconBtn = document.querySelector('[onclick*="chatsModal"] .tab-icon');
+        if (!chatIconBtn) return;
+        let badge = document.getElementById('chatBadge');
+        if (totalUnread > 0) {
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.id = 'chatBadge';
+                badge.style.cssText = 'background:red;color:white;border-radius:10px;padding:2px 6px;font-size:10px;position:absolute;top:-4px;right:-4px;';
+                chatIconBtn.parentElement.style.position = 'relative';
+                chatIconBtn.parentElement.appendChild(badge);
+            }
+            badge.textContent = totalUnread;
+        } else {
+            if (badge) badge.remove();
+        }
+    }
+
+    // Помечаем чат как прочитанный при открытии
+    const originalOpenChatWithUser = window.openChatWithUser;
+    window.openChatWithUser = function(user) {
+        originalOpenChatWithUser(user);
+        if (unreadCounts[user]) {
+            unreadCounts[user] = 0;
+            localStorage.setItem('arizona_unread_counts', JSON.stringify(unreadCounts));
+            updateChatBadge();
+        }
+    };
+
+    // Увеличиваем счётчик при получении сообщения (заглушка — в реальном времени через Telegram API)
+    function markUnread(user) {
+        if (user !== activeChatUser) {
+            unreadCounts[user] = (unreadCounts[user] || 0) + 1;
+            localStorage.setItem('arizona_unread_counts', JSON.stringify(unreadCounts));
+            updateChatBadge();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', updateChatBadge);
+</script>
+<script>
+    // Добавляем лёгкую вибрацию при нажатиях, если поддерживается
+    function hapticFeedback(type) {
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            const haptic = window.Telegram.WebApp.HapticFeedback;
+            if (type === 'success') haptic.notificationOccurred('success');
+            else if (type === 'warning') haptic.notificationOccurred('warning');
+            else if (type === 'error') haptic.notificationOccurred('error');
+            else haptic.impactOccurred('light');
+        }
+    }
+
+    // Подключаем к playSfx
+    const originalPlaySfx = window.playSfx;
+    window.playSfx = function(type) {
+        originalPlaySfx(type);
+        if (type === 'success') hapticFeedback('success');
+        else if (type === 'cash') hapticFeedback('light');
+        else hapticFeedback('light');
+    };
+</script>
+<script>
+    // ==========================================================================
+    // ПЕРЕОПРЕДЕЛЯЕМ ЛОГИКУ ОФЛАЙН‑ИНДИКАТОРА
+    // ==========================================================================
+    // Удаляем все предыдущие обработчики и создаём новый индикатор корректно.
+    function initOfflineIndicator() {
+        // Удаляем старый индикатор, если есть
+        const old = document.getElementById('offlineIndicator');
+        if (old) old.remove();
+
+        // Создаём новый
+        const indicator = document.createElement('div');
+        indicator.id = 'offlineIndicator';
+        indicator.className = 'offline-indicator';
+        indicator.innerText = 'Нет соединения с интернетом';
+        indicator.style.display = 'none';
+        document.body.appendChild(indicator);
+
+        // Функция обновления
+        function update() {
+            if (navigator.onLine) {
+                indicator.style.display = 'none';
+            } else {
+                indicator.style.display = 'block';
+            }
+        }
+
+        // Назначаем обработчики только один раз
+        window.removeEventListener('online', update);
+        window.removeEventListener('offline', update);
+        window.addEventListener('online', update);
+        window.addEventListener('offline', update);
+
+        // Вызываем сразу
+        update();
+    }
+
+    // Инициализируем после готовности DOM
+    document.addEventListener('DOMContentLoaded', initOfflineIndicator);
+    // Также сразу вызываем, если DOM уже готов
+    if (document.readyState === 'complete') {
+        initOfflineIndicator();
+    }
+</script>
+<script>
+    // ==========================================================================
+    // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА ДОСТУПНОСТИ LOCALSTORAGE
+    // ==========================================================================
+    function isLocalStorageAvailable() {
+        try {
+            const test = '__localStorage_test__';
+            localStorage.setItem(test, test);
+            localStorage.removeItem(test);
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    if (!isLocalStorageAvailable()) {
+        console.warn('localStorage недоступен. Приложение будет работать в ограниченном режиме.');
+        // Можно показать сообщение пользователю
+        alert('Хранилище браузера недоступно. Некоторые данные могут не сохраняться.');
+    }
+
+    // ==========================================================================
+    // ОЧИСТКА УСТАРЕВШИХ ДАННЫХ ПРИ ЗАГРУЗКЕ (если версия изменилась)
+    // ==========================================================================
+    function cleanOldData() {
+        const currentBuild = CURRENT_APP_BUILD;
+        const storedBuild = localStorage.getItem('arizona_app_build');
+        if (storedBuild !== currentBuild) {
+            // Удаляем ключи, которые могут содержать устаревшие данные
+            const keysToRemove = [
+                'arizona_broadcast_text',
+                'arizona_broadcast_history',
+                'arizona_pending_ads',
+                'arizona_ads_feed',
+                'arizona_global_chats_db',
+                'arizona_fashion_looks',
+                'arizona_travel_ads',
+                getUserKey('arizona_ad_draft'),
+                getUserKey('my_ads'),
+                getUserKey('favorites')
+            ];
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            localStorage.setItem('arizona_app_build', currentBuild);
+        }
+    }
+    cleanOldData();
+</script>
+<style>
+    /* Для экранов уже 320px */
+    @media (max-width: 320px) {
+        .app-container { padding: 0 2px 50px; }
+        .app-header { padding: 2px 4px; }
+        .app-header-brand { font-size: 12px; }
+        .app-header-brand-img { width: 22px; height: 22px; }
+        .app-icon-btn { width: 28px; height: 28px; font-size: 14px; }
+        .tab-bar-item .tab-icon { font-size: 16px; }
+        .ad-card .ad-image { height: 60px; }
+        .btn { font-size: 10px; padding: 4px 8px; }
+        .modal-content { padding: 8px; }
+        .tutorial-slider { padding: 12px; }
+    }
+
+    /* Для очень высоких экранов (соотношение сторон) */
+    @media (min-aspect-ratio: 2/1) {
+        .app-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+    }
+</style>

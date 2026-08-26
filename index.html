@@ -2666,3 +2666,276 @@
 
     // Для других функций можно добавить аналогично при необходимости
 </script>
+<script>
+    // ==========================================================================
+    // ЭКРАНИРОВАНИЕ HTML (анти-XSS)
+    // ==========================================================================
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Переопределяем функции, которые выводят пользовательский контент,
+    // чтобы они всегда экранировали текст.
+    // Например, renderActiveChatMessages, renderWallComments, renderFeed и т.д.
+
+    // Для сообщений чата
+    const originalRenderActiveChatMessages = window.renderActiveChatMessages;
+    window.renderActiveChatMessages = function() {
+        if (!chatsDatabase[activeChatUser] || chatsDatabase[activeChatUser].length === 0) {
+            document.getElementById('chatMessages').innerHTML = '<p style="font-size:12px;">История пуста</p>';
+            return;
+        }
+        const cont = document.getElementById('chatMessages');
+        cont.innerHTML = chatsDatabase[activeChatUser].map(msg => {
+            const isOwn = msg.sender === currentUserUsername;
+            const safeText = escapeHtml(msg.text);
+            return `<div class="chat-message" style="align-self:${isOwn ? 'flex-end' : 'flex-start'};
+                background:${isOwn ? 'var(--app-btn-bg)' : 'var(--app-card-bg)'};
+                color:${isOwn ? '#fff' : 'var(--app-text-main)'};">
+                ${safeText}
+                <span class="time">${escapeHtml(msg.time)}</span>
+            </div>`;
+        }).join('');
+        cont.scrollTop = cont.scrollHeight;
+    };
+
+    // Для росписей на стене
+    const originalRenderWallComments = window.renderWallComments;
+    window.renderWallComments = function() {
+        const cont = document.getElementById('wallCommentsContainer');
+        if (wallComments.length === 0) {
+            cont.innerHTML = '<p>Нет росписей</p>';
+            return;
+        }
+        cont.innerHTML = wallComments.map(c =>
+            `<div><b>${escapeHtml(c.author)}</b> <small>${escapeHtml(c.time)}</small><br>${escapeHtml(c.text)}</div>`
+        ).join('');
+    };
+
+    // Для объявлений в ленте
+    const originalRenderFeed = window.renderFeed;
+    window.renderFeed = function() {
+        const container = document.getElementById('feedContainer');
+        const approved = globalAdsFeed.filter(ad => ad.status === 'approved');
+        if (approved.length === 0) {
+            container.innerHTML = '<p>Лента пуста</p>';
+            return;
+        }
+        const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@', '').toLowerCase()) ||
+            currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME;
+        container.innerHTML = approved.slice(0, feedDisplayLimit).map(ad => {
+            const isFav = favoritesList.some(f => f.id === ad.id);
+            const imageHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" class="ad-image" onerror="this.style.display='none'">` : '';
+            const deleteBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteApprovedAd(${ad.id})">🗑</button>` : '';
+            return `<div class="ad-card" onclick="openAdDetail(${ad.id})">
+                <div style="display:flex; justify-content:space-between;">
+                    <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${escapeHtml(ad.mode === 'sell' ? 'Продажа' : 'Покупка')}</span>
+                    <span>${escapeHtml(ad.server)}</span>
+                </div>
+                ${imageHtml}
+                <div class="ad-title">${escapeHtml(ad.itemName)}</div>
+                <div class="ad-price">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+                <div>${escapeHtml(ad.text)}</div>
+                <div class="ad-actions" onclick="event.stopPropagation();">
+                    <button class="btn btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">${isFav ? '❤️' : '🤍'}</button>
+                    <button class="btn btn-success btn-sm" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать</button>
+                    ${deleteBtn}
+                </div>
+            </div>`;
+        }).join('');
+    };
+
+    // ==========================================================================
+    // КОНТРОЛЬ ЦЕЛОСТНОСТИ LOCALSTORAGE
+    // ==========================================================================
+    function validateAndRestoreLocalStorage() {
+        const keysToCheck = [
+            getUserKey('my_ads'),
+            getUserKey('favorites'),
+            getUserKey('wall_comments'),
+            'arizona_global_chats_db',
+            'arizona_pending_ads',
+            'arizona_ads_feed',
+            'arizona_broadcast_history',
+            'arizona_fashion_looks',
+            'arizona_travel_ads'
+        ];
+
+        keysToCheck.forEach(key => {
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    // Простейшая проверка: если не массив/объект и не ожидаемый тип, сбрасываем
+                    if (Array.isArray(parsed) === false && typeof parsed !== 'object') {
+                        throw new Error('Invalid JSON type');
+                    }
+                }
+            } catch (e) {
+                console.warn('Повреждённые данные в localStorage, сброс:', key);
+                localStorage.removeItem(key);
+            }
+        });
+    }
+    validateAndRestoreLocalStorage();
+
+    // ==========================================================================
+    // ЗАЩИТА LOCALSTORAGE ОТ ОШИБОК КВОТЫ
+    // ==========================================================================
+    function safeSetItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            console.error('Ошибка сохранения в localStorage:', e);
+            // Пытаемся удалить старые временные данные, чтобы освободить место
+            const tempKeys = [
+                getUserKey('arizona_ad_draft'),
+                'arizona_broadcast_history',
+                'arizona_travel_ads',
+                'arizona_fashion_looks'
+            ];
+            tempKeys.forEach(k => localStorage.removeItem(k));
+            alert('Не удалось сохранить данные. Освободите место в браузере.');
+        }
+    }
+
+    // Переопределяем функции записи, чтобы использовали safeSetItem
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) {
+        try {
+            originalSetItem.call(this, key, value);
+        } catch (e) {
+            console.error('Ошибка localStorage, удаляем временные данные:', key);
+            // Удаляем черновик и историю, чтобы освободить место
+            const temp = [
+                getUserKey('arizona_ad_draft'),
+                'arizona_broadcast_history'
+            ];
+            temp.forEach(k => localStorage.removeItem(k));
+            // Повторно пытаемся записать
+            originalSetItem.call(this, key, value);
+        }
+    };
+</script>
+<script>
+    // ==========================================================================
+    // УЛУЧШЕННАЯ ВИРТУАЛИЗАЦИЯ СПИСКА (ранняя подгрузка)
+    // ==========================================================================
+    let isLoadingMore = false;
+    window.addEventListener('scroll', () => {
+        if (isLoadingMore) return;
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        // Начинаем подгружать за 400px до низа
+        if (scrollTop + windowHeight >= documentHeight - 400) {
+            if (feedDisplayLimit < globalAdsFeed.filter(ad => ad.status === 'approved').length) {
+                isLoadingMore = true;
+                feedDisplayLimit += 20;
+                renderFeed();
+                setTimeout(() => { isLoadingMore = false; }, 200);
+            }
+        }
+    });
+
+    // ==========================================================================
+    // ЛЕНИВАЯ ЗАГРУЗКА ВСЕХ ИЗОБРАЖЕНИЙ (включая аватары и баннеры)
+    // ==========================================================================
+    function applyLazyLoading() {
+        document.querySelectorAll('img').forEach(img => {
+            img.loading = 'lazy';
+        });
+    }
+
+    // Вызываем после основных рендеров
+    const originalRenderFeed2 = window.renderFeed;
+    window.renderFeed = function() {
+        originalRenderFeed2();
+        applyLazyLoading();
+    };
+    const originalRenderFavorites2 = window.renderFavorites;
+    window.renderFavorites = function() {
+        originalRenderFavorites2();
+        applyLazyLoading();
+    };
+    const originalRenderMyAds2 = window.renderMyAds;
+    window.renderMyAds = function() {
+        originalRenderMyAds2();
+        applyLazyLoading();
+    };
+    // Также после открытия модалки с объявлением
+    const originalOpenAdDetail = window.openAdDetail;
+    window.openAdDetail = function(id) {
+        originalOpenAdDetail(id);
+        applyLazyLoading();
+    };
+
+    // ==========================================================================
+    // КНОПКА "СИНХРОНИЗИРОВАТЬ СЕЙЧАС" ДЛЯ CLOUDSTORAGE
+    // ==========================================================================
+    function syncNow() {
+        showLoader();
+        backupToCloud().then(() => {
+            hideLoader();
+            alert('Синхронизация завершена.');
+        }).catch(e => {
+            hideLoader();
+            console.error('Ошибка синхронизации:', e);
+            alert('Не удалось выполнить синхронизацию.');
+        });
+    }
+
+    // Добавляем кнопку в настройки
+    const originalOpenModalSettings = window.openModal;
+    window.openModal = function(id) {
+        originalOpenModalSettings(id);
+        if (id === 'settingsModal') {
+            // Если кнопки ещё нет, добавляем
+            if (!document.getElementById('syncNowBtn')) {
+                const settingsContent = document.querySelector('#settingsModal .modal-content');
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                formGroup.innerHTML = `<label>☁️ Облачное хранилище</label>
+                    <button id="syncNowBtn" class="btn btn-outline btn-sm" onclick="syncNow()">Синхронизировать сейчас</button>`;
+                settingsContent.appendChild(formGroup);
+            }
+        }
+    };
+</script>
+<script>
+    // ==========================================================================
+    // ОБРАБОТЧИК ОШИБОК БЕЗ ALERT (только console.error)
+    // ==========================================================================
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error('Глобальная ошибка:', { message, source, lineno, colno, error });
+        return true;
+    };
+
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('Необработанное обещание:', event.reason);
+        event.preventDefault();
+    });
+
+    // ==========================================================================
+    // ЛЕНИВАЯ ЗАГРУЗКА ДЛЯ ТУТОРИАЛА И БАННЕРА
+    // ==========================================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        applyLazyLoading(); // применяем сразу ко всем изображениям
+    });
+
+    // Добавляем ленивую загрузку для аватара профиля при его обновлении
+    const originalInitProfileUI = window.initProfileUI;
+    window.initProfileUI = function() {
+        originalInitProfileUI();
+        const avatarImg = document.getElementById('azAvatarImg');
+        if (avatarImg) avatarImg.loading = 'lazy';
+        const bannerImg = document.querySelector('.welcome-banner-wide img');
+        if (bannerImg) bannerImg.loading = 'lazy';
+    };
+</script>

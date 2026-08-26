@@ -3,36 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arizona RP — Универсальный Mini App (TG/WB/iOS)</title>
+    <title>Arizona RP — Wildberries Style</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="preload" as="image" href="https://i.postimg.cc/WzMP51cN/1786185439356.png">
     <link rel="preload" as="image" href="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg">
     <style>
         /* ==========================================================================
-           БАЗОВЫЕ ПЕРЕМЕННЫЕ И СБРОС
+           БАЗОВЫЕ ПЕРЕМЕННЫЕ (стиль Wildberries)
            ========================================================================== */
         :root {
-            /* Базовые переменные (по умолчанию Telegram-стиль, тёмная тема) */
-            --app-bg: #0f0f0f;
-            --app-card-bg: #1c1c1e;
-            --app-header-bg: #171717;
-            --app-card-border: #2c2c2e;
-            --app-accent: #2aabee;
-            --app-accent-secondary: #5ac8fa;
-            --app-accent-gold: #ffd60a;
+            --app-bg: #f5f5f7;
+            --app-card-bg: #ffffff;
+            --app-header-bg: #ffffff;
+            --app-card-border: #e0e0e6;
+            --app-accent: #cb11ab;
+            --app-accent-secondary: #ff5ecf;
+            --app-accent-gold: #ffb800;
             --app-accent-red: #ff3b30;
-            --app-text-main: #ffffff;
-            --app-text-muted: #8e8e93;
-            --app-btn-bg: linear-gradient(135deg, #2aabee 0%, #1a7ab5 100%);
-            --app-btn-hover: linear-gradient(135deg, #3bb8f7 0%, #2589c9 100%);
+            --app-text-main: #1c1c1e;
+            --app-text-muted: #6e6e73;
+            --app-btn-bg: linear-gradient(135deg, #cb11ab 0%, #7b0e6a 100%);
+            --app-btn-hover: linear-gradient(135deg, #e022c0 0%, #8f1180 100%);
             --app-btn-text: #ffffff;
-            --app-radius-sm: 8px;
-            --app-radius-md: 12px;
-            --app-radius-lg: 16px;
-            --app-radius-xl: 20px;
+            --app-radius-sm: 12px;
+            --app-radius-md: 16px;
+            --app-radius-lg: 20px;
+            --app-radius-xl: 24px;
             --app-radius-round: 50%;
-            --app-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            --app-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+            --app-shadow: 0 6px 24px rgba(203, 17, 171, 0.15);
+            --app-shadow-lg: 0 10px 40px rgba(203, 17, 171, 0.25);
             --app-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             --app-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             --app-spacing-xs: 4px;
@@ -45,7 +44,7 @@
             --app-tab-bar-height: 60px;
             --app-header-height: 52px;
             --app-border-width: 1px;
-            --app-card-gap: 10px;
+            --app-card-gap: 14px;
             --app-font-size-xs: 10px;
             --app-font-size-sm: 12px;
             --app-font-size-md: 14px;
@@ -53,1247 +52,386 @@
             --app-font-size-xl: 20px;
             --app-font-size-xxl: 28px;
             --app-icon-size: 20px;
-            --app-btn-padding: 10px 16px;
-            --app-btn-font-size: 13px;
-            --app-input-padding: 10px 14px;
+            --app-btn-padding: 14px 24px;
+            --app-btn-font-size: 15px;
+            --app-input-padding: 12px 16px;
             --app-input-font-size: 13px;
-            --app-badge-radius: 6px;
-            --app-card-radius: 14px;
-            --app-modal-radius: 18px;
-            --app-overlay-bg: rgba(0, 0, 0, 0.75);
+            --app-badge-radius: 12px;
+            --app-card-radius: 18px;
+            --app-modal-radius: 24px;
+            --app-overlay-bg: rgba(0, 0, 0, 0.6);
             --app-scrollbar-width: 4px;
-            --app-scrollbar-thumb: #3a3a3c;
-            --app-focus-ring: 0 0 0 2px rgba(42, 171, 238, 0.5);
+            --app-scrollbar-thumb: #c4c4c6;
+            --app-focus-ring: 0 0 0 2px rgba(203, 17, 171, 0.5);
             --app-disabled-opacity: 0.5;
             --app-user-select: none;
             --app-tap-highlight: transparent;
         }
-
-        /* ==========================================================================
-           СВЕТЛАЯ ТЕМА (модификатор на body)
-           ========================================================================== */
-        body.theme-light {
-            --app-bg: #f5f5f7;
-            --app-card-bg: #ffffff;
-            --app-header-bg: #f0f0f2;
-            --app-card-border: #d1d1d6;
-            --app-accent: #007aff;
-            --app-accent-secondary: #5ac8fa;
-            --app-accent-gold: #b8860b;
-            --app-accent-red: #dc3545;
-            --app-text-main: #1c1c1e;
-            --app-text-muted: #6e6e73;
-            --app-btn-bg: linear-gradient(135deg, #007aff 0%, #0055b3 100%);
-            --app-btn-hover: linear-gradient(135deg, #1a88ff 0%, #0066cc 100%);
-            --app-btn-text: #ffffff;
-            --app-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-            --app-shadow-lg: 0 6px 24px rgba(0, 0, 0, 0.12);
-            --app-overlay-bg: rgba(0, 0, 0, 0.5);
-            --app-scrollbar-thumb: #c4c4c6;
-            --app-focus-ring: 0 0 0 2px rgba(0, 122, 255, 0.5);
-        }
-
-        /* ==========================================================================
-           СБРОС И БАЗОВЫЙ СТИЛЬ
-           ========================================================================== */
-        * {
+        body {
+            background: var(--app-bg);
+            font-family: var(--app-font);
+            color: var(--app-text-main);
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: var(--app-tap-highlight);
-            -webkit-user-select: var(--app-user-select);
-            user-select: var(--app-user-select);
-        }
-
-        html {
-            font-size: 16px;
-            -webkit-text-size-adjust: 100%;
-            scroll-behavior: smooth;
-        }
-
-        body {
-            font-family: var(--app-font);
-            background: var(--app-bg);
-            color: var(--app-text-main);
-            line-height: 1.5;
             min-height: 100vh;
-            min-height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-            transition: background var(--app-transition), color var(--app-transition);
-        }
-
-        img {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            loading: lazy;
-        }
-
-        button {
-            cursor: pointer;
-            font-family: inherit;
-            border: none;
-            background: none;
-            color: inherit;
-            outline: none;
-            -webkit-tap-highlight-color: transparent;
-            transition: all var(--app-transition);
-        }
-
-        button:focus-visible {
-            box-shadow: var(--app-focus-ring);
-        }
-
-        input,
-        textarea,
-        select {
-            font-family: inherit;
-            font-size: var(--app-input-font-size);
-            width: 100%;
-            padding: var(--app-input-padding);
-            border-radius: var(--app-radius-md);
-            border: var(--app-border-width) solid var(--app-card-border);
-            background: var(--app-card-bg);
-            color: var(--app-text-main);
-            outline: none;
-            transition: border-color var(--app-transition), box-shadow var(--app-transition);
-            -webkit-appearance: none;
-            appearance: none;
-        }
-
-        input:focus,
-        textarea:focus,
-        select:focus {
-            border-color: var(--app-accent);
-            box-shadow: var(--app-focus-ring);
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        label {
-            display: block;
-            font-size: var(--app-font-size-xs);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--app-text-muted);
-            margin-bottom: var(--app-spacing-xs);
         }
 
         /* ==========================================================================
-           СКРОЛЛБАР
+           ОБЩИЕ СТИЛИ
            ========================================================================== */
-        ::-webkit-scrollbar {
-            width: var(--app-scrollbar-width);
-            height: var(--app-scrollbar-width);
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--app-scrollbar-thumb);
-            border-radius: 4px;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        img { max-width: 100%; height: auto; display: block; loading: lazy; }
+        button { cursor: pointer; font-family: inherit; border: none; background: none; color: inherit; outline: none; transition: all var(--app-transition); }
+        input, textarea, select { font-family: inherit; font-size: var(--app-input-font-size); width: 100%; padding: var(--app-input-padding); border-radius: var(--app-radius-md); border: 1px solid var(--app-card-border); background: #fff; color: var(--app-text-main); outline: none; }
+        label { display: block; font-size: var(--app-font-size-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--app-text-muted); margin-bottom: 4px; }
 
-        /* ==========================================================================
-           КОНТЕЙНЕР ПРИЛОЖЕНИЯ
-           ========================================================================== */
-        .app-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            max-width: var(--app-max-width);
-            width: 100%;
-            margin: 0 auto;
-            padding: 0;
-            position: relative;
-            transition: max-width var(--app-transition);
-        }
+        .app-container { max-width: var(--app-max-width); margin: 0 auto; padding: 0 12px 80px; }
+        .app-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fff; border-bottom: 1px solid #e0e0e6; position: sticky; top: 0; z-index: 100; }
+        .app-header-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; color: #1c1c1e; text-decoration: none; }
+        .app-header-brand-img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #cb11ab; }
+        .app-header-actions { display: flex; align-items: center; gap: 8px; }
+        .app-icon-btn { width: 40px; height: 40px; border-radius: 12px; background: #f0f0f2; border: 1px solid #e0e0e6; display: flex; align-items: center; justify-content: center; font-size: 20px; }
 
-        /* ==========================================================================
-           ШАПКА ПРИЛОЖЕНИЯ
-           ========================================================================== */
-        .app-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--app-spacing-sm) var(--app-spacing-lg);
-            background: var(--app-header-bg);
-            border-bottom: var(--app-border-width) solid var(--app-card-border);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            min-height: var(--app-header-height);
-            transition: background var(--app-transition), border-color var(--app-transition);
-        }
-
-        .app-header-brand {
-            display: flex;
-            align-items: center;
-            gap: var(--app-spacing-sm);
-            font-weight: 700;
-            font-size: var(--app-font-size-md);
-            color: var(--app-text-main);
-            text-decoration: none;
-        }
-
-        .app-header-brand-img {
-            width: 36px;
-            height: 36px;
-            border-radius: var(--app-radius-round);
-            object-fit: cover;
-            border: 2px solid var(--app-accent);
-            background: var(--app-card-bg);
-            flex-shrink: 0;
-            loading: lazy;
-        }
-
-        .app-header-brand-text {
-            display: flex;
-            flex-direction: column;
-            line-height: 1.2;
-        }
-        .app-header-brand-subtitle {
-            font-size: var(--app-font-size-xs);
-            color: var(--app-text-muted);
-            font-weight: 400;
-            letter-spacing: 0.3px;
-        }
-
-        .app-header-actions {
-            display: flex;
-            align-items: center;
-            gap: var(--app-spacing-sm);
-        }
-
-        .app-icon-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            border-radius: var(--app-radius-md);
-            background: var(--app-card-bg);
-            border: var(--app-border-width) solid var(--app-card-border);
-            color: var(--app-text-main);
-            font-size: var(--app-font-size-lg);
-            transition: all var(--app-transition);
-            position: relative;
-        }
-
-        .app-icon-btn:hover,
-        .app-icon-btn:active {
-            background: var(--app-header-bg);
-            border-color: var(--app-accent);
-        }
-        .app-icon-btn .badge-dot {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 10px;
-            height: 10px;
-            background: var(--app-accent-red);
-            border-radius: 50%;
-            border: 2px solid var(--app-card-bg);
-            display: none;
-        }
-        .app-icon-btn .badge-dot.visible {
-            display: block;
-            animation: pulse-dot 2s infinite;
-        }
-        @keyframes pulse-dot {
-            0%,
-            100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.3);
-            }
-        }
-
-        /* ==========================================================================
-           БАННЕР УВЕДОМЛЕНИЯ
-           ========================================================================== */
+        /* Баннер уведомления (broadcast) */
         .broadcast-banner {
-            background: var(--app-card-bg);
-            color: var(--app-text-main);
-            padding: var(--app-spacing-sm) var(--app-spacing-md);
-            border-radius: var(--app-radius-md);
-            font-size: var(--app-font-size-sm);
-            font-weight: 600;
-            margin: var(--app-spacing-sm) var(--app-spacing-lg) 0;
-            cursor: pointer;
-            text-align: center;
-            border: var(--app-border-width) solid var(--app-accent-red);
-            box-shadow: var(--app-shadow);
-            display: none;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        /* ==========================================================================
-           ГЛАВНЫЙ БАННЕР (широкий)
-           ========================================================================== */
-        .welcome-banner-wide {
-            width: 100%;
-            border-radius: var(--app-radius-md);
-            overflow: hidden;
-            border: var(--app-border-width) solid var(--app-accent);
-            margin: var(--app-spacing-md) 0;
-            box-shadow: var(--app-shadow);
-            animation: fadeIn 0.3s ease;
-            background: var(--app-card-bg);
-        }
-        .welcome-banner-wide img {
-            width: 100%;
-            height: auto;
-            display: block;
-            transition: transform 0.3s ease;
-            loading: lazy;
-        }
-        .welcome-banner-wide:hover img {
-            transform: scale(1.02);
-        }
-
-        /* ==========================================================================
-           ТАБ-БАР (навигация)
-           ========================================================================== */
-        .tab-bar {
-            display: flex;
-            align-items: stretch;
-            justify-content: space-around;
-            background: var(--app-header-bg);
-            border-top: var(--app-border-width) solid var(--app-card-border);
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 200;
-            min-height: var(--app-tab-bar-height);
-            padding-bottom: env(safe-area-inset-bottom, 0);
-            transition: background var(--app-transition), border-color var(--app-transition);
-        }
-
-        .tab-bar-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-            padding: var(--app-spacing-xs) var(--app-spacing-sm);
-            color: var(--app-text-muted);
-            font-size: var(--app-font-size-xs);
-            font-weight: 500;
-            transition: all var(--app-transition);
-            position: relative;
-            text-decoration: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .tab-bar-item .tab-icon {
-            font-size: var(--app-font-size-xl);
-            line-height: 1;
-        }
-        .tab-bar-item .tab-label {
-            font-size: var(--app-font-size-xs);
-            font-weight: 600;
-            letter-spacing: 0.2px;
-        }
-        .tab-bar-item.active {
-            color: var(--app-accent);
-        }
-        .tab-bar-item.active::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 25%;
-            right: 25%;
-            height: 2px;
             background: var(--app-accent);
-            border-radius: 0 0 4px 4px;
-        }
-        .tab-bar-item:active {
-            opacity: 0.7;
-        }
-
-        /* ==========================================================================
-           ОСНОВНОЙ КОНТЕНТ
-           ========================================================================== */
-        .app-content {
-            flex: 1;
-            padding: var(--app-spacing-md) var(--app-spacing-lg);
-            padding-bottom: calc(var(--app-tab-bar-height) + var(--app-spacing-xl) + env(safe-area-inset-bottom, 0));
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-            transition: padding var(--app-transition);
-        }
-
-        /* ==========================================================================
-           СЕКЦИИ (табы)
-           ========================================================================== */
-        .section {
-            display: none;
-            animation: fadeIn 0.25s ease-out;
-        }
-        .section.active {
-            display: block;
-        }
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(6px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* ==========================================================================
-           КАРТОЧКИ И КОНТЕЙНЕРЫ
-           ========================================================================== */
-        .card {
-            background: var(--app-card-bg);
-            border: var(--app-border-width) solid var(--app-card-border);
-            border-radius: var(--app-card-radius);
-            padding: var(--app-spacing-md);
-            margin-bottom: var(--app-spacing-md);
-            box-shadow: var(--app-shadow);
-            transition: all var(--app-transition);
-        }
-        .card:hover {
-            border-color: var(--app-accent);
-        }
-
-        .section-title {
-            font-size: var(--app-font-size-md);
-            font-weight: 700;
-            color: var(--app-text-main);
-            margin-bottom: var(--app-spacing-md);
-            display: flex;
-            align-items: center;
-            gap: var(--app-spacing-sm);
-            border-bottom: var(--app-border-width) solid var(--app-card-border);
-            padding-bottom: var(--app-spacing-sm);
-        }
-
-        /* ==========================================================================
-           КНОПКИ
-           ========================================================================== */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--app-spacing-xs);
-            padding: var(--app-btn-padding);
-            font-size: var(--app-btn-font-size);
+            color: #fff;
+            padding: 12px 40px 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
             font-weight: 600;
-            border-radius: var(--app-radius-md);
-            background: var(--app-btn-bg);
-            color: var(--app-btn-text);
-            border: var(--app-border-width) solid transparent;
-            width: 100%;
-            transition: all var(--app-transition);
-            text-decoration: none;
-            text-align: center;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .btn:hover {
-            background: var(--app-btn-hover);
-            box-shadow: var(--app-shadow);
-        }
-        .btn:active {
-            transform: scale(0.98);
-        }
-        .btn-secondary {
-            background: var(--app-card-bg);
-            color: var(--app-text-main);
-            border-color: var(--app-card-border);
-        }
-        .btn-secondary:hover {
-            border-color: var(--app-accent);
-            background: var(--app-header-bg);
-        }
-        .btn-danger {
-            background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
-            border-color: #dc3545;
-            color: #fff;
-        }
-        .btn-danger:hover {
-            background: linear-gradient(135deg, #e04555 0%, #b8202e 100%);
-        }
-        .btn-success {
-            background: var(--app-btn-bg);
-            border-color: var(--app-accent);
-            color: #fff;
-        }
-        .btn-outline {
-            background: transparent;
-            border-color: var(--app-card-border);
-            color: var(--app-text-main);
-        }
-        .btn-outline:hover {
-            border-color: var(--app-accent);
-            color: var(--app-accent);
-        }
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 11px;
-            border-radius: var(--app-radius-sm);
-        }
-        .btn-lg {
-            padding: 14px 20px;
-            font-size: 15px;
-            border-radius: var(--app-radius-lg);
-        }
-        .btn:disabled {
-            opacity: var(--app-disabled-opacity);
-            cursor: not-allowed;
-        }
-
-        /* ==========================================================================
-           ФОРМЫ
-           ========================================================================== */
-        .form-group {
-            margin-bottom: var(--app-spacing-md);
-        }
-        .form-row {
-            display: flex;
-            gap: var(--app-spacing-sm);
-            align-items: center;
-        }
-        .form-row .form-group {
-            flex: 1;
-            margin-bottom: 0;
-        }
-
-        .custom-select-trigger {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--app-input-padding);
-            border-radius: var(--app-radius-md);
-            border: var(--app-border-width) solid var(--app-card-border);
-            background: var(--app-card-bg);
-            color: var(--app-text-main);
+            margin: 12px 0;
             cursor: pointer;
-            transition: border-color var(--app-transition);
-            font-size: var(--app-input-font-size);
-            -webkit-tap-highlight-color: transparent;
-        }
-        .custom-select-trigger:hover {
-            border-color: var(--app-accent);
-        }
-
-        /* ==========================================================================
-           СЕТКИ ОБЪЯВЛЕНИЙ
-           ========================================================================== */
-        .ads-container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: var(--app-card-gap);
-            transition: all var(--app-transition);
-        }
-        .ads-container.grid-view {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .ad-card {
-            background: var(--app-card-bg);
-            border: var(--app-border-width) solid var(--app-card-border);
-            border-radius: var(--app-card-radius);
-            padding: var(--app-spacing-md);
-            display: flex;
-            flex-direction: column;
-            gap: var(--app-spacing-sm);
-            transition: all var(--app-transition);
-            animation: fadeIn 0.3s ease-out;
-            position: relative;
-            box-shadow: var(--app-shadow);
-            cursor: pointer;
-        }
-        .ad-card:hover {
-            border-color: var(--app-accent);
-            box-shadow: var(--app-shadow-lg);
-        }
-        .ad-card .ad-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: var(--app-font-size-xs);
-            color: var(--app-text-muted);
-        }
-        .ad-card .ad-title {
-            font-size: var(--app-font-size-md);
-            font-weight: 700;
-            color: var(--app-text-main);
-        }
-        .ad-card .ad-price {
-            font-size: var(--app-font-size-sm);
-            font-weight: 700;
-            color: var(--app-accent-gold);
-        }
-        .ad-card .ad-desc {
-            font-size: var(--app-font-size-xs);
-            color: var(--app-text-muted);
-            line-height: 1.4;
-        }
-        .ad-card .ad-image {
-            width: 100%;
-            height: 120px;
-            object-fit: cover;
-            border-radius: var(--app-radius-sm);
-            background: var(--app-header-bg);
-            loading: lazy;
-        }
-        .ad-card .ad-actions {
-            display: flex;
-            gap: var(--app-spacing-xs);
-            margin-top: auto;
-        }
-        .ad-card .ad-actions .btn {
-            flex: 1;
-            padding: 6px 10px;
-            font-size: 11px;
-        }
-
-        .forum-badge {
-            display: inline-block;
-            font-size: 9px;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: var(--app-badge-radius);
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        .badge-sell {
-            background: rgba(0, 122, 255, 0.15);
-            color: var(--app-accent);
+            text-align: left;
             border: 1px solid var(--app-accent);
-        }
-        .badge-buy {
-            background: rgba(255, 214, 10, 0.15);
-            color: var(--app-accent-gold);
-            border: 1px solid var(--app-accent-gold);
-        }
-        .badge-pending {
-            background: rgba(142, 142, 147, 0.15);
-            color: var(--app-text-muted);
-            border: 1px solid var(--app-card-border);
-        }
-
-        /* ==========================================================================
-           ПРОФИЛЬ
-           ========================================================================== */
-        .profile-card {
-            text-align: center;
-            padding: var(--app-spacing-lg);
-        }
-        .profile-avatar-wrapper {
-            position: relative;
-            width: 90px;
-            height: 90px;
-            margin: 0 auto var(--app-spacing-md);
-            border-radius: var(--app-radius-round);
-            overflow: visible;
-        }
-        .profile-avatar-img {
-            width: 86px;
-            height: 86px;
-            border-radius: var(--app-radius-round);
-            object-fit: cover;
-            border: 2px solid var(--app-accent);
-            background: var(--app-header-bg);
-            transition: border-color var(--app-transition);
-            loading: lazy;
-        }
-        .profile-name {
-            font-size: var(--app-font-size-lg);
-            font-weight: 700;
-            color: var(--app-text-main);
-            margin-bottom: 2px;
-            word-break: break-all;
-        }
-        .profile-status {
-            font-size: var(--app-font-size-xs);
-            color: var(--app-text-muted);
-            font-style: italic;
-            margin-bottom: var(--app-spacing-sm);
-        }
-        .profile-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 14px;
-            border-radius: var(--app-radius-xl);
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-            border: var(--app-border-width) solid var(--app-accent);
-            color: var(--app-accent-secondary);
-            margin-bottom: var(--app-spacing-md);
-        }
-        .profile-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--app-spacing-sm);
-            background: var(--app-header-bg);
-            padding: var(--app-spacing-sm);
-            border-radius: var(--app-radius-md);
-            margin-bottom: var(--app-spacing-md);
-        }
-        .profile-stat {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .profile-stat-value {
-            font-size: var(--app-font-size-lg);
-            font-weight: 700;
-            color: var(--app-text-main);
-        }
-        .profile-stat-label {
-            font-size: var(--app-font-size-xs);
-            color: var(--app-text-muted);
-        }
-
-        /* ==========================================================================
-           РАМКИ АВАТАРА (анимации)
-           ========================================================================== */
-        .frame-dark { animation: borderPulse 3s infinite ease-in-out; border-width: 2px; border-style: solid; border-radius: 50%; }
-        .frame-gold { animation: goldShimmer 2.5s infinite ease-in-out; border-width: 2px; border-style: solid; border-radius: 50%; }
-        .frame-cyber { animation: cyberGlow 2.5s infinite ease-in-out; border-width: 2px; border-style: solid; border-radius: 50%; }
-        .frame-emerald { animation: emeraldPulse 2.5s infinite ease-in-out; border-width: 2px; border-style: solid; border-radius: 50%; }
-        @keyframes borderPulse { 0% { border-color: #3a3a3c; box-shadow: 0 0 8px rgba(255,255,255,0.15); } 50% { border-color: #2aabee; box-shadow: 0 0 18px rgba(42,171,238,0.35); } 100% { border-color: #3a3a3c; box-shadow: 0 0 8px rgba(255,255,255,0.15); } }
-        @keyframes goldShimmer { 0% { border-color: #b8860b; box-shadow: 0 0 10px rgba(184,134,11,0.3); } 50% { border-color: #ffd60a; box-shadow: 0 0 20px rgba(255,214,10,0.6); } 100% { border-color: #b8860b; box-shadow: 0 0 10px rgba(184,134,11,0.3); } }
-        @keyframes cyberGlow { 0% { border-color: #06b6d4; box-shadow: 0 0 10px rgba(6,182,212,0.3); } 50% { border-color: #67e8f9; box-shadow: 0 0 22px rgba(103,232,249,0.7); } 100% { border-color: #06b6d4; box-shadow: 0 0 10px rgba(6,182,212,0.3); } }
-        @keyframes emeraldPulse { 0% { border-color: #059669; box-shadow: 0 0 10px rgba(5,150,105,0.3); } 50% { border-color: #34d399; box-shadow: 0 0 20px rgba(52,211,153,0.6); } 100% { border-color: #059669; box-shadow: 0 0 10px rgba(5,150,105,0.3); } }
-
-        /* ==========================================================================
-           МОДАЛЬНЫЕ ОКНА
-           ========================================================================== */
-        .modal-overlay {
+            box-shadow: var(--app-shadow);
             display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: var(--app-overlay-bg);
-            z-index: 300;
-            justify-content: center;
-            align-items: center;
-            padding: var(--app-spacing-lg);
-            animation: fadeIn 0.2s ease-out;
-        }
-        .modal-overlay.visible { display: flex; }
-        .modal-content {
-            background: var(--app-card-bg);
-            border: var(--app-border-width) solid var(--app-card-border);
-            border-radius: var(--app-modal-radius);
-            padding: var(--app-spacing-lg);
-            max-width: 480px;
-            width: 100%;
-            max-height: 85vh;
-            overflow-y: auto;
-            box-shadow: var(--app-shadow-lg);
-            animation: fadeIn 0.25s ease-out;
             position: relative;
+            animation: fadeIn 0.3s ease-out;
         }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--app-spacing-md); }
-        .modal-title { font-size: var(--app-font-size-lg); font-weight: 700; color: var(--app-text-main); margin: 0; }
-        .modal-close { width: 32px; height: 32px; border-radius: var(--app-radius-md); background: var(--app-header-bg); border: var(--app-border-width) solid var(--app-card-border); color: var(--app-text-main); display: flex; align-items: center; justify-content: center; font-size: var(--app-font-size-md); cursor: pointer; transition: all var(--app-transition); }
-        .modal-close:hover { border-color: var(--app-accent-red); color: var(--app-accent-red); }
-
-        /* ==========================================================================
-           ПИКЕР
-           ========================================================================== */
-        .picker-list { display: flex; flex-direction: column; gap: var(--app-spacing-xs); max-height: 300px; overflow-y: auto; }
-        .picker-item { padding: var(--app-spacing-sm) var(--app-spacing-md); border-radius: var(--app-radius-md); background: var(--app-header-bg); border: var(--app-border-width) solid var(--app-card-border); cursor: pointer; font-size: var(--app-font-size-sm); font-weight: 500; color: var(--app-text-main); transition: all var(--app-transition); display: flex; justify-content: space-between; align-items: center; }
-        .picker-item:hover { border-color: var(--app-accent); background: var(--app-card-bg); }
-
-        /* ==========================================================================
-           КЛИКЕР
-           ========================================================================== */
-        .clicker-box { background: var(--app-header-bg); border: var(--app-border-width) solid var(--app-card-border); border-radius: var(--app-radius-lg); padding: var(--app-spacing-lg); text-align: center; }
-        .clicker-money { font-size: var(--app-font-size-xxl); font-weight: 700; color: var(--app-text-main); margin-bottom: var(--app-spacing-sm); }
-        .clicker-big-btn { background: var(--app-btn-bg); color: #fff; border-radius: var(--app-radius-round); width: 110px; height: 110px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: var(--app-spacing-md) auto; border: 2px solid var(--app-accent); box-shadow: 0 0 20px rgba(42,171,238,0.4); transition: transform 0.08s ease; -webkit-tap-highlight-color: transparent; }
-        .clicker-big-btn:active { transform: scale(0.92); }
-        .clicker-upgrade-row { display: flex; justify-content: space-between; align-items: center; background: var(--app-card-bg); border: var(--app-border-width) solid var(--app-card-border); padding: var(--app-spacing-sm) var(--app-spacing-md); border-radius: var(--app-radius-md); margin-bottom: var(--app-spacing-xs); font-size: var(--app-font-size-xs); text-align: left; gap: var(--app-spacing-sm); }
-        .clicker-upgrade-row .upgrade-info { flex: 1; }
-        .clicker-upgrade-row .upgrade-name { font-weight: 700; color: var(--app-text-main); font-size: var(--app-font-size-sm); }
-        .clicker-upgrade-row .upgrade-cost { color: var(--app-text-muted); font-size: var(--app-font-size-xs); }
-        .clicker-upgrade-row .btn { width: auto; padding: 6px 14px; font-size: 11px; margin: 0; flex-shrink: 0; }
-
-        /* ==========================================================================
-           ДРОПДАУН-МЕНЮ
-           ========================================================================== */
-        .dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); right: 0; background: var(--app-card-bg); border: var(--app-border-width) solid var(--app-card-border); border-radius: var(--app-radius-md); min-width: 240px; max-width: 300px; max-height: 400px; overflow-y: auto; box-shadow: var(--app-shadow-lg); z-index: 150; padding: var(--app-spacing-xs); }
-        .dropdown-menu.visible { display: block; animation: fadeIn 0.15s ease-out; }
-        .dropdown-item { display: flex; align-items: center; gap: var(--app-spacing-sm); padding: var(--app-spacing-sm) var(--app-spacing-md); font-size: var(--app-font-size-sm); font-weight: 500; color: var(--app-text-main); border-radius: var(--app-radius-sm); cursor: pointer; transition: all var(--app-transition); width: 100%; text-align: left; background: transparent; border: none; }
-        .dropdown-item:hover { background: var(--app-header-bg); color: var(--app-accent); }
-
-        /* ==========================================================================
-           АДАПТИВНОСТЬ
-           ========================================================================== */
-        @media (min-width: 768px) {
-            :root { --app-card-gap: 14px; --app-spacing-lg: 20px; --app-spacing-xl: 24px; --app-font-size-md: 15px; --app-font-size-lg: 18px; --app-btn-padding: 12px 20px; --app-btn-font-size: 14px; --app-input-padding: 12px 16px; }
-            .ads-container:not(.grid-view) { grid-template-columns: repeat(2, 1fr); }
-            .ads-container.grid-view { grid-template-columns: repeat(3, 1fr); }
-            .ad-card .ad-image { height: 140px; }
-            .modal-content { max-width: 560px; padding: var(--app-spacing-xl); }
-            .clicker-big-btn { width: 130px; height: 130px; }
-        }
-        @media (min-width: 1024px) {
-            :root { --app-card-gap: 16px; --app-spacing-lg: 24px; --app-spacing-xl: 32px; --app-font-size-md: 16px; --app-font-size-lg: 20px; --app-max-width: 1100px; --app-tab-bar-height: 0px; }
-            .app-content { padding-bottom: var(--app-spacing-xl); }
-            .tab-bar { position: static; flex-direction: row; border-top: none; border-bottom: var(--app-border-width) solid var(--app-card-border); min-height: 52px; padding-bottom: 0; justify-content: flex-start; gap: var(--app-spacing-sm); padding: 0 var(--app-spacing-lg); background: var(--app-header-bg); }
-            .tab-bar-item { flex: 0 1 auto; flex-direction: row; gap: var(--app-spacing-sm); padding: var(--app-spacing-sm) var(--app-spacing-lg); font-size: var(--app-font-size-sm); }
-            .tab-bar-item.active::after { top: auto; bottom: 0; left: 15%; right: 15%; height: 2px; border-radius: 4px 4px 0 0; }
-            .tab-bar-item .tab-icon { font-size: var(--app-font-size-lg); }
-            .ads-container:not(.grid-view) { grid-template-columns: repeat(3, 1fr); }
-            .ads-container.grid-view { grid-template-columns: repeat(4, 1fr); }
-            .ad-card .ad-image { height: 160px; }
-        }
-        @media (min-width: 1366px) {
-            :root { --app-card-gap: 18px; --app-max-width: 1280px; --app-spacing-xl: 36px; --app-font-size-md: 17px; --app-font-size-lg: 22px; }
-            .ads-container:not(.grid-view) { grid-template-columns: repeat(4, 1fr); }
-            .ads-container.grid-view { grid-template-columns: repeat(5, 1fr); }
-            .ad-card .ad-image { height: 180px; }
-            .modal-content { max-width: 640px; }
-        }
-        @media (max-width: 767px) {
-            .app-header { padding: var(--app-spacing-sm) var(--app-spacing-md); }
-            .app-content { padding: var(--app-spacing-sm) var(--app-spacing-md); padding-bottom: calc(var(--app-tab-bar-height) + var(--app-spacing-md) + env(safe-area-inset-bottom, 0)); }
-            .ads-container.grid-view { grid-template-columns: repeat(2, 1fr); }
-            .modal-content { padding: var(--app-spacing-md); max-width: 95%; }
-            .clicker-big-btn { width: 100px; height: 100px; }
-        }
-        @media (max-width: 380px) {
-            :root { --app-spacing-md: 10px; --app-spacing-lg: 14px; --app-font-size-md: 13px; --app-font-size-lg: 15px; }
-            .tab-bar-item .tab-label { font-size: 9px; }
-            .app-header-brand-text { font-size: 13px; }
+        .broadcast-banner .close-broadcast {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
         }
 
-        /* ==========================================================================
-           УТИЛИТЫ
-           ========================================================================== */
-        .text-center { text-align: center; }
-        .text-muted { color: var(--app-text-muted); }
-        .text-accent { color: var(--app-accent); }
-        .mt-sm { margin-top: var(--app-spacing-sm); }
-        .mt-md { margin-top: var(--app-spacing-md); }
-        .mb-sm { margin-bottom: var(--app-spacing-sm); }
-        .mb-md { margin-bottom: var(--app-spacing-md); }
-        .flex { display: flex; }
-        .flex-col { flex-direction: column; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .gap-sm { gap: var(--app-spacing-sm); }
-        .gap-md { gap: var(--app-spacing-md); }
-        .hidden { display: none !important; }
-        .w-full { width: 100%; }
+        /* Главный баннер (широкий) */
+        .welcome-banner-wide { width: 100%; border-radius: 16px; overflow: hidden; margin: 12px 0; }
+        .welcome-banner-wide img { width: 100%; height: auto; display: block; }
 
-        /* ==========================================================================
-           СТИЛИ ДЛЯ WILDBERRIES (WB) И IOS (дополнительные модификаторы)
-           ========================================================================== */
-        body.style-wb {
-            --app-accent: #cb11ab;
-            --app-accent-secondary: #ff5ecf;
-            --app-accent-gold: #ffb800;
-            --app-accent-red: #ff3b30;
-            --app-btn-bg: linear-gradient(135deg, #cb11ab 0%, #7b0e6a 100%);
-            --app-btn-hover: linear-gradient(135deg, #e022c0 0%, #8f1180 100%);
-            --app-radius-sm: 12px;
-            --app-radius-md: 16px;
-            --app-radius-lg: 20px;
-            --app-radius-xl: 24px;
-            --app-radius-round: 50%;
-            --app-btn-padding: 14px 24px;
-            --app-btn-font-size: 15px;
-            --app-card-radius: 18px;
-            --app-modal-radius: 24px;
-            --app-card-gap: 14px;
-            --app-shadow: 0 6px 24px rgba(203,17,171,0.2);
-            --app-shadow-lg: 0 10px 40px rgba(203,17,171,0.3);
-        }
-        body.style-wb .ad-card { border-radius: var(--app-radius-lg); }
-        body.style-wb .btn { border-radius: var(--app-radius-lg); font-weight: 700; }
-        body.style-wb .tab-bar-item.active { color: #cb11ab; }
-        body.style-wb .tab-bar-item.active::after { background: #cb11ab; }
+        /* Таб-бар */
+        .tab-bar { display: flex; justify-content: space-around; background: #fff; border-top: 1px solid #e0e0e6; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; min-height: 60px; }
+        .tab-bar-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #6e6e73; font-size: 10px; font-weight: 600; position: relative; }
+        .tab-bar-item .tab-icon { font-size: 22px; }
+        .tab-bar-item.active { color: #cb11ab; }
+        .tab-bar-item.active::after { content: ''; position: absolute; top: 0; left: 25%; right: 25%; height: 3px; background: #cb11ab; border-radius: 0 0 4px 4px; }
 
-        body.style-ios {
-            --app-accent: #007aff;
-            --app-accent-secondary: #5ac8fa;
-            --app-accent-gold: #b8860b;
-            --app-accent-red: #ff3b30;
-            --app-btn-bg: linear-gradient(135deg, #007aff 0%, #0055b3 100%);
-            --app-btn-hover: linear-gradient(135deg, #1a88ff 0%, #0066cc 100%);
-            --app-radius-sm: 10px;
-            --app-radius-md: 14px;
-            --app-radius-lg: 18px;
-            --app-radius-xl: 22px;
-            --app-radius-round: 50%;
-            --app-btn-padding: 12px 20px;
-            --app-btn-font-size: 14px;
-            --app-card-radius: 16px;
-            --app-modal-radius: 20px;
-            --app-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-            --app-card-gap: 12px;
-            --app-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            --app-shadow-lg: 0 8px 32px rgba(0,0,0,0.18);
-            --app-transition: 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
-        }
-        body.style-ios .tab-bar { background: rgba(255,255,255,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: none; box-shadow: 0 -1px 0 rgba(0,0,0,0.1); }
-        body.style-ios .tab-bar-item { font-weight: 500; }
-        body.style-ios .tab-bar-item.active { color: #007aff; }
-        body.style-ios .tab-bar-item.active::after { background: #007aff; }
-        body.style-ios .card, body.style-ios .ad-card, body.style-ios .modal-content { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        /* Карточки объявлений */
+        .ads-container { display: grid; grid-template-columns: 1fr; gap: 14px; }
+        .ad-card { background: #fff; border-radius: 18px; padding: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
+        .ad-card .ad-title { font-size: 16px; font-weight: 700; }
+        .ad-card .ad-price { font-size: 15px; font-weight: 700; color: #ffb800; }
+        .ad-card .ad-image { width: 100%; height: 150px; object-fit: cover; border-radius: 12px; }
+        .forum-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 12px; text-transform: uppercase; }
+        .badge-sell { background: rgba(0,122,255,0.1); color: #007aff; }
+        .badge-buy { background: rgba(255,184,0,0.1); color: #ffb800; }
+
+        /* Кнопки */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 24px; font-size: 15px; font-weight: 700; border-radius: 16px; background: var(--app-btn-bg); color: #fff; width: 100%; }
+        .btn-sm { padding: 8px 14px; font-size: 12px; border-radius: 12px; }
+        .btn-outline { background: #fff; color: #1c1c1e; border: 1px solid #e0e0e6; }
+        .btn-danger { background: linear-gradient(135deg, #dc3545, #a71d2a); }
+        .btn-success { background: var(--app-btn-bg); }
+
+        /* Модальные */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 300; justify-content: center; align-items: center; padding: 16px; }
+        .modal-overlay.visible { display: flex; }
+        .modal-content { background: #fff; border-radius: 24px; padding: 20px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .modal-close { width: 32px; height: 32px; border-radius: 50%; background: #f0f0f2; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+        /* Поля */
+        .form-group { margin-bottom: 12px; }
+        .custom-select-trigger { display: flex; justify-content: space-between; padding: 12px 16px; border: 1px solid #e0e0e6; border-radius: 12px; background: #fff; }
+
+        /* Счётчик */
+        .app-footer { text-align: center; padding: 12px; font-size: 12px; color: #6e6e73; border-top: 1px solid #e0e0e6; background: #fff; }
     </style>
 </head>
-<body class="theme-dark style-tg">
+<body class="theme-dark style-wb">
     <audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" autoplay loop preload="auto"></audio>
 
     <div id="banOverlay" class="modal-overlay">
         <div class="modal-content text-center">
-            <h2 style="color: var(--app-accent-red); font-size: 22px; margin-bottom: 12px;">🚫 ВЫ ЗАБЛОКИРОВАНЫ</h2>
-            <p style="color: var(--app-text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 20px;">Доступ к функциям бота, созданию тем и чатам ограничен администрацией.<br>Дождитесь снятия блокировки.</p>
-            <button onclick="location.reload()" class="btn btn-secondary btn-sm" style="width: auto; margin: 0 auto;">🔄 Проверить статус</button>
-        </div>
-    </div>
-
-    <div id="updateOverlay" class="modal-overlay">
-        <div class="modal-content text-center">
-            <h2 style="color: #fff; font-size: 22px; margin-bottom: 12px;">🔄 ДОСТУПНО ОБНОВЛЕНИЕ</h2>
-            <p style="color: var(--app-text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 20px;">Администрация выпустила новую версию приложения.<br>Пожалуйста, обновите страницу или перезапустите бота командой <b>/start</b>.</p>
-            <button onclick="location.reload()" class="btn btn-success btn-sm" style="width: auto; margin: 0 auto;">🚀 Обновить приложение</button>
+            <h2 style="color:#ff3b30;">🚫 ВЫ ЗАБЛОКИРОВАНЫ</h2>
+            <p>Доступ ограничен администрацией.</p>
+            <button onclick="location.reload()" class="btn btn-secondary btn-sm">🔄 Проверить статус</button>
         </div>
     </div>
 
     <div class="app-container">
+        <!-- Баннер уведомления -->
         <div id="broadcastBanner" class="broadcast-banner" onclick="openBroadcastModal()">
-            📢 <span id="broadcastText"><b>Уведомление от администрации!</b> Нажмите, чтобы открыть.</span>
+            <span id="broadcastText"><b>Уведомление от администрации!</b> Нажмите, чтобы открыть.</span>
+            <span class="close-broadcast" onclick="event.stopPropagation(); hideBroadcastBanner()">✕</span>
         </div>
 
         <header class="app-header">
             <a class="app-header-brand" href="https://t.me/arizona_coin_bot" target="_blank">
-                <img class="app-header-brand-img" src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP Logo">
-                <span class="app-header-brand-text">
-                    <span>Arizona RP</span>
-                    <span class="app-header-brand-subtitle">поиск • объявления • профили</span>
-                </span>
+                <img class="app-header-brand-img" src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP">
+                <span>Arizona RP</span>
             </a>
             <div class="app-header-actions">
-                <span id="mskTime" style="font-size: 11px; font-weight: 600; color: var(--app-text-muted); margin-right: 4px;">--:--:-- МСК</span>
-                <button class="app-icon-btn" onclick="toggleDropdownMenu(event)" title="Меню" id="menuBtn">⋮<span class="badge-dot" id="menuBadgeDot"></span></button>
-                <div id="dropdownMenu" class="dropdown-menu">
-                    <button class="dropdown-item" onclick="openModal('barygaModal'); closeDropdowns();">🎮 Игра «Барыга»</button>
-                    <button class="dropdown-item" onclick="openModal('chatsModal'); closeDropdowns();">💬 Переписки</button>
-                    <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
-                    <button class="dropdown-item" onclick="openModal('searchModal'); closeDropdowns();">🔍 Поиск</button>
-                    <button class="dropdown-item" onclick="openModal('styleModal'); closeDropdowns();">🎨 Стиль и тема</button>
-                    <button class="dropdown-item" onclick="openModal('musicModal'); closeDropdowns();">🎵 Музыка</button>
-                    <button class="dropdown-item" onclick="openModal('fashionModal'); closeDropdowns();">📸 Лента «Луков»</button>
-                    <button class="dropdown-item" onclick="openModal('travelModal'); closeDropdowns();">🤝 Попутчики</button>
-                    <button class="dropdown-item" onclick="openModal('settingsModal'); closeDropdowns();">⚙️ Настройки</button>
-                    <button class="dropdown-item" onclick="openModal('helpModal'); closeDropdowns();">❓ Помощь</button>
-                    <div id="ownerContactItem" style="display: none;">
-                        <button class="dropdown-item" onclick="window.open('https://t.me/bounqy31', '_blank'); closeDropdowns();">📞 Менеджер</button>
-                    </div>
+                <span id="mskTime">--:--:-- МСК</span>
+                <button class="app-icon-btn" onclick="toggleDropdownMenu(event)">⋮</button>
+                <div id="dropdownMenu" class="dropdown-menu" style="display:none; position:absolute; right:12px; top:60px; background:#fff; border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,0.15); z-index:250; min-width:200px; overflow:hidden;">
+                    <button class="dropdown-item" onclick="openModal('barygaModal')">🎮 Игра «Барыга»</button>
+                    <button class="dropdown-item" onclick="openModal('chatsModal')">💬 Переписки</button>
+                    <button class="dropdown-item" onclick="switchTab('profile')">👤 Профиль</button>
+                    <button class="dropdown-item" onclick="openModal('searchModal')">🔍 Поиск</button>
+                    <button class="dropdown-item" onclick="openModal('musicModal')">🎵 Музыка</button>
+                    <button class="dropdown-item" onclick="openModal('fashionModal')">📸 Лента «Луков»</button>
+                    <button class="dropdown-item" onclick="openModal('travelModal')">🤝 Попутчики</button>
+                    <button class="dropdown-item" onclick="openModal('settingsModal')">⚙️ Настройки</button>
+                    <button class="dropdown-item" onclick="openModal('helpModal')">❓ Помощь</button>
+                    <button class="dropdown-item" onclick="openBroadcastHistory()">📜 История уведомлений</button>
                 </div>
             </div>
         </header>
 
-        <nav class="tab-bar" id="tabBar">
-            <button class="tab-bar-item active" data-tab="feed" onclick="switchTab('feed')"><span class="tab-icon">🏠</span><span class="tab-label">Главная</span></button>
-            <button class="tab-bar-item" data-tab="app" onclick="switchTab('app')"><span class="tab-icon">➕</span><span class="tab-label">Создать</span></button>
-            <button class="tab-bar-item" data-tab="myAds" onclick="switchTab('myAds')"><span class="tab-icon">📦</span><span class="tab-label">Мои темы</span></button>
-            <button class="tab-bar-item" data-tab="favorites" onclick="switchTab('favorites')"><span class="tab-icon">⭐</span><span class="tab-label">Избранное</span></button>
-            <button class="tab-bar-item" data-tab="profile" onclick="switchTab('profile')"><span class="tab-icon">👤</span><span class="tab-label">Профиль</span></button>
-            <button class="tab-bar-item" id="adminTabBtn" style="display: none;" data-tab="admin" onclick="switchTab('admin')"><span class="tab-icon">🛡️</span><span class="tab-label">Админ</span></button>
+        <nav class="tab-bar">
+            <button class="tab-bar-item active" data-tab="feed" onclick="switchTab('feed')"><span class="tab-icon">🏠</span>Главная</button>
+            <button class="tab-bar-item" data-tab="app" onclick="switchTab('app')"><span class="tab-icon">➕</span>Создать</button>
+            <button class="tab-bar-item" data-tab="myAds" onclick="switchTab('myAds')"><span class="tab-icon">📦</span>Мои темы</button>
+            <button class="tab-bar-item" data-tab="favorites" onclick="switchTab('favorites')"><span class="tab-icon">⭐</span>Избранное</button>
+            <button class="tab-bar-item" data-tab="profile" onclick="switchTab('profile')"><span class="tab-icon">👤</span>Профиль</button>
+            <button class="tab-bar-item" id="adminTabBtn" style="display:none;" data-tab="admin" onclick="switchTab('admin')"><span class="tab-icon">🛡️</span>Админ</button>
         </nav>
 
-        <main class="app-content" id="appContent">
+        <main class="app-content">
             <section class="section active" id="tabFeed">
                 <div class="welcome-banner-wide">
-                    <img src="https://i.postimg.cc/WzMP51cN/1786185439356.png" alt="Welcome Banner" onerror="this.src='https://i.ibb.co/1YLcDKVk/banner.png';">
+                    <img src="https://i.postimg.cc/WzMP51cN/1786185439356.png" alt="Arizona RP Banner">
                 </div>
-                <div class="section-title">🌍 Главный раздел (Лента объявлений)</div>
-                <button class="btn btn-success mb-md" onclick="openModal('searchModal')">🔍 Поиск предметов и игроков</button>
-                <div class="flex gap-sm mb-md" style="justify-content: flex-start;">
-                    <button class="btn btn-outline btn-sm active" id="btnListView" onclick="setViewMode('list')" style="width:auto;">📄 Списком</button>
-                    <button class="btn btn-outline btn-sm" id="btnGridView" onclick="setViewMode('grid')" style="width:auto;">🧮 Плиткой</button>
+                <button class="btn btn-success" onclick="openModal('searchModal')">🔍 Поиск предметов и игроков</button>
+                <div class="flex gap-sm mb-md">
+                    <button class="btn btn-outline btn-sm active" id="btnListView" onclick="setViewMode('list')">📄 Списком</button>
+                    <button class="btn btn-outline btn-sm" id="btnGridView" onclick="setViewMode('grid')">🧮 Плиткой</button>
                 </div>
                 <div id="feedContainer" class="ads-container"></div>
-                <div id="feedPaginationContainer" class="text-center mt-md" style="display: none;">
-                    <button onclick="loadMoreFeedItems()" class="btn btn-secondary btn-sm" style="width: auto;">⬇️ Загрузить ещё</button>
+                <div id="feedPaginationContainer" class="text-center mt-md" style="display:none;">
+                    <button class="btn btn-secondary btn-sm" onclick="loadMoreFeedItems()">⬇️ Загрузить ещё</button>
                 </div>
             </section>
 
             <section class="section" id="tabProfile">
                 <div class="card profile-card">
-                    <div class="profile-avatar-wrapper" id="profileAvatarWrapper">
-                        <img id="azAvatarImg" class="profile-avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231c1c1e'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='45'>👤</text></svg>" alt="Avatar">
-                    </div>
-                    <h3 id="azUserName" class="profile-name">👤 Игрок</h3>
-                    <div id="azCustomStatus" class="profile-status">✨ Статус не установлен</div>
+                    <div class="profile-avatar-wrapper"><img id="azAvatarImg" class="profile-avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='50' fill='%231c1c1e'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='45'>👤</text></svg>"></div>
+                    <h3 id="azUserName">👤 Игрок</h3>
+                    <div id="azCustomStatus">✨ Статус не установлен</div>
                     <div id="azRoleBadge" class="profile-badge">👤 Игрок</div>
-                    <div style="font-size: 12px; color: var(--app-text-muted); margin-bottom: 12px;">
-                        <div>📅 Регистрация: <span id="azRegDate">Сегодня</span></div>
-                        <div>🟢 Статус: <span id="azActivity">В сети</span></div>
-                    </div>
                     <div class="profile-stats">
-                        <div class="profile-stat"><span class="profile-stat-value" id="azStatMsgs">0</span><span class="profile-stat-label">📦 Заявки</span></div>
-                        <div class="profile-stat"><span class="profile-stat-value" id="azStatReacts">0</span><span class="profile-stat-label">❤️ Реакции</span></div>
-                        <div class="profile-stat"><span class="profile-stat-value" id="azStatPoints">0</span><span class="profile-stat-label">⭐ Баллы</span></div>
+                        <div><span id="azStatMsgs">0</span> 📦 Заявки</div>
+                        <div><span id="azStatReacts">0</span> ❤️ Реакции</div>
+                        <div><span id="azStatPoints">0</span> ⭐ Баллы</div>
                     </div>
-                    <div style="text-align: left; margin-top: 12px;">
-                        <label style="font-size: 10px;">🎨 Рамка профиля:</label>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px;">
-                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_none" onclick="changeAvatarFrame('none')">⚪ Без рамки</button>
-                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-dark" onclick="changeAvatarFrame('frame-dark')">⬛ Neon</button>
-                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-gold" onclick="changeAvatarFrame('frame-gold')">🪙 Gold</button>
-                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-cyber" onclick="changeAvatarFrame('frame-cyber')">⚡ Cyber</button>
-                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-emerald" onclick="changeAvatarFrame('frame-emerald')">💎 Emerald</button>
+                    <div>
+                        <label>🎨 Рамка профиля</label>
+                        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
+                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('none')">⚪ Без рамки</button>
+                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('frame-dark')">⬛ Neon</button>
+                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('frame-gold')">🪙 Gold</button>
+                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('frame-cyber')">⚡ Cyber</button>
+                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('frame-emerald')">💎 Emerald</button>
                         </div>
-                        <label style="font-size: 10px;">💬 Статус:</label>
-                        <div class="flex gap-sm">
-                            <input type="text" id="customStatusInput" placeholder="Ваш статус..." style="margin:0; font-size: 12px;">
-                            <button onclick="saveCustomStatus()" class="btn btn-success btn-sm" style="width:auto; margin:0;">💾</button>
-                        </div>
+                    </div>
+                    <div class="mt-md">
+                        <label>💬 Статус</label>
+                        <div class="flex gap-sm"><input type="text" id="customStatusInput" placeholder="Ваш статус..."><button class="btn btn-success btn-sm" onclick="saveCustomStatus()">💾</button></div>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="flex gap-sm mb-md" style="border-bottom: 1px solid var(--app-card-border); padding-bottom: 8px;">
-                        <button class="btn btn-outline btn-sm active" id="subtabWall" onclick="switchProfileSubtab('wall')" style="width:auto;">💬 Росписи</button>
-                        <button class="btn btn-outline btn-sm" id="subtabActivity" onclick="switchProfileSubtab('activity')" style="width:auto;">🕒 Активность</button>
+                    <div class="flex gap-sm mb-md">
+                        <button class="btn btn-outline btn-sm active" id="subtabWall" onclick="switchProfileSubtab('wall')">💬 Росписи</button>
+                        <button class="btn btn-outline btn-sm" id="subtabActivity" onclick="switchProfileSubtab('activity')">🕒 Активность</button>
                     </div>
                     <div id="profileWallContent">
-                        <div class="flex gap-sm mb-sm">
-                            <input type="text" id="wallCommentInput" placeholder="✍️ Напишите роспись..." style="margin:0;">
-                            <button onclick="postWallComment()" class="btn btn-success btn-sm" style="width:auto; margin:0;">📝</button>
-                        </div>
+                        <div class="flex gap-sm mb-sm"><input type="text" id="wallCommentInput" placeholder="✍️ Напишите роспись..."><button class="btn btn-success btn-sm" onclick="postWallComment()">📝</button></div>
                         <div id="wallCommentsContainer"></div>
                     </div>
-                    <div id="profileActivityContent" style="display: none; font-size: 12px; color: var(--app-text-muted); text-align: center; padding: 10px;">🕒 Последняя активность: проверка цен на сервере.</div>
+                    <div id="profileActivityContent" style="display:none;">🕒 Последняя активность: проверка цен на сервере.</div>
                 </div>
             </section>
 
             <section class="section" id="tabApp">
-                <div class="section-title">📝 Создать объявление</div>
                 <div class="card">
-                    <div class="form-group">
-                        <label>📌 Тип темы:</label>
-                        <div class="custom-select-trigger" id="triggerMode" onclick="openPicker('mode')"><span id="selectedModeText">Продажа</span> <span>▼</span></div>
-                        <input type="hidden" id="mode" value="sell">
-                    </div>
-                    <div class="form-group">
-                        <label>🗂 Раздел:</label>
-                        <div class="custom-select-trigger" id="triggerCategory" onclick="openPicker('category')"><span id="selectedCategoryText">💍 Аксессуары и вещи</span> <span>▼</span></div>
-                        <input type="hidden" id="category" value="💍 Аксессуары и вещи">
-                    </div>
-                    <div class="form-group">
-                        <label>🏷 Название:</label>
-                        <input type="text" id="itemName" placeholder="Например: Магический шар +12">
-                    </div>
-                    <div class="form-group">
-                        <label>💰 Цена ($):</label>
-                        <input type="text" id="price" placeholder="Только цифры" oninput="this.value = this.value.replace(/[^0-9\s]/g, '')">
-                    </div>
-                    <div class="form-group">
-                        <label>📄 Описание:</label>
-                        <textarea id="text" rows="3" placeholder="Опишите состояние..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>🖼 Ссылка на скриншот:</label>
-                        <input type="url" id="itemImage" placeholder="https://i.imgur.com/...">
-                    </div>
-                    <div class="form-group">
-                        <label>🌐 Сервер:</label>
-                        <div class="custom-select-trigger" id="triggerServer" onclick="openPicker('server')"><span id="selectedServerText">🌴 Tucson</span> <span>▼</span></div>
-                        <input type="hidden" id="server" value="🌴 Tucson">
-                    </div>
-                    <button onclick="submitData()" class="btn btn-success btn-lg">🚀 Отправить на модерацию</button>
-                    <div style="font-size: 10px; color: var(--app-text-muted); text-align: center; margin-top: 8px;">🕒 Время отправки: 09:00–22:00 МСК (КД 2 мин)</div>
+                    <div class="form-group"><label>📌 Тип темы</label><div class="custom-select-trigger" onclick="openPicker('mode')"><span id="selectedModeText">Продажа</span> ▼</div><input type="hidden" id="mode" value="sell"></div>
+                    <div class="form-group"><label>🗂 Раздел</label><div class="custom-select-trigger" onclick="openPicker('category')"><span id="selectedCategoryText">💍 Аксессуары и вещи</span> ▼</div><input type="hidden" id="category" value="💍 Аксессуары и вещи"></div>
+                    <div class="form-group"><label>🏷 Название</label><input type="text" id="itemName" placeholder="Например: Магический шар +12"></div>
+                    <div class="form-group"><label>💰 Цена ($)</label><input type="text" id="price" placeholder="Только цифры" oninput="this.value = this.value.replace(/[^0-9\s]/g, '')"></div>
+                    <div class="form-group"><label>📄 Описание</label><textarea id="text" rows="3" placeholder="Опишите состояние..."></textarea></div>
+                    <div class="form-group"><label>🖼 Ссылка на скриншот</label><input type="url" id="itemImage" placeholder="https://i.imgur.com/..."></div>
+                    <div class="form-group"><label>🌐 Сервер</label><div class="custom-select-trigger" onclick="openPicker('server')"><span id="selectedServerText">🌴 Tucson</span> ▼</div><input type="hidden" id="server" value="🌴 Tucson"></div>
+                    <button class="btn btn-success btn-lg" onclick="submitData()">🚀 Отправить на модерацию</button>
                 </div>
             </section>
 
             <section class="section" id="tabMyAds">
-                <div class="section-title">📦 Ваши размещённые товары</div>
                 <div id="myAdsContainer" class="ads-container"></div>
-                <button onclick="clearMyAds()" class="btn btn-danger btn-sm mt-md">🗑 Очистить архив</button>
+                <button class="btn btn-danger btn-sm mt-md" onclick="clearMyAds()">🗑 Очистить архив</button>
             </section>
 
             <section class="section" id="tabFavorites">
-                <div class="section-title">⭐ Ваши закладки</div>
                 <div id="favoritesContainer" class="ads-container"></div>
             </section>
 
             <section class="section" id="tabAdmin">
                 <div id="adminContent">
-                    <div class="section-title">🛡️ Модерация объявлений</div>
-                    <div id="pendingAdsContainer" class="mb-md"></div>
-                    <div id="ownerSection" style="display: none;">
-                        <div class="section-title">👑 Панель владельца</div>
-                        <div class="form-group">
-                            <label>🎯 Целевой игрок:</label>
-                            <input type="text" id="targetUser" placeholder="@username или ID">
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;">
+                    <h2>🛡️ Модерация объявлений</h2>
+                    <div id="pendingAdsContainer"></div>
+                    <div id="ownerSection" style="display:none;">
+                        <h3>👑 Панель владельца</h3>
+                        <div class="form-group"><label>🎯 Целевой игрок</label><input type="text" id="targetUser" placeholder="@username или ID"></div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                             <button class="btn btn-success btn-sm" onclick="sendTargetAction('make_admin')">➕ Админ</button>
                             <button class="btn btn-danger btn-sm" onclick="sendTargetAction('remove_admin')">➖ Снять</button>
                             <button class="btn btn-danger btn-sm" onclick="sendTargetAction('ban')">🚫 Бан</button>
                             <button class="btn btn-success btn-sm" onclick="sendTargetAction('unban')">✅ Разбан</button>
                         </div>
                         <button class="btn btn-danger btn-sm" onclick="clearGlobalFeedAdmin()">🗑 Очистить ленту</button>
-                        <div class="mt-md">
-                            <label>📢 Системный баннер:</label>
-                            <input type="text" id="newBroadcastInput" placeholder="Текст уведомления..." class="mb-sm">
-                            <button onclick="updateBroadcastMessage()" class="btn btn-success btn-sm">📢 Отправить</button>
-                        </div>
+                        <div class="mt-md"><label>📢 Системный баннер</label><input type="text" id="newBroadcastInput" placeholder="Текст уведомления..."><button class="btn btn-success btn-sm" onclick="updateBroadcastMessage()">📢 Отправить</button></div>
                     </div>
                 </div>
             </section>
         </main>
 
-        <!-- ФУТЕР СО СЧЁТЧИКОМ -->
-        <footer class="app-footer" style="text-align:center; padding: 12px; font-size: 12px; color: var(--app-text-muted); border-top: 1px solid var(--app-card-border); background: var(--app-header-bg);">
-            <span id="visitorCount">👥 Посетителей: 0</span> • <span id="onlineCount">🟢 Онлайн: 0</span>
-            <br>🤖 @arizona_coin_bot
+        <footer class="app-footer">
+            <span id="visitorCount">👥 Посетителей: 0</span> • <span id="onlineCount">🟢 Онлайн: 0</span><br>🤖 @arizona_coin_bot
         </footer>
     </div>
 
-    <!-- МОДАЛЬНЫЕ ОКНА -->
-    <!-- Детальный просмотр объявления -->
-    <div id="adDetailModal" class="modal-overlay" onclick="handleOverlayClick(event, 'adDetailModal')">
+    <!-- Модальные окна -->
+    <div id="adDetailModal" class="modal-overlay" onclick="handleOverlayClick(event,'adDetailModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title" id="adDetailTitle">📄 Объявление</h3><button class="modal-close" onclick="closeModal('adDetailModal')">✕</button></div>
             <div id="adDetailContent"></div>
         </div>
     </div>
 
-    <div id="barygaModal" class="modal-overlay" onclick="handleOverlayClick(event, 'barygaModal')">
-        <div class="modal-content" style="text-align: left;">
+    <div id="barygaModal" class="modal-overlay" onclick="handleOverlayClick(event,'barygaModal')">
+        <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">🎮 Игра «Барыга»</h3><button class="modal-close" onclick="closeModal('barygaModal')">✕</button></div>
             <div class="clicker-box">
-                <div style="font-size: 12px; color: var(--app-text-muted);">💰 Баланс:</div>
-                <div id="clickerMoney" class="clicker-money">0 $</div>
-                <button class="clicker-big-btn" onclick="barygaClick()"><span>💸 ТАПАТЬ</span><span id="clickPowerLabel" style="font-size: 10px; color: #fff;">+1 $ / клик</span></button>
-                <div style="font-size: 11px; color: var(--app-text-muted); margin-bottom: 10px;">📈 Пассивный доход: <b id="autoIncomeLabel" style="color: var(--app-text-main);">0 $ / сек</b></div>
-                <div style="font-weight: 700; font-size: 12px; margin: 10px 0 6px;">⚡ Улучшения:</div>
-                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">👆 Клик +1</span><br><span class="upgrade-cost" id="clickCostLabel">Цена: 50 $</span></div><button onclick="buyClickUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
-                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">🤖 Скупщик (+5$/с)</span><br><span class="upgrade-cost" id="autoCostLabel">Цена: 200 $</span></div><button onclick="buyAutoUpgrade()" class="btn btn-success btn-sm">Нанять</button></div>
-                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">💼 Профи (+20$/с)</span><br><span class="upgrade-cost" id="proCostLabel">Цена: 800 $</span></div><button onclick="buyProUpgrade()" class="btn btn-success btn-sm">Нанять</button></div>
-                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">🏪 Авто-лавка (+50$/с)</span><br><span class="upgrade-cost" id="shopCostLabel">Цена: 3 000 $</span></div><button onclick="buyShopUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
-                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">👑 Элитный (+10 клик)</span><br><span class="upgrade-cost" id="eliteCostLabel">Цена: 10 000 $</span></div><button onclick="buyEliteUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
-                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">🛢 Нефтевышка (+200$/с)</span><br><span class="upgrade-cost" id="oilCostLabel">Цена: 35 000 $</span></div><button onclick="buyOilRigUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
-                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">🪙 Криптоферма (+1000$/с)</span><br><span class="upgrade-cost" id="cryptoCostLabel">Цена: 150 000 $</span></div><button onclick="buyCryptoUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
+                <div>💰 Баланс: <span id="clickerMoney">0 $</span></div>
+                <button class="clicker-big-btn" onclick="barygaClick()">💸 ТАПАТЬ<br><span id="clickPowerLabel">+1 $ / клик</span></button>
+                <div>📈 Пассивный доход: <b id="autoIncomeLabel">0 $ / сек</b></div>
+                <div><b>⚡ Улучшения:</b></div>
+                <div class="clicker-upgrade-row"><div>👆 Клик +1<br><span id="clickCostLabel">Цена: 50 $</span></div><button class="btn btn-success btn-sm" onclick="buyClickUpgrade()">Купить</button></div>
+                <div class="clicker-upgrade-row"><div>🤖 Скупщик (+5$/с)<br><span id="autoCostLabel">Цена: 200 $</span></div><button class="btn btn-success btn-sm" onclick="buyAutoUpgrade()">Нанять</button></div>
+                <div class="clicker-upgrade-row"><div>💼 Профи (+20$/с)<br><span id="proCostLabel">Цена: 800 $</span></div><button class="btn btn-success btn-sm" onclick="buyProUpgrade()">Нанять</button></div>
+                <div class="clicker-upgrade-row"><div>🏪 Авто-лавка (+50$/с)<br><span id="shopCostLabel">Цена: 3 000 $</span></div><button class="btn btn-success btn-sm" onclick="buyShopUpgrade()">Купить</button></div>
+                <div class="clicker-upgrade-row"><div>👑 Элитный (+10 клик)<br><span id="eliteCostLabel">Цена: 10 000 $</span></div><button class="btn btn-success btn-sm" onclick="buyEliteUpgrade()">Купить</button></div>
+                <div class="clicker-upgrade-row"><div>🛢 Нефтевышка (+200$/с)<br><span id="oilCostLabel">Цена: 35 000 $</span></div><button class="btn btn-success btn-sm" onclick="buyOilRigUpgrade()">Купить</button></div>
+                <div class="clicker-upgrade-row"><div>🪙 Криптоферма (+1000$/с)<br><span id="cryptoCostLabel">Цена: 150 000 $</span></div><button class="btn btn-success btn-sm" onclick="buyCryptoUpgrade()">Купить</button></div>
             </div>
         </div>
     </div>
 
-    <div id="searchModal" class="modal-overlay" onclick="handleOverlayClick(event, 'searchModal')">
+    <div id="searchModal" class="modal-overlay" onclick="handleOverlayClick(event,'searchModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">🔍 Поиск</h3><button class="modal-close" onclick="closeModal('searchModal')">✕</button></div>
-            <div class="form-group"><label>Введите название или ник:</label><input type="text" id="modalSearchInput" placeholder="Шар или @player"></div>
-            <div class="flex gap-sm"><button onclick="executeAdvancedSearch('item')" class="btn btn-success">📦 Предмет</button><button onclick="executeAdvancedSearch('profile')" class="btn btn-outline">👤 Профиль</button></div>
+            <input type="text" id="modalSearchInput" placeholder="Шар или @player">
+            <div class="flex gap-sm"><button class="btn btn-success" onclick="executeAdvancedSearch('item')">📦 Предмет</button><button class="btn btn-outline" onclick="executeAdvancedSearch('profile')">👤 Профиль</button></div>
         </div>
     </div>
 
-    <div id="profileInspectModal" class="modal-overlay" onclick="handleOverlayClick(event, 'profileInspectModal')">
+    <div id="profileInspectModal" class="modal-overlay" onclick="handleOverlayClick(event,'profileInspectModal')">
         <div class="modal-content text-center">
             <div class="modal-header"><h3 class="modal-title">👤 Профиль игрока</h3><button class="modal-close" onclick="closeModal('profileInspectModal')">✕</button></div>
-            <div style="margin-bottom: 14px;">
-                <div class="profile-avatar-wrapper" style="width: 70px; height: 70px; margin: 0 auto 8px;"><img id="inspectAvatar" class="profile-avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='50' fill='%231c1c1e'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='35'>👤</text></svg>" style="width: 66px; height: 66px;"></div>
-                <h4 id="inspectUsername" style="font-size: 16px; margin: 0 0 4px;">@player</h4>
-                <div id="inspectStatus" style="font-size: 11px; color: var(--app-text-muted);">✨ В поиске</div>
-                <div id="inspectRoleBadge" class="profile-badge" style="margin: 8px auto;">👤 Игрок</div>
-            </div>
-            <div class="flex gap-sm"><button onclick="inspectSubscribeUser()" class="btn btn-success btn-sm" id="inspectSubBtn">❤️ Подписаться</button><button onclick="inspectOpenChat()" class="btn btn-outline btn-sm">💬 Написать</button></div>
+            <img id="inspectAvatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='50' fill='%231c1c1e'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='35'>👤</text></svg>" style="width:70px;height:70px;border-radius:50%;">
+            <h4 id="inspectUsername">@player</h4>
+            <div id="inspectStatus">✨ В поиске</div>
+            <div class="flex gap-sm"><button class="btn btn-success btn-sm" onclick="inspectSubscribeUser()">❤️ Подписаться</button><button class="btn btn-outline btn-sm" onclick="inspectOpenChat()">💬 Написать</button></div>
         </div>
     </div>
 
-    <div id="styleModal" class="modal-overlay" onclick="handleOverlayClick(event, 'styleModal')">
-        <div class="modal-content">
-            <div class="modal-header"><h3 class="modal-title">🎨 Стиль и тема</h3><button class="modal-close" onclick="closeModal('styleModal')">✕</button></div>
-            <label>Дизайн-стиль:</label>
-            <div class="flex gap-sm mb-md" style="flex-wrap: wrap;">
-                <button onclick="setAppStyle('tg')" class="btn btn-outline btn-sm" style="flex:1; min-width:100px;">📱 Telegram</button>
-                <button onclick="setAppStyle('wb')" class="btn btn-outline btn-sm" style="flex:1; min-width:100px;">🛍 Wildberries</button>
-                <button onclick="setAppStyle('ios')" class="btn btn-outline btn-sm" style="flex:1; min-width:100px;"> Apple iOS</button>
-            </div>
-            <label>Цветовая схема:</label>
-            <div class="flex gap-sm"><button onclick="setAppTheme('dark')" class="btn btn-outline btn-sm" style="flex:1;">🌙 Тёмная</button><button onclick="setAppTheme('light')" class="btn btn-outline btn-sm" style="flex:1;">☀️ Светлая</button></div>
-            <div class="mt-md text-center text-muted" style="font-size: 11px;">Текущий стиль: <b id="currentStyleLabel">Telegram</b> • Тема: <b id="currentThemeLabel">Тёмная</b></div>
-        </div>
-    </div>
-
-    <div id="musicModal" class="modal-overlay" onclick="handleOverlayClick(event, 'musicModal')">
+    <div id="musicModal" class="modal-overlay" onclick="handleOverlayClick(event,'musicModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">🎵 Фоновая музыка</h3><button class="modal-close" onclick="closeModal('musicModal')">✕</button></div>
-            <p style="font-size: 12px; color: var(--app-text-muted); margin-bottom: 12px;">Загрузите аудиофайл (.mp3, .wav) для фонового воспроизведения.</p>
-            <input type="file" id="customAudioFile" accept="audio/*" onchange="loadCustomBackgroundMusic(event)" class="mb-md">
-            <div class="flex gap-sm"><button onclick="toggleMusicPlayback()" class="btn btn-success" id="musicPlayToggleBtn">⏸ Пауза</button><button onclick="resetDefaultMusic()" class="btn btn-outline">🔄 Сбросить</button></div>
+            <input type="file" id="customAudioFile" accept="audio/*" onchange="loadCustomBackgroundMusic(event)">
+            <div class="flex gap-sm"><button class="btn btn-success" onclick="toggleMusicPlayback()" id="musicPlayToggleBtn">⏸ Пауза</button><button class="btn btn-outline" onclick="resetDefaultMusic()">🔄 Сбросить</button></div>
         </div>
     </div>
 
-    <div id="fashionModal" class="modal-overlay" onclick="handleOverlayClick(event, 'fashionModal')">
+    <div id="fashionModal" class="modal-overlay" onclick="handleOverlayClick(event,'fashionModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">📸 Лента «Луков»</h3><button class="modal-close" onclick="closeModal('fashionModal')">✕</button></div>
-            <div class="form-group"><input type="text" id="fashionSetTitle" placeholder="Название сета (Ангел)"></div>
-            <div class="form-group"><input type="url" id="fashionSetImage" placeholder="Ссылка на скриншот"></div>
-            <button onclick="postFashionLook()" class="btn btn-success mb-md">🚀 Выложить</button>
-            <div id="fashionContainer" style="max-height: 250px; overflow-y: auto;"></div>
+            <input type="text" id="fashionSetTitle" placeholder="Название сета">
+            <input type="url" id="fashionSetImage" placeholder="Ссылка на скриншот">
+            <button class="btn btn-success" onclick="postFashionLook()">🚀 Выложить</button>
+            <div id="fashionContainer"></div>
         </div>
     </div>
 
-    <div id="travelModal" class="modal-overlay" onclick="handleOverlayClick(event, 'travelModal')">
+    <div id="travelModal" class="modal-overlay" onclick="handleOverlayClick(event,'travelModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">🤝 Поиск попутчиков</h3><button class="modal-close" onclick="closeModal('travelModal')">✕</button></div>
-            <div class="form-group"><input type="text" id="travelActivity" placeholder="Куда идём? (Шахта, Завод)"></div>
-            <div class="form-group"><textarea id="travelDesc" rows="2" placeholder="Условия / Сервер..."></textarea></div>
-            <button onclick="postTravelAd()" class="btn btn-success mb-md">📢 Найти напарника</button>
-            <div id="travelContainer" style="max-height: 250px; overflow-y: auto;"></div>
+            <input type="text" id="travelActivity" placeholder="Куда идём?">
+            <textarea id="travelDesc" rows="2" placeholder="Условия"></textarea>
+            <button class="btn btn-success" onclick="postTravelAd()">📢 Найти напарника</button>
+            <div id="travelContainer"></div>
         </div>
     </div>
 
-    <div id="chatsModal" class="modal-overlay" onclick="handleOverlayClick(event, 'chatsModal')">
+    <div id="chatsModal" class="modal-overlay" onclick="handleOverlayClick(event,'chatsModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">💬 Переписки</h3><button class="modal-close" onclick="closeModal('chatsModal')">✕</button></div>
-            <div class="flex gap-sm mb-md"><input type="text" id="findUserChatInput" placeholder="Найти игрока..." style="margin:0;"><button onclick="startChatByUsername()" class="btn btn-success btn-sm" style="width:auto; margin:0;">🔍</button></div>
-            <div id="chatsList" style="max-height: 260px; overflow-y: auto;"></div>
+            <div class="flex gap-sm mb-md"><input type="text" id="findUserChatInput" placeholder="Найти игрока..."><button class="btn btn-success btn-sm" onclick="startChatByUsername()">🔍</button></div>
+            <div id="chatsList"></div>
         </div>
     </div>
 
-    <div id="chatDetailModal" class="modal-overlay" onclick="handleOverlayClick(event, 'chatDetailModal')">
+    <div id="chatDetailModal" class="modal-overlay" onclick="handleOverlayClick(event,'chatDetailModal')">
         <div class="modal-content">
-            <div class="modal-header"><h3 class="modal-title" id="chatTitle">💬 Чат</h3><div style="display: flex; gap: 4px;"><button class="modal-close" onclick="clearActiveChatHistory()" title="Очистить">🧹</button><button class="modal-close" onclick="closeModal('chatDetailModal')">✕</button></div></div>
-            <div id="chatMessages" style="background: var(--app-header-bg); padding: 12px; border-radius: 12px; height: 220px; overflow-y: auto; font-size: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--app-card-border);"></div>
-            <div class="flex gap-sm"><input type="text" id="chatInputMessage" placeholder="Сообщение..." style="margin:0;" onkeypress="if(event.key === 'Enter') sendChatMessage()"><button onclick="sendChatMessage()" class="btn btn-success btn-sm" style="width:auto; margin:0;">🚀</button></div>
+            <div class="modal-header"><h3 class="modal-title" id="chatTitle">💬 Чат</h3><div><button class="modal-close" onclick="clearActiveChatHistory()">🧹</button><button class="modal-close" onclick="closeModal('chatDetailModal')">✕</button></div></div>
+            <div id="chatMessages" style="height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;background:#f9f9f9;border-radius:12px;padding:12px;"></div>
+            <div class="flex gap-sm mt-md"><input type="text" id="chatInputMessage" placeholder="Сообщение..." onkeypress="if(event.key==='Enter') sendChatMessage()"><button class="btn btn-success btn-sm" onclick="sendChatMessage()">🚀</button></div>
         </div>
     </div>
 
-    <div id="pickerModal" class="modal-overlay" onclick="handleOverlayClick(event, 'pickerModal')">
+    <div id="pickerModal" class="modal-overlay" onclick="handleOverlayClick(event,'pickerModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title" id="pickerTitle">📌 Выберите</h3><button class="modal-close" onclick="closeModal('pickerModal')">✕</button></div>
             <div id="pickerList" class="picker-list"></div>
         </div>
     </div>
 
-    <div id="broadcastModal" class="modal-overlay" onclick="handleOverlayClick(event, 'broadcastModal')">
+    <div id="broadcastModal" class="modal-overlay" onclick="handleOverlayClick(event,'broadcastModal')">
         <div class="modal-content text-center">
             <div class="modal-header"><h3 class="modal-title">📢 Уведомление</h3><button class="modal-close" onclick="closeModal('broadcastModal')">✕</button></div>
-            <p id="broadcastModalText" style="font-size: 14px; line-height: 1.6;"></p>
+            <p id="broadcastModalText"></p>
         </div>
     </div>
 
-    <div id="editAdModal" class="modal-overlay" onclick="handleOverlayClick(event, 'editAdModal')">
+    <div id="broadcastHistoryModal" class="modal-overlay" onclick="handleOverlayClick(event,'broadcastHistoryModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">📜 История уведомлений</h3><button class="modal-close" onclick="closeModal('broadcastHistoryModal')">✕</button></div>
+            <div id="broadcastHistoryContainer"></div>
+        </div>
+    </div>
+
+    <div id="editAdModal" class="modal-overlay" onclick="handleOverlayClick(event,'editAdModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">✏️ Редактировать объявление</h3><button class="modal-close" onclick="closeModal('editAdModal')">✕</button></div>
             <div id="editAdForm"></div>
@@ -1302,55 +440,27 @@
 
     <div id="cooldownModal" class="modal-overlay">
         <div class="modal-content text-center">
-            <h3 style="margin-bottom: 12px;">⏳ Объявление отправлено!</h3>
-            <p style="font-size: 13px; color: var(--app-text-muted); margin-bottom: 8px;">Ожидайте модерации. Следующее объявление можно будет отправить через:</p>
-            <div id="cooldownTimer" style="font-size: 28px; font-weight: 700; color: var(--app-accent); margin-bottom: 16px;">02:00</div>
-            <button onclick="closeModal('cooldownModal')" class="btn btn-secondary btn-sm" style="width:auto; margin:0 auto;">Закрыть</button>
+            <h3>⏳ Объявление отправлено!</h3>
+            <p>Следующее через: <span id="cooldownTimer">02:00</span></p>
+            <button class="btn btn-secondary btn-sm" onclick="closeModal('cooldownModal')">Закрыть</button>
         </div>
     </div>
 
-    <div id="settingsModal" class="modal-overlay" onclick="handleOverlayClick(event, 'settingsModal')">
+    <div id="settingsModal" class="modal-overlay" onclick="handleOverlayClick(event,'settingsModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">⚙️ Настройки</h3><button class="modal-close" onclick="closeModal('settingsModal')">✕</button></div>
-            <div class="form-group">
-                <label>🔊 Звуковые эффекты</label>
-                <button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">Включены</button>
-            </div>
-            <div class="form-group">
-                <label>🗑 Сбросить все данные</label>
-                <button class="btn btn-danger btn-sm" onclick="resetAllData()">Сбросить</button>
-            </div>
-            <div class="form-group">
-                <label>🔄 Сбросить только ленту объявлений</label>
-                <button class="btn btn-outline btn-sm" onclick="resetFeedOnly()">Сбросить ленту</button>
-            </div>
-            <div class="form-group">
-                <label>🔄 Сбросить только мои объявления</label>
-                <button class="btn btn-outline btn-sm" onclick="resetMyAdsOnly()">Сбросить мои</button>
-            </div>
-            <div class="form-group">
-                <label>🔄 Сбросить переписки</label>
-                <button class="btn btn-outline btn-sm" onclick="resetChatsOnly()">Сбросить чаты</button>
-            </div>
-            <div class="text-muted" style="font-size: 11px;">Версия: 2026.08.08-universal</div>
+            <div class="form-group"><label>🔊 Звуковые эффекты</label><button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">Включены</button></div>
+            <div class="form-group"><label>🗑 Сбросить все данные</label><button class="btn btn-danger btn-sm" onclick="resetAllData()">Сбросить</button></div>
+            <div class="form-group"><label>🔄 Сбросить ленту</label><button class="btn btn-outline btn-sm" onclick="resetFeedOnly()">Сбросить ленту</button></div>
+            <div class="form-group"><label>🔄 Сбросить мои объявления</label><button class="btn btn-outline btn-sm" onclick="resetMyAdsOnly()">Сбросить мои</button></div>
+            <div class="form-group"><label>🔄 Сбросить переписки</label><button class="btn btn-outline btn-sm" onclick="resetChatsOnly()">Сбросить чаты</button></div>
         </div>
     </div>
 
-    <div id="helpModal" class="modal-overlay" onclick="handleOverlayClick(event, 'helpModal')">
+    <div id="helpModal" class="modal-overlay" onclick="handleOverlayClick(event,'helpModal')">
         <div class="modal-content">
             <div class="modal-header"><h3 class="modal-title">❓ Помощь</h3><button class="modal-close" onclick="closeModal('helpModal')">✕</button></div>
-            <p style="font-size: 14px; line-height: 1.6;">
-                <b>Arizona RP Mini App</b><br><br>
-                📌 <b>Главная</b> — просмотр объявлений.<br>
-                ➕ <b>Создать</b> — разместить своё объявление (после модерации).<br>
-                📦 <b>Мои темы</b> — ваши объявления.<br>
-                ⭐ <b>Избранное</b> — сохранённые.<br>
-                👤 <b>Профиль</b> — настройка профиля, росписи.<br>
-                🛡️ <b>Админ</b> — модерация (для администраторов).<br><br>
-                💬 <b>Переписки</b> доступны через меню (⋮).<br>
-                🎨 Стиль и тему можно менять в меню.<br>
-                ❓ При возникновении проблем обратитесь к менеджеру.
-            </p>
+            <p><b>Arizona RP Mini App</b><br>Главная — просмотр объявлений.<br>Создать — разместить объявление.<br>Мои темы — ваши объявления.<br>Избранное — сохранённые.<br>Профиль — настройка профиля.<br>Админ — модерация.<br>Переписки — через меню (⋮).</p>
         </div>
     </div>
 
@@ -1358,24 +468,18 @@
         // ==========================================================================
         // КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
         // ==========================================================================
-        const CURRENT_APP_BUILD = '2026.08.08-universal';
+        const CURRENT_APP_BUILD = '2026.08.08-wb';
         const OWNER_USERNAME = 'bounqy';
         const OWNER_ID = '777';
-
-        let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
+        let tg = window.Telegram?.WebApp || {};
         if (typeof tg.expand === 'function') tg.expand();
-        if (typeof tg.ready === 'function') tg.ready();
-
-        let tgUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
-        let currentUserId = tgUser && tgUser.id ? tgUser.id.toString() : 'default_user';
-        let currentUserUsername = (tgUser && tgUser.username) ? '@' + tgUser.username : ('@user_' + currentUserId);
-        let currentUserNameDisplay = (tgUser && tgUser.first_name) ? tgUser.first_name : 'Игрок';
-
-        let sfxEnabled = true; // глобальный флаг звука
-
-        function getUserKey(key) {
-            return `arizona_${currentUserId}_${key}`;
-        }
+        let tgUser = tg.initDataUnsafe?.user || null;
+        let currentUserId = tgUser?.id?.toString() || 'default_user';
+        let currentUserUsername = tgUser?.username ? '@' + tgUser.username : '@user_' + currentUserId;
+        let currentUserNameDisplay = tgUser?.first_name || 'Игрок';
+        let sfxEnabled = true;
+        let broadcastTimeout = null; // таймер авто-скрытия broadcast
+        function getUserKey(key) { return `arizona_${currentUserId}_${key}`; }
 
         // ==========================================================================
         // УТИЛИТЫ
@@ -1383,112 +487,52 @@
         function playSfx(type) {
             if (!sfxEnabled) return;
             try {
-                const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                let osc = audioCtx.createOscillator();
-                let gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                let now = audioCtx.currentTime;
-                if (type === 'cash') {
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(800, now);
-                    osc.frequency.setValueAtTime(1200, now + 0.08);
-                    gain.gain.setValueAtTime(0.2, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-                    osc.start(now);
-                    osc.stop(now + 0.35);
-                } else if (type === 'success') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(440, now);
-                    osc.frequency.setValueAtTime(880, now + 0.15);
-                    gain.gain.setValueAtTime(0.15, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                    osc.start(now);
-                    osc.stop(now + 0.3);
-                } else {
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(300, now);
-                    gain.gain.setValueAtTime(0.08, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-                    osc.start(now);
-                    osc.stop(now + 0.05);
-                }
-            } catch (e) {}
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                const now = ctx.currentTime;
+                if (type === 'cash') { osc.type='triangle'; osc.frequency.setValueAtTime(800,now); osc.frequency.setValueAtTime(1200,now+0.08); gain.gain.setValueAtTime(0.2,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.35); osc.start(now); osc.stop(now+0.35); }
+                else if (type === 'success') { osc.type='sine'; osc.frequency.setValueAtTime(440,now); osc.frequency.setValueAtTime(880,now+0.15); gain.gain.setValueAtTime(0.15,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.3); osc.start(now); osc.stop(now+0.3); }
+                else { osc.type='square'; osc.frequency.setValueAtTime(300,now); gain.gain.setValueAtTime(0.08,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.05); osc.start(now); osc.stop(now+0.05); }
+            } catch(e) {}
         }
-
-        function detectDeviceType() {
-            let body = document.body;
-            body.classList.remove('device-pc', 'device-tablet', 'device-mobile');
-            let width = window.innerWidth;
-            if (width >= 1024) body.classList.add('device-pc');
-            else if (width >= 768) body.classList.add('device-tablet');
-            else body.classList.add('device-mobile');
-        }
-        window.addEventListener('resize', detectDeviceType);
-        detectDeviceType();
 
         function updateMskClock() {
-            try {
-                let now = new Date();
-                let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
-                let timeStr = mskTime.toTimeString().split(' ')[0];
-                document.getElementById('mskTime').innerText = `${timeStr} МСК`;
-            } catch (e) {}
+            const now = new Date();
+            const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            document.getElementById('mskTime').innerText = msk.toTimeString().split(' ')[0] + ' МСК';
         }
-        setInterval(updateMskClock, 1000);
-        updateMskClock();
+        setInterval(updateMskClock, 1000); updateMskClock();
 
-        // Счётчики посетителей и онлайна
         function updateCounters() {
-            // Посетители (уникальные, сохраняем в localStorage)
             let visitors = parseInt(localStorage.getItem('visitor_count') || '0');
             if (!sessionStorage.getItem('counted_as_visitor')) {
-                visitors++;
-                localStorage.setItem('visitor_count', visitors.toString());
-                sessionStorage.setItem('counted_as_visitor', '1');
+                visitors++; localStorage.setItem('visitor_count', visitors); sessionStorage.setItem('counted_as_visitor','1');
             }
             document.getElementById('visitorCount').innerText = `👥 Посетителей: ${visitors}`;
-
-            // Онлайн (просто случайное число для демонстрации, или можно считать по heartbeat)
             let online = parseInt(localStorage.getItem('online_count') || '1');
-            // Симуляция изменения онлайн раз в 5 секунд
-            if (!sessionStorage.getItem('online_heartbeat')) {
-                sessionStorage.setItem('online_heartbeat', Date.now().toString());
-                online = Math.floor(Math.random() * 10) + 1;
-                localStorage.setItem('online_count', online.toString());
-            }
             document.getElementById('onlineCount').innerText = `🟢 Онлайн: ${online}`;
         }
         updateCounters();
-        setInterval(() => {
-            // Обновляем онлайн каждые 30 секунд случайным образом
-            let online = Math.floor(Math.random() * 10) + 1;
-            localStorage.setItem('online_count', online.toString());
-            document.getElementById('onlineCount').innerText = `🟢 Онлайн: ${online}`;
-        }, 30000);
+        setInterval(() => { localStorage.setItem('online_count', Math.floor(Math.random()*10)+1); updateCounters(); }, 30000);
 
         function checkAndPerformAutoCleanup() {
-            let now = new Date();
-            let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
-            let currentHours = mskTime.getHours();
-            let currentMinutes = mskTime.getMinutes();
-            let currentDateStr = mskTime.toISOString().split('T')[0];
-            let lastResetDate = localStorage.getItem('arizona_last_auto_reset_date') || '';
-            if ((currentHours > 7 || (currentHours === 7 && currentMinutes >= 50)) && lastResetDate !== currentDateStr) {
+            const now = new Date();
+            const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            const dateStr = msk.toISOString().split('T')[0];
+            const lastReset = localStorage.getItem('arizona_last_auto_reset_date') || '';
+            if ((msk.getHours() > 7 || (msk.getHours() === 7 && msk.getMinutes() >= 50)) && lastReset !== dateStr) {
                 localStorage.removeItem('arizona_ads_feed');
                 localStorage.removeItem('arizona_pending_ads');
-                localStorage.removeItem('arizona_fashion_looks');
-                for (let i = 0; i < localStorage.length; i++) {
-                    let key = localStorage.key(i);
-                    if (key && key.includes('_my_ads')) localStorage.setItem(key, JSON.stringify([]));
-                }
-                localStorage.setItem('arizona_last_auto_reset_date', currentDateStr);
+                localStorage.setItem('arizona_last_auto_reset_date', dateStr);
             }
         }
-        checkAndPerformAutoCleanup();
-        setInterval(checkAndPerformAutoCleanup, 60000);
+        checkAndPerformAutoCleanup(); setInterval(checkAndPerformAutoCleanup, 60000);
 
+        // ==========================================================================
+        // ДАННЫЕ
+        // ==========================================================================
         const ALL_SERVERS = [
             { value: '🌴 Tucson', label: '🌴 Tucson (Основной)' },
             { value: '🔥 Phoenix', label: '🔥 Phoenix' },
@@ -1520,20 +564,24 @@
             { value: '🌟 Mirage', label: '🌟 Mirage' },
             { value: '🍀 Christmas', label: '🍀 Christmas' }
         ];
-
-        let ADMIN_USERNAMES = [];
-        try {
-            ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || JSON.stringify(['admin', 'arizona_admin', OWNER_USERNAME]));
-        } catch (e) { ADMIN_USERNAMES = ['admin', 'arizona_admin', OWNER_USERNAME]; }
-
+        let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || '["admin","arizona_admin","bounqy"]');
         let activeChatUser = '';
-        let activeInspectedUser = '';
         let feedDisplayLimit = 20;
         let currentViewMode = 'list';
         let activePickerType = '';
-        let currentAppStyle = 'tg';
-        let currentAppTheme = 'dark';
         let cooldownInterval = null;
+
+        // Форматирование цены
+        function formatPrice(priceStr) {
+            if (!priceStr) return '';
+            if (/[кk]/i.test(priceStr)) return priceStr;
+            const num = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
+            if (isNaN(num)) return priceStr;
+            if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'ккк';
+            if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'кк';
+            if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'к';
+            return num.toString();
+        }
 
         // ==========================================================================
         // НАВИГАЦИЯ
@@ -1541,81 +589,91 @@
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.tab-bar-item').forEach(t => t.classList.remove('active'));
-            let targetSection = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-            if (targetSection) targetSection.classList.add('active');
-            let targetTab = document.querySelector(`.tab-bar-item[data-tab="${tabId}"]`);
-            if (targetTab) targetTab.classList.add('active');
-            playSfx('click');
+            const section = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (section) section.classList.add('active');
+            const tab = document.querySelector(`.tab-bar-item[data-tab="${tabId}"]`);
+            if (tab) tab.classList.add('active');
+            if (tabId === 'feed') renderFeed();
             if (tabId === 'myAds') renderMyAds();
             if (tabId === 'favorites') renderFavorites();
             if (tabId === 'admin') renderPendingAds();
-            if (tabId === 'feed') renderFeed();
+            playSfx('click');
         }
 
         function toggleDropdownMenu(e) {
             e.stopPropagation();
-            document.getElementById('dropdownMenu').classList.toggle('visible');
+            const menu = document.getElementById('dropdownMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
             playSfx('click');
         }
-        function closeDropdowns() { document.getElementById('dropdownMenu')?.classList.remove('visible'); }
+        function closeDropdowns() { document.getElementById('dropdownMenu').style.display = 'none'; }
         window.addEventListener('click', closeDropdowns);
 
-        function openModal(modalId) {
-            document.getElementById(modalId).classList.add('visible');
-            if (modalId === 'chatsModal') renderChatsList();
-            if (modalId === 'fashionModal') renderFashionLooks();
-            if (modalId === 'travelModal') renderTravelAds();
-            if (modalId === 'barygaModal') updateBarygaUI();
+        function openModal(id) {
+            document.getElementById(id).classList.add('visible');
+            if (id === 'chatsModal') renderChatsList();
+            if (id === 'fashionModal') renderFashionLooks();
+            if (id === 'travelModal') renderTravelAds();
+            if (id === 'barygaModal') updateBarygaUI();
             playSfx('success');
         }
-        function closeModal(modalId) { document.getElementById(modalId).classList.remove('visible'); }
-        function handleOverlayClick(event, modalId) { if (event.target.id === modalId) closeModal(modalId); }
+        function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
+        function handleOverlayClick(e, id) { if (e.target.id === id) closeModal(id); }
 
         // ==========================================================================
-        // СТИЛЬ И ТЕМА
+        // BROADCAST (уведомления)
         // ==========================================================================
-        function setAppStyle(styleName) {
-            currentAppStyle = styleName;
-            document.body.classList.remove('style-tg', 'style-wb', 'style-ios');
-            if (styleName === 'wb') document.body.classList.add('style-wb');
-            if (styleName === 'ios') document.body.classList.add('style-ios');
-            if (styleName === 'tg') document.body.classList.add('style-tg');
-            localStorage.setItem(getUserKey('app_style'), styleName);
-            updateTabIcons(styleName);
-            updateStyleLabels();
+        let broadcastHistory = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+
+        function showBroadcastBanner(text, autoHide = true) {
+            const banner = document.getElementById('broadcastBanner');
+            document.getElementById('broadcastText').innerHTML = `<b>Уведомление!</b> ${text}`;
+            banner.style.display = 'block';
+            // Авто-скрытие через 10 секунд
+            if (broadcastTimeout) clearTimeout(broadcastTimeout);
+            if (autoHide) {
+                broadcastTimeout = setTimeout(() => {
+                    banner.style.display = 'none';
+                }, 10000);
+            }
+        }
+
+        function hideBroadcastBanner() {
+            document.getElementById('broadcastBanner').style.display = 'none';
+            if (broadcastTimeout) clearTimeout(broadcastTimeout);
+            broadcastTimeout = null;
+        }
+
+        function openBroadcastModal() {
+            const text = document.getElementById('broadcastText').innerText.replace('Уведомление! ', '');
+            document.getElementById('broadcastModalText').innerText = text;
+            openModal('broadcastModal');
+        }
+
+        function updateBroadcastMessage() {
+            const text = document.getElementById('newBroadcastInput').value.trim();
+            if (!text) return;
+            // Сохраняем в историю
+            broadcastHistory.unshift({ text, time: new Date().toLocaleString() });
+            localStorage.setItem('arizona_broadcast_history', JSON.stringify(broadcastHistory));
+            // Показываем баннер
+            showBroadcastBanner(text);
+            // Также сохраняем последнее сообщение для показа при загрузке
+            localStorage.setItem('arizona_broadcast_msg', text);
+            alert('📢 Рассылка отправлена!');
             playSfx('success');
+            document.getElementById('newBroadcastInput').value = '';
         }
 
-        function setAppTheme(themeName) {
-            currentAppTheme = themeName;
-            document.body.classList.remove('theme-dark', 'theme-light');
-            if (themeName === 'dark') document.body.classList.add('theme-dark');
-            if (themeName === 'light') document.body.classList.add('theme-light');
-            localStorage.setItem(getUserKey('app_theme'), themeName);
-            updateStyleLabels();
-            playSfx('success');
-        }
-
-        function updateStyleLabels() {
-            let styleLabel = document.getElementById('currentStyleLabel');
-            let themeLabel = document.getElementById('currentThemeLabel');
-            if (styleLabel) styleLabel.innerText = currentAppStyle === 'tg' ? 'Telegram' : (currentAppStyle === 'wb' ? 'Wildberries' : 'iOS');
-            if (themeLabel) themeLabel.innerText = currentAppTheme === 'dark' ? 'Тёмная' : 'Светлая';
-        }
-
-        function updateTabIcons(style) {
-            const icons = {
-                tg: { feed: '🏠', app: '➕', myAds: '📦', favorites: '⭐', profile: '👤', admin: '🛡️' },
-                wb: { feed: '🔥', app: '➕', myAds: '📦', favorites: '⭐', profile: '👤', admin: '🛡️' },
-                ios: { feed: '⌂', app: '＋', myAds: '▦', favorites: '★', profile: '👤', admin: '🛡' }
-            };
-            document.querySelectorAll('.tab-bar-item').forEach((item, index) => {
-                const iconSpan = item.querySelector('.tab-icon');
-                if (iconSpan) {
-                    const keys = Object.keys(icons[style]);
-                    if (keys[index]) iconSpan.innerText = icons[style][keys[index]];
-                }
-            });
+        function openBroadcastHistory() {
+            closeDropdowns();
+            const container = document.getElementById('broadcastHistoryContainer');
+            if (broadcastHistory.length === 0) {
+                container.innerHTML = '<p>История пуста</p>';
+            } else {
+                container.innerHTML = broadcastHistory.map(item => `<div style="padding:8px;border-bottom:1px solid #eee;"><b>${item.time}</b><br>${item.text}</div>`).join('');
+            }
+            openModal('broadcastHistoryModal');
         }
 
         // ==========================================================================
@@ -1630,790 +688,275 @@
             regDate: 'Август 2026',
             stats: { msgs: 0, reacts: 0, points: 15 }
         };
-
         function initProfileUI() {
             document.getElementById('azUserName').innerText = userProfileData.username + ' (' + userProfileData.tgUser + ')';
             document.getElementById('azCustomStatus').innerText = userProfileData.status;
             document.getElementById('azRoleBadge').innerText = userProfileData.role;
-            document.getElementById('azRegDate').innerText = userProfileData.regDate;
             document.getElementById('azStatPoints').innerText = userProfileData.stats.points;
-            let statusInput = document.getElementById('customStatusInput');
-            if (statusInput) statusInput.value = userProfileData.status;
-            applyAvatarFrameToElement(document.getElementById('azAvatarImg'), userProfileData.frame);
-            highlightActiveFrameButton(userProfileData.frame);
+            document.getElementById('customStatusInput').value = userProfileData.status;
+            applyAvatarFrame(userProfileData.frame);
+            highlightFrameButton(userProfileData.frame);
             renderWallComments();
         }
+        function changeAvatarFrame(frame) { userProfileData.frame = frame; localStorage.setItem(getUserKey('profile_frame'), frame); applyAvatarFrame(frame); highlightFrameButton(frame); playSfx('success'); }
+        function applyAvatarFrame(frame) { const wrapper = document.querySelector('#profileAvatarWrapper'); wrapper.className = 'profile-avatar-wrapper'; if (frame !== 'none') wrapper.classList.add(frame); }
+        function highlightFrameButton(frame) { document.querySelectorAll('.frame-option-btn').forEach(b => b.classList.remove('active')); const btn = document.getElementById('frameBtn_' + frame); if (btn) btn.classList.add('active'); }
+        function saveCustomStatus() { const val = document.getElementById('customStatusInput').value.trim(); if (val) { userProfileData.status = val; localStorage.setItem(getUserKey('profile_status'), val); document.getElementById('azCustomStatus').innerText = val; playSfx('success'); } }
+        function switchProfileSubtab(tab) { document.getElementById('profileWallContent').style.display = tab === 'wall' ? 'block' : 'none'; document.getElementById('profileActivityContent').style.display = tab === 'activity' ? 'block' : 'none'; }
 
-        function changeAvatarFrame(frameName) {
-            userProfileData.frame = frameName;
-            localStorage.setItem(getUserKey('profile_frame'), frameName);
-            applyAvatarFrameToElement(document.getElementById('azAvatarImg'), frameName);
-            highlightActiveFrameButton(frameName);
-            playSfx('success');
-        }
-        function applyAvatarFrameToElement(imgEl, frameName) {
-            if (!imgEl) return;
-            let wrapper = imgEl.parentElement;
-            wrapper.className = 'profile-avatar-wrapper';
-            if (frameName && frameName !== 'none') wrapper.classList.add(frameName);
-        }
-        function highlightActiveFrameButton(frameName) {
-            document.querySelectorAll('.frame-option-btn').forEach(btn => btn.classList.remove('active'));
-            let activeBtn = document.getElementById('frameBtn_' + frameName);
-            if (activeBtn) activeBtn.classList.add('active');
-        }
-        function saveCustomStatus() {
-            let val = document.getElementById('customStatusInput').value.trim();
-            if (val) {
-                userProfileData.status = val;
-                localStorage.setItem(getUserKey('profile_status'), val);
-                document.getElementById('azCustomStatus').innerText = val;
-                playSfx('success');
-                alert('✨ Статус сохранён!');
-            }
-        }
-        function switchProfileSubtab(tab) {
-            document.querySelectorAll('#tabProfile .btn-outline').forEach(b => b.classList.remove('active'));
-            if (tab === 'wall') {
-                document.getElementById('subtabWall').classList.add('active');
-                document.getElementById('profileWallContent').style.display = 'block';
-                document.getElementById('profileActivityContent').style.display = 'none';
-            } else {
-                document.getElementById('subtabActivity').classList.add('active');
-                document.getElementById('profileWallContent').style.display = 'none';
-                document.getElementById('profileActivityContent').style.display = 'block';
-            }
-        }
-
+        // Стенки
         let wallComments = JSON.parse(localStorage.getItem(getUserKey('wall_comments')) || '[]');
-        function postWallComment() {
-            let input = document.getElementById('wallCommentInput');
-            let text = input.value.trim();
-            if (!text) return;
-            wallComments.unshift({ author: currentUserUsername, text: text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-            localStorage.setItem(getUserKey('wall_comments'), JSON.stringify(wallComments));
-            input.value = '';
-            renderWallComments();
-            playSfx('success');
-        }
-        function renderWallComments() {
-            let container = document.getElementById('wallCommentsContainer');
-            if (!container) return;
-            if (wallComments.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center; padding:8px;">Пока нет росписей.</div>';
-                return;
-            }
-            container.innerHTML = wallComments.map(c => `
-                <div style="background:var(--app-header-bg); border:1px solid var(--app-card-border); padding:8px 10px; border-radius:8px; margin-bottom:6px; font-size:11px;">
-                    <div style="display:flex; justify-content:space-between; color:var(--app-accent-secondary); font-weight:600; margin-bottom:2px;">
-                        <span>${c.author}</span>
-                        <span style="font-size:9px; color:var(--app-text-muted);">${c.time}</span>
-                    </div>
-                    <div style="color:var(--app-text-main);">${c.text}</div>
-                </div>
-            `).join('');
-        }
+        function postWallComment() { const input = document.getElementById('wallCommentInput'); const text = input.value.trim(); if (!text) return; wallComments.unshift({author: currentUserUsername, text, time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}); localStorage.setItem(getUserKey('wall_comments'), JSON.stringify(wallComments)); input.value=''; renderWallComments(); playSfx('success'); }
+        function renderWallComments() { const cont = document.getElementById('wallCommentsContainer'); if (wallComments.length === 0) { cont.innerHTML = '<p>Нет росписей</p>'; return; } cont.innerHTML = wallComments.map(c => `<div><b>${c.author}</b> <small>${c.time}</small><br>${c.text}</div>`).join(''); }
 
         // ==========================================================================
-        // ЧАТЫ
+        // ЧАТЫ (глобальная база)
         // ==========================================================================
-        let chatsDatabase = JSON.parse(localStorage.getItem(getUserKey('chats_db')) || '{}');
-
-        function openChatWithUser(targetUser) {
-            if (!targetUser) return;
-            activeChatUser = targetUser.startsWith('@') ? targetUser : '@' + targetUser;
+        let chatsDatabase = JSON.parse(localStorage.getItem('arizona_global_chats_db') || '{}');
+        function openChatWithUser(user) {
+            if (!user) return;
+            activeChatUser = user.startsWith('@') ? user : '@' + user;
             document.getElementById('chatTitle').innerText = '💬 Чат с ' + activeChatUser;
-            closeModal('chatsModal');
-            closeModal('profileInspectModal');
+            closeModal('chatsModal'); closeModal('profileInspectModal');
             openModal('chatDetailModal');
             renderActiveChatMessages();
         }
-
         function renderActiveChatMessages() {
-            let container = document.getElementById('chatMessages');
-            if (!container) return;
-            if (!chatsDatabase[activeChatUser] || chatsDatabase[activeChatUser].length === 0) {
-                container.innerHTML = '<div style="color:var(--app-text-muted); text-align:center; margin:auto; font-size:11px;">История пуста.</div>';
-                return;
-            }
-            container.innerHTML = chatsDatabase[activeChatUser].map(msg => `
-                <div style="display:flex; flex-direction:column; align-items:${msg.sender === currentUserUsername ? 'flex-end' : 'flex-start'};">
-                    <div style="max-width:85%; background:${msg.sender === currentUserUsername ? 'var(--app-btn-bg)' : 'var(--app-card-bg)'}; border:1px solid var(--app-card-border); padding:8px 10px; border-radius:10px; font-size:11px; color:var(--app-text-main);">
-                        ${msg.text}
-                    </div>
-                    <span style="font-size:8px; color:var(--app-text-muted); margin-top:2px;">${msg.time}</span>
-                </div>
-            `).join('');
-            container.scrollTop = container.scrollHeight;
+            const cont = document.getElementById('chatMessages');
+            if (!chatsDatabase[activeChatUser] || chatsDatabase[activeChatUser].length === 0) { cont.innerHTML = '<p>История пуста</p>'; return; }
+            cont.innerHTML = chatsDatabase[activeChatUser].map(msg => `<div style="align-self:${msg.sender === currentUserUsername ? 'flex-end' : 'flex-start'}; background:${msg.sender === currentUserUsername ? '#cb11ab' : '#fff'}; color:${msg.sender === currentUserUsername ? '#fff' : '#000'}; padding:8px 12px; border-radius:12px; max-width:80%;">${msg.text}<br><small>${msg.time}</small></div>`).join('');
+            cont.scrollTop = cont.scrollHeight;
         }
-
         function sendChatMessage() {
-            let input = document.getElementById('chatInputMessage');
-            let text = input.value.trim();
+            const input = document.getElementById('chatInputMessage');
+            const text = input.value.trim();
             if (!text || !activeChatUser) return;
             if (!chatsDatabase[activeChatUser]) chatsDatabase[activeChatUser] = [];
-            let timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            chatsDatabase[activeChatUser].push({ sender: currentUserUsername, text: text, time: timeStr });
-            localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+            const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            chatsDatabase[activeChatUser].push({sender: currentUserUsername, text, time: timeStr});
+            localStorage.setItem('arizona_global_chats_db', JSON.stringify(chatsDatabase));
             input.value = '';
             renderActiveChatMessages();
-            // имитация ответа собеседника без "Ответ от"
             setTimeout(() => {
                 if (activeChatUser) {
-                    if (!chatsDatabase[activeChatUser]) chatsDatabase[activeChatUser] = [];
-                    chatsDatabase[activeChatUser].push({ sender: activeChatUser, text: text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-                    localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+                    chatsDatabase[activeChatUser].push({sender: activeChatUser, text, time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})});
+                    localStorage.setItem('arizona_global_chats_db', JSON.stringify(chatsDatabase));
                     renderActiveChatMessages();
                 }
             }, 1500);
             playSfx('success');
-            if (document.getElementById('chatsModal').classList.contains('visible')) {
-                renderChatsList();
-            }
+            if (document.getElementById('chatsModal').classList.contains('visible')) renderChatsList();
         }
-
-        function clearActiveChatHistory() {
-            if (activeChatUser && chatsDatabase[activeChatUser]) {
-                chatsDatabase[activeChatUser] = [];
-                localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
-                renderActiveChatMessages();
-            }
-        }
-
-        function deleteChat(user) {
-            if (confirm(`Удалить переписку с ${user}?`)) {
-                delete chatsDatabase[user];
-                localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
-                renderChatsList();
-                if (activeChatUser === user) closeModal('chatDetailModal');
-                playSfx('success');
-            }
-        }
-
-        function renderChatsList() {
-            let listEl = document.getElementById('chatsList');
-            if (!listEl) return;
-            let keys = Object.keys(chatsDatabase);
-            if (keys.length === 0) {
-                listEl.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center; padding:12px;">Нет переписок.</div>';
-                return;
-            }
-            listEl.innerHTML = keys.map(user => {
-                let lastMsg = chatsDatabase[user][chatsDatabase[user].length - 1] || { text: 'Нет сообщений', time: '' };
-                return `
-                <div class="picker-item" style="margin-bottom:6px; cursor:pointer;" onclick="openChatWithUser('${user}')">
-                    <div style="flex:1;">
-                        <div style="font-weight:600; color:var(--app-accent);">${user}</div>
-                        <div style="font-size:10px; color:var(--app-text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${lastMsg.text}</div>
-                    </div>
-                    <span style="font-size:9px; color:var(--app-text-muted);">${lastMsg.time}</span>
-                    <button class="modal-close" style="width:24px; height:24px; font-size:12px;" onclick="event.stopPropagation(); deleteChat('${user}')">🗑</button>
-                </div>
-            `;
-            }).join('');
-        }
-
-        function startChatByUsername() {
-            let inputVal = document.getElementById('findUserChatInput').value.trim();
-            if (!inputVal) return;
-            openChatWithUser(inputVal);
-        }
+        function clearActiveChatHistory() { if (activeChatUser && chatsDatabase[activeChatUser]) { chatsDatabase[activeChatUser] = []; localStorage.setItem('arizona_global_chats_db', JSON.stringify(chatsDatabase)); renderActiveChatMessages(); } }
+        function deleteChat(user) { if (confirm(`Удалить переписку с ${user}?`)) { delete chatsDatabase[user]; localStorage.setItem('arizona_global_chats_db', JSON.stringify(chatsDatabase)); renderChatsList(); if (activeChatUser === user) closeModal('chatDetailModal'); playSfx('success'); } }
+        function renderChatsList() { const cont = document.getElementById('chatsList'); const keys = Object.keys(chatsDatabase); if (keys.length === 0) { cont.innerHTML = '<p>Нет переписок</p>'; return; } cont.innerHTML = keys.map(user => { const last = chatsDatabase[user][chatsDatabase[user].length-1]; return `<div onclick="openChatWithUser('${user}')" style="padding:8px;border-bottom:1px solid #eee;"><b>${user}</b><br><small>${last?.text || 'Нет сообщений'}</small> <button onclick="event.stopPropagation(); deleteChat('${user}')">🗑</button></div>`; }).join(''); }
+        function startChatByUsername() { const val = document.getElementById('findUserChatInput').value.trim(); if (val) openChatWithUser(val); }
 
         // ==========================================================================
         // ПОИСК И ПРОФИЛИ
         // ==========================================================================
-        function executeAdvancedSearch(type) {
-            let query = document.getElementById('modalSearchInput').value.trim();
-            closeModal('searchModal');
-            if (!query) return;
-            if (type === 'profile') inspectUserProfile(query);
-            else {
-                switchTab('feed');
-                alert(`🔍 Поиск предметов по запросу "${query}" выполнен.`);
-            }
-        }
-        function inspectUserProfile(usernameQuery) {
-            let cleanUser = usernameQuery.startsWith('@') ? usernameQuery : '@' + usernameQuery;
-            activeInspectedUser = cleanUser;
-            document.getElementById('inspectUsername').innerText = cleanUser;
-            document.getElementById('inspectStatus').innerText = '✨ Активный игрок Arizona RP';
-            openModal('profileInspectModal');
-        }
-        function inspectSubscribeUser() {
-            alert(`❤️ Вы подписались на ${activeInspectedUser}!`);
-            playSfx('success');
-            closeModal('profileInspectModal');
-        }
-        function inspectOpenChat() {
-            closeModal('profileInspectModal');
-            openChatWithUser(activeInspectedUser);
-        }
+        function executeAdvancedSearch(type) { const query = document.getElementById('modalSearchInput').value.trim(); closeModal('searchModal'); if (!query) return; if (type === 'profile') inspectUserProfile(query); else { switchTab('feed'); alert(`Поиск по "${query}" выполнен`); } }
+        function inspectUserProfile(username) { const clean = username.startsWith('@') ? username : '@' + username; activeInspectedUser = clean; document.getElementById('inspectUsername').innerText = clean; openModal('profileInspectModal'); }
+        function inspectSubscribeUser() { alert(`Вы подписались на ${activeInspectedUser}`); closeModal('profileInspectModal'); }
+        function inspectOpenChat() { closeModal('profileInspectModal'); openChatWithUser(activeInspectedUser); }
 
         // ==========================================================================
         // ОБЪЯВЛЕНИЯ
         // ==========================================================================
-        let globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || JSON.stringify([
-            { id: 1, mode: 'sell', category: '💍 Аксессуары и вещи', itemName: 'Магический воздушный шар +12', price: '450.000.000 $', text: 'Продам шар +12, красный. Торг.', image: 'https://i.ibb.co/1YLcDKVk/banner.png', server: '🌴 Tucson', author: '@bounqy', status: 'approved' },
-            { id: 2, mode: 'buy', category: '🚗 Транспорт', itemName: 'Бронированный Brabus 700', price: '380кк', text: 'Куплю брабус, фт сп+.', image: '', server: '🌴 Tucson', author: '@player_sample', status: 'approved' }
-        ]));
+        let globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+        if (globalAdsFeed.length === 0) {
+            globalAdsFeed = [
+                { id: 1, mode: 'sell', category: '💍 Аксессуары и вещи', itemName: 'Магический воздушный шар +12', price: '450000000', text: 'Продам шар +12, красный. Торг.', image: 'https://i.ibb.co/1YLcDKVk/banner.png', server: '🌴 Tucson', author: '@bounqy', status: 'approved' },
+                { id: 2, mode: 'buy', category: '🚗 Транспорт', itemName: 'Бронированный Brabus 700', price: '380000000', text: 'Куплю брабус, фт сп+.', image: '', server: '🌴 Tucson', author: '@player_sample', status: 'approved' }
+            ];
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+        }
         let myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
         let favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
         let pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
 
         function submitData() {
-            let now = new Date();
-            let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
-            let mskHour = mskTime.getHours();
-            if (mskHour < 9 || mskHour >= 22) { alert('🕒 Объявления создаются с 09:00 до 22:00 МСК!'); return; }
-            let lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
-            let currentTime = Date.now();
-            if (currentTime - lastAdTime < 120000) {
-                let leftSec = Math.ceil((120000 - (currentTime - lastAdTime)) / 1000);
-                showCooldownTimer(leftSec);
-                return;
-            }
-            let mode = document.getElementById('mode').value;
-            let category = document.getElementById('category').value;
-            let itemName = document.getElementById('itemName').value.trim();
-            let price = document.getElementById('price').value.trim();
-            let text = document.getElementById('text').value.trim();
-            let image = document.getElementById('itemImage').value.trim();
-            let server = document.getElementById('server').value;
-            if (!itemName || !price || !text) { alert('⚠️ Заполните все обязательные поля!'); return; }
-            let newAd = { id: Date.now(), mode, category, itemName, price, text, image, server, author: currentUserUsername, status: 'pending' };
-            pendingAdsList.push(newAd);
-            myAdsList.push(newAd);
+            const now = new Date();
+            const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            if (msk.getHours() < 9 || msk.getHours() >= 22) { alert('Объявления с 09:00 до 22:00 МСК'); return; }
+            const lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
+            if (Date.now() - lastAdTime < 120000) { const left = Math.ceil((120000 - (Date.now() - lastAdTime))/1000); showCooldownTimer(left); return; }
+            const mode = document.getElementById('mode').value;
+            const category = document.getElementById('category').value;
+            const itemName = document.getElementById('itemName').value.trim();
+            const price = document.getElementById('price').value.trim();
+            const text = document.getElementById('text').value.trim();
+            const image = document.getElementById('itemImage').value.trim();
+            const server = document.getElementById('server').value;
+            if (!itemName || !price || !text) { alert('Заполните все поля'); return; }
+            const newAd = { id: Date.now(), mode, category, itemName, price, text, image, server, author: currentUserUsername, status: 'pending' };
+            pendingAdsList.push(newAd); myAdsList.push(newAd);
             localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
             localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
-            localStorage.setItem(getUserKey('last_ad_time'), currentTime.toString());
-            if (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) localStorage.setItem(getUserKey('owner_has_posted_ad'), 'true');
+            localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
             showCooldownTimer(120);
             playSfx('success');
             switchTab('feed');
-            renderFeed();
-            renderPendingAds();
-            renderMyAds();
-            document.getElementById('itemName').value = '';
-            document.getElementById('price').value = '';
-            document.getElementById('text').value = '';
-            document.getElementById('itemImage').value = '';
+            renderFeed(); renderPendingAds(); renderMyAds();
+            document.getElementById('itemName').value=''; document.getElementById('price').value=''; document.getElementById('text').value=''; document.getElementById('itemImage').value='';
         }
-
         function showCooldownTimer(seconds) {
             if (cooldownInterval) clearInterval(cooldownInterval);
-            let totalSeconds = seconds;
-            updateCooldownDisplay(totalSeconds);
+            let total = seconds;
+            updateCooldownDisplay(total);
             openModal('cooldownModal');
-            cooldownInterval = setInterval(() => {
-                totalSeconds--;
-                if (totalSeconds <= 0) { clearInterval(cooldownInterval); cooldownInterval = null; closeModal('cooldownModal'); }
-                else updateCooldownDisplay(totalSeconds);
-            }, 1000);
+            cooldownInterval = setInterval(() => { total--; if (total <= 0) { clearInterval(cooldownInterval); cooldownInterval=null; closeModal('cooldownModal'); } else updateCooldownDisplay(total); }, 1000);
         }
-        function updateCooldownDisplay(seconds) {
-            let mins = Math.floor(seconds / 60);
-            let secs = seconds % 60;
-            document.getElementById('cooldownTimer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
+        function updateCooldownDisplay(sec) { const m = Math.floor(sec/60); const s = sec%60; document.getElementById('cooldownTimer').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }
 
         function renderFeed() {
-            let container = document.getElementById('feedContainer');
-            if (!container) return;
-            let approvedAds = globalAdsFeed.filter(ad => ad.status === 'approved');
-            if (approvedAds.length === 0) {
-                container.innerHTML = '<div style="color:var(--app-text-muted); text-align:center; padding:20px; font-size:12px; grid-column:1/-1;">Лента пуста.</div>';
-                return;
-            }
-            let isAdminOrOwner = ADMIN_USERNAMES.map(u => u.replace('@','').toLowerCase()).includes(currentUserUsername.replace('@','').toLowerCase()) || (currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase());
-            container.innerHTML = approvedAds.slice(0, feedDisplayLimit).map(ad => {
-                let isFav = favoritesList.some(f => f.id === ad.id);
-                let imageHtml = ad.image ? `<img src="${ad.image}" class="ad-image" loading="lazy" onerror="this.style.display='none';">` : '';
-                let deleteBtn = isAdminOrOwner ? `<button onclick="event.stopPropagation(); deleteApprovedAd(${ad.id})" class="btn btn-danger btn-sm" style="padding: 4px 8px; margin-left: auto;">🗑</button>` : '';
+            const container = document.getElementById('feedContainer');
+            const approved = globalAdsFeed.filter(ad => ad.status === 'approved');
+            if (approved.length === 0) { container.innerHTML = '<p>Лента пуста</p>'; return; }
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME;
+            container.innerHTML = approved.slice(0, feedDisplayLimit).map(ad => {
+                const isFav = favoritesList.some(f => f.id === ad.id);
+                const imageHtml = ad.image ? `<img src="${ad.image}" class="ad-image" onerror="this.style.display='none'">` : '';
+                const deleteBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteApprovedAd(${ad.id})">🗑</button>` : '';
                 return `
                 <div class="ad-card" onclick="openAdDetail(${ad.id})">
                     <div class="ad-header-row">
-                        <div>
-                            <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
-                            <span>${ad.server}</span>
-                        </div>
-                        <span style="color:var(--app-accent); font-weight:600; cursor:pointer;" onclick="event.stopPropagation(); inspectUserProfile('${ad.author}')">${ad.author}</span>
+                        <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                        <span>${ad.server}</span>
                     </div>
                     ${imageHtml}
                     <div class="ad-title">${ad.itemName}</div>
-                    <div class="ad-price">💰 ${ad.price}</div>
+                    <div class="ad-price">💰 ${formatPrice(ad.price)}</div>
                     <div class="ad-desc">${ad.text}</div>
                     <div class="ad-actions" onclick="event.stopPropagation();">
-                        <button onclick="toggleFavorite(${ad.id})" class="btn btn-outline btn-sm" style="flex:1;">${isFav ? '❤️ В избр.' : '🤍 Избр.'}</button>
-                        <button onclick="openChatWithUser('${ad.author}')" class="btn btn-success btn-sm" style="flex:1;">💬 Написать</button>
+                        <button class="btn btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">${isFav ? '❤️' : '🤍'}</button>
+                        <button class="btn btn-success btn-sm" onclick="openChatWithUser('${ad.author}')">💬 Написать</button>
                         ${deleteBtn}
                     </div>
-                </div>
-            `;
+                </div>`;
             }).join('');
         }
 
-        function openAdDetail(adId) {
-            let ad = globalAdsFeed.find(a => a.id === adId);
+        function openAdDetail(id) {
+            const ad = globalAdsFeed.find(a => a.id === id);
             if (!ad) return;
             document.getElementById('adDetailTitle').innerText = ad.itemName;
             document.getElementById('adDetailContent').innerHTML = `
-                ${ad.image ? `<img src="${ad.image}" style="width:100%; border-radius:10px; margin-bottom:12px;" onerror="this.style.display='none';">` : ''}
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
-                    <span>${ad.server}</span>
-                </div>
-                <div style="font-size:16px; font-weight:700; margin-bottom:4px;">${ad.itemName}</div>
-                <div style="font-size:18px; color:var(--app-accent-gold); font-weight:700; margin-bottom:8px;">💰 ${ad.price}</div>
-                <div style="font-size:13px; color:var(--app-text-muted); margin-bottom:16px;">${ad.text}</div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-success" onclick="openChatWithUser('${ad.author}')">💬 Написать продавцу</button>
-                    <button class="btn btn-outline" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button>
-                </div>
-                <div style="margin-top:12px; font-size:11px; color:var(--app-text-muted);">Продавец: <span style="color:var(--app-accent); cursor:pointer;" onclick="inspectUserProfile('${ad.author}')">${ad.author}</span></div>
+                ${ad.image ? `<img src="${ad.image}" style="width:100%;border-radius:16px;margin-bottom:12px" onerror="this.style.display='none'">` : ''}
+                <div><span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span> ${ad.server}</div>
+                <h4>${ad.itemName}</h4>
+                <div style="font-size:20px;font-weight:700;color:#ffb800">💰 ${formatPrice(ad.price)}</div>
+                <p>${ad.text}</p>
+                <div class="flex gap-sm"><button class="btn btn-success" onclick="openChatWithUser('${ad.author}')">💬 Написать продавцу</button><button class="btn btn-outline" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button></div>
+                <div>Продавец: <span onclick="inspectUserProfile('${ad.author}')">${ad.author}</span></div>
             `;
             openModal('adDetailModal');
         }
 
-        function deleteApprovedAd(adId) {
-            if (confirm('Удалить это объявление?')) {
-                globalAdsFeed = globalAdsFeed.filter(ad => ad.id !== adId);
-                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-                renderFeed();
-                playSfx('success');
-            }
-        }
-
-        function setViewMode(mode) {
-            currentViewMode = mode;
-            let container = document.getElementById('feedContainer');
-            let btnList = document.getElementById('btnListView');
-            let btnGrid = document.getElementById('btnGridView');
-            if (mode === 'grid') {
-                container.classList.add('grid-view');
-                btnGrid.classList.add('active');
-                btnList.classList.remove('active');
-            } else {
-                container.classList.remove('grid-view');
-                btnList.classList.add('active');
-                btnGrid.classList.remove('active');
-            }
-            playSfx('click');
-            renderFeed();
-        }
-
-        function toggleFavorite(adId) {
-            let ad = globalAdsFeed.find(a => a.id === adId);
-            if (!ad) return;
-            let index = favoritesList.findIndex(f => f.id === adId);
-            if (index > -1) favoritesList.splice(index, 1);
-            else favoritesList.push(ad);
-            localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
-            renderFeed();
-            renderFavorites();
-            playSfx('success');
-        }
-
-        function renderFavorites() {
-            let container = document.getElementById('favoritesContainer');
-            if (!container) return;
-            if (favoritesList.length === 0) {
-                container.innerHTML = '<div style="color:var(--app-text-muted); text-align:center; padding:20px; font-size:12px; grid-column:1/-1;">Нет избранного.</div>';
-                return;
-            }
-            container.innerHTML = favoritesList.map(ad => `
-                <div class="ad-card" onclick="openAdDetail(${ad.id})">
-                    <div class="ad-title">${ad.itemName}</div>
-                    <div class="ad-price">${ad.price}</div>
-                    <button onclick="event.stopPropagation(); toggleFavorite(${ad.id})" class="btn btn-danger btn-sm mt-sm">❌ Удалить</button>
-                </div>
-            `).join('');
-        }
-
-        function renderMyAds() {
-            let container = document.getElementById('myAdsContainer');
-            if (!container) return;
-            if (myAdsList.length === 0) {
-                container.innerHTML = '<div style="color:var(--app-text-muted); text-align:center; padding:20px; font-size:12px; grid-column:1/-1;">Вы ещё не создавали объявлений.</div>';
-                return;
-            }
-            container.innerHTML = myAdsList.map(ad => `
-                <div class="ad-card">
-                    <div class="ad-title">${ad.itemName} (${ad.price})</div>
-                    <div style="font-size:10px; color:var(--app-accent);">Статус: ${ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации'}</div>
-                    <div class="ad-desc">${ad.text}</div>
-                </div>
-            `).join('');
-        }
-
-        function clearMyAds() {
-            if (confirm('⚠️ Очистить ваши объявления?')) {
-                myAdsList = [];
-                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
-                renderMyAds();
-                playSfx('success');
-            }
-        }
-
-        function renderPendingAds() {
-            let container = document.getElementById('pendingAdsContainer');
-            if (!container) return;
-            let isAdmin = ADMIN_USERNAMES.map(u => u.replace('@','').toLowerCase()).includes(currentUserUsername.replace('@','').toLowerCase()) || (currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase());
-            if (!isAdmin) {
-                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center;">Доступно администраторам.</div>';
-                return;
-            }
-            if (pendingAdsList.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center;">Нет ожидающих проверки.</div>';
-                return;
-            }
-            container.innerHTML = pendingAdsList.map(ad => `
-                <div class="ad-card" style="border-color: var(--app-accent-red);">
-                    <div class="ad-title">${ad.itemName} (${ad.price})</div>
-                    <div style="font-size:10px; color:var(--app-text-muted);">От: ${ad.author} | ${ad.server}</div>
-                    <div class="ad-desc">${ad.text}</div>
-                    <div class="ad-actions">
-                        <button onclick="openEditAdModal(${ad.id})" class="btn btn-outline btn-sm" style="flex:1;">✏️ Редактировать</button>
-                    </div>
-                    <div class="ad-actions">
-                        <button onclick="approvePendingAd(${ad.id})" class="btn btn-success btn-sm" style="flex:1;">✅ Одобрить</button>
-                        <button onclick="rejectPendingAd(${ad.id})" class="btn btn-danger btn-sm" style="flex:1;">❌ Отклонить</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function openEditAdModal(adId) {
-            let ad = pendingAdsList.find(a => a.id === adId);
-            if (!ad) return;
-            let formHTML = `
-                <div class="form-group"><label>Название:</label><input type="text" id="editItemName" value="${ad.itemName}"></div>
-                <div class="form-group"><label>Цена:</label><input type="text" id="editPrice" value="${ad.price}"></div>
-                <div class="form-group"><label>Описание:</label><textarea id="editText" rows="3">${ad.text}</textarea></div>
-                <div class="form-group"><label>Ссылка на изображение:</label><input type="url" id="editImage" value="${ad.image || ''}"></div>
-                <div class="form-group"><label>Сервер:</label><input type="text" id="editServer" value="${ad.server}"></div>
-                <button onclick="saveEditedAd(${ad.id})" class="btn btn-success">💾 Сохранить</button>
-            `;
-            document.getElementById('editAdForm').innerHTML = formHTML;
-            openModal('editAdModal');
-        }
-
-        function saveEditedAd(adId) {
-            let ad = pendingAdsList.find(a => a.id === adId);
-            if (!ad) return;
-            ad.itemName = document.getElementById('editItemName').value.trim();
-            ad.price = document.getElementById('editPrice').value.trim();
-            ad.text = document.getElementById('editText').value.trim();
-            ad.image = document.getElementById('editImage').value.trim();
-            ad.server = document.getElementById('editServer').value.trim();
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-            closeModal('editAdModal');
-            renderPendingAds();
-            playSfx('success');
-        }
-
-        function approvePendingAd(id) {
-            let idx = pendingAdsList.findIndex(a => a.id === id);
-            if (idx > -1) {
-                let ad = pendingAdsList.splice(idx, 1)[0];
-                ad.status = 'approved';
-                globalAdsFeed.unshift(ad);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-                renderPendingAds();
-                renderFeed();
-                playSfx('success');
-            }
-        }
-
-        function rejectPendingAd(id) {
-            let idx = pendingAdsList.findIndex(a => a.id === id);
-            if (idx > -1) {
-                pendingAdsList.splice(idx, 1);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-                renderPendingAds();
-                playSfx('success');
-            }
-        }
-
-        function clearGlobalFeedAdmin() {
-            if (confirm('⚠️ Очистить всю ленту?')) {
-                globalAdsFeed = [];
-                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-                renderFeed();
-                playSfx('success');
-            }
-        }
-
-        function updateBroadcastMessage() {
-            let text = document.getElementById('newBroadcastInput').value.trim();
-            if (!text) return;
-            localStorage.setItem('arizona_broadcast_msg', text);
-            document.getElementById('broadcastText').innerHTML = `<b>Уведомление!</b> ${text}`;
-            document.getElementById('broadcastBanner').style.display = 'block';
-            alert('📢 Рассылка отправлена!');
-            playSfx('success');
-        }
-
-        function openBroadcastModal() {
-            let msg = localStorage.getItem('arizona_broadcast_msg') || 'Нет новых уведомлений.';
-            document.getElementById('broadcastModalText').innerText = msg;
-            openModal('broadcastModal');
-        }
-
-        function sendTargetAction(action) {
-            let target = document.getElementById('targetUser').value.trim();
-            if (!target) { alert('⚠️ Укажите игрока!'); return; }
-            alert(`🛡️ Действие "${action}" для ${target} выполнено.`);
-            playSfx('success');
-        }
+        function deleteApprovedAd(id) { if (confirm('Удалить объявление?')) { globalAdsFeed = globalAdsFeed.filter(a => a.id !== id); localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed)); renderFeed(); playSfx('success'); } }
+        function setViewMode(mode) { currentViewMode = mode; document.getElementById('feedContainer').classList.toggle('grid-view', mode === 'grid'); document.getElementById('btnListView').classList.toggle('active', mode === 'list'); document.getElementById('btnGridView').classList.toggle('active', mode === 'grid'); renderFeed(); }
+        function toggleFavorite(id) { const ad = globalAdsFeed.find(a => a.id === id); if (!ad) return; const idx = favoritesList.findIndex(f => f.id === id); if (idx > -1) favoritesList.splice(idx,1); else favoritesList.push(ad); localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList)); renderFeed(); renderFavorites(); playSfx('success'); }
+        function renderFavorites() { const cont = document.getElementById('favoritesContainer'); if (favoritesList.length === 0) { cont.innerHTML = '<p>Нет избранного</p>'; return; } cont.innerHTML = favoritesList.map(ad => `<div class="ad-card" onclick="openAdDetail(${ad.id})"><div class="ad-title">${ad.itemName}</div><div class="ad-price">💰 ${formatPrice(ad.price)}</div><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); toggleFavorite(${ad.id})">❌ Удалить</button></div>`).join(''); }
+        function renderMyAds() { const cont = document.getElementById('myAdsContainer'); if (myAdsList.length === 0) { cont.innerHTML = '<p>Вы ещё не создавали объявлений</p>'; return; } cont.innerHTML = myAdsList.map(ad => `<div class="ad-card"><div class="ad-title">${ad.itemName} (${formatPrice(ad.price)})</div><div>Статус: ${ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации'}</div><div>${ad.text}</div></div>`).join(''); }
+        function clearMyAds() { if (confirm('Очистить ваши объявления?')) { myAdsList = []; localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList)); renderMyAds(); playSfx('success'); } }
+        function renderPendingAds() { const cont = document.getElementById('pendingAdsContainer'); const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME; if (!isAdmin) { cont.innerHTML = '<p>Доступно администраторам</p>'; return; } if (pendingAdsList.length === 0) { cont.innerHTML = '<p>Нет ожидающих проверки</p>'; return; } cont.innerHTML = pendingAdsList.map(ad => `<div class="ad-card"><div class="ad-title">${ad.itemName} (${formatPrice(ad.price)})</div><div>От: ${ad.author} | ${ad.server}</div><div>${ad.text}</div><div class="ad-actions"><button class="btn btn-outline btn-sm" onclick="openEditAdModal(${ad.id})">✏️ Редактировать</button><button class="btn btn-success btn-sm" onclick="approvePendingAd(${ad.id})">✅ Одобрить</button><button class="btn btn-danger btn-sm" onclick="rejectPendingAd(${ad.id})">❌ Отклонить</button></div></div>`).join(''); }
+        function openEditAdModal(id) { const ad = pendingAdsList.find(a => a.id === id); if (!ad) return; document.getElementById('editAdForm').innerHTML = `<input id="editItemName" value="${ad.itemName}"><input id="editPrice" value="${ad.price}"><textarea id="editText">${ad.text}</textarea><input id="editImage" value="${ad.image || ''}"><input id="editServer" value="${ad.server}"><button class="btn btn-success" onclick="saveEditedAd(${ad.id})">💾 Сохранить</button>`; openModal('editAdModal'); }
+        function saveEditedAd(id) { const ad = pendingAdsList.find(a => a.id === id); if (!ad) return; ad.itemName = document.getElementById('editItemName').value; ad.price = document.getElementById('editPrice').value; ad.text = document.getElementById('editText').value; ad.image = document.getElementById('editImage').value; ad.server = document.getElementById('editServer').value; localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList)); closeModal('editAdModal'); renderPendingAds(); playSfx('success'); }
+        function approvePendingAd(id) { const idx = pendingAdsList.findIndex(a => a.id === id); if (idx > -1) { const ad = pendingAdsList.splice(idx,1)[0]; ad.status = 'approved'; globalAdsFeed.unshift(ad); localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList)); localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed)); renderPendingAds(); renderFeed(); playSfx('success'); } }
+        function rejectPendingAd(id) { const idx = pendingAdsList.findIndex(a => a.id === id); if (idx > -1) { pendingAdsList.splice(idx,1); localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList)); renderPendingAds(); playSfx('success'); } }
+        function clearGlobalFeedAdmin() { if (confirm('Очистить всю ленту?')) { globalAdsFeed = []; localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed)); renderFeed(); playSfx('success'); } }
 
         // ==========================================================================
         // ПИКЕРЫ
         // ==========================================================================
         function openPicker(type) {
             activePickerType = type;
-            let titleEl = document.getElementById('pickerTitle');
-            let listEl = document.getElementById('pickerList');
-            if (type === 'mode') {
-                titleEl.innerText = '📌 Тип темы';
-                listEl.innerHTML = `<div class="picker-item" onclick="selectPickerValue('mode', 'sell', 'Продажа')">💎 Продажа</div><div class="picker-item" onclick="selectPickerValue('mode', 'buy', 'Покупка')">🛒 Покупка</div>`;
-            } else if (type === 'category') {
-                titleEl.innerText = '🗂 Раздел';
-                listEl.innerHTML = `<div class="picker-item" onclick="selectPickerValue('category', '💍 Аксессуары и вещи', '💍 Аксессуары и вещи')">💍 Аксессуары и вещи</div>
-                <div class="picker-item" onclick="selectPickerValue('category', '🚗 Транспорт', '🚗 Транспорт')">🚗 Транспорт</div>
-                <div class="picker-item" onclick="selectPickerValue('category', '🏠 Недвижимость', '🏠 Недвижимость')">🏠 Недвижимость</div>
-                <div class="picker-item" onclick="selectPickerValue('category', '💼 Бизнесы', '💼 Бизнесы')">💼 Бизнесы</div>
-                <div class="picker-item" onclick="selectPickerValue('category', '🔫 Оружие и материалы', '🔫 Оружие и материалы')">🔫 Оружие и материалы</div>`;
-            } else if (type === 'server') {
-                titleEl.innerText = '🌐 Сервер';
-                listEl.innerHTML = ALL_SERVERS.map(s => `<div class="picker-item" onclick="selectPickerValue('server', '${s.value}', '${s.label}')">${s.label}</div>`).join('');
-            }
+            const title = document.getElementById('pickerTitle');
+            const list = document.getElementById('pickerList');
+            if (type === 'mode') { title.innerText = '📌 Тип темы'; list.innerHTML = `<div class="picker-item" onclick="selectPickerValue('mode','sell','Продажа')">💎 Продажа</div><div class="picker-item" onclick="selectPickerValue('mode','buy','Покупка')">🛒 Покупка</div>`; }
+            else if (type === 'category') { title.innerText = '🗂 Раздел'; list.innerHTML = `<div class="picker-item" onclick="selectPickerValue('category','💍 Аксессуары и вещи','💍 Аксессуары и вещи')">💍 Аксессуары и вещи</div><div class="picker-item" onclick="selectPickerValue('category','🚗 Транспорт','🚗 Транспорт')">🚗 Транспорт</div><div class="picker-item" onclick="selectPickerValue('category','🏠 Недвижимость','🏠 Недвижимость')">🏠 Недвижимость</div><div class="picker-item" onclick="selectPickerValue('category','💼 Бизнесы','💼 Бизнесы')">💼 Бизнесы</div><div class="picker-item" onclick="selectPickerValue('category','🔫 Оружие и материалы','🔫 Оружие и материалы')">🔫 Оружие и материалы</div>`; }
+            else if (type === 'server') { title.innerText = '🌐 Сервер'; list.innerHTML = ALL_SERVERS.map(s => `<div class="picker-item" onclick="selectPickerValue('server','${s.value}','${s.label}')">${s.label}</div>`).join(''); }
             openModal('pickerModal');
         }
-        function selectPickerValue(type, val, text) {
-            document.getElementById(type).value = val;
-            if (type === 'mode') document.getElementById('selectedModeText').innerText = text;
-            if (type === 'category') document.getElementById('selectedCategoryText').innerText = text;
-            if (type === 'server') document.getElementById('selectedServerText').innerText = text;
-            closeModal('pickerModal');
-            playSfx('click');
-        }
+        function selectPickerValue(type, val, text) { document.getElementById(type).value = val; if (type === 'mode') document.getElementById('selectedModeText').innerText = text; if (type === 'category') document.getElementById('selectedCategoryText').innerText = text; if (type === 'server') document.getElementById('selectedServerText').innerText = text; closeModal('pickerModal'); playSfx('click'); }
 
         // ==========================================================================
-        // ЛЕНТА ЛУКОВ И ПОПУТЧИКИ
+        // ЛУКИ И ПОПУТЧИКИ
         // ==========================================================================
         let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
-        function postFashionLook() {
-            let title = document.getElementById('fashionSetTitle').value.trim();
-            let image = document.getElementById('fashionSetImage').value.trim();
-            if (!title || !image) { alert('⚠️ Заполните название и ссылку!'); return; }
-            fashionLooks.unshift({ author: currentUserUsername, title, image, time: new Date().toLocaleDateString() });
-            localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks));
-            renderFashionLooks();
-            document.getElementById('fashionSetTitle').value = '';
-            document.getElementById('fashionSetImage').value = '';
-            alert('📸 Лук опубликован!');
-            playSfx('success');
-        }
-        function renderFashionLooks() {
-            let container = document.getElementById('fashionContainer');
-            if (!container) return;
-            if (fashionLooks.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center;">Лента пуста.</div>';
-                return;
-            }
-            container.innerHTML = fashionLooks.map(l => `
-                <div style="background:var(--app-header-bg); border:1px solid var(--app-card-border); padding:8px; border-radius:10px; margin-bottom:8px;">
-                    <div style="font-weight:600; color:var(--app-accent); font-size:11px; margin-bottom:4px;">${l.author}: ${l.title}</div>
-                    <img src="${l.image}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;" loading="lazy" onerror="this.style.display='none';">
-                </div>
-            `).join('');
-        }
-
+        function postFashionLook() { const title = document.getElementById('fashionSetTitle').value.trim(); const image = document.getElementById('fashionSetImage').value.trim(); if (!title || !image) return alert('Заполните поля'); fashionLooks.unshift({author: currentUserUsername, title, image, time: new Date().toLocaleDateString()}); localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks)); renderFashionLooks(); document.getElementById('fashionSetTitle').value=''; document.getElementById('fashionSetImage').value=''; alert('Опубликовано'); playSfx('success'); }
+        function renderFashionLooks() { const cont = document.getElementById('fashionContainer'); cont.innerHTML = fashionLooks.length ? fashionLooks.map(l => `<div><b>${l.author}:</b> ${l.title}<br><img src="${l.image}" style="max-width:100%"></div>`).join('') : '<p>Лента пуста</p>'; }
         let travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
-        function postTravelAd() {
-            let activity = document.getElementById('travelActivity').value.trim();
-            let desc = document.getElementById('travelDesc').value.trim();
-            if (!activity) { alert('⚠️ Укажите активность!'); return; }
-            travelAds.unshift({ author: currentUserUsername, activity, desc, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-            localStorage.setItem('arizona_travel_ads', JSON.stringify(travelAds));
-            renderTravelAds();
-            document.getElementById('travelActivity').value = '';
-            document.getElementById('travelDesc').value = '';
-            alert('🤝 Заявка опубликована!');
-            playSfx('success');
-        }
-        function renderTravelAds() {
-            let container = document.getElementById('travelContainer');
-            if (!container) return;
-            if (travelAds.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center;">Нет заявок.</div>';
-                return;
-            }
-            container.innerHTML = travelAds.map(t => `
-                <div style="background:var(--app-header-bg); border:1px solid var(--app-card-border); padding:8px; border-radius:10px; margin-bottom:8px; font-size:11px;">
-                    <div style="display:flex; justify-content:space-between; color:var(--app-accent-gold); font-weight:600; margin-bottom:2px;">
-                        <span>${t.activity} (${t.author})</span>
-                        <span style="font-size:9px; color:var(--app-text-muted);">${t.time}</span>
-                    </div>
-                    <div style="color:var(--app-text-main);">${t.desc || 'Без описания'}</div>
-                </div>
-            `).join('');
-        }
+        function postTravelAd() { const activity = document.getElementById('travelActivity').value.trim(); const desc = document.getElementById('travelDesc').value.trim(); if (!activity) return alert('Укажите активность'); travelAds.unshift({author: currentUserUsername, activity, desc, time: new Date().toLocaleTimeString()}); localStorage.setItem('arizona_travel_ads', JSON.stringify(travelAds)); renderTravelAds(); alert('Опубликовано'); playSfx('success'); }
+        function renderTravelAds() { const cont = document.getElementById('travelContainer'); cont.innerHTML = travelAds.length ? travelAds.map(t => `<div><b>${t.activity}</b> (${t.author})<br>${t.desc}</div>`).join('') : '<p>Нет заявок</p>'; }
 
         // ==========================================================================
         // МУЗЫКА
         // ==========================================================================
-        let bgMusic = document.getElementById('bgMusic');
-        let musicPlaying = true;
-        function loadCustomBackgroundMusic(event) {
-            let file = event.target.files[0];
-            if (file) {
-                let url = URL.createObjectURL(file);
-                bgMusic.src = url;
-                bgMusic.play();
-                musicPlaying = true;
-                document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
-                playSfx('success');
-                alert('🎵 Музыка загружена!');
-            }
-        }
-        function toggleMusicPlayback() {
-            if (musicPlaying) { bgMusic.pause(); musicPlaying = false; document.getElementById('musicPlayToggleBtn').innerText = '▶️ Играть'; }
-            else { bgMusic.play(); musicPlaying = true; document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза'; }
-            playSfx('click');
-        }
-        function resetDefaultMusic() {
-            bgMusic.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
-            bgMusic.play();
-            musicPlaying = true;
-            document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
-            playSfx('success');
-        }
+        let bgMusic = document.getElementById('bgMusic'); let musicPlaying = true;
+        function loadCustomBackgroundMusic(e) { const file = e.target.files[0]; if (file) { bgMusic.src = URL.createObjectURL(file); bgMusic.play(); musicPlaying = true; document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза'; playSfx('success'); } }
+        function toggleMusicPlayback() { if (musicPlaying) { bgMusic.pause(); musicPlaying = false; document.getElementById('musicPlayToggleBtn').innerText = '▶️ Играть'; } else { bgMusic.play(); musicPlaying = true; document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза'; } }
+        function resetDefaultMusic() { bgMusic.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3'; bgMusic.play(); musicPlaying = true; document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза'; }
 
         // ==========================================================================
         // ИГРА БАРЫГА
         // ==========================================================================
-        let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || JSON.stringify({ money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800, shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000 }));
-        function saveBarygaState() { localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData)); }
-        function updateBarygaUI() {
-            document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString() + ' $';
-            document.getElementById('clickPowerLabel').innerText = `+${barygaData.clickPower} $ / клик`;
-            document.getElementById('autoIncomeLabel').innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
-            document.getElementById('clickCostLabel').innerText = `Цена: ${barygaData.clickCost.toLocaleString()} $`;
-            document.getElementById('autoCostLabel').innerText = `Цена: ${barygaData.autoCost.toLocaleString()} $`;
-            document.getElementById('proCostLabel').innerText = `Цена: ${barygaData.proCost.toLocaleString()} $`;
-            document.getElementById('shopCostLabel').innerText = `Цена: ${barygaData.shopCost.toLocaleString()} $`;
-            document.getElementById('eliteCostLabel').innerText = `Цена: ${barygaData.eliteCost.toLocaleString()} $`;
-            document.getElementById('oilCostLabel').innerText = `Цена: ${barygaData.oilCost.toLocaleString()} $`;
-            document.getElementById('cryptoCostLabel').innerText = `Цена: ${barygaData.cryptoCost.toLocaleString()} $`;
-        }
-        function barygaClick() { barygaData.money += barygaData.clickPower; updateBarygaUI(); saveBarygaState(); playSfx('cash'); }
-        function buyClickUpgrade() { if (barygaData.money >= barygaData.clickCost) { barygaData.money -= barygaData.clickCost; barygaData.clickPower += 1; barygaData.clickCost = Math.floor(barygaData.clickCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
-        function buyAutoUpgrade() { if (barygaData.money >= barygaData.autoCost) { barygaData.money -= barygaData.autoCost; barygaData.autoIncome += 5; barygaData.autoCost = Math.floor(barygaData.autoCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
-        function buyProUpgrade() { if (barygaData.money >= barygaData.proCost) { barygaData.money -= barygaData.proCost; barygaData.autoIncome += 20; barygaData.proCost = Math.floor(barygaData.proCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
-        function buyShopUpgrade() { if (barygaData.money >= barygaData.shopCost) { barygaData.money -= barygaData.shopCost; barygaData.autoIncome += 50; barygaData.shopCost = Math.floor(barygaData.shopCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
-        function buyEliteUpgrade() { if (barygaData.money >= barygaData.eliteCost) { barygaData.money -= barygaData.eliteCost; barygaData.clickPower += 10; barygaData.eliteCost = Math.floor(barygaData.eliteCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
-        function buyOilRigUpgrade() { if (barygaData.money >= barygaData.oilCost) { barygaData.money -= barygaData.oilCost; barygaData.autoIncome += 200; barygaData.oilCost = Math.floor(barygaData.oilCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
-        function buyCryptoUpgrade() { if (barygaData.money >= barygaData.cryptoCost) { barygaData.money -= barygaData.cryptoCost; barygaData.autoIncome += 1000; barygaData.cryptoCost = Math.floor(barygaData.cryptoCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
-        setInterval(() => { if (barygaData.autoIncome > 0) { barygaData.money += Math.floor(barygaData.autoIncome / 10); if (document.getElementById('barygaModal').classList.contains('visible')) updateBarygaUI(); saveBarygaState(); } }, 100);
+        let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || '{"money":0,"clickPower":1,"clickCost":50,"autoIncome":0,"autoCost":200,"proCost":800,"shopCost":3000,"eliteCost":10000,"oilCost":35000,"cryptoCost":150000}');
+        function saveBaryga() { localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData)); }
+        function updateBarygaUI() { document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString() + ' $'; document.getElementById('clickPowerLabel').innerText = `+${barygaData.clickPower} $ / клик`; document.getElementById('autoIncomeLabel').innerText = `${barygaData.autoIncome} $ / сек`; document.getElementById('clickCostLabel').innerText = `Цена: ${barygaData.clickCost} $`; document.getElementById('autoCostLabel').innerText = `Цена: ${barygaData.autoCost} $`; document.getElementById('proCostLabel').innerText = `Цена: ${barygaData.proCost} $`; document.getElementById('shopCostLabel').innerText = `Цена: ${barygaData.shopCost} $`; document.getElementById('eliteCostLabel').innerText = `Цена: ${barygaData.eliteCost} $`; document.getElementById('oilCostLabel').innerText = `Цена: ${barygaData.oilCost} $`; document.getElementById('cryptoCostLabel').innerText = `Цена: ${barygaData.cryptoCost} $`; }
+        function barygaClick() { barygaData.money += barygaData.clickPower; updateBarygaUI(); saveBaryga(); playSfx('cash'); }
+        function buyUpgrade(prop, costProp, inc, costMult = 1.5) { if (barygaData.money >= barygaData[costProp]) { barygaData.money -= barygaData[costProp]; barygaData[prop] += inc; barygaData[costProp] = Math.floor(barygaData[costProp] * costMult); updateBarygaUI(); saveBaryga(); playSfx('success'); } else alert('Недостаточно средств'); }
+        const buyClickUpgrade = () => buyUpgrade('clickPower','clickCost',1);
+        const buyAutoUpgrade = () => buyUpgrade('autoIncome','autoCost',5);
+        const buyProUpgrade = () => buyUpgrade('autoIncome','proCost',20);
+        const buyShopUpgrade = () => buyUpgrade('autoIncome','shopCost',50);
+        const buyEliteUpgrade = () => buyUpgrade('clickPower','eliteCost',10);
+        const buyOilRigUpgrade = () => buyUpgrade('autoIncome','oilCost',200);
+        const buyCryptoUpgrade = () => buyUpgrade('autoIncome','cryptoCost',1000);
+        setInterval(() => { if (barygaData.autoIncome > 0) { barygaData.money += Math.floor(barygaData.autoIncome / 10); if (document.getElementById('barygaModal').classList.contains('visible')) updateBarygaUI(); saveBaryga(); } }, 100);
 
         // ==========================================================================
-        // ПРОВЕРКА ПРАВ
+        // ПРАВА
         // ==========================================================================
         function checkUserPermissions() {
-            let isOwner = (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) || (tgUser && tgUser.id.toString() === OWNER_ID);
-            let isAdmin = isOwner || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(currentUserUsername.replace('@', '').toLowerCase());
+            const isOwner = currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME || tgUser?.id?.toString() === OWNER_ID;
+            const isAdmin = isOwner || ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase());
             if (isAdmin) document.getElementById('adminTabBtn').style.display = 'flex';
             if (isOwner) document.getElementById('ownerSection').style.display = 'block';
-            let hasOwnerPostedAd = localStorage.getItem(getUserKey('owner_has_posted_ad')) === 'true';
-            if (hasOwnerPostedAd) document.getElementById('ownerContactItem').style.display = 'block';
         }
 
-        function loadMoreFeedItems() {
-            feedDisplayLimit += 20;
-            renderFeed();
-            if (feedDisplayLimit >= globalAdsFeed.filter(a => a.status === 'approved').length) {
-                document.getElementById('feedPaginationContainer').style.display = 'none';
-            }
-        }
+        function loadMoreFeedItems() { feedDisplayLimit += 20; renderFeed(); if (feedDisplayLimit >= globalAdsFeed.filter(a => a.status === 'approved').length) document.getElementById('feedPaginationContainer').style.display = 'none'; }
 
         // ==========================================================================
-        // НАСТРОЙКИ И ПОМОЩЬ
+        // НАСТРОЙКИ
         // ==========================================================================
-        function toggleSfx() {
-            sfxEnabled = !sfxEnabled;
-            document.getElementById('toggleSfxBtn').innerText = sfxEnabled ? 'Включены' : 'Выключены';
-            playSfx('success');
-        }
-        function resetAllData() {
-            if (confirm('⚠️ Удалить все данные приложения? Это действие необратимо.')) {
-                localStorage.clear();
-                localStorage.setItem('arizona_ads_feed', '[]');
-                localStorage.setItem('arizona_pending_ads', '[]');
-                localStorage.setItem('arizona_fashion_looks', '[]');
-                localStorage.setItem('arizona_travel_ads', '[]');
-                alert('Данные сброшены. Перезагрузите страницу.');
-                location.reload();
-            }
-        }
-        function resetFeedOnly() {
-            if (confirm('Сбросить ленту объявлений?')) {
-                globalAdsFeed = [];
-                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-                renderFeed();
-                playSfx('success');
-                alert('Лента сброшена.');
-            }
-        }
-        function resetMyAdsOnly() {
-            if (confirm('Сбросить ваши объявления?')) {
-                myAdsList = [];
-                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
-                renderMyAds();
-                playSfx('success');
-                alert('Ваши объявления сброшены.');
-            }
-        }
-        function resetChatsOnly() {
-            if (confirm('Сбросить все переписки?')) {
-                chatsDatabase = {};
-                localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
-                renderChatsList();
-                if (activeChatUser) closeModal('chatDetailModal');
-                playSfx('success');
-                alert('Переписки сброшены.');
-            }
-        }
+        function toggleSfx() { sfxEnabled = !sfxEnabled; document.getElementById('toggleSfxBtn').innerText = sfxEnabled ? 'Включены' : 'Выключены'; }
+        function resetAllData() { if (confirm('Удалить все данные?')) { localStorage.clear(); location.reload(); } }
+        function resetFeedOnly() { globalAdsFeed = []; localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed)); renderFeed(); alert('Лента сброшена'); }
+        function resetMyAdsOnly() { myAdsList = []; localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList)); renderMyAds(); alert('Мои объявления сброшены'); }
+        function resetChatsOnly() { chatsDatabase = {}; localStorage.setItem('arizona_global_chats_db', JSON.stringify(chatsDatabase)); renderChatsList(); alert('Переписки сброшены'); }
 
         // ==========================================================================
         // ИНИЦИАЛИЗАЦИЯ
         // ==========================================================================
         function init() {
-            let savedStyle = localStorage.getItem(getUserKey('app_style')) || 'tg';
-            let savedTheme = localStorage.getItem(getUserKey('app_theme')) || 'dark';
-            setAppStyle(savedStyle);
-            setAppTheme(savedTheme);
+            document.body.className = 'theme-dark style-wb';
             initProfileUI();
             renderFeed();
-            let approvedCount = globalAdsFeed.filter(a => a.status === 'approved').length;
-            if (approvedCount > feedDisplayLimit) document.getElementById('feedPaginationContainer').style.display = 'block';
             renderMyAds();
             renderFavorites();
             renderPendingAds();
             checkUserPermissions();
-            let savedBroadcast = localStorage.getItem('arizona_broadcast_msg');
-            if (savedBroadcast) {
-                document.getElementById('broadcastText').innerHTML = `<b>Уведомление!</b> ${savedBroadcast}`;
-                document.getElementById('broadcastBanner').style.display = 'block';
-            }
             updateBarygaUI();
-            updateMskClock();
-            updateTabIcons(savedStyle);
             updateCounters();
-            console.log('Arizona RP Mini App v' + CURRENT_APP_BUILD + ' инициализирован');
+            updateMskClock();
+            // Показываем последнее broadcast-сообщение, если есть
+            const savedBroadcast = localStorage.getItem('arizona_broadcast_msg');
+            if (savedBroadcast) {
+                showBroadcastBanner(savedBroadcast, true);
+            }
+            console.log('Arizona RP WB style initialized');
         }
-
         document.addEventListener('DOMContentLoaded', init);
         if (document.readyState === 'complete' || document.readyState === 'interactive') init();
     </script>

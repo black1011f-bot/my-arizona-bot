@@ -2627,3 +2627,72 @@
         }
     });
 </script>
+<script>
+    // ==========================================================================
+    // ИСПРАВЛЕНИЕ ГЛОБАЛЬНОГО ОБРАБОТЧИКА ОШИБОК
+    // ==========================================================================
+    // Переопределяем window.onerror, чтобы он не показывал alert
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error('Глобальная ошибка:', message, source, lineno, colno, error);
+        // Можно показывать только в консоль, без alert
+        return true; // предотвращает стандартное поведение (красный экран и т.п.)
+    };
+
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('Необработанное обещание:', event.reason);
+        event.preventDefault();
+    });
+
+    // ==========================================================================
+    // ЗАЩИТА ОТ ПОВТОРНОГО ПЕРЕОПРЕДЕЛЕНИЯ ФУНКЦИЙ
+    // ==========================================================================
+    // Если какая-то функция уже была обёрнута ранее, мы не оборачиваем её повторно.
+    // Для этого проверяем наличие специального флага на самой функции.
+
+    function wrapFunctionOnce(fnName, wrapper) {
+        const original = window[fnName];
+        // Если функция уже обёрнута, пропускаем
+        if (original && original.__wrapped) return;
+        const wrapped = function(...args) {
+            return wrapper.call(this, original, ...args);
+        };
+        wrapped.__wrapped = true;
+        window[fnName] = wrapped;
+    }
+
+    // Пример использования для submitData (обёртка с загрузчиком)
+    wrapFunctionOnce('submitData', function(original, ...args) {
+        showLoader();
+        try {
+            original(...args);
+        } finally {
+            setTimeout(hideLoader, 500);
+        }
+    });
+
+    // Можно также обернуть openModal для добавления кнопок в настройки один раз
+    wrapFunctionOnce('openModal', function(original, id) {
+        original(id);
+        if (id === 'settingsModal') {
+            // Проверяем, есть ли уже кнопки, чтобы не дублировать
+            if (!document.getElementById('clearCacheBtn')) {
+                const settingsContent = document.querySelector('#settingsModal .modal-content');
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                formGroup.innerHTML = `<label>🧹 Очистить кэш</label>
+                    <button id="clearCacheBtn" class="btn btn-outline btn-sm" onclick="clearCache()">Очистить временные данные</button>`;
+                settingsContent.appendChild(formGroup);
+            }
+            if (!document.getElementById('perfToggleBtn')) {
+                const settingsContent = document.querySelector('#settingsModal .modal-content');
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                formGroup.innerHTML = `<label>📊 Счётчик производительности</label>
+                    <button id="perfToggleBtn" class="btn btn-outline btn-sm" onclick="togglePerfMonitor()">${perfMonitorEnabled ? 'Выключить' : 'Включить'}</button>`;
+                settingsContent.appendChild(formGroup);
+            }
+        }
+    });
+
+    // Для других функций можно добавить аналогично при необходимости
+</script>

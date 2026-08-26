@@ -3820,3 +3820,55 @@
         }
     }
 </style>
+<!-- ==================== ЧАСТЬ 35: ГАРАНТИРОВАННОЕ ИСПРАВЛЕНИЕ ОФЛАЙН‑ИНДИКАТОРА ==================== -->
+<script>
+    // ==========================================================================
+    // УДАЛЯЕМ ВСЕ СТАРЫЕ ИНДИКАТОРЫ И НАЗНАЧАЕМ НОВУЮ ЛОГИКУ
+    // ==========================================================================
+    (function() {
+        // Функция удаления всех индикаторов
+        function removeAllOfflineIndicators() {
+            document.querySelectorAll('.offline-indicator, #offlineIndicator').forEach(el => el.remove());
+        }
+
+        // Функция обновления видимости индикатора
+        function updateIndicator() {
+            removeAllOfflineIndicators(); // всегда удаляем старые
+            if (!navigator.onLine) {
+                // Если офлайн, создаём новый индикатор
+                const indicator = document.createElement('div');
+                indicator.className = 'offline-indicator';
+                indicator.id = 'offlineIndicator';
+                indicator.innerText = 'Нет соединения с интернетом';
+                indicator.style.cssText = `
+                    display: block;
+                    position: fixed;
+                    top: 10px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #dc3545;
+                    color: #fff;
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    font-size: 12px;
+                    z-index: 1000;
+                `;
+                document.body.appendChild(indicator);
+            }
+            // Если онлайн, индикатора нет (удалён выше)
+        }
+
+        // Назначаем обработчики, удаляя старые
+        window.removeEventListener('online', updateIndicator);
+        window.removeEventListener('offline', updateIndicator);
+        window.addEventListener('online', updateIndicator);
+        window.addEventListener('offline', updateIndicator);
+
+        // Дополнительная проверка при фокусе окна (когда вкладка становится активной)
+        window.addEventListener('focus', updateIndicator);
+
+        // Запускаем сразу и через интервал для надёжности
+        updateIndicator();
+        setInterval(updateIndicator, 5000); // проверяем каждые 5 секунд
+    })();
+</script>

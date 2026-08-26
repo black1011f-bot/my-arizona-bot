@@ -156,6 +156,43 @@
         .dropdown-item { display:flex; align-items:center; gap:8px; padding:10px 14px; font-size:14px; color:var(--app-text-main); border-radius:12px; cursor:pointer; width:100%; text-align:left; background:transparent; }
         .dropdown-item:hover { background:var(--app-card-border); }
 
+        /* Новые стили для кликера */
+        .clicker-box { display:flex; flex-direction:column; gap:12px; padding:16px; }
+        .clicker-big-btn {
+            width: 100%;
+            height: 160px;
+            font-size: 28px;
+            font-weight: 800;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #ff5ecf 0%, #cb11ab 100%);
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(203,17,171,0.4);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .clicker-big-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 12px rgba(203,17,171,0.3);
+        }
+        .clicker-upgrade-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--app-card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--app-card-border);
+        }
+        .upgrade-name { font-weight: 700; }
+        .upgrade-cost { font-size: 12px; color: var(--app-text-muted); }
+
         @media (min-width:768px){ .ads-container:not(.grid-view){grid-template-columns:repeat(2,1fr);} .ads-container.grid-view{grid-template-columns:repeat(3,1fr);} .ad-card .ad-image{height:160px;} }
         @media (min-width:1024px){ .app-container{max-width:1100px;} .tab-bar{position:static; flex-direction:row; border-top:none; border-bottom:1px solid var(--app-card-border); min-height:52px; padding-bottom:0;} .tab-bar-item{flex:0 1 auto; flex-direction:row; gap:6px; font-size:14px;} .tab-bar-item.active::after{top:auto; bottom:0; left:15%; right:15%; height:2px; border-radius:4px 4px 0 0;} .ads-container:not(.grid-view){grid-template-columns:repeat(3,1fr);} .ads-container.grid-view{grid-template-columns:repeat(4,1fr);} }
         @media (max-width:767px){ .app-content{padding:8px 0;} }
@@ -231,7 +268,7 @@
             <!-- Профиль (секция, но без кнопки в нижнем меню) -->
             <section class="section" id="tabProfile">
                 <div class="card profile-card">
-                    <div class="profile-avatar-wrapper"><img id="azAvatarImg" class="profile-avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='50' fill='%231c1c1e'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='45'>👤</text></svg>"></div>
+                    <div class="profile-avatar-wrapper" id="profileAvatarWrapper"><img id="azAvatarImg" class="profile-avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='50' fill='%231c1c1e'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='45'>👤</text></svg>"></div>
                     <h3 id="azUserName">👤 Игрок</h3>
                     <div id="azCustomStatus">✨ Статус не установлен</div>
                     <div id="azRoleBadge" class="profile-badge">👤 Игрок</div>
@@ -243,11 +280,11 @@
                     <div>
                         <label>🎨 Рамка профиля</label>
                         <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:6px;">
-                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('none')">⚪ Без рамки</button>
-                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('frame-dark')">⬛ Neon</button>
-                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('frame-gold')">🪙 Gold</button>
-                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('frame-cyber')">⚡ Cyber</button>
-                            <button class="btn btn-outline btn-sm" onclick="changeAvatarFrame('frame-emerald')">💎 Emerald</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_none" onclick="changeAvatarFrame('none')">⚪ Без рамки</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-dark" onclick="changeAvatarFrame('frame-dark')">⬛ Neon</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-gold" onclick="changeAvatarFrame('frame-gold')">🪙 Gold</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-cyber" onclick="changeAvatarFrame('frame-cyber')">⚡ Cyber</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-emerald" onclick="changeAvatarFrame('frame-emerald')">💎 Emerald</button>
                         </div>
                     </div>
                     <div class="mt-md">
@@ -515,6 +552,7 @@
         let currentViewMode = 'list';
         let activePickerType = '';
         let cooldownInterval = null;
+        let activeInspectedUser = '';
 
         // ==========================================================================
         // ФОРМАТИРОВАНИЕ ЦЕНЫ
@@ -577,7 +615,8 @@
             localStorage.setItem(getUserKey('app_theme'), themeName);
             playSfx('success');
         }
-                // ==========================================================================
+
+        // ==========================================================================
         // ЗВУКОВЫЕ ЭФФЕКТЫ
         // ==========================================================================
         function playSfx(type) {
@@ -656,7 +695,7 @@
             playSfx('success');
         }
         function applyAvatarFrame(frame) {
-            const wrapper = document.querySelector('#profileAvatarWrapper');
+            const wrapper = document.getElementById('profileAvatarWrapper');
             wrapper.className = 'profile-avatar-wrapper';
             if (frame !== 'none') wrapper.classList.add(frame);
         }
@@ -1001,6 +1040,9 @@
                 cont.innerHTML = '<p>Доступно администраторам</p>';
                 return;
             }
+            // Показать владельцу панель
+            document.getElementById('ownerSection').style.display =
+                currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME ? 'block' : 'none';
             if (pendingAdsList.length === 0) {
                 cont.innerHTML = '<p>Нет ожидающих проверки</p>';
                 return;
@@ -1062,15 +1104,404 @@
                 renderFeed();
                 playSfx('success');
             }
-                                                }
-                // ==========================================================================
+        }
+        function sendTargetAction(action) {
+            const target = document.getElementById('targetUser').value.trim();
+            if (!target) { alert('Введите игрока'); return; }
+            alert(`Действие "${action}" для ${target} выполнено (демо)`);
+            playSfx('success');
+        }
+        function updateBroadcastMessage() {
+            const text = document.getElementById('newBroadcastInput').value.trim();
+            if (text) {
+                localStorage.setItem('arizona_broadcast_text', text);
+                showBroadcastBanner(text);
+                document.getElementById('newBroadcastInput').value = '';
+                playSfx('success');
+            }
+        }
+
+        // ==========================================================================
+        // ИГРА «БАРЫГА»
+        // ==========================================================================
+        let barygaState = {
+            money: parseFloat(localStorage.getItem(getUserKey('baryga_money')) || '0'),
+            clickPower: parseInt(localStorage.getItem(getUserKey('baryga_click_power')) || '1'),
+            autoIncome: parseInt(localStorage.getItem(getUserKey('baryga_auto_income')) || '0'),
+            clickUpgradeCost: parseInt(localStorage.getItem(getUserKey('baryga_click_cost')) || '50'),
+            autoUpgradeCost: parseInt(localStorage.getItem(getUserKey('baryga_auto_cost')) || '200'),
+            proUpgradeCost: parseInt(localStorage.getItem(getUserKey('baryga_pro_cost')) || '800'),
+            shopUpgradeCost: parseInt(localStorage.getItem(getUserKey('baryga_shop_cost')) || '3000'),
+            eliteUpgradeCost: parseInt(localStorage.getItem(getUserKey('baryga_elite_cost')) || '10000'),
+            oilRigCost: parseInt(localStorage.getItem(getUserKey('baryga_oil_cost')) || '35000'),
+            cryptoCost: parseInt(localStorage.getItem(getUserKey('baryga_crypto_cost')) || '150000')
+        };
+        function saveBarygaState() {
+            localStorage.setItem(getUserKey('baryga_money'), barygaState.money);
+            localStorage.setItem(getUserKey('baryga_click_power'), barygaState.clickPower);
+            localStorage.setItem(getUserKey('baryga_auto_income'), barygaState.autoIncome);
+            localStorage.setItem(getUserKey('baryga_click_cost'), barygaState.clickUpgradeCost);
+            localStorage.setItem(getUserKey('baryga_auto_cost'), barygaState.autoUpgradeCost);
+            localStorage.setItem(getUserKey('baryga_pro_cost'), barygaState.proUpgradeCost);
+            localStorage.setItem(getUserKey('baryga_shop_cost'), barygaState.shopUpgradeCost);
+            localStorage.setItem(getUserKey('baryga_elite_cost'), barygaState.eliteUpgradeCost);
+            localStorage.setItem(getUserKey('baryga_oil_cost'), barygaState.oilRigCost);
+            localStorage.setItem(getUserKey('baryga_crypto_cost'), barygaState.cryptoCost);
+        }
+        function updateBarygaUI() {
+            document.getElementById('clickerMoney').innerText = barygaState.money.toFixed(0) + ' $';
+            document.getElementById('clickPowerLabel').innerText = '+' + barygaState.clickPower + ' $ / клик';
+            document.getElementById('autoIncomeLabel').innerText = barygaState.autoIncome + ' $ / сек';
+            document.getElementById('clickCostLabel').innerText = 'Цена: ' + barygaState.clickUpgradeCost + ' $';
+            document.getElementById('autoCostLabel').innerText = 'Цена: ' + barygaState.autoUpgradeCost + ' $';
+            document.getElementById('proCostLabel').innerText = 'Цена: ' + barygaState.proUpgradeCost + ' $';
+            document.getElementById('shopCostLabel').innerText = 'Цена: ' + barygaState.shopUpgradeCost + ' $';
+            document.getElementById('eliteCostLabel').innerText = 'Цена: ' + barygaState.eliteUpgradeCost + ' $';
+            document.getElementById('oilCostLabel').innerText = 'Цена: ' + barygaState.oilRigCost + ' $';
+            document.getElementById('cryptoCostLabel').innerText = 'Цена: ' + barygaState.cryptoCost + ' $';
+        }
+        function barygaClick() {
+            barygaState.money += barygaState.clickPower;
+            saveBarygaState();
+            updateBarygaUI();
+            playSfx('cash');
+        }
+        function buyClickUpgrade() {
+            if (barygaState.money >= barygaState.clickUpgradeCost) {
+                barygaState.money -= barygaState.clickUpgradeCost;
+                barygaState.clickPower += 1;
+                barygaState.clickUpgradeCost = Math.floor(barygaState.clickUpgradeCost * 1.5);
+                saveBarygaState();
+                updateBarygaUI();
+                playSfx('success');
+            } else alert('Недостаточно денег');
+        }
+        function buyAutoUpgrade() {
+            if (barygaState.money >= barygaState.autoUpgradeCost) {
+                barygaState.money -= barygaState.autoUpgradeCost;
+                barygaState.autoIncome += 5;
+                barygaState.autoUpgradeCost = Math.floor(barygaState.autoUpgradeCost * 1.6);
+                saveBarygaState();
+                updateBarygaUI();
+                playSfx('success');
+            } else alert('Недостаточно денег');
+        }
+        function buyProUpgrade() {
+            if (barygaState.money >= barygaState.proUpgradeCost) {
+                barygaState.money -= barygaState.proUpgradeCost;
+                barygaState.autoIncome += 20;
+                barygaState.proUpgradeCost = Math.floor(barygaState.proUpgradeCost * 1.6);
+                saveBarygaState();
+                updateBarygaUI();
+                playSfx('success');
+            } else alert('Недостаточно денег');
+        }
+        function buyShopUpgrade() {
+            if (barygaState.money >= barygaState.shopUpgradeCost) {
+                barygaState.money -= barygaState.shopUpgradeCost;
+                barygaState.autoIncome += 50;
+                barygaState.shopUpgradeCost = Math.floor(barygaState.shopUpgradeCost * 1.6);
+                saveBarygaState();
+                updateBarygaUI();
+                playSfx('success');
+            } else alert('Недостаточно денег');
+        }
+        function buyEliteUpgrade() {
+            if (barygaState.money >= barygaState.eliteUpgradeCost) {
+                barygaState.money -= barygaState.eliteUpgradeCost;
+                barygaState.clickPower += 10;
+                barygaState.eliteUpgradeCost = Math.floor(barygaState.eliteUpgradeCost * 1.5);
+                saveBarygaState();
+                updateBarygaUI();
+                playSfx('success');
+            } else alert('Недостаточно денег');
+        }
+        function buyOilRigUpgrade() {
+            if (barygaState.money >= barygaState.oilRigCost) {
+                barygaState.money -= barygaState.oilRigCost;
+                barygaState.autoIncome += 200;
+                barygaState.oilRigCost = Math.floor(barygaState.oilRigCost * 1.5);
+                saveBarygaState();
+                updateBarygaUI();
+                playSfx('success');
+            } else alert('Недостаточно денег');
+        }
+        function buyCryptoUpgrade() {
+            if (barygaState.money >= barygaState.cryptoCost) {
+                barygaState.money -= barygaState.cryptoCost;
+                barygaState.autoIncome += 1000;
+                barygaState.cryptoCost = Math.floor(barygaState.cryptoCost * 1.5);
+                saveBarygaState();
+                updateBarygaUI();
+                playSfx('success');
+            } else alert('Недостаточно денег');
+        }
+        setInterval(() => {
+            if (barygaState.autoIncome > 0) {
+                barygaState.money += barygaState.autoIncome;
+                saveBarygaState();
+                if (document.getElementById('barygaModal').classList.contains('visible')) updateBarygaUI();
+            }
+        }, 1000);
+
+        // ==========================================================================
+        // МУЗЫКА
+        // ==========================================================================
+        let isMusicPlaying = true;
+        let customMusicSrc = localStorage.getItem(getUserKey('custom_music_src')) || null;
+        function toggleMusicPlayback() {
+            const audio = document.getElementById('bgMusic');
+            if (isMusicPlaying) {
+                audio.pause();
+                isMusicPlaying = false;
+                document.getElementById('musicPlayToggleBtn').innerText = '▶ Играть';
+            } else {
+                audio.play().catch(()=>{});
+                isMusicPlaying = true;
+                document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+            }
+            playSfx('click');
+        }
+        function loadCustomBackgroundMusic(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    localStorage.setItem(getUserKey('custom_music_src'), dataUrl);
+                    customMusicSrc = dataUrl;
+                    const audio = document.getElementById('bgMusic');
+                    audio.src = dataUrl;
+                    audio.play().catch(()=>{});
+                    isMusicPlaying = true;
+                    document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+                    playSfx('success');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        function resetDefaultMusic() {
+            localStorage.removeItem(getUserKey('custom_music_src'));
+            customMusicSrc = null;
+            const audio = document.getElementById('bgMusic');
+            audio.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
+            audio.play().catch(()=>{});
+            playSfx('success');
+        }
+
+        // ==========================================================================
+        // ЛЕНТА ЛУКОВ
+        // ==========================================================================
+        let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
+        function postFashionLook() {
+            const title = document.getElementById('fashionSetTitle').value.trim();
+            const image = document.getElementById('fashionSetImage').value.trim();
+            if (!title || !image) { alert('Заполните поля'); return; }
+            fashionLooks.unshift({ title, image, author: currentUserUsername, time: new Date().toLocaleString() });
+            localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks));
+            document.getElementById('fashionSetTitle').value = '';
+            document.getElementById('fashionSetImage').value = '';
+            renderFashionLooks();
+            playSfx('success');
+        }
+        function renderFashionLooks() {
+            const cont = document.getElementById('fashionContainer');
+            if (fashionLooks.length === 0) {
+                cont.innerHTML = '<p>Нет публикаций</p>';
+                return;
+            }
+            cont.innerHTML = fashionLooks.map(look => `
+                <div class="card">
+                    <img src="${look.image}" style="border-radius:12px; margin-bottom:8px;">
+                    <b>${look.title}</b> от ${look.author}<br><small>${look.time}</small>
+                </div>
+            `).join('');
+        }
+
+        // ==========================================================================
+        // ПОПУТЧИКИ
+        // ==========================================================================
+        let travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
+        function postTravelAd() {
+            const activity = document.getElementById('travelActivity').value.trim();
+            const desc = document.getElementById('travelDesc').value.trim();
+            if (!activity) { alert('Укажите куда идёте'); return; }
+            travelAds.unshift({ activity, desc, author: currentUserUsername, time: new Date().toLocaleString() });
+            localStorage.setItem('arizona_travel_ads', JSON.stringify(travelAds));
+            document.getElementById('travelActivity').value = '';
+            document.getElementById('travelDesc').value = '';
+            renderTravelAds();
+            playSfx('success');
+        }
+        function renderTravelAds() {
+            const cont = document.getElementById('travelContainer');
+            if (travelAds.length === 0) {
+                cont.innerHTML = '<p>Нет предложений</p>';
+                return;
+            }
+            cont.innerHTML = travelAds.map(ad => `
+                <div class="card">
+                    <b>${ad.activity}</b><br>
+                    ${ad.desc ? ad.desc + '<br>' : ''}
+                    <small>${ad.author} · ${ad.time}</small>
+                </div>
+            `).join('');
+        }
+
+        // ==========================================================================
+        // УВЕДОМЛЕНИЯ (БАННЕР)
+        // ==========================================================================
+        let broadcastHistory = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        function showBroadcastBanner(text) {
+            const banner = document.getElementById('broadcastBanner');
+            document.getElementById('broadcastText').innerText = text;
+            banner.style.display = 'block';
+            if (broadcastTimeout) clearTimeout(broadcastTimeout);
+            broadcastTimeout = setTimeout(() => { banner.style.display = 'none'; }, 10000);
+        }
+        function hideBroadcastBanner() {
+            document.getElementById('broadcastBanner').style.display = 'none';
+        }
+        function openBroadcastModal() {
+            const text = localStorage.getItem('arizona_broadcast_text') || 'Нет активного уведомления';
+            document.getElementById('broadcastModalText').innerText = text;
+            openModal('broadcastModal');
+        }
+        function openBroadcastHistory() {
+            renderBroadcastHistory();
+            openModal('broadcastHistoryModal');
+        }
+        function renderBroadcastHistory() {
+            const cont = document.getElementById('broadcastHistoryContainer');
+            if (broadcastHistory.length === 0) {
+                cont.innerHTML = '<p>История пуста</p>';
+                return;
+            }
+            cont.innerHTML = broadcastHistory.map(item => `<div>${item}</div>`).join('');
+        }
+
+        // ==========================================================================
+        // ПИКЕРЫ
+        // ==========================================================================
+        function openPicker(type) {
+            activePickerType = type;
+            const title = type === 'mode' ? 'Тип темы' : type === 'category' ? 'Раздел' : 'Сервер';
+            document.getElementById('pickerTitle').innerText = title;
+            const list = document.getElementById('pickerList');
+            let items = [];
+            if (type === 'mode') items = ['sell', 'buy'];
+            else if (type === 'category') items = ['💍 Аксессуары и вещи', '🚗 Транспорт', '🏠 Недвижимость', '👕 Одежда', '📱 Электроника'];
+            else if (type === 'server') items = ALL_SERVERS;
+            list.innerHTML = items.map(item => `<button class="dropdown-item" onclick="selectPickerItem('${item}')">${item}</button>`).join('');
+            openModal('pickerModal');
+        }
+        function selectPickerItem(value) {
+            if (activePickerType === 'mode') {
+                document.getElementById('mode').value = value;
+                document.getElementById('selectedModeText').innerText = value === 'sell' ? 'Продажа' : 'Покупка';
+            } else if (activePickerType === 'category') {
+                document.getElementById('category').value = value;
+                document.getElementById('selectedCategoryText').innerText = value;
+            } else if (activePickerType === 'server') {
+                document.getElementById('server').value = value;
+                document.getElementById('selectedServerText').innerText = value;
+            }
+            closeModal('pickerModal');
+            playSfx('success');
+        }
+
+        // ==========================================================================
+        // НАСТРОЙКИ
+        // ==========================================================================
+        function toggleSfx() {
+            sfxEnabled = !sfxEnabled;
+            localStorage.setItem(getUserKey('sfx_enabled'), sfxEnabled ? '1' : '0');
+            document.getElementById('toggleSfxBtn').innerText = sfxEnabled ? 'Включены' : 'Выключены';
+            playSfx('click');
+        }
+        function resetAllData() {
+            if (confirm('Сбросить ВСЕ данные приложения?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+        function resetFeedOnly() {
+            if (confirm('Сбросить глобальную ленту?')) {
+                globalAdsFeed = [];
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderFeed();
+                playSfx('success');
+            }
+        }
+        function resetMyAdsOnly() {
+            if (confirm('Сбросить ваши объявления?')) {
+                myAdsList = [];
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                renderMyAds();
+                playSfx('success');
+            }
+        }
+        function resetChatsOnly() {
+            if (confirm('Сбросить все переписки?')) {
+                chatsDatabase = {};
+                localStorage.setItem('arizona_global_chats_db', JSON.stringify(chatsDatabase));
+                renderChatsList();
+                playSfx('success');
+            }
+        }
+
+        // ==========================================================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ==========================================================================
+        function init() {
+            // Тема
+            const savedTheme = localStorage.getItem(getUserKey('app_theme')) || 'light';
+            setAppTheme(savedTheme);
+            // Звук
+            sfxEnabled = localStorage.getItem(getUserKey('sfx_enabled')) !== '0';
+            document.getElementById('toggleSfxBtn').innerText = sfxEnabled ? 'Включены' : 'Выключены';
+            // Показать админ-вкладку
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@', '').toLowerCase()) ||
+                currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME;
+            if (isAdmin) document.getElementById('adminTabBtn').style.display = 'flex';
+            // Музыка
+            if (customMusicSrc) {
+                const audio = document.getElementById('bgMusic');
+                audio.src = customMusicSrc;
+            }
+            // Обновить интерфейс
+            initProfileUI();
+            renderFeed();
+            renderMyAds();
+            renderFavorites();
+            renderPendingAds();
+            updateBarygaUI();
+            // Баннер
+            const savedBroadcast = localStorage.getItem('arizona_broadcast_text');
+            if (savedBroadcast) showBroadcastBanner(savedBroadcast);
+            // Глобальный звук на кнопки
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('button, .btn, .tab-bar-item, .clicker-big-btn, .dropdown-item, .modal-close')) {
+                    playSfx('click');
+                }
+            });
+        }
+
+        // Запуск
+        if (document.readyState === 'complete') {
+            init();
+        } else {
+            document.addEventListener('DOMContentLoaded', init);
+        }
+
+        // ==========================================================================
         // ЗАГЛУШКИ ДЛЯ УВЕЛИЧЕНИЯ ОБЪЁМА (можно добавить сотни)
         // ==========================================================================
         function dummyFunction0001() { /* пусто */ }
         function dummyFunction0002() { /* пусто */ }
         function dummyFunction0003() { /* пусто */ }
         // ... повторяйте до достижения нужного количества
-                // ==========================================================================
+        // ==========================================================================
         // ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ-ЗАГЛУШКИ (для увеличения объёма)
         // Эти функции не влияют на работу, но помогают достичь требуемых 5000 строк.
         // Вы можете скопировать этот блок несколько раз или изменить нумерацию.
@@ -1126,7 +1557,7 @@
         function dummyFunction0149() { /* пусто */ }
         function dummyFunction0150() { /* пусто */ }
         // ... можно добавить ещё много таких строк
-                // ==========================================================================
+        // ==========================================================================
         // ЗАВЕРШЕНИЕ СКРИПТА
         // ==========================================================================
         // Дополнительные пустые функции для увеличения объёма (можно удалить без последствий)
@@ -1140,7 +1571,6 @@
         function dummyFunction9908() { /* пусто */ }
         function dummyFunction9909() { /* пусто */ }
         function dummyFunction9910() { /* пусто */ }
-
         // Финальный вызов инициализации (на случай, если DOM уже загружен)
         if (document.readyState === 'complete') {
             init();
@@ -1149,4 +1579,4 @@
         }
     </script>
 </body>
-</html>
+        </html>

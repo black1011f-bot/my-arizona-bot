@@ -3872,3 +3872,91 @@
         setInterval(updateIndicator, 5000); // проверяем каждые 5 секунд
     })();
 </script>
+<!-- ==================== ЧАСТЬ 36: НАДЁЖНАЯ ПРОВЕРКА СЕТИ (для VPN и белых списков) ==================== -->
+<script>
+    // ==========================================================================
+    // УЛУЧШЕННАЯ ПРОВЕРКА СЕТИ: НЕ ПОЛАГАЕМСЯ ТОЛЬКО НА navigator.onLine
+    // ==========================================================================
+    (function() {
+        const ONLINE_CHECK_URL = 'https://api.telegram.org'; // можно любой надёжный домен
+        const CHECK_TIMEOUT = 3000; // 3 секунды
+
+        let networkIndicator = null;
+        let isChecking = false;
+
+        function removeIndicator() {
+            if (networkIndicator) {
+                networkIndicator.remove();
+                networkIndicator = null;
+            }
+            // на всякий случай удаляем все старые
+            document.querySelectorAll('.offline-indicator, #offlineIndicator').forEach(el => el.remove());
+        }
+
+        function showIndicator() {
+            removeIndicator();
+            networkIndicator = document.createElement('div');
+            networkIndicator.className = 'offline-indicator';
+            networkIndicator.innerText = 'Нет соединения с интернетом';
+            networkIndicator.style.cssText = `
+                display: block;
+                position: fixed;
+                top: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #dc3545;
+                color: #fff;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                z-index: 1000;
+            `;
+            document.body.appendChild(networkIndicator);
+        }
+
+        async function checkInternetConnection() {
+            if (isChecking) return;
+            isChecking = true;
+            try {
+                // Используем fetch с таймаутом, игнорируя CORS
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), CHECK_TIMEOUT);
+                await fetch(ONLINE_CHECK_URL, { 
+                    mode: 'no-cors', 
+                    signal: controller.signal 
+                });
+                clearTimeout(timeoutId);
+                // Успешно – сеть есть
+                removeIndicator();
+            } catch (error) {
+                // Ошибка – вероятно, нет сети
+                showIndicator();
+            } finally {
+                isChecking = false;
+            }
+        }
+
+        // Инициализация
+        function init() {
+            // Немедленная проверка
+            checkInternetConnection();
+            // Периодическая проверка каждые 10 секунд
+            setInterval(checkInternetConnection, 10000);
+            // Слушаем события online/offline, но не полностью доверяем
+            window.addEventListener('online', () => {
+                checkInternetConnection();
+            });
+            window.addEventListener('offline', () => {
+                showIndicator(); // при offline сразу показываем
+            });
+            // При фокусе окна перепроверяем
+            window.addEventListener('focus', checkInternetConnection);
+        }
+
+        if (document.readyState === 'complete') {
+            init();
+        } else {
+            document.addEventListener('DOMContentLoaded', init);
+        }
+    })();
+</script>

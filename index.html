@@ -2287,3 +2287,343 @@
         restoreFromCloud();
     });
 </script>
+<script>
+    // ==========================================================================
+    // ИНДИКАТОР ЗАГРУЗКИ (СПИННЕР)
+    // ==========================================================================
+    function showLoader() {
+        let loader = document.getElementById('globalLoader');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'globalLoader';
+            loader.style.cssText = `
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: var(--app-card-bg); padding: 20px; border-radius: 16px;
+                box-shadow: var(--app-shadow-lg); z-index: 2000;
+                display: flex; align-items: center; gap: 12px;
+            `;
+            loader.innerHTML = `<div class="spinner" style="width:24px;height:24px;border:3px solid var(--app-card-border);border-top-color:var(--app-accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                <span style="font-size:14px;">Загрузка...</span>`;
+            document.body.appendChild(loader);
+        }
+        loader.style.display = 'flex';
+    }
+
+    function hideLoader() {
+        const loader = document.getElementById('globalLoader');
+        if (loader) loader.style.display = 'none';
+    }
+
+    // Добавляем анимацию вращения
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+    document.head.appendChild(styleSheet);
+
+    // ==========================================================================
+    // ОБРЕЗАНИЕ ДЛИНЫ СТРОК (анти XSS и переполнение)
+    // ==========================================================================
+    function sanitizeInput(str, maxLength) {
+        // Удаляем HTML-теги
+        let clean = str.replace(/<[^>]*>/g, '');
+        // Обрезаем до maxLength
+        return clean.slice(0, maxLength);
+    }
+
+    // Применяем к полям создания объявления
+    document.addEventListener('input', function(e) {
+        if (e.target.id === 'itemName') {
+            e.target.value = sanitizeInput(e.target.value, 70);
+        }
+        if (e.target.id === 'text') {
+            e.target.value = sanitizeInput(e.target.value, 1000);
+        }
+    });
+
+    // ==========================================================================
+    // ГЛОБАЛЬНЫЙ ОБРАБОТЧИК ОШИБОК
+    // ==========================================================================
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error('Глобальная ошибка:', message, source, lineno, colno, error);
+        showLoader();
+        hideLoader(); // можно показать сообщение
+        alert('Произошла ошибка. Приложение продолжит работу.');
+        return true; // предотвращает стандартное поведение
+    };
+
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('Необработанное обещание:', event.reason);
+        alert('Произошла ошибка в фоновой задаче.');
+        event.preventDefault();
+    });
+
+    // Обёртки для тяжёлых операций
+    const originalSubmitData = window.submitData;
+    window.submitData = function() {
+        showLoader();
+        try {
+            originalSubmitData();
+        } finally {
+            setTimeout(hideLoader, 500); // скрываем после выполнения
+        }
+    };
+</script>
+<script>
+    // ==========================================================================
+    // ЛИМИТ НА КОЛИЧЕСТВО АКТИВНЫХ ОБЪЯВЛЕНИЙ (максимум 5)
+    // ==========================================================================
+    const MAX_ACTIVE_ADS = 5;
+
+    function countActiveAds() {
+        return myAdsList.filter(ad => ad.status === 'pending' || ad.status === 'approved').length;
+    }
+
+    // Переопределяем submitData
+    const originalSubmitData2 = window.submitData;
+    window.submitData = function() {
+        if (countActiveAds() >= MAX_ACTIVE_ADS) {
+            alert(`Достигнут лимит: не более ${MAX_ACTIVE_ADS} активных объявлений.`);
+            return;
+        }
+        originalSubmitData2();
+    };
+
+    // ==========================================================================
+    // АНТИ-ФЛУД В ЧАТЕ (1 сообщение в 2 секунды)
+    // ==========================================================================
+    let lastChatMessageTime = 0;
+
+    // Переопределяем sendChatMessage
+    const originalSendChatMessage = window.sendChatMessage;
+    window.sendChatMessage = function() {
+        const now = Date.now();
+        if (now - lastChatMessageTime < 2000) {
+            alert('Не так быстро! Подождите пару секунд.');
+            return;
+        }
+        lastChatMessageTime = now;
+        originalSendChatMessage();
+    };
+
+    // ==========================================================================
+    // АВТОСОХРАНЕНИЕ ЧЕРНОВИКОВ ОБЪЯВЛЕНИЯ
+    // ==========================================================================
+    const DRAFT_KEY = 'arizona_ad_draft';
+
+    function saveDraft() {
+        const draft = {
+            itemName: document.getElementById('itemName').value,
+            price: document.getElementById('price').value,
+            text: document.getElementById('text').value,
+            image: document.getElementById('itemImage').value,
+            server: document.getElementById('server').value,
+            mode: document.getElementById('mode').value,
+            category: document.getElementById('category').value
+        };
+        localStorage.setItem(getUserKey(DRAFT_KEY), JSON.stringify(draft));
+    }
+
+    function loadDraft() {
+        const draft = localStorage.getItem(getUserKey(DRAFT_KEY));
+        if (draft) {
+            try {
+                const data = JSON.parse(draft);
+                if (data.itemName) document.getElementById('itemName').value = data.itemName;
+                if (data.price) document.getElementById('price').value = data.price;
+                if (data.text) document.getElementById('text').value = data.text;
+                if (data.image) document.getElementById('itemImage').value = data.image;
+                if (data.server) {
+                    document.getElementById('server').value = data.server;
+                    document.getElementById('selectedServerText').innerText = data.server;
+                }
+                if (data.mode) {
+                    document.getElementById('mode').value = data.mode;
+                    document.getElementById('selectedModeText').innerText = data.mode === 'sell' ? 'Продажа' : 'Покупка';
+                }
+                if (data.category) {
+                    document.getElementById('category').value = data.category;
+                    document.getElementById('selectedCategoryText').innerText = data.category;
+                }
+                alert('Черновик объявления восстановлен.');
+            } catch(e) {}
+        }
+    }
+
+    function clearDraft() {
+        localStorage.removeItem(getUserKey(DRAFT_KEY));
+    }
+
+    // Автосохранение при вводе
+    document.addEventListener('input', function(e) {
+        if (e.target.closest('#tabApp')) {
+            saveDraft();
+        }
+    });
+
+    // Очистка черновика после успешной отправки
+    const originalSubmitData3 = window.submitData;
+    window.submitData = function() {
+        originalSubmitData3();
+        clearDraft();
+    };
+
+    // Загрузка черновика при старте
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDraft();
+    });
+</script>
+<script>
+    // ==========================================================================
+    // ЛЕНИВАЯ ЗАГРУЗКА ИЗОБРАЖЕНИЙ (все img с loading="lazy")
+    // ==========================================================================
+    function applyLazyLoading() {
+        document.querySelectorAll('img').forEach(img => {
+            img.loading = 'lazy';
+        });
+    }
+
+    // Вызываем после каждого рендера
+    const originalRenderFeed = window.renderFeed;
+    window.renderFeed = function() {
+        originalRenderFeed();
+        applyLazyLoading();
+    };
+    const originalRenderFavorites = window.renderFavorites;
+    window.renderFavorites = function() {
+        originalRenderFavorites();
+        applyLazyLoading();
+    };
+    const originalRenderMyAds = window.renderMyAds;
+    window.renderMyAds = function() {
+        originalRenderMyAds();
+        applyLazyLoading();
+    };
+
+    // ==========================================================================
+    // ВИРТУАЛИЗАЦИЯ СПИСКА (подгрузка при скролле)
+    // ==========================================================================
+    // Увеличиваем feedDisplayLimit при прокрутке до конца
+    let isLoadingMore = false;
+    window.addEventListener('scroll', () => {
+        if (isLoadingMore) return;
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        if (scrollTop + windowHeight >= documentHeight - 200) {
+            // Пользователь почти докрутил до низа
+            if (feedDisplayLimit < globalAdsFeed.filter(ad => ad.status === 'approved').length) {
+                isLoadingMore = true;
+                feedDisplayLimit += 20; // увеличиваем лимит
+                renderFeed();
+                setTimeout(() => { isLoadingMore = false; }, 300);
+            }
+        }
+    });
+
+    // ==========================================================================
+    // КНОПКА "ОЧИСТИТЬ КЭШ"
+    // ==========================================================================
+    function clearCache() {
+        if (confirm('Очистить временные данные (черновики, история уведомлений, кэш)?')) {
+            const keysToRemove = [
+                getUserKey('arizona_ad_draft'),
+                'arizona_broadcast_history',
+                // можно добавить другие временные ключи
+            ];
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            alert('Кэш очищен.');
+            location.reload();
+        }
+    }
+
+    // Добавляем кнопку в настройки
+    const originalOpenModalSettings = window.openModal;
+    window.openModal = function(id) {
+        originalOpenModalSettings(id);
+        if (id === 'settingsModal') {
+            // Проверяем, есть ли уже кнопка
+            if (!document.getElementById('clearCacheBtn')) {
+                const settingsContent = document.querySelector('#settingsModal .modal-content');
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                formGroup.innerHTML = `<label>🧹 Очистить кэш</label>
+                    <button id="clearCacheBtn" class="btn btn-outline btn-sm" onclick="clearCache()">Очистить временные данные</button>`;
+                settingsContent.appendChild(formGroup);
+            }
+        }
+    };
+</script>
+<script>
+    // ==========================================================================
+    // СЧЁТЧИК ПРОИЗВОДИТЕЛЬНОСТИ (FPS + память)
+    // ==========================================================================
+    let perfMonitorEnabled = false;
+    let fpsCounter = 0;
+    let fpsInterval = null;
+    let perfOverlay = null;
+
+    function togglePerfMonitor() {
+        perfMonitorEnabled = !perfMonitorEnabled;
+        if (perfMonitorEnabled) {
+            startPerfMonitor();
+        } else {
+            stopPerfMonitor();
+        }
+        localStorage.setItem(getUserKey('perf_monitor'), perfMonitorEnabled ? '1' : '0');
+    }
+
+    function startPerfMonitor() {
+        if (!perfOverlay) {
+            perfOverlay = document.createElement('div');
+            perfOverlay.style.cssText = `
+                position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8);
+                color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 12px;
+                z-index: 2000; font-family: monospace;
+            `;
+            document.body.appendChild(perfOverlay);
+        }
+        perfOverlay.style.display = 'block';
+        let lastFrameTime = performance.now();
+        fpsInterval = setInterval(() => {
+            const now = performance.now();
+            fpsCounter = Math.round(1000 / (now - lastFrameTime));
+            lastFrameTime = now;
+            let memoryInfo = '';
+            if (performance.memory) {
+                memoryInfo = ` | Память: ${(performance.memory.usedJSHeapSize / 1048576).toFixed(1)} MB`;
+            }
+            perfOverlay.textContent = `FPS: ${fpsCounter}${memoryInfo}`;
+        }, 500);
+    }
+
+    function stopPerfMonitor() {
+        if (fpsInterval) clearInterval(fpsInterval);
+        if (perfOverlay) perfOverlay.style.display = 'none';
+    }
+
+    // Добавляем переключатель в настройки
+    const originalOpenModalSettings2 = window.openModal;
+    window.openModal = function(id) {
+        originalOpenModalSettings2(id);
+        if (id === 'settingsModal') {
+            if (!document.getElementById('perfToggleBtn')) {
+                const settingsContent = document.querySelector('#settingsModal .modal-content');
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                formGroup.innerHTML = `<label>📊 Счётчик производительности</label>
+                    <button id="perfToggleBtn" class="btn btn-outline btn-sm" onclick="togglePerfMonitor()">${perfMonitorEnabled ? 'Выключить' : 'Включить'}</button>`;
+                settingsContent.appendChild(formGroup);
+            } else {
+                document.getElementById('perfToggleBtn').textContent = perfMonitorEnabled ? 'Выключить' : 'Включить';
+            }
+        }
+    };
+
+    // Восстанавливаем состояние при загрузке
+    document.addEventListener('DOMContentLoaded', () => {
+        const saved = localStorage.getItem(getUserKey('perf_monitor'));
+        if (saved === '1') {
+            perfMonitorEnabled = true;
+            startPerfMonitor();
+        }
+    });
+</script>

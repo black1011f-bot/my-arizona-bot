@@ -75,7 +75,6 @@
             padding: 0;
             min-height: 100vh;
         }
-
         /* ==========================================================================
            ОБЩИЕ СТИЛИ
            ========================================================================== */
@@ -92,40 +91,11 @@
         .app-header-actions { display: flex; align-items: center; gap: 8px; }
         .app-icon-btn { width: 40px; height: 40px; border-radius: 12px; background: #f0f0f2; border: 1px solid #e0e0e6; display: flex; align-items: center; justify-content: center; font-size: 20px; }
 
-        /* Баннер уведомления (broadcast) */
-        .broadcast-banner {
-            background: var(--app-accent);
-            color: #fff;
-            padding: 12px 40px 12px 16px;
-            border-radius: 16px;
-            font-size: 14px;
-            font-weight: 600;
-            margin: 12px 0;
-            cursor: pointer;
-            text-align: left;
-            border: 1px solid var(--app-accent);
-            box-shadow: var(--app-shadow);
-            display: none;
-            position: relative;
-            animation: fadeIn 0.3s ease-out;
-        }
-        .broadcast-banner .close-broadcast {
-            position: absolute;
-            top: 50%;
-            right: 12px;
-            transform: translateY(-50%);
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            cursor: pointer;
-        }
+        /* Баннер уведомления */
+        .broadcast-banner { background: var(--app-accent); color: #fff; padding: 12px 40px 12px 16px; border-radius: 16px; font-size: 14px; font-weight: 600; margin: 12px 0; cursor: pointer; text-align: left; border: 1px solid var(--app-accent); box-shadow: var(--app-shadow); display: none; position: relative; animation: fadeIn 0.3s ease-out; }
+        .broadcast-banner .close-broadcast { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; }
 
-        /* Главный баннер (широкий) */
+        /* Главный баннер */
         .welcome-banner-wide { width: 100%; border-radius: 16px; overflow: hidden; margin: 12px 0; }
         .welcome-banner-wide img { width: 100%; height: auto; display: block; }
 
@@ -138,6 +108,7 @@
 
         /* Карточки объявлений */
         .ads-container { display: grid; grid-template-columns: 1fr; gap: 14px; }
+        .ads-container.grid-view { grid-template-columns: repeat(2, 1fr); }
         .ad-card { background: #fff; border-radius: 18px; padding: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
         .ad-card .ad-title { font-size: 16px; font-weight: 700; }
         .ad-card .ad-price { font-size: 15px; font-weight: 700; color: #ffb800; }
@@ -478,7 +449,7 @@
         let currentUserUsername = tgUser?.username ? '@' + tgUser.username : '@user_' + currentUserId;
         let currentUserNameDisplay = tgUser?.first_name || 'Игрок';
         let sfxEnabled = true;
-        let broadcastTimeout = null; // таймер авто-скрытия broadcast
+        let broadcastTimeout = null;
         function getUserKey(key) { return `arizona_${currentUserId}_${key}`; }
 
         // ==========================================================================
@@ -629,12 +600,9 @@
             const banner = document.getElementById('broadcastBanner');
             document.getElementById('broadcastText').innerHTML = `<b>Уведомление!</b> ${text}`;
             banner.style.display = 'block';
-            // Авто-скрытие через 10 секунд
             if (broadcastTimeout) clearTimeout(broadcastTimeout);
             if (autoHide) {
-                broadcastTimeout = setTimeout(() => {
-                    banner.style.display = 'none';
-                }, 10000);
+                broadcastTimeout = setTimeout(() => { banner.style.display = 'none'; }, 10000);
             }
         }
 
@@ -653,12 +621,9 @@
         function updateBroadcastMessage() {
             const text = document.getElementById('newBroadcastInput').value.trim();
             if (!text) return;
-            // Сохраняем в историю
             broadcastHistory.unshift({ text, time: new Date().toLocaleString() });
             localStorage.setItem('arizona_broadcast_history', JSON.stringify(broadcastHistory));
-            // Показываем баннер
             showBroadcastBanner(text);
-            // Также сохраняем последнее сообщение для показа при загрузке
             localStorage.setItem('arizona_broadcast_msg', text);
             alert('📢 Рассылка отправлена!');
             playSfx('success');
@@ -950,7 +915,6 @@
             updateBarygaUI();
             updateCounters();
             updateMskClock();
-            // Показываем последнее broadcast-сообщение, если есть
             const savedBroadcast = localStorage.getItem('arizona_broadcast_msg');
             if (savedBroadcast) {
                 showBroadcastBanner(savedBroadcast, true);

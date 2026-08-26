@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Arizona RP — Универсальный Mini App (TG/WB/iOS)</title>
-    <script src="https://telegram.org/js/telegram-web-app.js">
-    </script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="preload" as="image" href="https://i.postimg.cc/WzMP51cN/1786185439356.png">
+    <link rel="preload" as="image" href="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg">
     <style>
         /* ==========================================================================
            БАЗОВЫЕ ПЕРЕМЕННЫЕ И СБРОС
@@ -221,7 +221,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: var(--app-spacing-md) var(--app-spacing-lg);
+            padding: var(--app-spacing-sm) var(--app-spacing-lg);
             background: var(--app-header-bg);
             border-bottom: var(--app-border-width) solid var(--app-card-border);
             position: sticky;
@@ -241,9 +241,16 @@
             text-decoration: none;
         }
 
-        .app-header-brand-icon {
-            font-size: var(--app-font-size-xl);
+        .app-header-brand-img {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--app-radius-round);
+            object-fit: cover;
+            border: 2px solid var(--app-accent);
+            background: var(--app-card-bg);
+            flex-shrink: 0;
         }
+
         .app-header-brand-text {
             display: flex;
             flex-direction: column;
@@ -324,6 +331,29 @@
             box-shadow: var(--app-shadow);
             display: none;
             animation: fadeIn 0.3s ease-out;
+        }
+
+        /* ==========================================================================
+           ГЛАВНЫЙ БАННЕР (широкий)
+           ========================================================================== */
+        .welcome-banner-wide {
+            width: 100%;
+            border-radius: var(--app-radius-md);
+            overflow: hidden;
+            border: var(--app-border-width) solid var(--app-accent);
+            margin: var(--app-spacing-md) 0;
+            box-shadow: var(--app-shadow);
+            animation: fadeIn 0.3s ease;
+            background: var(--app-card-bg);
+        }
+        .welcome-banner-wide img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+        .welcome-banner-wide:hover img {
+            transform: scale(1.02);
         }
 
         /* ==========================================================================
@@ -1305,8 +1335,7 @@
 </head>
 <body class="theme-dark style-tg">
     <!-- Аудио для фоновой музыки -->
-    <audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" autoplay loop preload="auto">
-    </audio>
+    <audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" autoplay loop preload="auto"></audio>
 
     <!-- Оверлей блокировки -->
     <div id="banOverlay" class="modal-overlay">
@@ -1339,7 +1368,7 @@
         <!-- Шапка -->
         <header class="app-header">
             <a class="app-header-brand" href="https://t.me/arizona_coin_bot" target="_blank">
-                <span class="app-header-brand-icon">🤖</span>
+                <img class="app-header-brand-img" src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP Logo">
                 <span class="app-header-brand-text">
                     <span>Arizona RP</span>
                     <span class="app-header-brand-subtitle">поиск • объявления • профили</span>
@@ -1360,6 +1389,8 @@
                     <button class="dropdown-item" onclick="openModal('musicModal'); closeDropdowns();">🎵 Музыка</button>
                     <button class="dropdown-item" onclick="openModal('fashionModal'); closeDropdowns();">📸 Лента «Луков»</button>
                     <button class="dropdown-item" onclick="openModal('travelModal'); closeDropdowns();">🤝 Попутчики</button>
+                    <button class="dropdown-item" onclick="showStubNotification('Настройки'); closeDropdowns();">⚙️ Настройки</button>
+                    <button class="dropdown-item" onclick="showStubNotification('Помощь'); closeDropdowns();">❓ Помощь</button>
                     <div id="ownerContactItem" style="display: none;">
                         <button class="dropdown-item" onclick="window.open('https://t.me/bounqy31', '_blank'); closeDropdowns();">📞 Менеджер</button>
                     </div>
@@ -1370,19 +1401,19 @@
         <!-- Таб-бар -->
         <nav class="tab-bar" id="tabBar">
             <button class="tab-bar-item active" data-tab="feed" onclick="switchTab('feed')">
-                <span class="tab-icon">🌍</span>
+                <span class="tab-icon">🏠</span>
                 <span class="tab-label">Главная</span>
             </button>
             <button class="tab-bar-item" data-tab="app" onclick="switchTab('app')">
-                <span class="tab-icon">📝</span>
+                <span class="tab-icon">➕</span>
                 <span class="tab-label">Создать</span>
             </button>
             <button class="tab-bar-item" data-tab="myAds" onclick="switchTab('myAds')">
-                <span class="tab-icon">📂</span>
+                <span class="tab-icon">📦</span>
                 <span class="tab-label">Мои темы</span>
             </button>
             <button class="tab-bar-item" data-tab="favorites" onclick="switchTab('favorites')">
-                <span class="tab-icon">❤️</span>
+                <span class="tab-icon">⭐</span>
                 <span class="tab-label">Избранное</span>
             </button>
             <button class="tab-bar-item" data-tab="profile" onclick="switchTab('profile')">
@@ -1390,7 +1421,7 @@
                 <span class="tab-label">Профиль</span>
             </button>
             <button class="tab-bar-item" id="adminTabBtn" style="display: none;" data-tab="admin" onclick="switchTab('admin')">
-                <span class="tab-icon">⚙️</span>
+                <span class="tab-icon">🛡️</span>
                 <span class="tab-label">Админ</span>
             </button>
         </nav>
@@ -1399,6 +1430,11 @@
         <main class="app-content" id="appContent">
             <!-- Таб: Главная лента -->
             <section class="section active" id="tabFeed">
+                <!-- Широкий баннер -->
+                <div class="welcome-banner-wide">
+                    <img src="https://i.postimg.cc/WzMP51cN/1786185439356.png" alt="Welcome Banner" onerror="this.src='https://i.ibb.co/1YLcDKVk/banner.png';">
+                </div>
+
                 <div class="section-title">🌍 Главный раздел (Лента объявлений)</div>
                 <button class="btn btn-success mb-md" onclick="openModal('searchModal')">🔍 Поиск предметов и игроков</button>
 
@@ -1525,14 +1561,14 @@
 
             <!-- Таб: Мои темы -->
             <section class="section" id="tabMyAds">
-                <div class="section-title">📂 Ваши размещённые товары</div>
+                <div class="section-title">📦 Ваши размещённые товары</div>
                 <div id="myAdsContainer" class="ads-container"></div>
                 <button onclick="clearMyAds()" class="btn btn-danger btn-sm mt-md">🗑 Очистить архив</button>
             </section>
 
             <!-- Таб: Избранное -->
             <section class="section" id="tabFavorites">
-                <div class="section-title">❤️ Ваши закладки</div>
+                <div class="section-title">⭐ Ваши закладки</div>
                 <div id="favoritesContainer" class="ads-container"></div>
             </section>
 
@@ -1787,6 +1823,27 @@
         </div>
     </div>
 
+    <!-- Модальное окно для редактирования объявления (админ) -->
+    <div id="editAdModal" class="modal-overlay" onclick="handleOverlayClick(event, 'editAdModal')">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">✏️ Редактировать объявление</h3>
+                <button class="modal-close" onclick="closeModal('editAdModal')">✕</button>
+            </div>
+            <div id="editAdForm"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для таймера после отправки -->
+    <div id="cooldownModal" class="modal-overlay">
+        <div class="modal-content text-center">
+            <h3 style="margin-bottom: 12px;">⏳ Объявление отправлено!</h3>
+            <p style="font-size: 13px; color: var(--app-text-muted); margin-bottom: 8px;">Ожидайте модерации. Следующее объявление можно будет отправить через:</p>
+            <div id="cooldownTimer" style="font-size: 28px; font-weight: 700; color: var(--app-accent); margin-bottom: 16px;">02:00</div>
+            <button onclick="closeModal('cooldownModal')" class="btn btn-secondary btn-sm" style="width:auto; margin:0 auto;">Закрыть</button>
+        </div>
+    </div>
+
     <script>
         // ==========================================================================
         // КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
@@ -1950,6 +2007,7 @@
         let activePickerType = '';
         let currentAppStyle = 'tg';
         let currentAppTheme = 'dark';
+        let cooldownInterval = null;
 
         // ==========================================================================
         // НАВИГАЦИЯ И ТАБЫ
@@ -2293,7 +2351,7 @@
             let currentTime = Date.now();
             if (currentTime - lastAdTime < 120000) {
                 let leftSec = Math.ceil((120000 - (currentTime - lastAdTime)) / 1000);
-                alert(`⏳ Подождите ещё ${leftSec} сек. (КД 2 мин)`);
+                showCooldownTimer(leftSec);
                 return;
             }
             let mode = document.getElementById('mode').value;
@@ -2327,7 +2385,8 @@
             if (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) {
                 localStorage.setItem(getUserKey('owner_has_posted_ad'), 'true');
             }
-            alert('🚀 Объявление отправлено на модерацию!');
+            // Показываем таймер 2 минуты
+            showCooldownTimer(120);
             playSfx('success');
             switchTab('feed');
             renderFeed();
@@ -2337,6 +2396,29 @@
             document.getElementById('price').value = '';
             document.getElementById('text').value = '';
             document.getElementById('itemImage').value = '';
+        }
+
+        function showCooldownTimer(seconds) {
+            if (cooldownInterval) clearInterval(cooldownInterval);
+            let totalSeconds = seconds;
+            updateCooldownDisplay(totalSeconds);
+            openModal('cooldownModal');
+            cooldownInterval = setInterval(() => {
+                totalSeconds--;
+                if (totalSeconds <= 0) {
+                    clearInterval(cooldownInterval);
+                    cooldownInterval = null;
+                    closeModal('cooldownModal');
+                } else {
+                    updateCooldownDisplay(totalSeconds);
+                }
+            }, 1000);
+        }
+
+        function updateCooldownDisplay(seconds) {
+            let mins = Math.floor(seconds / 60);
+            let secs = seconds % 60;
+            document.getElementById('cooldownTimer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         function renderFeed() {
@@ -2471,11 +2553,58 @@
                 <div style="font-size:10px; color:var(--app-text-muted);">От: ${ad.author} | ${ad.server}</div>
                 <div class="ad-desc">${ad.text}</div>
                 <div class="ad-actions">
+                    <button onclick="openEditAdModal(${ad.id})" class="btn btn-outline btn-sm" style="flex:1;">✏️ Редактировать</button>
+                </div>
+                <div class="ad-actions">
                     <button onclick="approvePendingAd(${ad.id})" class="btn btn-success btn-sm" style="flex:1;">✅ Одобрить</button>
                     <button onclick="rejectPendingAd(${ad.id})" class="btn btn-danger btn-sm" style="flex:1;">❌ Отклонить</button>
                 </div>
             </div>
         `).join('');
+        }
+
+        function openEditAdModal(adId) {
+            let ad = pendingAdsList.find(a => a.id === adId);
+            if (!ad) return;
+            let formHTML = `
+                <div class="form-group">
+                    <label>Название:</label>
+                    <input type="text" id="editItemName" value="${ad.itemName}">
+                </div>
+                <div class="form-group">
+                    <label>Цена:</label>
+                    <input type="text" id="editPrice" value="${ad.price}">
+                </div>
+                <div class="form-group">
+                    <label>Описание:</label>
+                    <textarea id="editText" rows="3">${ad.text}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Ссылка на изображение:</label>
+                    <input type="url" id="editImage" value="${ad.image || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Сервер:</label>
+                    <input type="text" id="editServer" value="${ad.server}">
+                </div>
+                <button onclick="saveEditedAd(${ad.id})" class="btn btn-success">💾 Сохранить</button>
+            `;
+            document.getElementById('editAdForm').innerHTML = formHTML;
+            openModal('editAdModal');
+        }
+
+        function saveEditedAd(adId) {
+            let ad = pendingAdsList.find(a => a.id === adId);
+            if (!ad) return;
+            ad.itemName = document.getElementById('editItemName').value.trim();
+            ad.price = document.getElementById('editPrice').value.trim();
+            ad.text = document.getElementById('editText').value.trim();
+            ad.image = document.getElementById('editImage').value.trim();
+            ad.server = document.getElementById('editServer').value.trim();
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            closeModal('editAdModal');
+            renderPendingAds();
+            playSfx('success');
         }
 
         function approvePendingAd(id) {
@@ -2895,7 +3024,6 @@
             console.log('Arizona RP Mini App v' + CURRENT_APP_BUILD + ' инициализирован');
             console.log('Стиль: ' + currentAppStyle + ', тема: ' + currentAppTheme);
             console.log('Пользователь: ' + currentUserUsername + ' (ID: ' + currentUserId + ')');
-            console.log('Все элементы управления активны. Нереализованные функции показывают уведомления.');
         }
 
         // Функция-заглушка для нереализованных действий
@@ -2917,4 +3045,4 @@
         }
     </script>
 </body>
-                    </html>
+                </html>

@@ -1,3060 +1,2421 @@
-from datetime import datetime, time as dtime, timedelta
-import contextlib
-import html
-import io
-import logging
-import os
-import random
-import re
-import sqlite3
-import threading
-import time
-import urllib.parse
-from zoneinfo import ZoneInfo
-import requests
-import telebot
-from telebot import types
-from telebot.apihelper import ApiTelegramException
-
-# ==========================================
-# ЛОГИРОВАНИЕ И КОНФИГУРАЦИЯ (ВРЕМЯ ПО МСК)
-# ==========================================
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-
-def get_msk_time():
-  return datetime.now(ZoneInfo("Europe/Moscow"))
-
-
-TOKEN = "8916669266:AAFWu9dBMLu38mpp2H6rZL8zkvSCSIPFugo"
-MANAGER_USERNAME = "bounqy31"
-BOT_USERNAME = "arizona_coin_bot"
-
-bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
-
-OWNER_USERNAME = "bounqy"
-ADMIN_USERNAMES = {"bounqy31", "bounqy"}
-
-DB_NAME = "smi_bot.db"
-db_lock = threading.Lock()
-state_lock = threading.Lock()
-
-# ==========================================
-# ЗАЩИТА ОТ ФЛУДА И СПИСОК МАТА
-# ==========================================
-antispam_lock = threading.Lock()
-user_last_message_time = {}
-RATE_LIMIT_SECONDS = 0.6
-
-SERVERS = [
-    "🔥 Phoenix",
-    "🌴 Tucson",
-    "🌵 Scottdale",
-    "⚜️ Chandler",
-    "❄️ Brainburg",
-    "🌊 Yuma",
-    "✨ Saint-Rose",
-    "🏛 Mesa",
-    "❤️ Red-Rock",
-    "🍀 Surprise",
-    "⚡️ Prescott",
-    "🌲 Glendale",
-    "👑 Kingman",
-    "⚓️ Winslow",
-    "🌴 Payson",
-    "💎 Gilbert",
-    "🔥 Show-Low",
-    "🌴 Casa-Grande",
-    "📜 Page",
-    "☀️ Sun-City",
-    "👑 Queen-Creek",
-    "🌵 Sedona",
-    "🎄 Holiday",
-    "🍀 Wednesday",
-    "⚡️ Yava",
-    "🌌 Faraway",
-    "🎁 Christmas",
-    "🐝 Bumble Bee",
-    "🪞 Mirage",
-    "💖 Love",
-    "📱 Mobile I",
-    "📱 Mobile II",
-    "📱 Mobile III",
-]
-
-CATEGORIES = [
-    "💍 Аксессуары и вещи",
-    "🚗 Транспорт и тюнинг",
-    "👕 Скины и охранники",
-    "🏠 Недвижимость и бизнесы",
-    "📦 Ресурсы и материалы",
-]
-
-BAD_WORDS = [
-    "хуй",
-    "хуе",
-    "хуя",
-    "хуи",
-    "пизд",
-    "еб",
-    "бля",
-    "сук",
-    "залуп",
-    "мраз",
-    "ебан",
-    "долбоеб",
-    "сука",
-    "блять",
-    "ебать",
-    "хуесос",
-    "пидорас",
-    "пидар",
-    "мразь",
-    "урод",
-    "чмо",
-    "шлюх",
-    "блядь",
-    "сукин",
-    "залупа",
-    "гандон",
-    "ондон",
-    "дроч",
-    "ебуч",
-    "еблан",
-    "пиздюк",
-    "выбляд",
-    "samp-rp",
-    "advance",
-    "Arizona V",
-    "Diamond",
-    "продажа вирт",
-    "продам вирты",
-]
-
-
-def is_flooding(user_id: int) -> bool:
-  if is_admin_or_owner_id(user_id):
-    return False
-
-  current_time = time.time()
-  with antispam_lock:
-    last_time = user_last_message_time.get(user_id, 0)
-    if current_time - last_time < RATE_LIMIT_SECONDS:
-      return True
-    user_last_message_time[user_id] = current_time
-  return False
-
-
-# ==========================================
-# УНИВЕРСАЛЬНЫЙ ПАРСЕР ЦЕН
-# ==========================================
-def parse_flexible_price(text: str) -> int:
-  if not text:
-    raise ValueError("Пустая цена")
-  cleaned = text.strip().lower()
-  cleaned = (
-      cleaned.replace("$", "")
-      .replace("руб", "")
-      .replace("вк", "")
-      .replace("vc", "")
-      .strip()
-  )
-
-  multiplier = 1
-  if "миллиард" in cleaned or "ккк" in cleaned:
-    multiplier = 1_000_000_000
-    cleaned = cleaned.replace("миллиард", "").replace("ккк", "").strip()
-  elif (
-      "кк" in cleaned
-      or "kk" in cleaned
-      or "лям" in cleaned
-      or "лимон" in cleaned
-  ):
-    multiplier = 1_000_000
-    cleaned = (
-        cleaned.replace("кк", "")
-        .replace("kk", "")
-        .replace("лям", "")
-        .replace("лимон", "")
-        .strip()
-    )
-  elif "к" in cleaned or "k" in cleaned or "тыс" in cleaned:
-    multiplier = 1_000
-    cleaned = (
-        cleaned.replace("к", "").replace("k", "").replace("тыс", "").strip()
-    )
-
-  cleaned = cleaned.replace(" ", "").replace("_", "")
-  if "." in cleaned or "," in cleaned:
-    cleaned = cleaned.replace(",", ".")
-    try:
-      val = float(cleaned)
-      return int(val * multiplier)
-    except ValueError:
-      cleaned = cleaned.replace(".", "")
-
-  try:
-    return int(float(cleaned) * multiplier)
-  except ValueError:
-    raise ValueError(f"Не удалось распознать цену: {text}")
-
-
-# ==========================================
-# ПОТОКОБЕЗОПАСНОЕ УПРАВЛЕНИЕ СОСТОЯНИЯМИ И БД
-# ==========================================
-user_states = {}
-
-
-@contextlib.contextmanager
-def get_db():
-  conn = sqlite3.connect(DB_NAME, timeout=10.0)
-  conn.row_factory = sqlite3.Row
-  try:
-    yield conn
-    conn.commit()
-  except Exception:
-    conn.rollback()
-    raise
-  finally:
-    conn.close()
-
-
-def is_banned(user) -> bool:
-  if not user:
-    return False
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT 1 FROM bans WHERE target = ? OR target = ?",
-        (str(user.id), str(user.username) if user.username else ""),
-    )
-    return cur.fetchone() is not None
-
-
-def is_banned_id(user_id: int) -> bool:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT 1 FROM bans WHERE target = ?", (str(user_id),))
-    return cur.fetchone() is not None
-
-
-def is_admin_or_owner_id(user_id: int) -> bool:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT username FROM user_data WHERE user_id = ?", (user_id,))
-    row = cur.fetchone()
-    if row and row["username"] and row["username"].lstrip("@") in ADMIN_USERNAMES:
-      return True
-    cur.execute("SELECT 1 FROM approved_admins WHERE user_id = ?", (user_id,))
-    if cur.fetchone():
-      return True
-  return False
-
-
-def is_admin_or_owner(user) -> bool:
-  if not user:
-    return False
-  if user.username and user.username.lstrip("@") in ADMIN_USERNAMES:
-    return True
-  return is_admin_or_owner_id(user.id)
-
-
-def is_owner(user) -> bool:
-  if not user:
-    return False
-  if user.username and user.username.lstrip("@") == OWNER_USERNAME:
-    return True
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT username FROM user_data WHERE user_id = ?", (user.id,))
-    row = cur.fetchone()
-    if (
-        row
-        and row["username"]
-        and row["username"].lstrip("@") == OWNER_USERNAME
-    ):
-      return True
-  return False
-
-
-def get_owner_id() -> int:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT user_id FROM user_data WHERE username = ? OR username = ?",
-        (OWNER_USERNAME, f"@{OWNER_USERNAME}"),
-    )
-    row = cur.fetchone()
-    if row:
-      return row["user_id"]
-  return 0
-
-
-def get_admin_chat_ids() -> list:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT chat_id FROM admin_chats")
-    return [row["chat_id"] for row in cur.fetchall()]
-
-
-def register_admin_chat(chat_id: int):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT OR IGNORE INTO admin_chats (chat_id) VALUES (?)", (chat_id,)
-    )
-
-
-def register_user(user_id: int, username: str):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO user_data (user_id, username, last_ad_time) VALUES (?, ?,"
-        " 0) ON CONFLICT(user_id) DO UPDATE SET username = ?",
-        (user_id, username or "", username or ""),
-    )
-
-
-def get_user_last_ad_time(user_id: int) -> float:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT last_ad_time FROM user_data WHERE user_id = ?", (user_id,)
-    )
-    row = cur.fetchone()
-    return row["last_ad_time"] if row and row["last_ad_time"] else 0.0
-
-
-def set_user_last_ad_time(user_id: int, t: float):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE user_data SET last_ad_time = ? WHERE user_id = ?", (t, user_id)
-    )
-
-
-def is_user_premium(user_id: int) -> bool:
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT expires_at FROM premium_users WHERE user_id = ?", (user_id,)
-    )
-    row = cur.fetchone()
-    if row and row["expires_at"] > time.time():
-      return True
-  return False
-
-
-def check_auto_moderation(text: str) -> bool:
-  t_lower = text.lower()
-  for w in BAD_WORDS:
-    if w in t_lower:
-      return False
-  return True
-
-
-def set_user_server(user_id: int, server: str):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO user_data (user_id, server, last_ad_time) VALUES (?, ?,"
-        " 0) ON CONFLICT(user_id) DO UPDATE SET server = ?",
-        (user_id, server, server),
-    )
-  update_state(user_id, server=server)
-
-
-def get_user_server(user_id: int) -> str:
-  with state_lock:
-    srv = user_states.get(user_id, {}).get("server")
-    if srv:
-      return srv
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT server FROM user_data WHERE user_id = ?", (user_id,))
-    row = cur.fetchone()
-    if row and row["server"]:
-      srv = row["server"]
-      update_state(user_id, server=srv)
-      return srv
-  default_srv = SERVERS[0]
-  update_state(user_id, server=default_srv)
-  return default_srv
-
-
-def get_state(uid: int) -> dict:
-  with state_lock:
-    st = user_states.get(uid, {}).copy()
-  if "server" not in st:
-    st["server"] = get_user_server(uid)
-  return st
-
-
-def set_state(uid: int, data: dict):
-  with state_lock:
-    srv = user_states.get(uid, {}).get("server") or get_user_server(uid)
-    user_states[uid] = data
-    if srv and "server" not in user_states[uid]:
-      user_states[uid]["server"] = srv
-
-
-def update_state(uid: int, **kwargs):
-  with state_lock:
-    if uid not in user_states:
-      user_states[uid] = {}
-    user_states[uid].update(kwargs)
-
-
-def clear_state(uid: int):
-  with state_lock:
-    srv = user_states.get(uid, {}).get("server") or get_user_server(uid)
-    user_states[uid] = {"server": srv} if srv else {}
-
-
-# ==========================================
-# БЕЗОПАСНАЯ ОТПРАВКА СООБЩЕНИЙ
-# ==========================================
-def safe_send_message(chat_id, text, parse_mode="HTML", reply_markup=None):
-  try:
-    return bot.send_message(
-        chat_id, text, parse_mode=parse_mode, reply_markup=reply_markup
-    )
-  except ApiTelegramException as e:
-    logger.error(f"Ошибка отправки сообщения: {e}")
-    return bot.send_message(
-        chat_id, text, parse_mode=None, reply_markup=reply_markup
-    )
-
-
-def safe_send_photo(
-    chat_id, photo, caption, parse_mode="HTML", reply_markup=None
-):
-  try:
-    return bot.send_photo(
-        chat_id,
-        photo,
-        caption=caption,
-        parse_mode=parse_mode,
-        reply_markup=reply_markup,
-    )
-  except ApiTelegramException as e:
-    logger.error(f"Ошибка отправки фото: {e}")
-    return bot.send_photo(
-        chat_id,
-        photo,
-        caption=caption,
-        parse_mode=None,
-        reply_markup=reply_markup,
-    )
-
-
-def send_log_file(
-    chat_id, filename, text_content, caption=None, reply_markup=None
-):
-  file_bytes = io.BytesIO(text_content.encode("utf-8"))
-  file_bytes.name = filename
-  try:
-    bot.send_document(
-        chat_id,
-        document=file_bytes,
-        caption=caption,
-        parse_mode="HTML",
-        reply_markup=reply_markup,
-    )
-  except Exception as e:
-    logger.error(f"Ошибка отправки файла логов: {e}")
-    safe_send_message(chat_id, text_content[:4000], reply_markup=reply_markup)
-
-
-# ==========================================
-# ИНИЦИАЛИЗАЦИЯ БД И ФОНОВЫЕ ЗАДАЧИ
-# ==========================================
-def init_db():
-  with db_lock, get_db() as conn:
-    cursor = conn.cursor()
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS active_ads (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                server TEXT,
-                category TEXT,
-                text TEXT,
-                photo TEXT,
-                is_vip INTEGER,
-                last_updated REAL,
-                edit_count INTEGER DEFAULT 0
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS pending_posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                username TEXT,
-                server TEXT,
-                category TEXT,
-                text TEXT,
-                photo TEXT,
-                is_vip INTEGER,
-                editing_by INTEGER,
-                editing_since REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS active_buy_ads (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                server TEXT,
-                category TEXT,
-                text TEXT,
-                photo TEXT,
-                is_vip INTEGER,
-                last_updated REAL,
-                edit_count INTEGER DEFAULT 0
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS pending_buy_posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                username TEXT,
-                server TEXT,
-                category TEXT,
-                text TEXT,
-                photo TEXT,
-                is_vip INTEGER,
-                editing_by INTEGER,
-                editing_since REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS barter_ads (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                server TEXT,
-                text TEXT,
-                photo TEXT,
-                last_updated REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS auctions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                server TEXT,
-                item_name TEXT,
-                start_price INTEGER,
-                current_bid INTEGER,
-                highest_bidder INTEGER,
-                status TEXT DEFAULT 'active',
-                created_at REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS auction_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                auction_id INTEGER,
-                user_id INTEGER,
-                action TEXT,
-                timestamp REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS auction_complaints (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                auction_id INTEGER,
-                owner_id INTEGER,
-                target_user_id INTEGER,
-                reason TEXT,
-                timestamp REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS referrals (
-                referrer_id INTEGER,
-                referred_id INTEGER,
-                qualified_days INTEGER DEFAULT 0,
-                last_active_date TEXT,
-                ads_today INTEGER DEFAULT 0,
-                completed INTEGER DEFAULT 0,
-                PRIMARY KEY (referrer_id, referred_id)
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_bonuses (
-                user_id INTEGER PRIMARY KEY,
-                last_claim_date TEXT,
-                last_claim_timestamp REAL DEFAULT 0,
-                vip_ads_count INTEGER DEFAULT 0,
-                vip_ads_expiry REAL DEFAULT 0
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS chat_logs_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sender_id INTEGER,
-                receiver_id INTEGER,
-                text TEXT,
-                timestamp REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS admin_action_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                admin_username TEXT,
-                action TEXT,
-                target TEXT,
-                timestamp REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS bot_settings (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )
-        """)
-    cursor.execute(
-        "INSERT OR IGNORE INTO bot_settings (key, value) VALUES ('vc_rate',"
-        " '95000')"
-    )
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS bans (
-                target TEXT PRIMARY KEY,
-                is_id INTEGER
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS editor_stats (
-                username TEXT PRIMARY KEY,
-                count INTEGER
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS admin_ad_stats (
-                username TEXT PRIMARY KEY,
-                count INTEGER DEFAULT 0
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_data (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT,
-                last_ad_time REAL,
-                server TEXT
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS active_dialogs (
-                buyer_id INTEGER,
-                seller_id INTEGER,
-                ad_id INTEGER,
-                is_active INTEGER,
-                PRIMARY KEY (buyer_id, seller_id, ad_id)
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS favorites (
-                user_id INTEGER,
-                ad_id INTEGER,
-                PRIMARY KEY (user_id, ad_id)
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS premium_users (
-                user_id INTEGER PRIMARY KEY,
-                expires_at REAL
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS admin_chats (
-                chat_id INTEGER PRIMARY KEY
-            )
-        """)
-
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS approved_admins (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT
-            )
-        """)
-
-
-init_db()
-
-
-# ==========================================
-# ФОНОВЫЙ ПЛАНИЩИК (ПО МСК)
-# ==========================================
-def background_maintenance_worker():
-  last_ad_clean_date = ""
-  last_log_clean_date = ""
-  last_bonus_check_hour = -1
-
-  while True:
-    try:
-      now = get_msk_time()
-      current_time_str = now.strftime("%H:%M:%S")
-      current_date_str = now.strftime("%Y-%m-%d")
-      current_hour = now.hour
-
-      if current_hour != last_bonus_check_hour:
-        with db_lock, get_db() as conn:
-          cur = conn.cursor()
-          cur.execute(
-              "UPDATE user_bonuses SET vip_ads_count = MAX(0, vip_ads_count - 1)"
-              " WHERE vip_ads_count > 0"
-          )
-        last_bonus_check_hour = current_hour
-
-      if (
-          "07:50:00" <= current_time_str <= "07:51:00"
-          and last_ad_clean_date != current_date_str
-      ):
-        with db_lock, get_db() as conn:
-          cur = conn.cursor()
-          cur.execute("DELETE FROM active_ads")
-          cur.execute("DELETE FROM active_buy_ads")
-          cur.execute("DELETE FROM barter_ads")
-          cur.execute("DELETE FROM auctions WHERE status != 'active'")
-        logger.info(
-            "Автоматическое удаление старых объявлений в 07:50:00 МСК выполнено."
-        )
-        last_ad_clean_date = current_date_str
-
-      if (
-          "22:30:00" <= current_time_str <= "22:31:00"
-          and last_log_clean_date != current_date_str
-      ):
-        one_day_ago = time.time() - 86400
-        with db_lock, get_db() as conn:
-          cur = conn.cursor()
-          cur.execute(
-              "DELETE FROM chat_logs_history WHERE timestamp < ?",
-              (one_day_ago,),
-          )
-          cur.execute(
-              "DELETE FROM admin_action_logs WHERE timestamp < ?",
-              (one_day_ago,),
-          )
-          cur.execute(
-              "DELETE FROM auction_logs WHERE timestamp < ?", (one_day_ago,)
-          )
-        logger.info(
-            "Автоматическая очистка логов (старше 1 дня) в 22:30:00 МСК"
-            " выполнена."
-        )
-        last_log_clean_date = current_date_str
-
-    except Exception as e:
-      logger.error(f"Ошибка в фоновом планировщике: {e}")
-    time.sleep(20)
-
-
-threading.Thread(target=background_maintenance_worker, daemon=True).start()
-
-
-# ==========================================
-# ПРОВЕРКА ВРЕМЕНИ И КУЛДАУНА ОБЪЯВЛЕНИЙ (ПО МСК)
-# ==========================================
-def validate_ad_submission(user_id: int) -> tuple[bool, str]:
-  now_msk = get_msk_time()
-  current_time = now_msk.time()
-
-  start_window = dtime(8, 0, 0)
-  end_window = dtime(22, 0, 0)
-  if not (start_window <= current_time <= end_window):
-    return (
-        False,
-        "❌ Отправка объявлений доступна только с <b>08:00:00 до 22:00:00"
-        " МСК</b>.",
-    )
-
-  is_prem = is_user_premium(user_id)
-  cooldown_seconds = 60 if is_prem else 120
-
-  last_time = get_user_last_ad_time(user_id)
-  current_ts = time.time()
-  elapsed = current_ts - last_time
-
-  if elapsed < cooldown_seconds:
-    remaining = int(cooldown_seconds - elapsed)
-    cooldown_label = "1 минута" if is_prem else "2 минуты"
-    return (
-        False,
-        f"⏳ <b>Кулдаун на отправку объявлений!</b>\nПодождите еще"
-        f" <b>{remaining} сек.</b>\n(Ваш кулдаун по VIP-статусу: {cooldown_label}"
-        " по МСК).",
-    )
-
-  return True, ""
-
-
-def check_working_hours() -> tuple[bool, str]:
-  """Проверка временного окна с 08:00:00 до 22:00:00 МСК для аукционов и обмена."""
-  now_msk = get_msk_time()
-  current_time = now_msk.time()
-  start_window = dtime(8, 0, 0)
-  end_window = dtime(22, 0, 0)
-  if not (start_window <= current_time <= end_window):
-    return (
-        False,
-        "❌ Данное действие доступно только с <b>08:00:00 до 22:00:00 МСК</b>.",
-    )
-  return True, ""
-
-
-# ==========================================
-# ОБРАБОТЧИКИ АНТИФЛУДА И БАНОВ
-# ==========================================
-@bot.message_handler(
-    func=lambda m: is_flooding(m.from_user.id), content_types=["text", "photo"]
-)
-def handle_flood(m):
-  try:
-    bot.send_message(
-        m.chat.id,
-        "⚠️ <b>Слишком частые запросы!</b> Пожалуйста, отправляйте сообщения"
-        " немного медленнее.",
-    )
-  except Exception:
-    pass
-
-
-@bot.callback_query_handler(func=lambda c: is_flooding(c.from_user.id))
-def handle_flood_callback(c):
-  try:
-    bot.answer_callback_query(
-        c.id, "⚠️ Не так быстро! Подождите пару секунд.", show_alert=False
-    )
-  except Exception:
-    pass
-
-
-@bot.message_handler(func=lambda m: is_banned(m.from_user))
-def blocked_user_message(m):
-  safe_send_message(
-      m.chat.id,
-      "⛔ <b>Вы заблокированы в системе модерации.</b>",
-      reply_markup=types.ReplyKeyboardRemove(),
-  )
-
-
-@bot.callback_query_handler(func=lambda c: is_banned(c.from_user))
-def blocked_user_callback(c):
-  try:
-    bot.answer_callback_query(c.id, "⛔ Вы заблокированы!", show_alert=True)
-  except Exception:
-    pass
-
-
-# ==========================================
-# КЛАВИАТУРЫ
-# ==========================================
-def kb_main_menu(user_id=None):
-  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  m.row(types.KeyboardButton("🌐 Сменить игровой сервер"))
-  m.row(
-      types.KeyboardButton("💍 Аксессуары и вещи"),
-      types.KeyboardButton("🚗 Транспорт и тюнинг"),
-  )
-  m.row(
-      types.KeyboardButton("👕 Скины и охранники"),
-      types.KeyboardButton("🏠 Недвижимость и бизнесы"),
-  )
-  m.row(types.KeyboardButton("📦 Ресурсы и материалы"))
-  m.row(
-      types.KeyboardButton("📤 Продать товар"),
-      types.KeyboardButton("📥 Скупить товар"),
-  )
-  m.row(
-      types.KeyboardButton("🔄 Бартер / Обмен"),
-      types.KeyboardButton("🏛 Аукционы"),
-  )
-  m.row(types.KeyboardButton("👥 Рефералы и Бонусы"))
-  m.row(types.KeyboardButton("💱 Курс VC и калькулятор"))
-  m.row(types.KeyboardButton("🔍 Найти товар в базе"))
-  m.row(
-      types.KeyboardButton("❤️ Сохраненные"),
-      types.KeyboardButton("📋 Мои публикации"),
-  )
-  m.row(types.KeyboardButton("📊 Анализ цен на сервере"))
-  m.row(
-      types.KeyboardButton("💎 VIP-статус"),
-      types.KeyboardButton("💬 Связаться с менеджером"),
-  )
-
-  if user_id and is_admin_or_owner_id(user_id):
-    m.row(types.KeyboardButton("👑 Админ-панель"))
-
-  return m
-
-
-def kb_cancel():
-  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  m.row(
-      types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие")
-  )
-  return m
-
-
-def kb_owner_input():
-  m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  m.row(
-      types.KeyboardButton("🔨 Забанить игрока"),
-      types.KeyboardButton("⬅️ Назад"),
-      types.KeyboardButton("❌ Отменить действие"),
-  )
-  return m
-
-
-# ==========================================
-# КОМАНДА /START И РЕФЕРАЛЬНАЯ СИСТЕМА
-# ==========================================
-@bot.message_handler(commands=["start"])
-def cmd_start(m):
-  uid = m.from_user.id
-  username = m.from_user.username or ""
-  register_user(uid, username)
-  set_user_server(uid, SERVERS[0])  # Устанавливаем сервер по умолчанию Phoenix
-
-  if is_banned(m.from_user):
-    return safe_send_message(
-        m.chat.id,
-        "⛔ <b>Вы заблокированы в системе модерации.</b>",
-        reply_markup=types.ReplyKeyboardRemove(),
-    )
-
-  args = m.text.split()
-  if len(args) > 1 and args[1].startswith("ref_"):
-    try:
-      referrer_id = int(args[1].replace("ref_", ""))
-      if referrer_id != uid:
-        with db_lock, get_db() as conn:
-          cur = conn.cursor()
-          cur.execute(
-              "SELECT 1 FROM referrals WHERE referrer_id = ? AND referred_id"
-              " = ?",
-              (referrer_id, uid),
-          )
-          if not cur.fetchone():
-            cur.execute(
-                "INSERT OR IGNORE INTO referrals (referrer_id, referred_id,"
-                " last_active_date) VALUES (?, ?, ?)",
-                (referrer_id, uid, get_msk_time().strftime("%Y-%m-%d")),
-            )
-
-            now_ts = time.time()
-            for target_id in [referrer_id, uid]:
-              cur.execute(
-                  "SELECT expires_at FROM premium_users WHERE user_id = ?",
-                  (target_id,),
-              )
-              row = cur.fetchone()
-              existing_exp = (
-                  row["expires_at"]
-                  if row and row["expires_at"] > now_ts
-                  else now_ts
-              )
-              new_exp = existing_exp + 10 * 86400
-              cur.execute(
-                  "INSERT OR REPLACE INTO premium_users (user_id, expires_at)"
-                  " VALUES (?, ?)",
-                  (target_id, new_exp),
-              )
-
-            with contextlib.suppress(Exception):
-              safe_send_message(
-                  referrer_id,
-                  "🎉 <b>По вашей реферальной ссылке зарегистрировался новый"
-                  " друг!</b>\nВам и вашему другу начислен VIP-статус на 10"
-                  " дней!",
-              )
-              safe_send_message(
-                  uid,
-                  "🎁 <b>Вы успешно зарегистрировались по реферальной"
-                  " ссылке!</b>\nВам начислен VIP-статус на 10 дней!",
-              )
-    except Exception as e:
-      logger.error(f"Ошибка реферальной системы: {e}")
-
-  text = (
-      f"👋 Приветствую, <b>{html.escape(m.from_user.first_name)}</b>!\n\n"
-      f"🤖 Мы — <b>неофициальный бот</b> объявлений Arizona RP, созданный игроком.\n\n"
-      f"🌐 <b>Игровой сервер по умолчанию:</b> {SERVERS[0]}.\n"
-      f"Если вам нужно его сменить, нажмите на кнопку <b>«🌐 Сменить игровой сервер»</b> в меню ниже.\n\n"
-      f"⚠️ <b>Безопасность и ответственность:</b> Бот является фанатским проектом. Администрация <b>не несет никакой ответственности</b> за ваши сделки, обмены и договоренности. Все действия вы совершаете на свой страх и риск!\n\n"
-      f"Выберите нужный раздел в меню ниже:"
-  )
-  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
-
-
-# ==========================================
-# КОМАНДА /HELP (FAQ)
-# ==========================================
-@bot.message_handler(commands=["help"])
-def cmd_help(m):
-  uid = m.from_user.id
-  help_text = (
-      "❓ <b>Часто задаваемые вопросы (FAQ)</b>\n\n"
-      "<b>1. Этот бот официальный?</b>\n"
-      "Нет, это неофициальный бот объявлений, созданный игроком для игроков.\n\n"
-      "<b>2. Как подать объявление о продаже?</b>\n"
-      "Нажмите кнопку «📤 Продать товар», выберите ваш игровой сервер, категорию и отправьте текст с фото.\n\n"
-      "<b>3. Как подать объявление о скупке?</b>\n"
-      "Нажмите кнопку «📥 Скупить товар», укажите сервер, категорию и отправьте описание.\n\n"
-      "<b>4. Почему мое объявление не появилось сразу?</b>\n"
-      "Все объявления проходят предварительную модерацию администраторами перед публикацией.\n\n"
-      "<b>5. Как работает реферальная система?</b>\n"
-      "Приглашайте друзей по вашей реферальной ссылке. И вы, и ваш друг получаете VIP-статус на 10 дней.\n\n"
-      "<b>6. Безопасны ли сделки через бота?</b>\n"
-      "⚠️ <b>Внимание:</b> администрация бота не несет никакой ответственности за ваши сделки и договоренности с игроками.\n\n"
-      "<b>7. Как получить ежедневный бонус?</b>\n"
-      "В разделе «👥 Рефералы и Бонусы» можно раз в 24 часа забирать случайную награду.\n\n"
-      "<b>8. Что дает VIP-статус?</b>\n"
-      "Уменьшенный кулдаун на подачу объявлений (60 секунд вместо 120 по МСК).\n\n"
-      "<b>9. Как изменить игровой сервер?</b>\n"
-      "Нажмите кнопку «🌐 Сменить игровой сервер» в главном меню.\n\n"
-      "<b>10. Куда писать при проблемах или вопросах?</b>\n"
-      "Вы можете обратиться к менеджеру: @bounqy31 или в наш VK: @bountyarz."
-  )
-  safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu(uid))
-
-
-# ==========================================
-# РЕФЕРАЛЫ И ЕЖЕДНЕВНЫЕ БОНУСЫ (С ВЕРОЯТНОСТЯМИ)
-# ==========================================
-def show_ref_bonus_menu(m):
-  uid = m.from_user.id
-  bot_info = bot.get_me()
-  ref_link = f"https://t.me/{bot_info.username}?start=ref_{uid}"
-  share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote('Залетай в лучший неофициальный бот объявлений Arizona RP!')}"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT COUNT(*) as cnt FROM referrals WHERE referrer_id = ?", (uid,)
-    )
-    ref_count = cur.fetchone()["cnt"]
-
-    cur.execute("SELECT * FROM user_bonuses WHERE user_id = ?", (uid,))
-    bonus_row = cur.fetchone()
-
-    last_claim_ts = (
-        bonus_row["last_claim_timestamp"]
-        if bonus_row and "last_claim_timestamp" in bonus_row.keys()
-        else 0.0
-    )
-    vip_ads = bonus_row["vip_ads_count"] if bonus_row else 0
-
-  current_ts = time.time()
-  cooldown = 86400
-  can_claim = (current_ts - last_claim_ts) >= cooldown
-  remaining_time = (
-      int(cooldown - (current_ts - last_claim_ts)) if not can_claim else 0
-  )
-
-  hours_rem = remaining_time // 3600
-  mins_rem = (remaining_time % 3600) // 60
-
-  text = (
-      f"👥 <b>Рефералы и Бонусы</b>\n\n"
-      f"Приглашайте друзей по вашей реферальной ссылке и получайте <b>VIP-статус"
-      f" на 10 дней</b> (и ваш друг тоже получает VIP на 10 дней)!\n\n"
-      f"🔗 <b>Ваша реферальная ссылка:</b>\n<code>{ref_link}</code>\n\n"
-      f"📊 Приглашено друзей: <b>{ref_count}</b>\n"
-      f"⭐ Доступно бонусных VIP-объявлений: <b>{vip_ads}</b> (⚠️"
-      " <i>Неиспользованные бонусные VIP-объявления удаляются автоматически"
-      " по 1 штуке каждые 24 часа!</i>)\n\n"
-      f"🎁 Ежедневный бонус обновляется каждые 24 часа!"
-  )
-
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  markup.add(
-      types.InlineKeyboardButton(
-          "📤 Поделиться реферальной ссылкой", url=share_url
-      )
-  )
-  if can_claim:
-    markup.add(
-        types.InlineKeyboardButton(
-            "🎁 Забрать ежедневный бонус", callback_data="claim_daily_bonus"
-        )
-    )
-  else:
-    markup.add(
-        types.InlineKeyboardButton(
-            f"⏳ Бонус будет доступен через {hours_rem}ч. {mins_rem}мин.",
-            callback_data="bonus_cooldown_alert",
-        )
-    )
-
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(
-    func=lambda c: c.data in ["claim_daily_bonus", "bonus_cooldown_alert"]
-)
-def cb_daily_bonus(call):
-  uid = call.from_user.id
-  current_ts = time.time()
-  cooldown = 86400
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM user_bonuses WHERE user_id = ?", (uid,))
-    row = cur.fetchone()
-    last_claim_ts = (
-        row["last_claim_timestamp"]
-        if row and "last_claim_timestamp" in row.keys()
-        else 0.0
-    )
-
-    if current_ts - last_claim_ts < cooldown:
-      remaining = int(cooldown - (current_ts - last_claim_ts))
-      h = remaining // 3600
-      m_min = (remaining % 3600) // 60
-      try:
-        bot.answer_callback_query(
-            call.id,
-            f"⚠️ Ежедневный бонус можно забирать раз в 24 часа! Осталось: {h}ч."
-            f" {m_min}мин.",
-            show_alert=True,
-        )
-      except Exception:
-        pass
-      return
-
-    roll = random.randint(1, 100)
-    today_str = get_msk_time().strftime("%Y-%m-%d")
-
-    if roll <= 5:
-      cur.execute("SELECT expires_at FROM premium_users WHERE user_id = ?", (uid,))
-      p_row = cur.fetchone()
-      base_exp = (
-          p_row["expires_at"]
-          if p_row and p_row["expires_at"] > current_ts
-          else current_ts
-      )
-      new_exp = base_exp + 13 * 86400
-      cur.execute(
-          "INSERT OR REPLACE INTO premium_users (user_id, expires_at) VALUES"
-          " (?, ?)",
-          (uid, new_exp),
-      )
-      msg_reward = (
-          "🎉 <b>Поздравляем! Вы выбили VIP-подписку на 13 дней!</b>"
-      )
-    else:
-      if roll <= 35:
-        ads_won = 1
-      elif roll <= 60:
-        ads_won = 2
-      elif roll <= 80:
-        ads_won = 3
-      elif roll <= 92:
-        ads_won = 4
-      else:
-        ads_won = 5
-
-      current_ads = row["vip_ads_count"] if row else 0
-      new_ads = current_ads + ads_won
-      cur.execute(
-          "INSERT INTO user_bonuses (user_id, last_claim_date,"
-          " last_claim_timestamp, vip_ads_count, vip_ads_expiry) VALUES (?, ?,"
-          " ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET last_claim_date = ?,"
-          " last_claim_timestamp = ?, vip_ads_count = ?, vip_ads_expiry = ?",
-          (
-              uid,
-              today_str,
-              current_ts,
-              new_ads,
-              current_ts + 86400,
-              today_str,
-              current_ts,
-              new_ads,
-              current_ts + 86400,
-          ),
-      )
-      msg_reward = (
-          f"🎁 <b>Поздравляем! Вы выбили VIP-объявления в количестве:"
-          f" {ads_won} шт.</b>\n(⚠️ <i>Неиспользованные бонусные объявления"
-          " будут удаляться автоматически по 1 шт. каждый день, если их не"
-          " использовать!</i>)"
-      )
-
-    cur.execute(
-        "UPDATE user_bonuses SET last_claim_date = ?, last_claim_timestamp ="
-        " ? WHERE user_id = ?",
-        (today_str, current_ts, uid),
-    )
-
-  try:
-    bot.answer_callback_query(call.id, "🎉 Ежедневный бонус получен!", show_alert=True)
-  except Exception:
-    pass
-
-  safe_send_message(call.message.chat.id, msg_reward)
-  show_ref_bonus_menu(call.message)
-
-
-# ==========================================
-# ИНИЦИАЦИЯ СОЗДАНИЯ ОБЪЯВЛЕНИЙ
-# ==========================================
-def start_add_ad(m):
-  uid = m.from_user.id
-  allowed, err_msg = validate_ad_submission(uid)
-  if not allowed:
-    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(uid))
-
-  update_state(uid, posting_ad={"step": "category", "is_buy": False})
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-  for cat in CATEGORIES:
-    markup.add(types.KeyboardButton(cat))
-  markup.row(
-      types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие")
-  )
-  safe_send_message(
-      m.chat.id,
-      "📤 <b>Подача объявления о продаже</b>\n\nВыберите категорию товара:",
-      reply_markup=markup,
-  )
-
-
-def start_add_buy_ad(m):
-  uid = m.from_user.id
-  allowed, err_msg = validate_ad_submission(uid)
-  if not allowed:
-    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(uid))
-
-  update_state(uid, posting_ad={"step": "category", "is_buy": True})
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-  for cat in CATEGORIES:
-    markup.add(types.KeyboardButton(cat))
-  markup.row(
-      types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие")
-  )
-  safe_send_message(
-      m.chat.id,
-      "📥 <b>Подача объявления о скупке</b>\n\nВыберите категорию товара:",
-      reply_markup=markup,
-  )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id)
-    .get("posting_ad", {})
-    .get("step")
-    == "category"
-    and m.text in CATEGORIES
-)
-def process_ad_category(m):
-  uid = m.from_user.id
-  cat = m.text
-  st = get_state(uid)
-  st["posting_ad"]["category"] = cat
-  st["posting_ad"]["step"] = "text_or_photo"
-  set_state(uid, st)
-  safe_send_message(
-      m.chat.id,
-      f"📝 Отправьте текст вашего объявления и прикрепите фото (по желанию):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    content_types=["text", "photo"],
-    func=lambda m: get_state(m.from_user.id)
-    .get("posting_ad", {})
-    .get("step")
-    == "text_or_photo",
-)
-def process_ad_content(m):
-  uid = m.from_user.id
-  st = get_state(uid)
-  ad_data = st.get("posting_ad", {})
-  clear_state(uid)
-
-  allowed, err_msg = validate_ad_submission(uid)
-  if not allowed:
-    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(uid))
-
-  text = m.text or m.caption
-  if not text:
-    return safe_send_message(
-        m.chat.id,
-        "⚠️ Текст объявления не может быть пустым.",
-        reply_markup=kb_main_menu(uid),
-    )
-
-  if not check_auto_moderation(text):
-    return safe_send_message(
-        m.chat.id,
-        "🤬 Текст содержит запрещенные слова. Публикация отклонена.",
-        reply_markup=kb_main_menu(uid),
-    )
-
-  photo = m.photo[-1].file_id if m.photo else None
-  srv = get_user_server(uid)
-  is_buy = ad_data.get("is_buy", False)
-  category = ad_data.get("category", CATEGORIES[0])
-  is_vip = 1 if is_user_premium(uid) else 0
-
-  table = "pending_buy_posts" if is_buy else "pending_posts"
-  username = m.from_user.username or str(uid)
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        f"INSERT INTO {table} (user_id, username, server, category, text,"
-        " photo, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (uid, username, srv, category, text, photo, is_vip),
-    )
-    post_id = cur.lastrowid
-    cur.execute(
-        "UPDATE user_data SET last_ad_time = ? WHERE user_id = ?",
-        (time.time(), uid),
-    )
-
-  admin_chats = get_admin_chat_ids()
-  prefix = "скупки" if is_buy else "продажи"
-  callback_acc = f"mod_acc_buy_{post_id}" if is_buy else f"mod_acc_{post_id}"
-  callback_rej = f"mod_rej_buy_{post_id}" if is_buy else f"mod_rej_{post_id}"
-
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  markup.add(
-      types.InlineKeyboardButton("✅ Одобрить", callback_data=callback_acc),
-      types.InlineKeyboardButton("❌ Отклонить", callback_data=callback_rej),
-  )
-
-  notif_text = (
-      f"🔔 <b>Новое объявление {prefix} (#{post_id}) на модерацию!</b>\n🌐"
-      f" Сервер: {srv}\n👤 От: @{html.escape(username)}\n\n{text}"
-  )
-
-  for admin_id in admin_chats:
-    with contextlib.suppress(Exception):
-      if photo:
-        bot.send_photo(
-            admin_id, photo, caption=notif_text, reply_markup=markup
-        )
-      else:
-        bot.send_message(admin_id, notif_text, reply_markup=markup)
-
-  safe_send_message(
-      m.chat.id,
-      "✅ Ваше объявление успешно отправлено на модерацию администраторам!",
-      reply_markup=kb_main_menu(uid),
-  )
-
-
-# ==========================================
-# ИНТЕРАКТИВНЫЙ VC КАЛЬКУЛЯТОР
-# ==========================================
-def show_vc_menu(m):
-  uid = m.from_user.id
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT value FROM bot_settings WHERE key = 'vc_rate'")
-    row = cur.fetchone()
-    rate = float(row["value"]) if row else 95000.0
-
-  markup = types.InlineKeyboardMarkup(row_width=2)
-  markup.add(
-      types.InlineKeyboardButton(
-          "💵 Доллары -> VC", callback_data="vc_calc_to_vc"
-      ),
-      types.InlineKeyboardButton(
-          "💎 VC -> Доллары", callback_data="vc_calc_to_usd"
-      ),
-  )
-  if is_admin_or_owner(m.from_user):
-    markup.add(
-        types.InlineKeyboardButton(
-            "⚙️ Изменить курс VC", callback_data="vc_set_rate"
-        )
-    )
-
-  text = (
-      f"💱 <b>Курс VC и калькулятор</b>\n\n"
-      f"📊 Текущий курс 1 VC-коина: <b>{rate:,.0f} $</b>\n\n"
-      f"Выберите направление расчета или воспользуйтесь кнопками ниже:"
-  )
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(
-    func=lambda c: c.data in ["vc_calc_to_vc", "vc_calc_to_usd", "vc_set_rate"]
-)
-def cb_vc_calc(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  uid = call.from_user.id
-  if call.data == "vc_calc_to_vc":
-    update_state(uid, vc_calc_mode="to_vc")
-    safe_send_message(
-        call.message.chat.id,
-        "💵 Введите сумму в долларах ($) для перевода в VC-коины (например:"
-        " 9.5кк, 10000000):",
-        reply_markup=kb_cancel(),
-    )
-  elif call.data == "vc_calc_to_usd":
-    update_state(uid, vc_calc_mode="to_usd")
-    safe_send_message(
-        call.message.chat.id,
-        "💎 Введите количество VC-коинов для перевода в доллары ($) (например:"
-        " 100, 1500):",
-        reply_markup=kb_cancel(),
-    )
-  elif call.data == "vc_set_rate":
-    if not is_admin_or_owner(call.from_user):
-      return
-    update_state(uid, vc_set_rate=True)
-    safe_send_message(
-        call.message.chat.id,
-        "⚙️ Введите новый курс 1 VC-коина в долларах ($):",
-        reply_markup=kb_cancel(),
-    )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("vc_calc_mode") is not None
-    or get_state(m.from_user.id).get("vc_set_rate") is True
-)
-def process_vc_calculation(m):
-  uid = m.from_user.id
-  st = get_state(uid)
-  mode = st.get("vc_calc_mode")
-  is_setting = st.get("vc_set_rate")
-  clear_state(uid)
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT value FROM bot_settings WHERE key = 'vc_rate'")
-    row = cur.fetchone()
-    rate = float(row["value"]) if row else 95000.0
-
-  if is_setting:
-    if not is_admin_or_owner(m.from_user):
-      return
-    try:
-      new_rate = parse_flexible_price(m.text)
-      with db_lock, get_db() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT OR REPLACE INTO bot_settings (key, value) VALUES ('vc_rate',"
-            " ?)",
-            (str(new_rate),),
-        )
-      safe_send_message(
-          m.chat.id,
-          f"✅ Курс VC успешно обновлен: <b>{new_rate:,.0f} $</b>",
-          reply_markup=kb_main_menu(uid),
-      )
-    except ValueError:
-      safe_send_message(
-          m.chat.id,
-          "⚠️ Неверный формат суммы для курса.",
-          reply_markup=kb_main_menu(uid),
-      )
-    return
-
-  try:
-    val = parse_flexible_price(m.text)
-  except ValueError:
-    return safe_send_message(
-        m.chat.id,
-        "⚠️ Не удалось распознать сумму. Введите число (например: 1кк, 500к).",
-        reply_markup=kb_main_menu(uid),
-    )
-
-  if mode == "to_vc":
-    if rate <= 0:
-      rate = 95000.0
-    vc_amount = val / rate
-    res_text = (
-        f"💱 <b>Результат расчета:</b>\n\n💵 Сумма: <b>{val:,.0f}"
-        f" $</b>\n💎 Получается VC: <b>{vc_amount:,.2f} VC</b>\n📊 Курс:"
-        f" {rate:,.0f} $ / 1 VC"
-    )
-  else:
-    usd_amount = val * rate
-    res_text = (
-        f"💱 <b>Результат расчета:</b>\n\n💎 VC-коины: <b>{val:,.2f}"
-        f" VC</b>\n💵 Сумма в долларах: <b>{usd_amount:,.0f} $</b>\n📊 Курс:"
-        f" {rate:,.0f} $ / 1 VC"
-    )
-
-  safe_send_message(m.chat.id, res_text, reply_markup=kb_main_menu(uid))
-
-
-# ==========================================
-# МОДУЛЬ VIP-СТАТУСА (ВРЕМЯ ПО МСК)
-# ==========================================
-def info_premium(m):
-  uid = m.from_user.id
-  is_prem = is_user_premium(uid)
-  status_text = "✅ <b>Активен</b>" if is_prem else "❌ <b>Неактивен</b>"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT expires_at FROM premium_users WHERE user_id = ?", (uid,)
-    )
-    row = cur.fetchone()
-    if row and row["expires_at"] > time.time():
-      exp_date = datetime.fromtimestamp(
-          row["expires_at"], ZoneInfo("Europe/Moscow")
-      ).strftime("%d.%m.%Y %H:%M")
-      status_text += f" (до {exp_date} МСК)"
-
-  text = (
-      f"💎 <b>VIP-статус в системе</b>\n\n"
-      f"Статус: {status_text}\n\n"
-      f"<b>Преимущества VIP-статуса:</b>\n"
-      f"• Уменьшенный кулдаун на подачу объявлений (60 сек. вместо 120 сек. по"
-      " МСК)\n"
-      f"• Приоритет и особый знак отличия\n\n"
-      f"Выберите вариант приобретения VIP-статуса за Telegram Stars (⭐):"
-  )
-
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  markup.add(
-      types.InlineKeyboardButton(
-          "👑 VIP на 30 дней — 100 ⭐", callback_data="buy_vip_30"
-      ),
-      types.InlineKeyboardButton(
-          "👑 VIP навсегда — 500 ⭐", callback_data="buy_vip_forever"
-      ),
-  )
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(
-    func=lambda c: c.data in ["buy_vip_30", "buy_vip_forever"]
-)
-def cb_buy_vip(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-
-  if call.data == "buy_vip_30":
-    prices = [types.LabeledPrice(label="VIP на 30 дней", amount=100)]
-    payload = "premium_30"
-    title = "VIP на 30 дней"
-    description = "VIP-подписка на 30 дней за 100 звезд"
-  else:
-    prices = [types.LabeledPrice(label="VIP навсегда", amount=500)]
-    payload = "premium_forever"
-    title = "VIP навсегда"
-    description = "Пожизненная VIP-подписка за 500 звезд"
-
-  try:
-    bot.send_invoice(
-        chat_id=call.message.chat.id,
-        title=title,
-        description=description,
-        invoice_payload=payload,
-        provider_token="",
-        currency="XTR",
-        prices=prices,
-        start_parameter="vip_sub",
-    )
-  except Exception as e:
-    logger.error(f"Ошибка отправки инвойса VIP: {e}")
-
-
-# ==========================================
-# МОИ ПУБЛИКАЦИИ
-# ==========================================
-def show_my_ads(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM active_ads WHERE user_id = ? AND server = ?", (uid, srv)
-    )
-    ads = cur.fetchall()
-    cur.execute(
-        "SELECT * FROM active_buy_ads WHERE user_id = ? AND server = ?",
-        (uid, srv),
-    )
-    buy_ads = cur.fetchall()
-
-  text = f"📋 <b>Ваши активные публикации на сервере {html.escape(srv)}:</b>\n\n"
-  markup = types.InlineKeyboardMarkup(row_width=1)
-
-  if not ads and not buy_ads:
-    text += "У вас нет активных объявлений."
-  else:
-    for a in ads:
-      markup.add(
-          types.InlineKeyboardButton(
-              f"🗑 Удалить продажу #{a['id']}: {a['text'][:25]}...",
-              callback_data=f"my_del_ad_{a['id']}",
-          )
-      )
-    for a in buy_ads:
-      markup.add(
-          types.InlineKeyboardButton(
-              f"🗑 Удалить скупку #{a['id']}: {a['text'][:25]}...",
-              callback_data=f"my_del_buy_{a['id']}",
-          )
-      )
-
-  markup.add(
-      types.InlineKeyboardButton("⬅️ Назад в меню", callback_data="my_ads_back")
-  )
-  safe_send_message(m.chat.id, text, reply_markup=markup)
-
-
-@bot.callback_query_handler(
-    func=lambda c: c.data.startswith("my_del_ad_")
-    or c.data.startswith("my_del_buy_")
-)
-def cb_my_delete_ad(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  uid = call.from_user.id
-  is_buy = "my_del_buy_" in call.data
-  prefix = "my_del_buy_" if is_buy else "my_del_ad_"
-  aid = int(call.data.replace(prefix, ""))
-  table = "active_buy_ads" if is_buy else "active_ads"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        f"SELECT * FROM {table} WHERE id = ? AND user_id = ?", (aid, uid)
-    )
-    ad = cur.fetchone()
-    if not ad:
-      return safe_send_message(
-          call.message.chat.id, "⚠️ Объявление не найдено или уже удалено."
-      )
-    cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
-
-  safe_send_message(
-      call.message.chat.id,
-      f"✅ Ваше объявление (#{aid}) успешно удалено.",
-      reply_markup=kb_main_menu(uid),
-  )
-  with contextlib.suppress(Exception):
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "my_ads_back")
-def cb_my_ads_back(call):
-  try:
-    bot.answer_callback_query(call.id)
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-  safe_send_message(
-      call.message.chat.id,
-      "🏠 Главное меню:",
-      reply_markup=kb_main_menu(call.from_user.id),
-  )
-
-
-def show_favorites(m):
-  safe_send_message(
-      m.chat.id,
-      "❤️ <b>Сохраненные объявления:</b>\n\nСписок сохраненных избранных"
-      " товаров пуст.",
-      reply_markup=kb_main_menu(m.from_user.id),
-  )
-
-
-def start_search(m):
-  safe_send_message(
-      m.chat.id,
-      "🔍 <b>Поиск товара в базе:</b>\n\nВведите ключевое слово или название"
-      " предмета для поиска:",
-      reply_markup=kb_cancel(),
-  )
-  update_state(m.from_user.id, searching_keyword=True)
-
-
-def contact_manager(m):
-  safe_send_message(
-      m.chat.id,
-      f"💬 Связаться с менеджером: @{MANAGER_USERNAME}",
-      reply_markup=kb_main_menu(m.from_user.id),
-  )
-
-
-def show_average_prices(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  text = (
-      f"📊 <b>Анализ цен на сервере {html.escape(srv)}</b>\n\n"
-      "Здесь отображается аналитика и средняя рыночная стоимость товаров на"
-      " основе активных объявлений."
-  )
-  safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
-
-
-def show_category_ads(m):
-  cat = m.text
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM active_ads WHERE server = ? AND category = ? ORDER BY id"
-        " DESC LIMIT 5",
-        (srv, cat),
-    )
-    ads = cur.fetchall()
-
-  text = (
-      f"📦 Категория: <b>{html.escape(cat)}</b>\n🌐 Сервер:"
-      f" <b>{html.escape(srv)}</b>\n\n"
-  )
-  if not ads:
-    text += "В этой категории пока нет объявлений о продаже."
-    safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(m.from_user.id))
-  else:
-    safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(m.from_user.id))
-    for a in ads:
-      aid = a["id"]
-      markup = types.InlineKeyboardMarkup()
-      markup.add(
-          types.InlineKeyboardButton(
-              "✉️ Связаться с продавцом", callback_data=f"contact_seller_{aid}"
-          )
-      )
-      if is_admin_or_owner(m.from_user):
-        markup.add(
-            types.InlineKeyboardButton(
-                "🗑 [Админ] Удалить объявление",
-                callback_data=f"admin_del_ad_{aid}",
-            )
-        )
-      cap = f"🏷 <b>Объявление продажи #{aid}</b>\n\n{html.escape(a['text'])}"
-      if a["photo"]:
-        safe_send_photo(m.chat.id, a["photo"], caption=cap, reply_markup=markup)
-      else:
-        safe_send_message(m.chat.id, cap, reply_markup=markup)
-
-
-@bot.callback_query_handler(
-    func=lambda c: c.data.startswith("admin_del_ad_")
-    or c.data.startswith("admin_del_buy_")
-)
-def cb_admin_delete_ad(call):
-  if not is_admin_or_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(
-          call.id, "⛔ Нет прав администратора!", show_alert=True
-      )
-    except Exception:
-      return
-
-  is_buy = "admin_del_buy_" in call.data
-  prefix = "admin_del_buy_" if is_buy else "admin_del_ad_"
-  aid = int(call.data.replace(prefix, ""))
-  table = "active_buy_ads" if is_buy else "active_ads"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(f"SELECT * FROM {table} WHERE id = ?", (aid,))
-    ad = cur.fetchone()
-    if not ad:
-      try:
-        return bot.answer_callback_query(
-            call.id, "⚠️ Объявление уже удалено.", show_alert=True
-        )
-      except Exception:
-        return
-    cur.execute(f"DELETE FROM {table} WHERE id = ?", (aid,))
-    admin_uname = call.from_user.username or str(call.from_user.id)
-    cur.execute(
-        "INSERT INTO admin_action_logs (admin_username, action, target,"
-        " timestamp) VALUES (?, ?, ?, ?)",
-        (
-            admin_uname,
-            "Удаление активного объявления",
-            f"Пост #{aid} ({ad['server']})",
-            time.time(),
-        ),
-    )
-
-  try:
-    bot.answer_callback_query(
-        call.id, "✅ Объявление успешно удалено администратором."
-    )
-    bot.edit_message_caption(
-        f"❌ <b>Объявление удалено администратором"
-        f" @{html.escape(admin_uname)}</b>",
-        call.message.chat.id,
-        call.message.message_id,
-        reply_markup=None,
-    )
-  except Exception:
-    with contextlib.suppress(Exception):
-      bot.edit_message_text(
-          f"❌ <b>Объявление удалено администратором"
-          f" @{html.escape(admin_uname)}</b>",
-          call.message.chat.id,
-          call.message.message_id,
-          reply_markup=None,
-      )
-
-
-# ==========================================
-# ПЕРЕХВАТЧИК НАВИГАЦИИ И ОТМЕНЫ
-# ==========================================
-def should_override_nav(msg):
-  if not msg.text:
-    return False
-  if msg.text in ["❌ Отменить действие", "⬅️ Назад"]:
-    return True
-
-  uid = msg.from_user.id
-  st = get_state(uid)
-
-  is_in_active_input = (
-      st.get("posting_ad", {}).get("step")
-      in ["category", "text_or_photo", "choose_ad_type"]
-      or st.get("searching_keyword")
-      or st.get("vc_setting_rate")
-      or st.get("vc_conv_input")
-      or st.get("vc_calc_mode")
-      or st.get("vc_set_rate")
-      or st.get("barter_input")
-      or st.get("auction_create_step")
-      or st.get("auction_bid_input")
-      or st.get("auction_complaint_step")
-      or st.get("owner_action_input")
-      or st.get("ref_link_input")
-      or st.get("chat_with_seller_id")
-      or st.get("broadcast_input")
-  )
-
-  nav_buttons = [
-      "🔍 Найти товар в базе",
-      "❤️ Сохраненные",
-      "📋 Мои публикации",
-      "📊 Анализ цен на сервере",
-      "📤 Продать товар",
-      "📥 Скупить товар",
-      "💱 Курс VC и калькулятор",
-      "💎 VIP-статус",
-      "🌐 Сменить игровой сервер",
-      "👑 Админ-панель",
-      "💬 Связаться с менеджером",
-      "🔄 Бартер / Обмен",
-      "🏛 Аукционы",
-      "👥 Рефералы и Бонусы",
-      "🔨 Забанить игрока",
-      "🔓 Разбанить игрока",
-      "👑 Добавить адм",
-      "🚫 Снять с адм",
-      "📋 Логи чатов",
-      "модерация продажи",
-      "модерация скупки",
-      "рассылка",
-      "⬅️ Назад",
-  ] + CATEGORIES
-
-  if is_in_active_input:
-    return False
-
-  return msg.text in nav_buttons or msg.text in SERVERS
-
-
-@bot.message_handler(func=should_override_nav)
-def handle_navigation_override(m):
-  if m.text not in ["❌ Отменить действие", "⬅️ Назад"]:
-    clear_state(m.from_user.id)
-
-  if m.text == "🌐 Сменить игровой сервер":
-    change_server(m)
-  elif m.text == "💎 VIP-статус":
-    info_premium(m)
-  elif m.text == "📊 Анализ цен на сервере":
-    show_average_prices(m)
-  elif m.text == "📤 Продать товар":
-    start_add_ad(m)
-  elif m.text == "📥 Скупить товар":
-    start_add_buy_ad(m)
-  elif m.text == "💱 Курс VC и калькулятор":
-    show_vc_menu(m)
-  elif m.text in ["❌ Отменить действие", "⬅️ Назад"]:
-    cancel_action(m)
-  elif m.text == "📋 Мои публикации":
-    show_my_ads(m)
-  elif m.text == "❤️ Сохраненные":
-    show_favorites(m)
-  elif m.text == "🔍 Найти товар в базе":
-    start_search(m)
-  elif m.text == "👑 Админ-панель":
-    admin_panel(m)
-  elif m.text == "💬 Связаться с менеджером":
-    contact_manager(m)
-  elif m.text == "🔄 Бартер / Обмен":
-    show_barter_menu(m)
-  elif m.text == "🏛 Аукционы":
-    show_auctions_menu(m)
-  elif m.text == "👥 Рефералы и Бонусы":
-    show_ref_bonus_menu(m)
-  elif m.text == "📋 Логи чатов":
-    show_owner_logs_menu(m)
-  elif m.text == "модерация продажи":
-    show_pending_sales(m)
-  elif m.text == "модерация скупки":
-    show_pending_buys(m)
-  elif m.text == "рассылка":
-    start_broadcast(m)
-  elif m.text == "🔨 Забанить игрока":
-    owner_prompt_action(m, "ban")
-  elif m.text == "🔓 Разбанить игрока":
-    owner_prompt_action(m, "unban")
-  elif m.text == "👑 Добавить адм":
-    owner_prompt_action(m, "add_admin")
-  elif m.text == "🚫 Снять с адм":
-    owner_prompt_action(m, "remove_admin")
-  elif m.text in CATEGORIES:
-    show_category_ads(m)
-  elif m.text in SERVERS:
-    select_srv(m)
-
-
-def change_server(m):
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  for i in range(0, len(SERVERS), 2):
-    row_buttons = [types.KeyboardButton(s) for s in SERVERS[i : i + 2]]
-    markup.row(*row_buttons)
-  markup.row(
-      types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие")
-  )
-  safe_send_message(
-      m.chat.id, "🌐 Выберите ваш игровой сервер:", reply_markup=markup
-  )
-
-
-def select_srv(m):
-  srv = m.text
-  uid = m.from_user.id
-  if srv in SERVERS:
-    set_user_server(uid, srv)
-    safe_send_message(
-        m.chat.id,
-        f"✅ Сервер успешно изменен на: <b>{html.escape(srv)}</b>",
-        reply_markup=kb_main_menu(uid),
-    )
-
-
-def cancel_action(m):
-  uid = m.from_user.id
-  clear_state(uid)
-  safe_send_message(
-      m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu(uid)
-  )
-
-
-def admin_panel(m):
-  uid = m.from_user.id
-  if not is_admin_or_owner_id(uid):
-    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-  markup.row(
-      types.KeyboardButton("модерация продажи"),
-      types.KeyboardButton("модерация скупки"),
-  )
-  if is_owner(m.from_user):
-    markup.row(
-        types.KeyboardButton("рассылка"), types.KeyboardButton("📋 Логи чатов")
-    )
-    markup.row(
-        types.KeyboardButton("🔨 Забанить игрока"),
-        types.KeyboardButton("🔓 Разбанить игрока"),
-    )
-    markup.row(
-        types.KeyboardButton("👑 Добавить адм"),
-        types.KeyboardButton("🚫 Снять с адм"),
-    )
-  markup.row(
-      types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие")
-  )
-  safe_send_message(
-      m.chat.id,
-      "👑 <b>Панель администратора / владельца:</b>",
-      reply_markup=markup,
-  )
-
-
-# ==========================================
-# МОДУЛЬ МОДЕРАЦИИ И РАССЫЛКИ
-# ==========================================
-def show_pending_sales(m):
-  if not is_admin_or_owner(m.from_user):
-    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM pending_posts LIMIT 10")
-    posts = cur.fetchall()
-
-  if not posts:
-    return safe_send_message(
-        m.chat.id, "📭 На данный момент нет объявлений о продаже на модерации."
-    )
-
-  safe_send_message(
-      m.chat.id, f"📋 <b>Очередь модерации продаж (найдено: {len(posts)}):</b>"
-  )
-  for p in posts:
-    pid = p["id"]
-    text = p["text"]
-    srv = p["server"]
-    photo = p["photo"]
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton(
-            "✅ Одобрить", callback_data=f"mod_acc_{pid}"
-        ),
-        types.InlineKeyboardButton(
-            "❌ Отклонить", callback_data=f"mod_rej_{pid}"
-        ),
-    )
-    caption = f"📋 <b>Пост продажи #{pid}</b>\n🌐 Сервер: {srv}\n\n{text}"
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=caption, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, caption, reply_markup=markup)
-
-
-def show_pending_buys(m):
-  if not is_admin_or_owner(m.from_user):
-    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM pending_buy_posts LIMIT 10")
-    posts = cur.fetchall()
-
-  if not posts:
-    return safe_send_message(
-        m.chat.id, "📭 На данный момент нет объявлений о скупке на модерации."
-    )
-
-  safe_send_message(
-      m.chat.id, f"📋 <b>Очередь модерации скупки (найдено: {len(posts)}):</b>"
-  )
-  for p in posts:
-    pid = p["id"]
-    text = p["text"]
-    srv = p["server"]
-    photo = p["photo"]
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        types.InlineKeyboardButton(
-            "✅ Одобрить", callback_data=f"mod_acc_buy_{pid}"
-        ),
-        types.InlineKeyboardButton(
-            "❌ Отклонить", callback_data=f"mod_rej_buy_{pid}"
-        ),
-    )
-    caption = f"📋 <b>Пост скупки #{pid}</b>\n🌐 Сервер: {srv}\n\n{text}"
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=caption, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, caption, reply_markup=markup)
-
-
-@bot.callback_query_handler(
-    func=lambda c: c.data.startswith("mod_acc_")
-    or c.data.startswith("mod_rej_")
-    or c.data.startswith("mod_acc_buy_")
-    or c.data.startswith("mod_rej_buy_")
-)
-def cb_moderate_post(call):
-  if not is_admin_or_owner(call.from_user):
-    try:
-      return bot.answer_callback_query(
-          call.id, "⛔ Нет прав администратора!", show_alert=True
-      )
-    except Exception:
-      return
-
-  data = call.data
-  parts = data.split("_")
-  is_buy_mod = "buy" in data
-  action = parts[1]
-  pid = int(parts[-1])
-
-  table = "pending_buy_posts" if is_buy_mod else "pending_posts"
-  target_active_table = "active_buy_ads" if is_buy_mod else "active_ads"
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(f"SELECT * FROM {table} WHERE id = ?", (pid,))
-    post = cur.fetchone()
-
-  if not post:
-    try:
-      bot.answer_callback_query(
-          call.id,
-          "⚠️ Объявление уже обработано или не найдено.",
-          show_alert=True,
-      )
-      bot.delete_message(call.message.chat.id, call.message.message_id)
-    except Exception:
-      pass
-    return
-
-  admin_uname = call.from_user.username or str(call.from_user.id)
-
-  if action == "acc":
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(
-          f"INSERT INTO {target_active_table} (user_id, server, category,"
-          " text, photo, is_vip, last_updated) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          (
-              post["user_id"],
-              post["server"],
-              post["category"],
-              post["text"],
-              post["photo"],
-              post["is_vip"],
-              time.time(),
-          ),
-      )
-      cur.execute(f"DELETE FROM {table} WHERE id = ?", (pid,))
-      cur.execute(
-          "INSERT INTO editor_stats (username, count) VALUES (?, 1) ON"
-          " CONFLICT(username) DO UPDATE SET count = count + 1",
-          (admin_uname,),
-      )
-      cur.execute(
-          "INSERT INTO admin_action_logs (admin_username, action, target,"
-          " timestamp) VALUES (?, ?, ?, ?)",
-          (
-              admin_uname,
-              "Одобрение объявления",
-              f"Пост #{pid} ({post['server']})",
-              time.time(),
-          ),
-      )
-
-    try:
-      bot.answer_callback_query(call.id, "✅ Объявление одобрено и опубликовано!")
-      bot.edit_message_caption(
-          f"✅ <b>Одобрено администратором @{html.escape(admin_uname)}</b>\n\n{post['text']}",
-          call.message.chat.id,
-          call.message.message_id,
-          reply_markup=None,
-      )
-    except Exception:
-      with contextlib.suppress(Exception):
-        bot.edit_message_text(
-            f"✅ <b>Одобрено администратором @{html.escape(admin_uname)}</b>\n\n{post['text']}",
-            call.message.chat.id,
-            call.message.message_id,
-            reply_markup=None,
-        )
-
-    with contextlib.suppress(Exception):
-      safe_send_message(
-          post["user_id"],
-          f"✅ Ваше объявление (ID #{pid}) было успешно одобрено модератором и"
-          " опубликовано!",
-      )
-
-  else:
-    with db_lock, get_db() as conn:
-      cur = conn.cursor()
-      cur.execute(f"DELETE FROM {table} WHERE id = ?", (pid,))
-      cur.execute(
-          "INSERT INTO admin_action_logs (admin_username, action, target,"
-          " timestamp) VALUES (?, ?, ?, ?)",
-          (
-              admin_uname,
-              "Отклонение объявления",
-              f"Пост #{pid} ({post['server']})",
-              time.time(),
-          ),
-      )
-
-    try:
-      bot.answer_callback_query(call.id, "❌ Объявление отклонено.")
-      bot.edit_message_caption(
-          f"❌ <b>Отклонено администратором @{html.escape(admin_uname)}</b>\n\n{post['text']}",
-          call.message.chat.id,
-          call.message.message_id,
-          reply_markup=None,
-      )
-    except Exception:
-      with contextlib.suppress(Exception):
-        bot.edit_message_text(
-            f"❌ <b>Отклонено администратором @{html.escape(admin_uname)}</b>\n\n{post['text']}",
-            call.message.chat.id,
-            call.message.message_id,
-            reply_markup=None,
-        )
-
-    with contextlib.suppress(Exception):
-      safe_send_message(
-          post["user_id"],
-          f"❌ Ваше объявление (ID #{pid}) было отклонено модератором.",
-      )
-
-
-def start_broadcast(m):
-  if not is_owner(m.from_user):
-    return safe_send_message(
-        m.chat.id,
-        f"⛔ Эта функция доступна только владельцу (@{OWNER_USERNAME}).",
-    )
-  update_state(m.from_user.id, broadcast_input=True)
-  safe_send_message(
-      m.chat.id,
-      "📢 Введите текст или отправьте пост (с фото/медиа) для рассылки всем"
-      " пользователям бота:",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    content_types=["text", "photo"],
-    func=lambda m: get_state(m.from_user.id).get("broadcast_input") is True,
-)
-def process_broadcast(m):
-  uid = m.from_user.id
-  clear_state(uid)
-  if not is_owner(m.from_user):
-    return safe_send_message(m.chat.id, "⛔ Доступ запрещен.")
-
-  text = m.text or m.caption
-  photo = m.photo[-1].file_id if m.photo else None
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT user_id FROM user_data")
-    users = [row["user_id"] for row in cur.fetchall()]
-
-  safe_send_message(
-      m.chat.id, f"🚀 Начинаю рассылку для {len(users)} пользователей..."
-  )
-
-  success = 0
-  failed = 0
-  for u_id in users:
-    try:
-      if photo:
-        bot.send_photo(u_id, photo, caption=text, parse_mode="HTML")
-      else:
-        bot.send_message(u_id, text, parse_mode="HTML")
-      success += 1
-      time.sleep(0.04)
-    except Exception:
-      failed += 1
-
-  safe_send_message(
-      m.chat.id,
-      f"✅ <b>Рассылка завершена!</b>\n\n📤 Успешно доставлено:"
-      f" {success}\n❌ Ошибок / заблокировали бота: {failed}",
-      reply_markup=kb_main_menu(uid),
-  )
-
-
-# ==========================================
-# УПРАВЛЕНИЕ ВЛАДЕЛЬЦА И АДМИН-ПАНЕЛИ
-# ==========================================
-def owner_prompt_action(m, action_type):
-  if not is_owner(m.from_user):
-    return safe_send_message(
-        m.chat.id,
-        f"⛔ Эта кнопка доступна только владельцу (@{OWNER_USERNAME}).",
-    )
-
-  prompts = {
-      "ban": "🔨 Введите User ID или @username игрока для блокировки:",
-      "unban": "🔓 Введите User ID или @username игрока для разблокировки:",
-      "add_admin": (
-          "👑 Введите User ID или @username пользователя для назначения"
-          " администратором:"
-      ),
-      "remove_admin": (
-          "🚫 Введите User ID или @username администратора для снятия с"
-          " должности:"
-      ),
-  }
-  update_state(m.from_user.id, owner_action_input=action_type)
-  safe_send_message(
-      m.chat.id, prompts[action_type], reply_markup=kb_owner_input()
-  )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("owner_action_input")
-    is not None
-)
-def process_owner_action_input(m):
-  uid = m.from_user.id
-  st = get_state(uid)
-  action_type = st.get("owner_action_input")
-  target_str = m.text.strip()
-  clear_state(uid)
-
-  if not is_owner(m.from_user):
-    return safe_send_message(m.chat.id, f"⛔ Доступ запрещен.")
-
-  if target_str == "🔨 Забанить игрока":
-    owner_prompt_action(m, "ban")
-    return
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    target_uid = None
-    target_uname = target_str.lstrip("@")
-
-    if target_str.isdigit():
-      target_uid = int(target_str)
-      cur.execute(
-          "SELECT username FROM user_data WHERE user_id = ?", (target_uid,)
-      )
-      row = cur.fetchone()
-      if row and row["username"]:
-        target_uname = row["username"].lstrip("@")
-    else:
-      cur.execute(
-          "SELECT user_id FROM user_data WHERE username = ? OR username = ?",
-          (target_str, f"@{target_str}"),
-      )
-      row = cur.fetchone()
-      if row:
-        target_uid = row["user_id"]
-
-    if action_type == "ban":
-      b_target = str(target_uid) if target_uid else target_str
-      cur.execute(
-          "INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)",
-          (b_target, 1 if target_uid else 0),
-      )
-      if target_uname:
-        cur.execute(
-            "INSERT OR REPLACE INTO bans (target, is_id) VALUES (?, ?)",
-            (target_uname, 0),
-        )
-      safe_send_message(
-          m.chat.id,
-          f"✅ Игрок <b>{html.escape(target_str)}</b> успешно заблокирован.",
-          reply_markup=kb_main_menu(uid),
-      )
-      with contextlib.suppress(Exception):
-        if target_uid:
-          safe_send_message(
-              target_uid, "⛔ Вы были заблокированы администрацией."
-          )
-
-    elif action_type == "unban":
-      b_target = str(target_uid) if target_uid else target_str
-      cur.execute(
-          "DELETE FROM bans WHERE target = ? OR target = ?",
-          (b_target, target_uname),
-      )
-      safe_send_message(
-          m.chat.id,
-          f"✅ Игрок <b>{html.escape(target_str)}</b> разблокирован.",
-          reply_markup=kb_main_menu(uid),
-      )
-
-    elif action_type == "add_admin":
-      if not target_uid:
-        return safe_send_message(
-            m.chat.id,
-            "⚠️ Пользователь не найден в базе данных бота. Пусть он сначала"
-            " запустит бота (/start).",
-            reply_markup=kb_main_menu(uid),
-        )
-      cur.execute(
-          "INSERT OR REPLACE INTO approved_admins (user_id, username) VALUES"
-          " (?, ?)",
-          (target_uid, target_uname),
-      )
-      safe_send_message(
-          m.chat.id,
-          f"👑 Пользователь @{target_uname} (ID: {target_uid}) назначен"
-          " администратором!",
-          reply_markup=kb_main_menu(uid),
-      )
-      with contextlib.suppress(Exception):
-        safe_send_message(
-            target_uid,
-            "👑 Поздравляем! Вам назначены права администратора в боте.",
-        )
-
-    elif action_type == "remove_admin":
-      if target_uid:
-        cur.execute(
-            "DELETE FROM approved_admins WHERE user_id = ?", (target_uid,)
-        )
-      if target_uname:
-        cur.execute(
-            "DELETE FROM approved_admins WHERE username = ?", (target_uname,)
-        )
-      safe_send_message(
-          m.chat.id,
-          f"🚫 Администратор <b>{html.escape(target_str)}</b> снят с должности.",
-          reply_markup=kb_main_menu(uid),
-      )
-
-
-# ==========================================
-# ЦЕНТР ЛОГОВ (ОБРАБОТКА ВРЕМЕНИ ПО МСК)
-# ==========================================
-def show_owner_logs_menu(m):
-  if not is_owner(m.from_user) and not is_admin_or_owner_id(m.from_user.id):
-    return safe_send_message(
-        m.chat.id,
-        f"⛔ Этот раздел доступен только владельцу (@{OWNER_USERNAME}).",
-    )
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM auctions ORDER BY id DESC LIMIT 5")
-    auctions = cur.fetchall()
-
-  text = (
-      f"📋 <b>Единый центр логов системы (@{OWNER_USERNAME})</b>\n\nВсе"
-      " необходимые логи разделены по категориям ниже. Выберите нужный пункт"
-      " для выгрузки файлов:"
-  )
-  safe_send_message(m.chat.id, text)
-
-  markup = types.InlineKeyboardMarkup(row_width=1)
-  for a in auctions:
-    markup.add(
-        types.InlineKeyboardButton(
-            f"🏛 Логи аукциона #{a['id']} ({a['item_name']})",
-            callback_data=f"owner_view_auc_{a['id']}",
-        )
-    )
-
-  markup.add(
-      types.InlineKeyboardButton(
-          "💬 Логи всех чатов/общения (файлом)",
-          callback_data="owner_view_chats",
-      )
-  )
-  markup.add(
-      types.InlineKeyboardButton(
-          "📢 Логи действий и объявлений админов (файлом)",
-          callback_data="owner_view_admin_ads",
-      )
-  )
-
-  safe_send_message(
-      m.chat.id, "Доступные разделы логов:", reply_markup=markup
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("owner_view_auc_"))
-def cb_owner_view_auc(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  aid = int(call.data.replace("owner_view_auc_", ""))
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM auctions WHERE id = ?", (aid,))
-    auc = cur.fetchone()
-    if not auc:
-      return safe_send_message(call.message.chat.id, "⚠️ Аукцион не найден.")
-    cur.execute(
-        "SELECT * FROM auction_logs WHERE auction_id = ? ORDER BY timestamp ASC",
-        (aid,),
-    )
-    logs = cur.fetchall()
-
-  log_text = (
-      f"ЛОГИ АУКЦИОНА #{aid} (Время по МСК)\nТовар: {auc['item_name']}\nСтатус:"
-      f" {auc['status']}\n"
-      + "=" * 40
-      + "\n\n"
-  )
-  if logs:
-    for l in logs:
-      dt = datetime.fromtimestamp(
-          l["timestamp"], ZoneInfo("Europe/Moscow")
-      ).strftime("%d.%m %H:%M:%S")
-      log_text += f"[{dt} МСК] [User ID {l['user_id']}]: {l['action']}\n"
-  else:
-    log_text += "Логи аукциона пусты."
-
-  caption = f"📁 <b>Файл с логами аукциона #{aid}</b>\nТовар: <b>{html.escape(auc['item_name'])}</b>"
-  send_log_file(
-      call.message.chat.id, f"auction_{aid}_logs.txt", log_text, caption=caption
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_view_chats")
-def cb_owner_view_chats(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM chat_logs_history ORDER BY id DESC LIMIT 100")
-    chats = cur.fetchall()
-
-  log_text = (
-      f"ИСТОРИЯ ОБЩЕНИЯ ИГРОКОВ В СДЕЛКАХ (Время по МСК, последние 100"
-      f" сообщений)\n"
-      + "=" * 50
-      + "\n\n"
-  )
-  if chats:
-    for c_row in chats:
-      dt = datetime.fromtimestamp(
-          c_row["timestamp"], ZoneInfo("Europe/Moscow")
-      ).strftime("%d.%m %H:%M:%S")
-      log_text += (
-          f"[{dt} МСК] (От ID {c_row['sender_id']} -> К ID"
-          f" {c_row['receiver_id']}): {c_row['text']}\n"
-      )
-  else:
-    log_text += "История общения пуста."
-
-  send_log_file(
-      call.message.chat.id,
-      "chat_history_logs.txt",
-      log_text,
-      caption="📁 <b>Файл истории переписок игроков в сделках</b>",
-  )
-
-
-def cb_owner_view_admin_ads_msg(m):
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM admin_action_logs ORDER BY id DESC LIMIT 100")
-    logs = cur.fetchall()
-
-  log_text = (
-      f"ЛОГИ ДЕЙСТВИЙ И ОТПРАВКИ ОБЪЯВЛЕНИЙ АДМИНАМИ (Время по МСК)\n"
-      + "=" * 50
-      + "\n\n"
-  )
-  if logs:
-    for l in logs:
-      dt = datetime.fromtimestamp(
-          l["timestamp"], ZoneInfo("Europe/Moscow")
-      ).strftime("%d.%m %H:%M:%S")
-      log_text += (
-          f"[{dt} МСК] Администратор (@{l['admin_username']}): Действие:"
-          f" {l['action']} | Цель: {l['target']}\n"
-      )
-  else:
-    cur.execute("SELECT * FROM editor_stats")
-    editors = cur.fetchall()
-    log_text += "Статистика редакторов/админов по одобренным объявлениям:\n"
-    for ed in editors:
-      log_text += (
-          f"Админ/Редактор: @{ed['username']} — Одобрено:"
-          f" {ed['count']} объявлений\n"
-      )
-
-  send_log_file(
-      m.chat.id,
-      "admin_ads_action_logs.txt",
-      log_text,
-      caption=(
-          "📁 <b>Файл логов отправки и модерации объявлений"
-          " администраторами</b>"
-      ),
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "owner_view_admin_ads")
-def cb_owner_view_admin_ads(call):
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-  cb_owner_view_admin_ads_msg(call.message)
-
-
-# ==========================================
-# МОДУЛЬ 1: БАРТЕР / ОБМЕН (С ПРОВЕРКОЙ ВРЕМЕНИ)
-# ==========================================
-def show_barter_menu(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM barter_ads WHERE server = ? ORDER BY id DESC LIMIT 10",
-        (srv,),
-    )
-    barters = cur.fetchall()
-
-  text = f"🔄 <b>Раздел «Бартер / Обмен»</b>\n🌐 Сервер: <b>{html.escape(srv)}</b>\n\n"
-  if barters:
-    text += "Актуальные предложения обмена:\n"
-  else:
-    text += "В этом разделе пока нет предложений обмена.\n"
-
-  safe_send_message(m.chat.id, text)
-
-  for b in barters:
-    bid = b["id"]
-    b_text = b["text"]
-    photo = b["photo"]
-    fmt = f"🔄 <b>Обмен #{bid}</b>\n{html.escape(b_text)}"
-    markup = types.InlineKeyboardMarkup()
-    markup.add(
-        types.InlineKeyboardButton(
-            "✉️ Предложить обмен", callback_data=f"contact_seller_{bid}"
-        )
-    )
-    if is_admin_or_owner(m.from_user):
-      markup.add(
-          types.InlineKeyboardButton(
-              "🗑 [Админ] Удалить обмен", callback_data=f"admin_del_barter_{bid}"
-          )
-      )
-    if photo:
-      safe_send_photo(m.chat.id, photo, caption=fmt, reply_markup=markup)
-    else:
-      safe_send_message(m.chat.id, fmt, reply_markup=markup)
-
-  markup_btn = types.InlineKeyboardMarkup()
-  markup_btn.add(
-      types.InlineKeyboardButton(
-          "➕ Выставить предложение на обмен", callback_data="barter_add_start"
-      )
-  )
-  safe_send_message(
-      m.chat.id,
-      "Хотите предложить свой товар/имущество на обмен?",
-      reply_markup=markup_btn,
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("admin_del_barter_"))
-def cb_admin_del_barter(call):
-  if not is_admin_or_owner(call.from_user):
-    return
-  bid = int(call.data.replace("admin_del_barter_", ""))
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("DELETE FROM barter_ads WHERE id = ?", (bid,))
-  try:
-    bot.answer_callback_query(call.id, "✅ Бартер удален.")
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "barter_add_start")
-def cb_barter_add_start(call):
-  allowed, err_msg = check_working_hours()
-  if not allowed:
-    try:
-      return bot.answer_callback_query(
-          call.id,
-          "❌ Создание обмена доступно только с 08:00 до 22:00 МСК!",
-          show_alert=True,
-      )
-    except Exception:
-      return
-
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-
-  warning_text = (
-      "⚠️ <b>Внимание! Уведомление безопасности:</b>\nАдминистрация бота <b>не"
-      " несет никакой ответственности</b> за проведение сделок, обмена"
-      " имущества или возможные договоренности между игроками. Вы совершаете"
-      " все операции исключительно на свой страх и риск!"
-  )
-  safe_send_message(call.message.chat.id, warning_text)
-
-  update_state(call.from_user.id, barter_input=True)
-  safe_send_message(
-      call.message.chat.id,
-      "🔄 Опишите, что вы отдаете и что хотите получить взамен (можно"
-      " прикрепить фото):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    content_types=["text", "photo"],
-    func=lambda m: get_state(m.from_user.id).get("barter_input"),
-)
-def process_barter_create(m):
-  allowed, err_msg = check_working_hours()
-  if not allowed:
-    clear_state(m.from_user.id)
-    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(m.from_user.id))
-
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  text = m.text or m.caption
-  photo = m.photo[-1].file_id if m.photo else None
-  clear_state(uid)
-
-  if not text:
-    return safe_send_message(m.chat.id, "⚠️ Описание не может быть пустым.")
-
-  if not check_auto_moderation(text):
-    return safe_send_message(
-        m.chat.id, "🤬 Текст содержит запрещенные слова. Публикация отменена."
-    )
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO barter_ads (user_id, server, text, photo, last_updated)"
-        " VALUES (?, ?, ?, ?, ?)",
-        (uid, srv, text, photo, time.time()),
-    )
-
-  safe_send_message(
-      m.chat.id,
-      "✅ Ваше предложение по обмену успешно опубликовано!",
-      reply_markup=kb_main_menu(uid),
-  )
-
-
-# ==========================================
-# МОДУЛЬ 2: СИСТЕМА АУКЦИОНОВ (ВРЕМЯ ПО МСК)
-# ==========================================
-def show_auctions_menu(m):
-  uid = m.from_user.id
-  srv = get_user_server(uid)
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM auctions WHERE server = ? AND status = 'active'", (srv,)
-    )
-    auctions = cur.fetchall()
-
-  text = f"🏛 <b>Система аукционов</b>\n🌐 Сервер: <b>{html.escape(srv)}</b>\n\n"
-  if auctions:
-    text += "Активные аукционы:\n"
-  else:
-    text += "На данный момент нет активных аукционов.\n"
-
-  safe_send_message(m.chat.id, text)
-
-  for a in auctions:
-    aid = a["id"]
-    item = a["item_name"]
-    price = a["current_bid"] or a["start_price"]
-    is_owner_lot = a["user_id"] == uid
-    fmt = (
-        f"🏛 <b>Аукцион #{aid}</b>\n"
-        f"📦 Товар: <b>{html.escape(item)}</b>\n"
-        f"💰 Текущая ставка: <b>{price:,.0f} $</b>\n"
-    )
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    if is_owner_lot or is_admin_or_owner(m.from_user):
-      markup.add(
-          types.InlineKeyboardButton(
-              "❌ Удалить лот", callback_data=f"auc_remove_{aid}"
-          )
-      )
-    else:
-      markup.add(
-          types.InlineKeyboardButton(
-              "💵 Сделать ставку", callback_data=f"auc_bid_{aid}"
-          )
-      )
-    safe_send_message(m.chat.id, fmt, reply_markup=markup)
-
-  markup_btn = types.InlineKeyboardMarkup()
-  markup_btn.add(
-      types.InlineKeyboardButton(
-          "➕ Выставить товар на аукцион", callback_data="auc_create_start"
-      )
-  )
-  safe_send_message(m.chat.id, "Хотите выставить лот?", reply_markup=markup_btn)
-
-
-@bot.callback_query_handler(func=lambda c: c.data == "auc_create_start")
-def cb_auc_create_start(call):
-  allowed, err_msg = check_working_hours()
-  if not allowed:
-    try:
-      return bot.answer_callback_query(
-          call.id,
-          "❌ Создание аукционов доступно только с 08:00 до 22:00 МСК!",
-          show_alert=True,
-      )
-    except Exception:
-      return
-
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-
-  update_state(call.from_user.id, auction_create_step="item_name")
-  safe_send_message(
-      call.message.chat.id,
-      "🏛 <b>Создание аукциона</b>\n\nВведите название выставляемого товара или имущества:",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("auction_create_step")
-    == "item_name"
-)
-def process_auc_item_name(m):
-  allowed, err_msg = check_working_hours()
-  if not allowed:
-    clear_state(m.from_user.id)
-    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(m.from_user.id))
-
-  uid = m.from_user.id
-  item_name = m.text.strip()
-  if not item_name:
-    return safe_send_message(m.chat.id, "⚠️ Название не может быть пустым.")
-
-  if not check_auto_moderation(item_name):
-    clear_state(uid)
-    return safe_send_message(
-        m.chat.id, "🤬 Название содержит запрещенные слова.", reply_markup=kb_main_menu(uid)
-    )
-
-  update_state(uid, auction_create_step="start_price", auc_item_name=item_name)
-  safe_send_message(
-      m.chat.id,
-      "💰 Введите стартовую цену аукциона в долларах ($) (например: 50кк, 1000000):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("auction_create_step")
-    == "start_price"
-)
-def process_auc_start_price(m):
-  allowed, err_msg = check_working_hours()
-  if not allowed:
-    clear_state(m.from_user.id)
-    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(m.from_user.id))
-
-  uid = m.from_user.id
-  st = get_state(uid)
-  item_name = st.get("auc_item_name")
-  clear_state(uid)
-
-  try:
-    start_price = parse_flexible_price(m.text)
-  except ValueError:
-    return safe_send_message(
-        m.chat.id,
-        "⚠️ Не удалось распознать цену. Введите число (например: 10кк, 500к).",
-        reply_markup=kb_main_menu(uid),
-    )
-
-  srv = get_user_server(uid)
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO auctions (user_id, server, item_name, start_price,"
-        " current_bid, status, created_at) VALUES (?, ?, ?, ?, ?, 'active',"
-        " ?)",
-        (uid, srv, item_name, start_price, start_price, time.time()),
-    )
-    aid = cur.lastrowid
-    cur.execute(
-        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp)"
-        " VALUES (?, ?, ?, ?)",
-        (
-            aid,
-            uid,
-            f"Создан аукцион на товар '{item_name}' со старт. ценой {start_price}",
-            time.time(),
-        ),
-    )
-
-  safe_send_message(
-      m.chat.id,
-      f"✅ Аукцион <b>#{aid}</b> на товар <b>{html.escape(item_name)}"
-      f"</b> успешно создан!",
-      reply_markup=kb_main_menu(uid),
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("auc_bid_"))
-def cb_auc_bid_start(call):
-  allowed, err_msg = check_working_hours()
-  if not allowed:
-    try:
-      return bot.answer_callback_query(
-          call.id,
-          "❌ Ставки на аукционах доступны только с 08:00 до 22:00 МСК!",
-          show_alert=True,
-      )
-    except Exception:
-      return
-
-  try:
-    bot.answer_callback_query(call.id)
-  except Exception:
-    pass
-
-  aid = int(call.data.replace("auc_bid_", ""))
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,))
-    auc = cur.fetchone()
-
-  if not auc:
-    return safe_send_message(
-        call.message.chat.id, "⚠️ Аукцион не найден или уже завершен."
-    )
-
-  update_state(call.from_user.id, auction_bid_input=aid)
-  current_p = auc["current_bid"] or auc["start_price"]
-  safe_send_message(
-      call.message.chat.id,
-      f"💵 <b>Сделать ставку на аукцион #{aid} ({html.escape(auc['item_name'])})</b>\n"
-      f"Текущая ставка: <b>{current_p:,.0f} $</b>\n\n"
-      f"Введите вашу сумму ставки (она должна быть выше текущей):",
-      reply_markup=kb_cancel(),
-  )
-
-
-@bot.message_handler(
-    func=lambda m: get_state(m.from_user.id).get("auction_bid_input") is not None
-)
-def process_auc_bid_input(m):
-  allowed, err_msg = check_working_hours()
-  if not allowed:
-    clear_state(m.from_user.id)
-    return safe_send_message(m.chat.id, err_msg, reply_markup=kb_main_menu(m.from_user.id))
-
-  uid = m.from_user.id
-  st = get_state(uid)
-  aid = st.get("auction_bid_input")
-  clear_state(uid)
-
-  try:
-    bid_amount = parse_flexible_price(m.text)
-  except ValueError:
-    return safe_send_message(
-        m.chat.id,
-        "⚠️ Не удалось распознать сумму ставки.",
-        reply_markup=kb_main_menu(uid),
-    )
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM auctions WHERE id = ? AND status = 'active'", (aid,))
-    auc = cur.fetchone()
-    if not auc:
-      return safe_send_message(
-          m.chat.id,
-          "⚠️ Аукцион не найден или уже завершен.",
-          reply_markup=kb_main_menu(uid),
-      )
-
-    current_p = auc["current_bid"] or auc["start_price"]
-    if bid_amount <= current_p:
-      return safe_send_message(
-          m.chat.id,
-          f"⚠️ Ставка должна быть больше текущей ({current_p:,.0f} $).",
-          reply_markup=kb_main_menu(uid),
-      )
-
-    cur.execute(
-        "UPDATE auctions SET current_bid = ?, highest_bidder = ? WHERE id = ?",
-        (bid_amount, uid, aid),
-    )
-    cur.execute(
-        "INSERT INTO auction_logs (auction_id, user_id, action, timestamp)"
-        " VALUES (?, ?, ?, ?)",
-        (aid, uid, f"Сделана ставка: {bid_amount}", time.time()),
-    )
-
-  safe_send_message(
-      m.chat.id,
-      f"✅ Ваша ставка <b>{bid_amount:,.0f} $</b> на аукцион #{aid} успешно"
-      " принята!",
-      reply_markup=kb_main_menu(uid),
-  )
-
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("auc_remove_"))
-def cb_auc_remove(call):
-  aid = int(call.data.replace("auc_remove_", ""))
-  uid = call.from_user.id
-
-  with db_lock, get_db() as conn:
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM auctions WHERE id = ?", (aid,))
-    auc = cur.fetchone()
-    if not auc:
-      try:
-        return bot.answer_callback_query(
-            call.id, "⚠️ Лот не найден.", show_alert=True
-        )
-      except Exception:
-        return
-
-    if auc["user_id"] != uid and not is_admin_or_owner(call.from_user):
-      try:
-        return bot.answer_callback_query(
-            call.id, "⛔ У вас нет прав удалять этот лот.", show_alert=True
-        )
-      except Exception:
-        return
-
-    cur.execute("DELETE FROM auctions WHERE id = ?", (aid,))
-    cur.execute("DELETE FROM auction_logs WHERE auction_id = ?", (aid,))
-
-  try:
-    bot.answer_callback_query(call.id, "✅ Аукционный лот успешно удален.")
-    bot.delete_message(call.message.chat.id, call.message.message_id)
-  except Exception:
-    pass
-
-
-# ==========================================
-# ЗАПУСК БОТА
-# ==========================================
-if __name__ == "__main__":
-  logger.info("Бот успешно запущен и работает...")
-  bot.infinity_polling(skip_pending=True)
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Arizona RP — Универсальный Mini App (TG/WB/iOS)</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preload" as="image" href="https://i.postimg.cc/WzMP51cN/1786185439356.png">
+    <link rel="preload" as="image" href="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg">
+    <style>
+        /* ==========================================================================
+           БАЗОВЫЕ ПЕРЕМЕННЫЕ И СБРОС
+           ========================================================================== */
+        :root {
+            /* Базовые переменные (по умолчанию Telegram-стиль, тёмная тема) */
+            --app-bg: #0f0f0f;
+            --app-card-bg: #1c1c1e;
+            --app-header-bg: #171717;
+            --app-card-border: #2c2c2e;
+            --app-accent: #2aabee;
+            --app-accent-secondary: #5ac8fa;
+            --app-accent-gold: #ffd60a;
+            --app-accent-red: #ff3b30;
+            --app-text-main: #ffffff;
+            --app-text-muted: #8e8e93;
+            --app-btn-bg: linear-gradient(135deg, #2aabee 0%, #1a7ab5 100%);
+            --app-btn-hover: linear-gradient(135deg, #3bb8f7 0%, #2589c9 100%);
+            --app-btn-text: #ffffff;
+            --app-radius-sm: 8px;
+            --app-radius-md: 12px;
+            --app-radius-lg: 16px;
+            --app-radius-xl: 20px;
+            --app-radius-round: 50%;
+            --app-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            --app-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.45);
+            --app-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --app-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --app-spacing-xs: 4px;
+            --app-spacing-sm: 8px;
+            --app-spacing-md: 12px;
+            --app-spacing-lg: 16px;
+            --app-spacing-xl: 20px;
+            --app-spacing-xxl: 32px;
+            --app-max-width: 1200px;
+            --app-tab-bar-height: 60px;
+            --app-header-height: 52px;
+            --app-border-width: 1px;
+            --app-card-gap: 10px;
+            --app-font-size-xs: 10px;
+            --app-font-size-sm: 12px;
+            --app-font-size-md: 14px;
+            --app-font-size-lg: 16px;
+            --app-font-size-xl: 20px;
+            --app-font-size-xxl: 28px;
+            --app-icon-size: 20px;
+            --app-btn-padding: 10px 16px;
+            --app-btn-font-size: 13px;
+            --app-input-padding: 10px 14px;
+            --app-input-font-size: 13px;
+            --app-badge-radius: 6px;
+            --app-card-radius: 14px;
+            --app-modal-radius: 18px;
+            --app-overlay-bg: rgba(0, 0, 0, 0.75);
+            --app-scrollbar-width: 4px;
+            --app-scrollbar-thumb: #3a3a3c;
+            --app-focus-ring: 0 0 0 2px rgba(42, 171, 238, 0.5);
+            --app-disabled-opacity: 0.5;
+            --app-user-select: none;
+            --app-tap-highlight: transparent;
+        }
+
+        /* ==========================================================================
+           СВЕТЛАЯ ТЕМА (модификатор на body)
+           ========================================================================== */
+        body.theme-light {
+            --app-bg: #f5f5f7;
+            --app-card-bg: #ffffff;
+            --app-header-bg: #f0f0f2;
+            --app-card-border: #d1d1d6;
+            --app-accent: #007aff;
+            --app-accent-secondary: #5ac8fa;
+            --app-accent-gold: #b8860b;
+            --app-accent-red: #dc3545;
+            --app-text-main: #1c1c1e;
+            --app-text-muted: #6e6e73;
+            --app-btn-bg: linear-gradient(135deg, #007aff 0%, #0055b3 100%);
+            --app-btn-hover: linear-gradient(135deg, #1a88ff 0%, #0066cc 100%);
+            --app-btn-text: #ffffff;
+            --app-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            --app-shadow-lg: 0 6px 24px rgba(0, 0, 0, 0.12);
+            --app-overlay-bg: rgba(0, 0, 0, 0.5);
+            --app-scrollbar-thumb: #c4c4c6;
+            --app-focus-ring: 0 0 0 2px rgba(0, 122, 255, 0.5);
+        }
+
+        /* ==========================================================================
+           СБРОС И БАЗОВЫЙ СТИЛЬ
+           ========================================================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: var(--app-tap-highlight);
+            -webkit-user-select: var(--app-user-select);
+            user-select: var(--app-user-select);
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-text-size-adjust: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--app-font);
+            background: var(--app-bg);
+            color: var(--app-text-main);
+            line-height: 1.5;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            transition: background var(--app-transition), color var(--app-transition);
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            loading: lazy;
+        }
+
+        button {
+            cursor: pointer;
+            font-family: inherit;
+            border: none;
+            background: none;
+            color: inherit;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: all var(--app-transition);
+        }
+
+        button:focus-visible {
+            box-shadow: var(--app-focus-ring);
+        }
+
+        input,
+        textarea,
+        select {
+            font-family: inherit;
+            font-size: var(--app-input-font-size);
+            width: 100%;
+            padding: var(--app-input-padding);
+            border-radius: var(--app-radius-md);
+            border: var(--app-border-width) solid var(--app-card-border);
+            background: var(--app-card-bg);
+            color: var(--app-text-main);
+            outline: none;
+            transition: border-color var(--app-transition), box-shadow var(--app-transition);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--app-accent);
+            box-shadow: var(--app-focus-ring);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        label {
+            display: block;
+            font-size: var(--app-font-size-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--app-text-muted);
+            margin-bottom: var(--app-spacing-xs);
+        }
+
+        /* ==========================================================================
+           СКРОЛЛБАР
+           ========================================================================== */
+        ::-webkit-scrollbar {
+            width: var(--app-scrollbar-width);
+            height: var(--app-scrollbar-width);
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--app-scrollbar-thumb);
+            border-radius: 4px;
+        }
+
+        /* ==========================================================================
+           КОНТЕЙНЕР ПРИЛОЖЕНИЯ
+           ========================================================================== */
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: var(--app-max-width);
+            width: 100%;
+            margin: 0 auto;
+            padding: 0;
+            position: relative;
+            transition: max-width var(--app-transition);
+        }
+
+        /* ==========================================================================
+           ШАПКА ПРИЛОЖЕНИЯ
+           ========================================================================== */
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--app-spacing-sm) var(--app-spacing-lg);
+            background: var(--app-header-bg);
+            border-bottom: var(--app-border-width) solid var(--app-card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            min-height: var(--app-header-height);
+            transition: background var(--app-transition), border-color var(--app-transition);
+        }
+
+        .app-header-brand {
+            display: flex;
+            align-items: center;
+            gap: var(--app-spacing-sm);
+            font-weight: 700;
+            font-size: var(--app-font-size-md);
+            color: var(--app-text-main);
+            text-decoration: none;
+        }
+
+        .app-header-brand-img {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--app-radius-round);
+            object-fit: cover;
+            border: 2px solid var(--app-accent);
+            background: var(--app-card-bg);
+            flex-shrink: 0;
+            loading: lazy;
+        }
+
+        .app-header-brand-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .app-header-brand-subtitle {
+            font-size: var(--app-font-size-xs);
+            color: var(--app-text-muted);
+            font-weight: 400;
+            letter-spacing: 0.3px;
+        }
+
+        .app-header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--app-spacing-sm);
+        }
+
+        .app-icon-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: var(--app-radius-md);
+            background: var(--app-card-bg);
+            border: var(--app-border-width) solid var(--app-card-border);
+            color: var(--app-text-main);
+            font-size: var(--app-font-size-lg);
+            transition: all var(--app-transition);
+            position: relative;
+        }
+
+        .app-icon-btn:hover,
+        .app-icon-btn:active {
+            background: var(--app-header-bg);
+            border-color: var(--app-accent);
+        }
+        .app-icon-btn .badge-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background: var(--app-accent-red);
+            border-radius: 50%;
+            border: 2px solid var(--app-card-bg);
+            display: none;
+        }
+        .app-icon-btn .badge-dot.visible {
+            display: block;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.3);
+            }
+        }
+
+        /* ==========================================================================
+           БАННЕР УВЕДОМЛЕНИЯ
+           ========================================================================== */
+        .broadcast-banner {
+            background: var(--app-card-bg);
+            color: var(--app-text-main);
+            padding: var(--app-spacing-sm) var(--app-spacing-md);
+            border-radius: var(--app-radius-md);
+            font-size: var(--app-font-size-sm);
+            font-weight: 600;
+            margin: var(--app-spacing-sm) var(--app-spacing-lg) 0;
+            cursor: pointer;
+            text-align: center;
+            border: var(--app-border-width) solid var(--app-accent-red);
+            box-shadow: var(--app-shadow);
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* ==========================================================================
+           ГЛАВНЫЙ БАННЕР (широкий)
+           ========================================================================== */
+        .welcome-banner-wide {
+            width: 100%;
+            border-radius: var(--app-radius-md);
+            overflow: hidden;
+            border: var(--app-border-width) solid var(--app-accent);
+            margin: var(--app-spacing-md) 0;
+            box-shadow: var(--app-shadow);
+            animation: fadeIn 0.3s ease;
+            background: var(--app-card-bg);
+        }
+        .welcome-banner-wide img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.3s ease;
+            loading: lazy;
+        }
+        .welcome-banner-wide:hover img {
+            transform: scale(1.02);
+        }
+
+        /* ==========================================================================
+           ТАБ-БАР (навигация)
+           ========================================================================== */
+        .tab-bar {
+            display: flex;
+            align-items: stretch;
+            justify-content: space-around;
+            background: var(--app-header-bg);
+            border-top: var(--app-border-width) solid var(--app-card-border);
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            min-height: var(--app-tab-bar-height);
+            padding-bottom: env(safe-area-inset-bottom, 0);
+            transition: background var(--app-transition), border-color var(--app-transition);
+        }
+
+        .tab-bar-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: var(--app-spacing-xs) var(--app-spacing-sm);
+            color: var(--app-text-muted);
+            font-size: var(--app-font-size-xs);
+            font-weight: 500;
+            transition: all var(--app-transition);
+            position: relative;
+            text-decoration: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tab-bar-item .tab-icon {
+            font-size: var(--app-font-size-xl);
+            line-height: 1;
+        }
+        .tab-bar-item .tab-label {
+            font-size: var(--app-font-size-xs);
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        .tab-bar-item.active {
+            color: var(--app-accent);
+        }
+        .tab-bar-item.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 25%;
+            right: 25%;
+            height: 2px;
+            background: var(--app-accent);
+            border-radius: 0 0 4px 4px;
+        }
+        .tab-bar-item:active {
+            opacity: 0.7;
+        }
+
+        /* ==========================================================================
+           ОСНОВНОЙ КОНТЕНТ
+           ========================================================================== */
+        .app-content {
+            flex: 1;
+            padding: var(--app-spacing-md) var(--app-spacing-lg);
+            padding-bottom: calc(var(--app-tab-bar-height) + var(--app-spacing-xl) + env(safe-area-inset-bottom, 0));
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            transition: padding var(--app-transition);
+        }
+
+        /* ==========================================================================
+           СЕКЦИИ (табы)
+           ========================================================================== */
+        .section {
+            display: none;
+            animation: fadeIn 0.25s ease-out;
+        }
+        .section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ==========================================================================
+           КАРТОЧКИ И КОНТЕЙНЕРЫ
+           ========================================================================== */
+        .card {
+            background: var(--app-card-bg);
+            border: var(--app-border-width) solid var(--app-card-border);
+            border-radius: var(--app-card-radius);
+            padding: var(--app-spacing-md);
+            margin-bottom: var(--app-spacing-md);
+            box-shadow: var(--app-shadow);
+            transition: all var(--app-transition);
+        }
+        .card:hover {
+            border-color: var(--app-accent);
+        }
+
+        .section-title {
+            font-size: var(--app-font-size-md);
+            font-weight: 700;
+            color: var(--app-text-main);
+            margin-bottom: var(--app-spacing-md);
+            display: flex;
+            align-items: center;
+            gap: var(--app-spacing-sm);
+            border-bottom: var(--app-border-width) solid var(--app-card-border);
+            padding-bottom: var(--app-spacing-sm);
+        }
+
+        /* ==========================================================================
+           КНОПКИ
+           ========================================================================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--app-spacing-xs);
+            padding: var(--app-btn-padding);
+            font-size: var(--app-btn-font-size);
+            font-weight: 600;
+            border-radius: var(--app-radius-md);
+            background: var(--app-btn-bg);
+            color: var(--app-btn-text);
+            border: var(--app-border-width) solid transparent;
+            width: 100%;
+            transition: all var(--app-transition);
+            text-decoration: none;
+            text-align: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn:hover {
+            background: var(--app-btn-hover);
+            box-shadow: var(--app-shadow);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background: var(--app-card-bg);
+            color: var(--app-text-main);
+            border-color: var(--app-card-border);
+        }
+        .btn-secondary:hover {
+            border-color: var(--app-accent);
+            background: var(--app-header-bg);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
+            border-color: #dc3545;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #e04555 0%, #b8202e 100%);
+        }
+        .btn-success {
+            background: var(--app-btn-bg);
+            border-color: var(--app-accent);
+            color: #fff;
+        }
+        .btn-outline {
+            background: transparent;
+            border-color: var(--app-card-border);
+            color: var(--app-text-main);
+        }
+        .btn-outline:hover {
+            border-color: var(--app-accent);
+            color: var(--app-accent);
+        }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 11px;
+            border-radius: var(--app-radius-sm);
+        }
+        .btn-lg {
+            padding: 14px 20px;
+            font-size: 15px;
+            border-radius: var(--app-radius-lg);
+        }
+        .btn:disabled {
+            opacity: var(--app-disabled-opacity);
+            cursor: not-allowed;
+        }
+
+        /* ==========================================================================
+           ФОРМЫ
+           ========================================================================== */
+        .form-group {
+            margin-bottom: var(--app-spacing-md);
+        }
+        .form-row {
+            display: flex;
+            gap: var(--app-spacing-sm);
+            align-items: center;
+        }
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .custom-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--app-input-padding);
+            border-radius: var(--app-radius-md);
+            border: var(--app-border-width) solid var(--app-card-border);
+            background: var(--app-card-bg);
+            color: var(--app-text-main);
+            cursor: pointer;
+            transition: border-color var(--app-transition);
+            font-size: var(--app-input-font-size);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .custom-select-trigger:hover {
+            border-color: var(--app-accent);
+        }
+
+        /* ==========================================================================
+           СЕТКИ ОБЪЯВЛЕНИЙ
+           ========================================================================== */
+        .ads-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--app-card-gap);
+            transition: all var(--app-transition);
+        }
+        .ads-container.grid-view {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .ad-card {
+            background: var(--app-card-bg);
+            border: var(--app-border-width) solid var(--app-card-border);
+            border-radius: var(--app-card-radius);
+            padding: var(--app-spacing-md);
+            display: flex;
+            flex-direction: column;
+            gap: var(--app-spacing-sm);
+            transition: all var(--app-transition);
+            animation: fadeIn 0.3s ease-out;
+            position: relative;
+            box-shadow: var(--app-shadow);
+            cursor: pointer;
+        }
+        .ad-card:hover {
+            border-color: var(--app-accent);
+            box-shadow: var(--app-shadow-lg);
+        }
+        .ad-card .ad-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: var(--app-font-size-xs);
+            color: var(--app-text-muted);
+        }
+        .ad-card .ad-title {
+            font-size: var(--app-font-size-md);
+            font-weight: 700;
+            color: var(--app-text-main);
+        }
+        .ad-card .ad-price {
+            font-size: var(--app-font-size-sm);
+            font-weight: 700;
+            color: var(--app-accent-gold);
+        }
+        .ad-card .ad-desc {
+            font-size: var(--app-font-size-xs);
+            color: var(--app-text-muted);
+            line-height: 1.4;
+        }
+        .ad-card .ad-image {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: var(--app-radius-sm);
+            background: var(--app-header-bg);
+            loading: lazy;
+        }
+        .ad-card .ad-actions {
+            display: flex;
+            gap: var(--app-spacing-xs);
+            margin-top: auto;
+        }
+        .ad-card .ad-actions .btn {
+            flex: 1;
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+
+        .forum-badge {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: var(--app-badge-radius);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge-sell {
+            background: rgba(0, 122, 255, 0.15);
+            color: var(--app-accent);
+            border: 1px solid var(--app-accent);
+        }
+        .badge-buy {
+            background: rgba(255, 214, 10, 0.15);
+            color: var(--app-accent-gold);
+            border: 1px solid var(--app-accent-gold);
+        }
+        .badge-pending {
+            background: rgba(142, 142, 147, 0.15);
+            color: var(--app-text-muted);
+            border: 1px solid var(--app-card-border);
+        }
+
+        /* ==========================================================================
+           ПРОФИЛЬ
+           ========================================================================== */
+        .profile-card {
+            text-align: center;
+            padding: var(--app-spacing-lg);
+        }
+        .profile-avatar-wrapper {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            margin: 0 auto var(--app-spacing-md);
+            border-radius: var(--app-radius-round);
+            overflow: visible;
+        }
+        .profile-avatar-img {
+            width: 86px;
+            height: 86px;
+            border-radius: var(--app-radius-round);
+            object-fit: cover;
+            border: 2px solid var(--app-accent);
+            background: var(--app-header-bg);
+            transition: border-color var(--app-transition);
+            loading: lazy;
+        }
+        .profile-name {
+            font-size: var(--app-font-size-lg);
+            font-weight: 700;
+            color: var(--app-text-main);
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+        .profile-status {
+            font-size: var(--app-font-size-xs);
+            color: var(--app-text-muted);
+            font-style: italic;
+            margin-bottom: var(--app-spacing-sm);
+        }
+        .profile-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: var(--app-radius-xl);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            border: var(--app-border-width) solid var(--app-accent);
+            color: var(--app-accent-secondary);
+            margin-bottom: var(--app-spacing-md);
+        }
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--app-spacing-sm);
+            background: var(--app-header-bg);
+            padding: var(--app-spacing-sm);
+            border-radius: var(--app-radius-md);
+            margin-bottom: var(--app-spacing-md);
+        }
+        .profile-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .profile-stat-value {
+            font-size: var(--app-font-size-lg);
+            font-weight: 700;
+            color: var(--app-text-main);
+        }
+        .profile-stat-label {
+            font-size: var(--app-font-size-xs);
+            color: var(--app-text-muted);
+        }
+
+        /* ==========================================================================
+           РАМКИ АВАТАРА (анимации)
+           ========================================================================== */
+        .frame-dark { animation: borderPulse 3s infinite ease-in-out; border-width: 2px; border-style: solid; border-radius: 50%; }
+        .frame-gold { animation: goldShimmer 2.5s infinite ease-in-out; border-width: 2px; border-style: solid; border-radius: 50%; }
+        .frame-cyber { animation: cyberGlow 2.5s infinite ease-in-out; border-width: 2px; border-style: solid; border-radius: 50%; }
+        .frame-emerald { animation: emeraldPulse 2.5s infinite ease-in-out; border-width: 2px; border-style: solid; border-radius: 50%; }
+        @keyframes borderPulse { 0% { border-color: #3a3a3c; box-shadow: 0 0 8px rgba(255,255,255,0.15); } 50% { border-color: #2aabee; box-shadow: 0 0 18px rgba(42,171,238,0.35); } 100% { border-color: #3a3a3c; box-shadow: 0 0 8px rgba(255,255,255,0.15); } }
+        @keyframes goldShimmer { 0% { border-color: #b8860b; box-shadow: 0 0 10px rgba(184,134,11,0.3); } 50% { border-color: #ffd60a; box-shadow: 0 0 20px rgba(255,214,10,0.6); } 100% { border-color: #b8860b; box-shadow: 0 0 10px rgba(184,134,11,0.3); } }
+        @keyframes cyberGlow { 0% { border-color: #06b6d4; box-shadow: 0 0 10px rgba(6,182,212,0.3); } 50% { border-color: #67e8f9; box-shadow: 0 0 22px rgba(103,232,249,0.7); } 100% { border-color: #06b6d4; box-shadow: 0 0 10px rgba(6,182,212,0.3); } }
+        @keyframes emeraldPulse { 0% { border-color: #059669; box-shadow: 0 0 10px rgba(5,150,105,0.3); } 50% { border-color: #34d399; box-shadow: 0 0 20px rgba(52,211,153,0.6); } 100% { border-color: #059669; box-shadow: 0 0 10px rgba(5,150,105,0.3); } }
+
+        /* ==========================================================================
+           МОДАЛЬНЫЕ ОКНА
+           ========================================================================== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--app-overlay-bg);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+            padding: var(--app-spacing-lg);
+            animation: fadeIn 0.2s ease-out;
+        }
+        .modal-overlay.visible { display: flex; }
+        .modal-content {
+            background: var(--app-card-bg);
+            border: var(--app-border-width) solid var(--app-card-border);
+            border-radius: var(--app-modal-radius);
+            padding: var(--app-spacing-lg);
+            max-width: 480px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: var(--app-shadow-lg);
+            animation: fadeIn 0.25s ease-out;
+            position: relative;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--app-spacing-md); }
+        .modal-title { font-size: var(--app-font-size-lg); font-weight: 700; color: var(--app-text-main); margin: 0; }
+        .modal-close { width: 32px; height: 32px; border-radius: var(--app-radius-md); background: var(--app-header-bg); border: var(--app-border-width) solid var(--app-card-border); color: var(--app-text-main); display: flex; align-items: center; justify-content: center; font-size: var(--app-font-size-md); cursor: pointer; transition: all var(--app-transition); }
+        .modal-close:hover { border-color: var(--app-accent-red); color: var(--app-accent-red); }
+
+        /* ==========================================================================
+           ПИКЕР
+           ========================================================================== */
+        .picker-list { display: flex; flex-direction: column; gap: var(--app-spacing-xs); max-height: 300px; overflow-y: auto; }
+        .picker-item { padding: var(--app-spacing-sm) var(--app-spacing-md); border-radius: var(--app-radius-md); background: var(--app-header-bg); border: var(--app-border-width) solid var(--app-card-border); cursor: pointer; font-size: var(--app-font-size-sm); font-weight: 500; color: var(--app-text-main); transition: all var(--app-transition); display: flex; justify-content: space-between; align-items: center; }
+        .picker-item:hover { border-color: var(--app-accent); background: var(--app-card-bg); }
+
+        /* ==========================================================================
+           КЛИКЕР
+           ========================================================================== */
+        .clicker-box { background: var(--app-header-bg); border: var(--app-border-width) solid var(--app-card-border); border-radius: var(--app-radius-lg); padding: var(--app-spacing-lg); text-align: center; }
+        .clicker-money { font-size: var(--app-font-size-xxl); font-weight: 700; color: var(--app-text-main); margin-bottom: var(--app-spacing-sm); }
+        .clicker-big-btn { background: var(--app-btn-bg); color: #fff; border-radius: var(--app-radius-round); width: 110px; height: 110px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; margin: var(--app-spacing-md) auto; border: 2px solid var(--app-accent); box-shadow: 0 0 20px rgba(42,171,238,0.4); transition: transform 0.08s ease; -webkit-tap-highlight-color: transparent; }
+        .clicker-big-btn:active { transform: scale(0.92); }
+        .clicker-upgrade-row { display: flex; justify-content: space-between; align-items: center; background: var(--app-card-bg); border: var(--app-border-width) solid var(--app-card-border); padding: var(--app-spacing-sm) var(--app-spacing-md); border-radius: var(--app-radius-md); margin-bottom: var(--app-spacing-xs); font-size: var(--app-font-size-xs); text-align: left; gap: var(--app-spacing-sm); }
+        .clicker-upgrade-row .upgrade-info { flex: 1; }
+        .clicker-upgrade-row .upgrade-name { font-weight: 700; color: var(--app-text-main); font-size: var(--app-font-size-sm); }
+        .clicker-upgrade-row .upgrade-cost { color: var(--app-text-muted); font-size: var(--app-font-size-xs); }
+        .clicker-upgrade-row .btn { width: auto; padding: 6px 14px; font-size: 11px; margin: 0; flex-shrink: 0; }
+
+        /* ==========================================================================
+           ДРОПДАУН-МЕНЮ
+           ========================================================================== */
+        .dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); right: 0; background: var(--app-card-bg); border: var(--app-border-width) solid var(--app-card-border); border-radius: var(--app-radius-md); min-width: 240px; max-width: 300px; max-height: 400px; overflow-y: auto; box-shadow: var(--app-shadow-lg); z-index: 150; padding: var(--app-spacing-xs); }
+        .dropdown-menu.visible { display: block; animation: fadeIn 0.15s ease-out; }
+        .dropdown-item { display: flex; align-items: center; gap: var(--app-spacing-sm); padding: var(--app-spacing-sm) var(--app-spacing-md); font-size: var(--app-font-size-sm); font-weight: 500; color: var(--app-text-main); border-radius: var(--app-radius-sm); cursor: pointer; transition: all var(--app-transition); width: 100%; text-align: left; background: transparent; border: none; }
+        .dropdown-item:hover { background: var(--app-header-bg); color: var(--app-accent); }
+
+        /* ==========================================================================
+           АДАПТИВНОСТЬ
+           ========================================================================== */
+        @media (min-width: 768px) {
+            :root { --app-card-gap: 14px; --app-spacing-lg: 20px; --app-spacing-xl: 24px; --app-font-size-md: 15px; --app-font-size-lg: 18px; --app-btn-padding: 12px 20px; --app-btn-font-size: 14px; --app-input-padding: 12px 16px; }
+            .ads-container:not(.grid-view) { grid-template-columns: repeat(2, 1fr); }
+            .ads-container.grid-view { grid-template-columns: repeat(3, 1fr); }
+            .ad-card .ad-image { height: 140px; }
+            .modal-content { max-width: 560px; padding: var(--app-spacing-xl); }
+            .clicker-big-btn { width: 130px; height: 130px; }
+        }
+        @media (min-width: 1024px) {
+            :root { --app-card-gap: 16px; --app-spacing-lg: 24px; --app-spacing-xl: 32px; --app-font-size-md: 16px; --app-font-size-lg: 20px; --app-max-width: 1100px; --app-tab-bar-height: 0px; }
+            .app-content { padding-bottom: var(--app-spacing-xl); }
+            .tab-bar { position: static; flex-direction: row; border-top: none; border-bottom: var(--app-border-width) solid var(--app-card-border); min-height: 52px; padding-bottom: 0; justify-content: flex-start; gap: var(--app-spacing-sm); padding: 0 var(--app-spacing-lg); background: var(--app-header-bg); }
+            .tab-bar-item { flex: 0 1 auto; flex-direction: row; gap: var(--app-spacing-sm); padding: var(--app-spacing-sm) var(--app-spacing-lg); font-size: var(--app-font-size-sm); }
+            .tab-bar-item.active::after { top: auto; bottom: 0; left: 15%; right: 15%; height: 2px; border-radius: 4px 4px 0 0; }
+            .tab-bar-item .tab-icon { font-size: var(--app-font-size-lg); }
+            .ads-container:not(.grid-view) { grid-template-columns: repeat(3, 1fr); }
+            .ads-container.grid-view { grid-template-columns: repeat(4, 1fr); }
+            .ad-card .ad-image { height: 160px; }
+        }
+        @media (min-width: 1366px) {
+            :root { --app-card-gap: 18px; --app-max-width: 1280px; --app-spacing-xl: 36px; --app-font-size-md: 17px; --app-font-size-lg: 22px; }
+            .ads-container:not(.grid-view) { grid-template-columns: repeat(4, 1fr); }
+            .ads-container.grid-view { grid-template-columns: repeat(5, 1fr); }
+            .ad-card .ad-image { height: 180px; }
+            .modal-content { max-width: 640px; }
+        }
+        @media (max-width: 767px) {
+            .app-header { padding: var(--app-spacing-sm) var(--app-spacing-md); }
+            .app-content { padding: var(--app-spacing-sm) var(--app-spacing-md); padding-bottom: calc(var(--app-tab-bar-height) + var(--app-spacing-md) + env(safe-area-inset-bottom, 0)); }
+            .ads-container.grid-view { grid-template-columns: repeat(2, 1fr); }
+            .modal-content { padding: var(--app-spacing-md); max-width: 95%; }
+            .clicker-big-btn { width: 100px; height: 100px; }
+        }
+        @media (max-width: 380px) {
+            :root { --app-spacing-md: 10px; --app-spacing-lg: 14px; --app-font-size-md: 13px; --app-font-size-lg: 15px; }
+            .tab-bar-item .tab-label { font-size: 9px; }
+            .app-header-brand-text { font-size: 13px; }
+        }
+
+        /* ==========================================================================
+           УТИЛИТЫ
+           ========================================================================== */
+        .text-center { text-align: center; }
+        .text-muted { color: var(--app-text-muted); }
+        .text-accent { color: var(--app-accent); }
+        .mt-sm { margin-top: var(--app-spacing-sm); }
+        .mt-md { margin-top: var(--app-spacing-md); }
+        .mb-sm { margin-bottom: var(--app-spacing-sm); }
+        .mb-md { margin-bottom: var(--app-spacing-md); }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-sm { gap: var(--app-spacing-sm); }
+        .gap-md { gap: var(--app-spacing-md); }
+        .hidden { display: none !important; }
+        .w-full { width: 100%; }
+
+        /* ==========================================================================
+           СТИЛИ ДЛЯ WILDBERRIES (WB) И IOS (дополнительные модификаторы)
+           ========================================================================== */
+        body.style-wb {
+            --app-accent: #cb11ab;
+            --app-accent-secondary: #ff5ecf;
+            --app-accent-gold: #ffb800;
+            --app-accent-red: #ff3b30;
+            --app-btn-bg: linear-gradient(135deg, #cb11ab 0%, #7b0e6a 100%);
+            --app-btn-hover: linear-gradient(135deg, #e022c0 0%, #8f1180 100%);
+            --app-radius-sm: 12px;
+            --app-radius-md: 16px;
+            --app-radius-lg: 20px;
+            --app-radius-xl: 24px;
+            --app-radius-round: 50%;
+            --app-btn-padding: 14px 24px;
+            --app-btn-font-size: 15px;
+            --app-card-radius: 18px;
+            --app-modal-radius: 24px;
+            --app-card-gap: 14px;
+            --app-shadow: 0 6px 24px rgba(203,17,171,0.2);
+            --app-shadow-lg: 0 10px 40px rgba(203,17,171,0.3);
+        }
+        body.style-wb .ad-card { border-radius: var(--app-radius-lg); }
+        body.style-wb .btn { border-radius: var(--app-radius-lg); font-weight: 700; }
+        body.style-wb .tab-bar-item.active { color: #cb11ab; }
+        body.style-wb .tab-bar-item.active::after { background: #cb11ab; }
+
+        body.style-ios {
+            --app-accent: #007aff;
+            --app-accent-secondary: #5ac8fa;
+            --app-accent-gold: #b8860b;
+            --app-accent-red: #ff3b30;
+            --app-btn-bg: linear-gradient(135deg, #007aff 0%, #0055b3 100%);
+            --app-btn-hover: linear-gradient(135deg, #1a88ff 0%, #0066cc 100%);
+            --app-radius-sm: 10px;
+            --app-radius-md: 14px;
+            --app-radius-lg: 18px;
+            --app-radius-xl: 22px;
+            --app-radius-round: 50%;
+            --app-btn-padding: 12px 20px;
+            --app-btn-font-size: 14px;
+            --app-card-radius: 16px;
+            --app-modal-radius: 20px;
+            --app-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            --app-card-gap: 12px;
+            --app-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            --app-shadow-lg: 0 8px 32px rgba(0,0,0,0.18);
+            --app-transition: 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+        body.style-ios .tab-bar { background: rgba(255,255,255,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: none; box-shadow: 0 -1px 0 rgba(0,0,0,0.1); }
+        body.style-ios .tab-bar-item { font-weight: 500; }
+        body.style-ios .tab-bar-item.active { color: #007aff; }
+        body.style-ios .tab-bar-item.active::after { background: #007aff; }
+        body.style-ios .card, body.style-ios .ad-card, body.style-ios .modal-content { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body class="theme-dark style-tg">
+    <audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" autoplay loop preload="auto"></audio>
+
+    <div id="banOverlay" class="modal-overlay">
+        <div class="modal-content text-center">
+            <h2 style="color: var(--app-accent-red); font-size: 22px; margin-bottom: 12px;">🚫 ВЫ ЗАБЛОКИРОВАНЫ</h2>
+            <p style="color: var(--app-text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 20px;">Доступ к функциям бота, созданию тем и чатам ограничен администрацией.<br>Дождитесь снятия блокировки.</p>
+            <button onclick="location.reload()" class="btn btn-secondary btn-sm" style="width: auto; margin: 0 auto;">🔄 Проверить статус</button>
+        </div>
+    </div>
+
+    <div id="updateOverlay" class="modal-overlay">
+        <div class="modal-content text-center">
+            <h2 style="color: #fff; font-size: 22px; margin-bottom: 12px;">🔄 ДОСТУПНО ОБНОВЛЕНИЕ</h2>
+            <p style="color: var(--app-text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 20px;">Администрация выпустила новую версию приложения.<br>Пожалуйста, обновите страницу или перезапустите бота командой <b>/start</b>.</p>
+            <button onclick="location.reload()" class="btn btn-success btn-sm" style="width: auto; margin: 0 auto;">🚀 Обновить приложение</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <div id="broadcastBanner" class="broadcast-banner" onclick="openBroadcastModal()">
+            📢 <span id="broadcastText"><b>Уведомление от администрации!</b> Нажмите, чтобы открыть.</span>
+        </div>
+
+        <header class="app-header">
+            <a class="app-header-brand" href="https://t.me/arizona_coin_bot" target="_blank">
+                <img class="app-header-brand-img" src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP Logo">
+                <span class="app-header-brand-text">
+                    <span>Arizona RP</span>
+                    <span class="app-header-brand-subtitle">поиск • объявления • профили</span>
+                </span>
+            </a>
+            <div class="app-header-actions">
+                <span id="mskTime" style="font-size: 11px; font-weight: 600; color: var(--app-text-muted); margin-right: 4px;">--:--:-- МСК</span>
+                <button class="app-icon-btn" onclick="toggleDropdownMenu(event)" title="Меню" id="menuBtn">⋮<span class="badge-dot" id="menuBadgeDot"></span></button>
+                <div id="dropdownMenu" class="dropdown-menu">
+                    <button class="dropdown-item" onclick="openModal('barygaModal'); closeDropdowns();">🎮 Игра «Барыга»</button>
+                    <button class="dropdown-item" onclick="openModal('chatsModal'); closeDropdowns();">💬 Переписки</button>
+                    <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
+                    <button class="dropdown-item" onclick="openModal('searchModal'); closeDropdowns();">🔍 Поиск</button>
+                    <button class="dropdown-item" onclick="openModal('styleModal'); closeDropdowns();">🎨 Стиль и тема</button>
+                    <button class="dropdown-item" onclick="openModal('musicModal'); closeDropdowns();">🎵 Музыка</button>
+                    <button class="dropdown-item" onclick="openModal('fashionModal'); closeDropdowns();">📸 Лента «Луков»</button>
+                    <button class="dropdown-item" onclick="openModal('travelModal'); closeDropdowns();">🤝 Попутчики</button>
+                    <button class="dropdown-item" onclick="openModal('settingsModal'); closeDropdowns();">⚙️ Настройки</button>
+                    <button class="dropdown-item" onclick="openModal('helpModal'); closeDropdowns();">❓ Помощь</button>
+                    <div id="ownerContactItem" style="display: none;">
+                        <button class="dropdown-item" onclick="window.open('https://t.me/bounqy31', '_blank'); closeDropdowns();">📞 Менеджер</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <nav class="tab-bar" id="tabBar">
+            <button class="tab-bar-item active" data-tab="feed" onclick="switchTab('feed')"><span class="tab-icon">🏠</span><span class="tab-label">Главная</span></button>
+            <button class="tab-bar-item" data-tab="app" onclick="switchTab('app')"><span class="tab-icon">➕</span><span class="tab-label">Создать</span></button>
+            <button class="tab-bar-item" data-tab="myAds" onclick="switchTab('myAds')"><span class="tab-icon">📦</span><span class="tab-label">Мои темы</span></button>
+            <button class="tab-bar-item" data-tab="favorites" onclick="switchTab('favorites')"><span class="tab-icon">⭐</span><span class="tab-label">Избранное</span></button>
+            <button class="tab-bar-item" data-tab="profile" onclick="switchTab('profile')"><span class="tab-icon">👤</span><span class="tab-label">Профиль</span></button>
+            <button class="tab-bar-item" id="adminTabBtn" style="display: none;" data-tab="admin" onclick="switchTab('admin')"><span class="tab-icon">🛡️</span><span class="tab-label">Админ</span></button>
+        </nav>
+
+        <main class="app-content" id="appContent">
+            <section class="section active" id="tabFeed">
+                <div class="welcome-banner-wide">
+                    <img src="https://i.postimg.cc/WzMP51cN/1786185439356.png" alt="Welcome Banner" onerror="this.src='https://i.ibb.co/1YLcDKVk/banner.png';">
+                </div>
+                <div class="section-title">🌍 Главный раздел (Лента объявлений)</div>
+                <button class="btn btn-success mb-md" onclick="openModal('searchModal')">🔍 Поиск предметов и игроков</button>
+                <div class="flex gap-sm mb-md" style="justify-content: flex-start;">
+                    <button class="btn btn-outline btn-sm active" id="btnListView" onclick="setViewMode('list')" style="width:auto;">📄 Списком</button>
+                    <button class="btn btn-outline btn-sm" id="btnGridView" onclick="setViewMode('grid')" style="width:auto;">🧮 Плиткой</button>
+                </div>
+                <div id="feedContainer" class="ads-container"></div>
+                <div id="feedPaginationContainer" class="text-center mt-md" style="display: none;">
+                    <button onclick="loadMoreFeedItems()" class="btn btn-secondary btn-sm" style="width: auto;">⬇️ Загрузить ещё</button>
+                </div>
+            </section>
+
+            <section class="section" id="tabProfile">
+                <div class="card profile-card">
+                    <div class="profile-avatar-wrapper" id="profileAvatarWrapper">
+                        <img id="azAvatarImg" class="profile-avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231c1c1e'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='45'>👤</text></svg>" alt="Avatar">
+                    </div>
+                    <h3 id="azUserName" class="profile-name">👤 Игрок</h3>
+                    <div id="azCustomStatus" class="profile-status">✨ Статус не установлен</div>
+                    <div id="azRoleBadge" class="profile-badge">👤 Игрок</div>
+                    <div style="font-size: 12px; color: var(--app-text-muted); margin-bottom: 12px;">
+                        <div>📅 Регистрация: <span id="azRegDate">Сегодня</span></div>
+                        <div>🟢 Статус: <span id="azActivity">В сети</span></div>
+                    </div>
+                    <div class="profile-stats">
+                        <div class="profile-stat"><span class="profile-stat-value" id="azStatMsgs">0</span><span class="profile-stat-label">📦 Заявки</span></div>
+                        <div class="profile-stat"><span class="profile-stat-value" id="azStatReacts">0</span><span class="profile-stat-label">❤️ Реакции</span></div>
+                        <div class="profile-stat"><span class="profile-stat-value" id="azStatPoints">0</span><span class="profile-stat-label">⭐ Баллы</span></div>
+                    </div>
+                    <div style="text-align: left; margin-top: 12px;">
+                        <label style="font-size: 10px;">🎨 Рамка профиля:</label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px;">
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_none" onclick="changeAvatarFrame('none')">⚪ Без рамки</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-dark" onclick="changeAvatarFrame('frame-dark')">⬛ Neon</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-gold" onclick="changeAvatarFrame('frame-gold')">🪙 Gold</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-cyber" onclick="changeAvatarFrame('frame-cyber')">⚡ Cyber</button>
+                            <button class="btn btn-outline btn-sm frame-option-btn" id="frameBtn_frame-emerald" onclick="changeAvatarFrame('frame-emerald')">💎 Emerald</button>
+                        </div>
+                        <label style="font-size: 10px;">💬 Статус:</label>
+                        <div class="flex gap-sm">
+                            <input type="text" id="customStatusInput" placeholder="Ваш статус..." style="margin:0; font-size: 12px;">
+                            <button onclick="saveCustomStatus()" class="btn btn-success btn-sm" style="width:auto; margin:0;">💾</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="flex gap-sm mb-md" style="border-bottom: 1px solid var(--app-card-border); padding-bottom: 8px;">
+                        <button class="btn btn-outline btn-sm active" id="subtabWall" onclick="switchProfileSubtab('wall')" style="width:auto;">💬 Росписи</button>
+                        <button class="btn btn-outline btn-sm" id="subtabActivity" onclick="switchProfileSubtab('activity')" style="width:auto;">🕒 Активность</button>
+                    </div>
+                    <div id="profileWallContent">
+                        <div class="flex gap-sm mb-sm">
+                            <input type="text" id="wallCommentInput" placeholder="✍️ Напишите роспись..." style="margin:0;">
+                            <button onclick="postWallComment()" class="btn btn-success btn-sm" style="width:auto; margin:0;">📝</button>
+                        </div>
+                        <div id="wallCommentsContainer"></div>
+                    </div>
+                    <div id="profileActivityContent" style="display: none; font-size: 12px; color: var(--app-text-muted); text-align: center; padding: 10px;">🕒 Последняя активность: проверка цен на сервере.</div>
+                </div>
+            </section>
+
+            <section class="section" id="tabApp">
+                <div class="section-title">📝 Создать объявление</div>
+                <div class="card">
+                    <div class="form-group">
+                        <label>📌 Тип темы:</label>
+                        <div class="custom-select-trigger" id="triggerMode" onclick="openPicker('mode')"><span id="selectedModeText">Продажа</span> <span>▼</span></div>
+                        <input type="hidden" id="mode" value="sell">
+                    </div>
+                    <div class="form-group">
+                        <label>🗂 Раздел:</label>
+                        <div class="custom-select-trigger" id="triggerCategory" onclick="openPicker('category')"><span id="selectedCategoryText">💍 Аксессуары и вещи</span> <span>▼</span></div>
+                        <input type="hidden" id="category" value="💍 Аксессуары и вещи">
+                    </div>
+                    <div class="form-group">
+                        <label>🏷 Название:</label>
+                        <input type="text" id="itemName" placeholder="Например: Магический шар +12">
+                    </div>
+                    <div class="form-group">
+                        <label>💰 Цена ($):</label>
+                        <input type="text" id="price" placeholder="Только цифры" oninput="this.value = this.value.replace(/[^0-9\s]/g, '')">
+                    </div>
+                    <div class="form-group">
+                        <label>📄 Описание:</label>
+                        <textarea id="text" rows="3" placeholder="Опишите состояние..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>🖼 Ссылка на скриншот:</label>
+                        <input type="url" id="itemImage" placeholder="https://i.imgur.com/...">
+                    </div>
+                    <div class="form-group">
+                        <label>🌐 Сервер:</label>
+                        <div class="custom-select-trigger" id="triggerServer" onclick="openPicker('server')"><span id="selectedServerText">🌴 Tucson</span> <span>▼</span></div>
+                        <input type="hidden" id="server" value="🌴 Tucson">
+                    </div>
+                    <button onclick="submitData()" class="btn btn-success btn-lg">🚀 Отправить на модерацию</button>
+                    <div style="font-size: 10px; color: var(--app-text-muted); text-align: center; margin-top: 8px;">🕒 Время отправки: 09:00–22:00 МСК (КД 2 мин)</div>
+                </div>
+            </section>
+
+            <section class="section" id="tabMyAds">
+                <div class="section-title">📦 Ваши размещённые товары</div>
+                <div id="myAdsContainer" class="ads-container"></div>
+                <button onclick="clearMyAds()" class="btn btn-danger btn-sm mt-md">🗑 Очистить архив</button>
+            </section>
+
+            <section class="section" id="tabFavorites">
+                <div class="section-title">⭐ Ваши закладки</div>
+                <div id="favoritesContainer" class="ads-container"></div>
+            </section>
+
+            <section class="section" id="tabAdmin">
+                <div id="adminContent">
+                    <div class="section-title">🛡️ Модерация объявлений</div>
+                    <div id="pendingAdsContainer" class="mb-md"></div>
+                    <div id="ownerSection" style="display: none;">
+                        <div class="section-title">👑 Панель владельца</div>
+                        <div class="form-group">
+                            <label>🎯 Целевой игрок:</label>
+                            <input type="text" id="targetUser" placeholder="@username или ID">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;">
+                            <button class="btn btn-success btn-sm" onclick="sendTargetAction('make_admin')">➕ Админ</button>
+                            <button class="btn btn-danger btn-sm" onclick="sendTargetAction('remove_admin')">➖ Снять</button>
+                            <button class="btn btn-danger btn-sm" onclick="sendTargetAction('ban')">🚫 Бан</button>
+                            <button class="btn btn-success btn-sm" onclick="sendTargetAction('unban')">✅ Разбан</button>
+                        </div>
+                        <button class="btn btn-danger btn-sm" onclick="clearGlobalFeedAdmin()">🗑 Очистить ленту</button>
+                        <div class="mt-md">
+                            <label>📢 Системный баннер:</label>
+                            <input type="text" id="newBroadcastInput" placeholder="Текст уведомления..." class="mb-sm">
+                            <button onclick="updateBroadcastMessage()" class="btn btn-success btn-sm">📢 Отправить</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ФУТЕР СО СЧЁТЧИКОМ -->
+        <footer class="app-footer" style="text-align:center; padding: 12px; font-size: 12px; color: var(--app-text-muted); border-top: 1px solid var(--app-card-border); background: var(--app-header-bg);">
+            <span id="visitorCount">👥 Посетителей: 0</span> • <span id="onlineCount">🟢 Онлайн: 0</span>
+            <br>🤖 @arizona_coin_bot
+        </footer>
+    </div>
+
+    <!-- МОДАЛЬНЫЕ ОКНА -->
+    <!-- Детальный просмотр объявления -->
+    <div id="adDetailModal" class="modal-overlay" onclick="handleOverlayClick(event, 'adDetailModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title" id="adDetailTitle">📄 Объявление</h3><button class="modal-close" onclick="closeModal('adDetailModal')">✕</button></div>
+            <div id="adDetailContent"></div>
+        </div>
+    </div>
+
+    <div id="barygaModal" class="modal-overlay" onclick="handleOverlayClick(event, 'barygaModal')">
+        <div class="modal-content" style="text-align: left;">
+            <div class="modal-header"><h3 class="modal-title">🎮 Игра «Барыга»</h3><button class="modal-close" onclick="closeModal('barygaModal')">✕</button></div>
+            <div class="clicker-box">
+                <div style="font-size: 12px; color: var(--app-text-muted);">💰 Баланс:</div>
+                <div id="clickerMoney" class="clicker-money">0 $</div>
+                <button class="clicker-big-btn" onclick="barygaClick()"><span>💸 ТАПАТЬ</span><span id="clickPowerLabel" style="font-size: 10px; color: #fff;">+1 $ / клик</span></button>
+                <div style="font-size: 11px; color: var(--app-text-muted); margin-bottom: 10px;">📈 Пассивный доход: <b id="autoIncomeLabel" style="color: var(--app-text-main);">0 $ / сек</b></div>
+                <div style="font-weight: 700; font-size: 12px; margin: 10px 0 6px;">⚡ Улучшения:</div>
+                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">👆 Клик +1</span><br><span class="upgrade-cost" id="clickCostLabel">Цена: 50 $</span></div><button onclick="buyClickUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
+                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">🤖 Скупщик (+5$/с)</span><br><span class="upgrade-cost" id="autoCostLabel">Цена: 200 $</span></div><button onclick="buyAutoUpgrade()" class="btn btn-success btn-sm">Нанять</button></div>
+                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">💼 Профи (+20$/с)</span><br><span class="upgrade-cost" id="proCostLabel">Цена: 800 $</span></div><button onclick="buyProUpgrade()" class="btn btn-success btn-sm">Нанять</button></div>
+                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">🏪 Авто-лавка (+50$/с)</span><br><span class="upgrade-cost" id="shopCostLabel">Цена: 3 000 $</span></div><button onclick="buyShopUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
+                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">👑 Элитный (+10 клик)</span><br><span class="upgrade-cost" id="eliteCostLabel">Цена: 10 000 $</span></div><button onclick="buyEliteUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
+                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">🛢 Нефтевышка (+200$/с)</span><br><span class="upgrade-cost" id="oilCostLabel">Цена: 35 000 $</span></div><button onclick="buyOilRigUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
+                <div class="clicker-upgrade-row"><div class="upgrade-info"><span class="upgrade-name">🪙 Криптоферма (+1000$/с)</span><br><span class="upgrade-cost" id="cryptoCostLabel">Цена: 150 000 $</span></div><button onclick="buyCryptoUpgrade()" class="btn btn-success btn-sm">Купить</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="searchModal" class="modal-overlay" onclick="handleOverlayClick(event, 'searchModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">🔍 Поиск</h3><button class="modal-close" onclick="closeModal('searchModal')">✕</button></div>
+            <div class="form-group"><label>Введите название или ник:</label><input type="text" id="modalSearchInput" placeholder="Шар или @player"></div>
+            <div class="flex gap-sm"><button onclick="executeAdvancedSearch('item')" class="btn btn-success">📦 Предмет</button><button onclick="executeAdvancedSearch('profile')" class="btn btn-outline">👤 Профиль</button></div>
+        </div>
+    </div>
+
+    <div id="profileInspectModal" class="modal-overlay" onclick="handleOverlayClick(event, 'profileInspectModal')">
+        <div class="modal-content text-center">
+            <div class="modal-header"><h3 class="modal-title">👤 Профиль игрока</h3><button class="modal-close" onclick="closeModal('profileInspectModal')">✕</button></div>
+            <div style="margin-bottom: 14px;">
+                <div class="profile-avatar-wrapper" style="width: 70px; height: 70px; margin: 0 auto 8px;"><img id="inspectAvatar" class="profile-avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='50' fill='%231c1c1e'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='35'>👤</text></svg>" style="width: 66px; height: 66px;"></div>
+                <h4 id="inspectUsername" style="font-size: 16px; margin: 0 0 4px;">@player</h4>
+                <div id="inspectStatus" style="font-size: 11px; color: var(--app-text-muted);">✨ В поиске</div>
+                <div id="inspectRoleBadge" class="profile-badge" style="margin: 8px auto;">👤 Игрок</div>
+            </div>
+            <div class="flex gap-sm"><button onclick="inspectSubscribeUser()" class="btn btn-success btn-sm" id="inspectSubBtn">❤️ Подписаться</button><button onclick="inspectOpenChat()" class="btn btn-outline btn-sm">💬 Написать</button></div>
+        </div>
+    </div>
+
+    <div id="styleModal" class="modal-overlay" onclick="handleOverlayClick(event, 'styleModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">🎨 Стиль и тема</h3><button class="modal-close" onclick="closeModal('styleModal')">✕</button></div>
+            <label>Дизайн-стиль:</label>
+            <div class="flex gap-sm mb-md" style="flex-wrap: wrap;">
+                <button onclick="setAppStyle('tg')" class="btn btn-outline btn-sm" style="flex:1; min-width:100px;">📱 Telegram</button>
+                <button onclick="setAppStyle('wb')" class="btn btn-outline btn-sm" style="flex:1; min-width:100px;">🛍 Wildberries</button>
+                <button onclick="setAppStyle('ios')" class="btn btn-outline btn-sm" style="flex:1; min-width:100px;"> Apple iOS</button>
+            </div>
+            <label>Цветовая схема:</label>
+            <div class="flex gap-sm"><button onclick="setAppTheme('dark')" class="btn btn-outline btn-sm" style="flex:1;">🌙 Тёмная</button><button onclick="setAppTheme('light')" class="btn btn-outline btn-sm" style="flex:1;">☀️ Светлая</button></div>
+            <div class="mt-md text-center text-muted" style="font-size: 11px;">Текущий стиль: <b id="currentStyleLabel">Telegram</b> • Тема: <b id="currentThemeLabel">Тёмная</b></div>
+        </div>
+    </div>
+
+    <div id="musicModal" class="modal-overlay" onclick="handleOverlayClick(event, 'musicModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">🎵 Фоновая музыка</h3><button class="modal-close" onclick="closeModal('musicModal')">✕</button></div>
+            <p style="font-size: 12px; color: var(--app-text-muted); margin-bottom: 12px;">Загрузите аудиофайл (.mp3, .wav) для фонового воспроизведения.</p>
+            <input type="file" id="customAudioFile" accept="audio/*" onchange="loadCustomBackgroundMusic(event)" class="mb-md">
+            <div class="flex gap-sm"><button onclick="toggleMusicPlayback()" class="btn btn-success" id="musicPlayToggleBtn">⏸ Пауза</button><button onclick="resetDefaultMusic()" class="btn btn-outline">🔄 Сбросить</button></div>
+        </div>
+    </div>
+
+    <div id="fashionModal" class="modal-overlay" onclick="handleOverlayClick(event, 'fashionModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">📸 Лента «Луков»</h3><button class="modal-close" onclick="closeModal('fashionModal')">✕</button></div>
+            <div class="form-group"><input type="text" id="fashionSetTitle" placeholder="Название сета (Ангел)"></div>
+            <div class="form-group"><input type="url" id="fashionSetImage" placeholder="Ссылка на скриншот"></div>
+            <button onclick="postFashionLook()" class="btn btn-success mb-md">🚀 Выложить</button>
+            <div id="fashionContainer" style="max-height: 250px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <div id="travelModal" class="modal-overlay" onclick="handleOverlayClick(event, 'travelModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">🤝 Поиск попутчиков</h3><button class="modal-close" onclick="closeModal('travelModal')">✕</button></div>
+            <div class="form-group"><input type="text" id="travelActivity" placeholder="Куда идём? (Шахта, Завод)"></div>
+            <div class="form-group"><textarea id="travelDesc" rows="2" placeholder="Условия / Сервер..."></textarea></div>
+            <button onclick="postTravelAd()" class="btn btn-success mb-md">📢 Найти напарника</button>
+            <div id="travelContainer" style="max-height: 250px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <div id="chatsModal" class="modal-overlay" onclick="handleOverlayClick(event, 'chatsModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">💬 Переписки</h3><button class="modal-close" onclick="closeModal('chatsModal')">✕</button></div>
+            <div class="flex gap-sm mb-md"><input type="text" id="findUserChatInput" placeholder="Найти игрока..." style="margin:0;"><button onclick="startChatByUsername()" class="btn btn-success btn-sm" style="width:auto; margin:0;">🔍</button></div>
+            <div id="chatsList" style="max-height: 260px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <div id="chatDetailModal" class="modal-overlay" onclick="handleOverlayClick(event, 'chatDetailModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title" id="chatTitle">💬 Чат</h3><div style="display: flex; gap: 4px;"><button class="modal-close" onclick="clearActiveChatHistory()" title="Очистить">🧹</button><button class="modal-close" onclick="closeModal('chatDetailModal')">✕</button></div></div>
+            <div id="chatMessages" style="background: var(--app-header-bg); padding: 12px; border-radius: 12px; height: 220px; overflow-y: auto; font-size: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--app-card-border);"></div>
+            <div class="flex gap-sm"><input type="text" id="chatInputMessage" placeholder="Сообщение..." style="margin:0;" onkeypress="if(event.key === 'Enter') sendChatMessage()"><button onclick="sendChatMessage()" class="btn btn-success btn-sm" style="width:auto; margin:0;">🚀</button></div>
+        </div>
+    </div>
+
+    <div id="pickerModal" class="modal-overlay" onclick="handleOverlayClick(event, 'pickerModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title" id="pickerTitle">📌 Выберите</h3><button class="modal-close" onclick="closeModal('pickerModal')">✕</button></div>
+            <div id="pickerList" class="picker-list"></div>
+        </div>
+    </div>
+
+    <div id="broadcastModal" class="modal-overlay" onclick="handleOverlayClick(event, 'broadcastModal')">
+        <div class="modal-content text-center">
+            <div class="modal-header"><h3 class="modal-title">📢 Уведомление</h3><button class="modal-close" onclick="closeModal('broadcastModal')">✕</button></div>
+            <p id="broadcastModalText" style="font-size: 14px; line-height: 1.6;"></p>
+        </div>
+    </div>
+
+    <div id="editAdModal" class="modal-overlay" onclick="handleOverlayClick(event, 'editAdModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">✏️ Редактировать объявление</h3><button class="modal-close" onclick="closeModal('editAdModal')">✕</button></div>
+            <div id="editAdForm"></div>
+        </div>
+    </div>
+
+    <div id="cooldownModal" class="modal-overlay">
+        <div class="modal-content text-center">
+            <h3 style="margin-bottom: 12px;">⏳ Объявление отправлено!</h3>
+            <p style="font-size: 13px; color: var(--app-text-muted); margin-bottom: 8px;">Ожидайте модерации. Следующее объявление можно будет отправить через:</p>
+            <div id="cooldownTimer" style="font-size: 28px; font-weight: 700; color: var(--app-accent); margin-bottom: 16px;">02:00</div>
+            <button onclick="closeModal('cooldownModal')" class="btn btn-secondary btn-sm" style="width:auto; margin:0 auto;">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay" onclick="handleOverlayClick(event, 'settingsModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">⚙️ Настройки</h3><button class="modal-close" onclick="closeModal('settingsModal')">✕</button></div>
+            <div class="form-group">
+                <label>🔊 Звуковые эффекты</label>
+                <button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">Включены</button>
+            </div>
+            <div class="form-group">
+                <label>🗑 Сбросить все данные</label>
+                <button class="btn btn-danger btn-sm" onclick="resetAllData()">Сбросить</button>
+            </div>
+            <div class="form-group">
+                <label>🔄 Сбросить только ленту объявлений</label>
+                <button class="btn btn-outline btn-sm" onclick="resetFeedOnly()">Сбросить ленту</button>
+            </div>
+            <div class="form-group">
+                <label>🔄 Сбросить только мои объявления</label>
+                <button class="btn btn-outline btn-sm" onclick="resetMyAdsOnly()">Сбросить мои</button>
+            </div>
+            <div class="form-group">
+                <label>🔄 Сбросить переписки</label>
+                <button class="btn btn-outline btn-sm" onclick="resetChatsOnly()">Сбросить чаты</button>
+            </div>
+            <div class="text-muted" style="font-size: 11px;">Версия: 2026.08.08-universal</div>
+        </div>
+    </div>
+
+    <div id="helpModal" class="modal-overlay" onclick="handleOverlayClick(event, 'helpModal')">
+        <div class="modal-content">
+            <div class="modal-header"><h3 class="modal-title">❓ Помощь</h3><button class="modal-close" onclick="closeModal('helpModal')">✕</button></div>
+            <p style="font-size: 14px; line-height: 1.6;">
+                <b>Arizona RP Mini App</b><br><br>
+                📌 <b>Главная</b> — просмотр объявлений.<br>
+                ➕ <b>Создать</b> — разместить своё объявление (после модерации).<br>
+                📦 <b>Мои темы</b> — ваши объявления.<br>
+                ⭐ <b>Избранное</b> — сохранённые.<br>
+                👤 <b>Профиль</b> — настройка профиля, росписи.<br>
+                🛡️ <b>Админ</b> — модерация (для администраторов).<br><br>
+                💬 <b>Переписки</b> доступны через меню (⋮).<br>
+                🎨 Стиль и тему можно менять в меню.<br>
+                ❓ При возникновении проблем обратитесь к менеджеру.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================================================
+        // КОНСТАНТЫ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+        // ==========================================================================
+        const CURRENT_APP_BUILD = '2026.08.08-universal';
+        const OWNER_USERNAME = 'bounqy';
+        const OWNER_ID = '777';
+
+        let tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : {};
+        if (typeof tg.expand === 'function') tg.expand();
+        if (typeof tg.ready === 'function') tg.ready();
+
+        let tgUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) ? tg.initDataUnsafe.user : null;
+        let currentUserId = tgUser && tgUser.id ? tgUser.id.toString() : 'default_user';
+        let currentUserUsername = (tgUser && tgUser.username) ? '@' + tgUser.username : ('@user_' + currentUserId);
+        let currentUserNameDisplay = (tgUser && tgUser.first_name) ? tgUser.first_name : 'Игрок';
+
+        let sfxEnabled = true; // глобальный флаг звука
+
+        function getUserKey(key) {
+            return `arizona_${currentUserId}_${key}`;
+        }
+
+        // ==========================================================================
+        // УТИЛИТЫ
+        // ==========================================================================
+        function playSfx(type) {
+            if (!sfxEnabled) return;
+            try {
+                const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                let now = audioCtx.currentTime;
+                if (type === 'cash') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.setValueAtTime(1200, now + 0.08);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(880, now + 0.15);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                }
+            } catch (e) {}
+        }
+
+        function detectDeviceType() {
+            let body = document.body;
+            body.classList.remove('device-pc', 'device-tablet', 'device-mobile');
+            let width = window.innerWidth;
+            if (width >= 1024) body.classList.add('device-pc');
+            else if (width >= 768) body.classList.add('device-tablet');
+            else body.classList.add('device-mobile');
+        }
+        window.addEventListener('resize', detectDeviceType);
+        detectDeviceType();
+
+        function updateMskClock() {
+            try {
+                let now = new Date();
+                let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+                let timeStr = mskTime.toTimeString().split(' ')[0];
+                document.getElementById('mskTime').innerText = `${timeStr} МСК`;
+            } catch (e) {}
+        }
+        setInterval(updateMskClock, 1000);
+        updateMskClock();
+
+        // Счётчики посетителей и онлайна
+        function updateCounters() {
+            // Посетители (уникальные, сохраняем в localStorage)
+            let visitors = parseInt(localStorage.getItem('visitor_count') || '0');
+            if (!sessionStorage.getItem('counted_as_visitor')) {
+                visitors++;
+                localStorage.setItem('visitor_count', visitors.toString());
+                sessionStorage.setItem('counted_as_visitor', '1');
+            }
+            document.getElementById('visitorCount').innerText = `👥 Посетителей: ${visitors}`;
+
+            // Онлайн (просто случайное число для демонстрации, или можно считать по heartbeat)
+            let online = parseInt(localStorage.getItem('online_count') || '1');
+            // Симуляция изменения онлайн раз в 5 секунд
+            if (!sessionStorage.getItem('online_heartbeat')) {
+                sessionStorage.setItem('online_heartbeat', Date.now().toString());
+                online = Math.floor(Math.random() * 10) + 1;
+                localStorage.setItem('online_count', online.toString());
+            }
+            document.getElementById('onlineCount').innerText = `🟢 Онлайн: ${online}`;
+        }
+        updateCounters();
+        setInterval(() => {
+            // Обновляем онлайн каждые 30 секунд случайным образом
+            let online = Math.floor(Math.random() * 10) + 1;
+            localStorage.setItem('online_count', online.toString());
+            document.getElementById('onlineCount').innerText = `🟢 Онлайн: ${online}`;
+        }, 30000);
+
+        function checkAndPerformAutoCleanup() {
+            let now = new Date();
+            let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            let currentHours = mskTime.getHours();
+            let currentMinutes = mskTime.getMinutes();
+            let currentDateStr = mskTime.toISOString().split('T')[0];
+            let lastResetDate = localStorage.getItem('arizona_last_auto_reset_date') || '';
+            if ((currentHours > 7 || (currentHours === 7 && currentMinutes >= 50)) && lastResetDate !== currentDateStr) {
+                localStorage.removeItem('arizona_ads_feed');
+                localStorage.removeItem('arizona_pending_ads');
+                localStorage.removeItem('arizona_fashion_looks');
+                for (let i = 0; i < localStorage.length; i++) {
+                    let key = localStorage.key(i);
+                    if (key && key.includes('_my_ads')) localStorage.setItem(key, JSON.stringify([]));
+                }
+                localStorage.setItem('arizona_last_auto_reset_date', currentDateStr);
+            }
+        }
+        checkAndPerformAutoCleanup();
+        setInterval(checkAndPerformAutoCleanup, 60000);
+
+        const ALL_SERVERS = [
+            { value: '🌴 Tucson', label: '🌴 Tucson (Основной)' },
+            { value: '🔥 Phoenix', label: '🔥 Phoenix' },
+            { value: '🌵 Scottdale', label: '🌵 Scottdale' },
+            { value: '⚜️ Chandler', label: '⚜️ Chandler' },
+            { value: '❄️ Brainburg', label: '❄️ Brainburg' },
+            { value: '🌊 Yuma', label: '🌊 Yuma' },
+            { value: '✨ Saint-Rose', label: '✨ Saint-Rose' },
+            { value: '🏛 Mesa', label: '🏛 Mesa' },
+            { value: '❤️ Red-Rock', label: '❤️ Red-Rock' },
+            { value: '🍀 Surprise', label: '🍀 Surprise' },
+            { value: '⚡️ Prescott', label: '⚡️ Prescott' },
+            { value: '🌲 Glendale', label: '🌲 Glendale' },
+            { value: '👑 Kingman', label: '👑 Kingman' },
+            { value: '⚓️ Winslow', label: '⚓️ Winslow' },
+            { value: '🌴 Payson', label: '🌴 Payson' },
+            { value: '💎 Gilbert', label: '💎 Gilbert' },
+            { value: '🔥 Show-Low', label: '🔥 Show-Low' },
+            { value: '🌴 Casa-Grande', label: '🌴 Casa-Grande' },
+            { value: '🌟 Page', label: '🌟 Page' },
+            { value: '🚀 Bumble Bee', label: '🚀 Bumble Bee' },
+            { value: '🧸 Sedona', label: '🧸 Sedona' },
+            { value: '🎄 Holiday', label: '🎄 Holiday' },
+            { value: '⚡️ Queen-Creek', label: '⚡️ Queen-Creek' },
+            { value: '🚀 Yava', label: '🚀 Yava' },
+            { value: '🔮 Faraway', label: '🔮 Faraway' },
+            { value: '💎 Drake', label: '💎 Drake' },
+            { value: '🔥 Love', label: '🔥 Love' },
+            { value: '🌟 Mirage', label: '🌟 Mirage' },
+            { value: '🍀 Christmas', label: '🍀 Christmas' }
+        ];
+
+        let ADMIN_USERNAMES = [];
+        try {
+            ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || JSON.stringify(['admin', 'arizona_admin', OWNER_USERNAME]));
+        } catch (e) { ADMIN_USERNAMES = ['admin', 'arizona_admin', OWNER_USERNAME]; }
+
+        let activeChatUser = '';
+        let activeInspectedUser = '';
+        let feedDisplayLimit = 20;
+        let currentViewMode = 'list';
+        let activePickerType = '';
+        let currentAppStyle = 'tg';
+        let currentAppTheme = 'dark';
+        let cooldownInterval = null;
+
+        // ==========================================================================
+        // НАВИГАЦИЯ
+        // ==========================================================================
+        function switchTab(tabId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-bar-item').forEach(t => t.classList.remove('active'));
+            let targetSection = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (targetSection) targetSection.classList.add('active');
+            let targetTab = document.querySelector(`.tab-bar-item[data-tab="${tabId}"]`);
+            if (targetTab) targetTab.classList.add('active');
+            playSfx('click');
+            if (tabId === 'myAds') renderMyAds();
+            if (tabId === 'favorites') renderFavorites();
+            if (tabId === 'admin') renderPendingAds();
+            if (tabId === 'feed') renderFeed();
+        }
+
+        function toggleDropdownMenu(e) {
+            e.stopPropagation();
+            document.getElementById('dropdownMenu').classList.toggle('visible');
+            playSfx('click');
+        }
+        function closeDropdowns() { document.getElementById('dropdownMenu')?.classList.remove('visible'); }
+        window.addEventListener('click', closeDropdowns);
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('visible');
+            if (modalId === 'chatsModal') renderChatsList();
+            if (modalId === 'fashionModal') renderFashionLooks();
+            if (modalId === 'travelModal') renderTravelAds();
+            if (modalId === 'barygaModal') updateBarygaUI();
+            playSfx('success');
+        }
+        function closeModal(modalId) { document.getElementById(modalId).classList.remove('visible'); }
+        function handleOverlayClick(event, modalId) { if (event.target.id === modalId) closeModal(modalId); }
+
+        // ==========================================================================
+        // СТИЛЬ И ТЕМА
+        // ==========================================================================
+        function setAppStyle(styleName) {
+            currentAppStyle = styleName;
+            document.body.classList.remove('style-tg', 'style-wb', 'style-ios');
+            if (styleName === 'wb') document.body.classList.add('style-wb');
+            if (styleName === 'ios') document.body.classList.add('style-ios');
+            if (styleName === 'tg') document.body.classList.add('style-tg');
+            localStorage.setItem(getUserKey('app_style'), styleName);
+            updateTabIcons(styleName);
+            updateStyleLabels();
+            playSfx('success');
+        }
+
+        function setAppTheme(themeName) {
+            currentAppTheme = themeName;
+            document.body.classList.remove('theme-dark', 'theme-light');
+            if (themeName === 'dark') document.body.classList.add('theme-dark');
+            if (themeName === 'light') document.body.classList.add('theme-light');
+            localStorage.setItem(getUserKey('app_theme'), themeName);
+            updateStyleLabels();
+            playSfx('success');
+        }
+
+        function updateStyleLabels() {
+            let styleLabel = document.getElementById('currentStyleLabel');
+            let themeLabel = document.getElementById('currentThemeLabel');
+            if (styleLabel) styleLabel.innerText = currentAppStyle === 'tg' ? 'Telegram' : (currentAppStyle === 'wb' ? 'Wildberries' : 'iOS');
+            if (themeLabel) themeLabel.innerText = currentAppTheme === 'dark' ? 'Тёмная' : 'Светлая';
+        }
+
+        function updateTabIcons(style) {
+            const icons = {
+                tg: { feed: '🏠', app: '➕', myAds: '📦', favorites: '⭐', profile: '👤', admin: '🛡️' },
+                wb: { feed: '🔥', app: '➕', myAds: '📦', favorites: '⭐', profile: '👤', admin: '🛡️' },
+                ios: { feed: '⌂', app: '＋', myAds: '▦', favorites: '★', profile: '👤', admin: '🛡' }
+            };
+            document.querySelectorAll('.tab-bar-item').forEach((item, index) => {
+                const iconSpan = item.querySelector('.tab-icon');
+                if (iconSpan) {
+                    const keys = Object.keys(icons[style]);
+                    if (keys[index]) iconSpan.innerText = icons[style][keys[index]];
+                }
+            });
+        }
+
+        // ==========================================================================
+        // ПРОФИЛЬ
+        // ==========================================================================
+        let userProfileData = {
+            username: currentUserNameDisplay,
+            tgUser: currentUserUsername,
+            frame: localStorage.getItem(getUserKey('profile_frame')) || 'none',
+            status: localStorage.getItem(getUserKey('profile_status')) || '✨ В поиске редких аксов',
+            role: '👤 Игрок',
+            regDate: 'Август 2026',
+            stats: { msgs: 0, reacts: 0, points: 15 }
+        };
+
+        function initProfileUI() {
+            document.getElementById('azUserName').innerText = userProfileData.username + ' (' + userProfileData.tgUser + ')';
+            document.getElementById('azCustomStatus').innerText = userProfileData.status;
+            document.getElementById('azRoleBadge').innerText = userProfileData.role;
+            document.getElementById('azRegDate').innerText = userProfileData.regDate;
+            document.getElementById('azStatPoints').innerText = userProfileData.stats.points;
+            let statusInput = document.getElementById('customStatusInput');
+            if (statusInput) statusInput.value = userProfileData.status;
+            applyAvatarFrameToElement(document.getElementById('azAvatarImg'), userProfileData.frame);
+            highlightActiveFrameButton(userProfileData.frame);
+            renderWallComments();
+        }
+
+        function changeAvatarFrame(frameName) {
+            userProfileData.frame = frameName;
+            localStorage.setItem(getUserKey('profile_frame'), frameName);
+            applyAvatarFrameToElement(document.getElementById('azAvatarImg'), frameName);
+            highlightActiveFrameButton(frameName);
+            playSfx('success');
+        }
+        function applyAvatarFrameToElement(imgEl, frameName) {
+            if (!imgEl) return;
+            let wrapper = imgEl.parentElement;
+            wrapper.className = 'profile-avatar-wrapper';
+            if (frameName && frameName !== 'none') wrapper.classList.add(frameName);
+        }
+        function highlightActiveFrameButton(frameName) {
+            document.querySelectorAll('.frame-option-btn').forEach(btn => btn.classList.remove('active'));
+            let activeBtn = document.getElementById('frameBtn_' + frameName);
+            if (activeBtn) activeBtn.classList.add('active');
+        }
+        function saveCustomStatus() {
+            let val = document.getElementById('customStatusInput').value.trim();
+            if (val) {
+                userProfileData.status = val;
+                localStorage.setItem(getUserKey('profile_status'), val);
+                document.getElementById('azCustomStatus').innerText = val;
+                playSfx('success');
+                alert('✨ Статус сохранён!');
+            }
+        }
+        function switchProfileSubtab(tab) {
+            document.querySelectorAll('#tabProfile .btn-outline').forEach(b => b.classList.remove('active'));
+            if (tab === 'wall') {
+                document.getElementById('subtabWall').classList.add('active');
+                document.getElementById('profileWallContent').style.display = 'block';
+                document.getElementById('profileActivityContent').style.display = 'none';
+            } else {
+                document.getElementById('subtabActivity').classList.add('active');
+                document.getElementById('profileWallContent').style.display = 'none';
+                document.getElementById('profileActivityContent').style.display = 'block';
+            }
+        }
+
+        let wallComments = JSON.parse(localStorage.getItem(getUserKey('wall_comments')) || '[]');
+        function postWallComment() {
+            let input = document.getElementById('wallCommentInput');
+            let text = input.value.trim();
+            if (!text) return;
+            wallComments.unshift({ author: currentUserUsername, text: text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+            localStorage.setItem(getUserKey('wall_comments'), JSON.stringify(wallComments));
+            input.value = '';
+            renderWallComments();
+            playSfx('success');
+        }
+        function renderWallComments() {
+            let container = document.getElementById('wallCommentsContainer');
+            if (!container) return;
+            if (wallComments.length === 0) {
+                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center; padding:8px;">Пока нет росписей.</div>';
+                return;
+            }
+            container.innerHTML = wallComments.map(c => `
+                <div style="background:var(--app-header-bg); border:1px solid var(--app-card-border); padding:8px 10px; border-radius:8px; margin-bottom:6px; font-size:11px;">
+                    <div style="display:flex; justify-content:space-between; color:var(--app-accent-secondary); font-weight:600; margin-bottom:2px;">
+                        <span>${c.author}</span>
+                        <span style="font-size:9px; color:var(--app-text-muted);">${c.time}</span>
+                    </div>
+                    <div style="color:var(--app-text-main);">${c.text}</div>
+                </div>
+            `).join('');
+        }
+
+        // ==========================================================================
+        // ЧАТЫ
+        // ==========================================================================
+        let chatsDatabase = JSON.parse(localStorage.getItem(getUserKey('chats_db')) || '{}');
+
+        function openChatWithUser(targetUser) {
+            if (!targetUser) return;
+            activeChatUser = targetUser.startsWith('@') ? targetUser : '@' + targetUser;
+            document.getElementById('chatTitle').innerText = '💬 Чат с ' + activeChatUser;
+            closeModal('chatsModal');
+            closeModal('profileInspectModal');
+            openModal('chatDetailModal');
+            renderActiveChatMessages();
+        }
+
+        function renderActiveChatMessages() {
+            let container = document.getElementById('chatMessages');
+            if (!container) return;
+            if (!chatsDatabase[activeChatUser] || chatsDatabase[activeChatUser].length === 0) {
+                container.innerHTML = '<div style="color:var(--app-text-muted); text-align:center; margin:auto; font-size:11px;">История пуста.</div>';
+                return;
+            }
+            container.innerHTML = chatsDatabase[activeChatUser].map(msg => `
+                <div style="display:flex; flex-direction:column; align-items:${msg.sender === currentUserUsername ? 'flex-end' : 'flex-start'};">
+                    <div style="max-width:85%; background:${msg.sender === currentUserUsername ? 'var(--app-btn-bg)' : 'var(--app-card-bg)'}; border:1px solid var(--app-card-border); padding:8px 10px; border-radius:10px; font-size:11px; color:var(--app-text-main);">
+                        ${msg.text}
+                    </div>
+                    <span style="font-size:8px; color:var(--app-text-muted); margin-top:2px;">${msg.time}</span>
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            let input = document.getElementById('chatInputMessage');
+            let text = input.value.trim();
+            if (!text || !activeChatUser) return;
+            if (!chatsDatabase[activeChatUser]) chatsDatabase[activeChatUser] = [];
+            let timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            chatsDatabase[activeChatUser].push({ sender: currentUserUsername, text: text, time: timeStr });
+            localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+            input.value = '';
+            renderActiveChatMessages();
+            // имитация ответа собеседника без "Ответ от"
+            setTimeout(() => {
+                if (activeChatUser) {
+                    if (!chatsDatabase[activeChatUser]) chatsDatabase[activeChatUser] = [];
+                    chatsDatabase[activeChatUser].push({ sender: activeChatUser, text: text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+                    localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+                    renderActiveChatMessages();
+                }
+            }, 1500);
+            playSfx('success');
+            if (document.getElementById('chatsModal').classList.contains('visible')) {
+                renderChatsList();
+            }
+        }
+
+        function clearActiveChatHistory() {
+            if (activeChatUser && chatsDatabase[activeChatUser]) {
+                chatsDatabase[activeChatUser] = [];
+                localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+                renderActiveChatMessages();
+            }
+        }
+
+        function deleteChat(user) {
+            if (confirm(`Удалить переписку с ${user}?`)) {
+                delete chatsDatabase[user];
+                localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+                renderChatsList();
+                if (activeChatUser === user) closeModal('chatDetailModal');
+                playSfx('success');
+            }
+        }
+
+        function renderChatsList() {
+            let listEl = document.getElementById('chatsList');
+            if (!listEl) return;
+            let keys = Object.keys(chatsDatabase);
+            if (keys.length === 0) {
+                listEl.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center; padding:12px;">Нет переписок.</div>';
+                return;
+            }
+            listEl.innerHTML = keys.map(user => {
+                let lastMsg = chatsDatabase[user][chatsDatabase[user].length - 1] || { text: 'Нет сообщений', time: '' };
+                return `
+                <div class="picker-item" style="margin-bottom:6px; cursor:pointer;" onclick="openChatWithUser('${user}')">
+                    <div style="flex:1;">
+                        <div style="font-weight:600; color:var(--app-accent);">${user}</div>
+                        <div style="font-size:10px; color:var(--app-text-muted); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${lastMsg.text}</div>
+                    </div>
+                    <span style="font-size:9px; color:var(--app-text-muted);">${lastMsg.time}</span>
+                    <button class="modal-close" style="width:24px; height:24px; font-size:12px;" onclick="event.stopPropagation(); deleteChat('${user}')">🗑</button>
+                </div>
+            `;
+            }).join('');
+        }
+
+        function startChatByUsername() {
+            let inputVal = document.getElementById('findUserChatInput').value.trim();
+            if (!inputVal) return;
+            openChatWithUser(inputVal);
+        }
+
+        // ==========================================================================
+        // ПОИСК И ПРОФИЛИ
+        // ==========================================================================
+        function executeAdvancedSearch(type) {
+            let query = document.getElementById('modalSearchInput').value.trim();
+            closeModal('searchModal');
+            if (!query) return;
+            if (type === 'profile') inspectUserProfile(query);
+            else {
+                switchTab('feed');
+                alert(`🔍 Поиск предметов по запросу "${query}" выполнен.`);
+            }
+        }
+        function inspectUserProfile(usernameQuery) {
+            let cleanUser = usernameQuery.startsWith('@') ? usernameQuery : '@' + usernameQuery;
+            activeInspectedUser = cleanUser;
+            document.getElementById('inspectUsername').innerText = cleanUser;
+            document.getElementById('inspectStatus').innerText = '✨ Активный игрок Arizona RP';
+            openModal('profileInspectModal');
+        }
+        function inspectSubscribeUser() {
+            alert(`❤️ Вы подписались на ${activeInspectedUser}!`);
+            playSfx('success');
+            closeModal('profileInspectModal');
+        }
+        function inspectOpenChat() {
+            closeModal('profileInspectModal');
+            openChatWithUser(activeInspectedUser);
+        }
+
+        // ==========================================================================
+        // ОБЪЯВЛЕНИЯ
+        // ==========================================================================
+        let globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || JSON.stringify([
+            { id: 1, mode: 'sell', category: '💍 Аксессуары и вещи', itemName: 'Магический воздушный шар +12', price: '450.000.000 $', text: 'Продам шар +12, красный. Торг.', image: 'https://i.ibb.co/1YLcDKVk/banner.png', server: '🌴 Tucson', author: '@bounqy', status: 'approved' },
+            { id: 2, mode: 'buy', category: '🚗 Транспорт', itemName: 'Бронированный Brabus 700', price: '380кк', text: 'Куплю брабус, фт сп+.', image: '', server: '🌴 Tucson', author: '@player_sample', status: 'approved' }
+        ]));
+        let myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+        let favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+        let pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+
+        function submitData() {
+            let now = new Date();
+            let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            let mskHour = mskTime.getHours();
+            if (mskHour < 9 || mskHour >= 22) { alert('🕒 Объявления создаются с 09:00 до 22:00 МСК!'); return; }
+            let lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
+            let currentTime = Date.now();
+            if (currentTime - lastAdTime < 120000) {
+                let leftSec = Math.ceil((120000 - (currentTime - lastAdTime)) / 1000);
+                showCooldownTimer(leftSec);
+                return;
+            }
+            let mode = document.getElementById('mode').value;
+            let category = document.getElementById('category').value;
+            let itemName = document.getElementById('itemName').value.trim();
+            let price = document.getElementById('price').value.trim();
+            let text = document.getElementById('text').value.trim();
+            let image = document.getElementById('itemImage').value.trim();
+            let server = document.getElementById('server').value;
+            if (!itemName || !price || !text) { alert('⚠️ Заполните все обязательные поля!'); return; }
+            let newAd = { id: Date.now(), mode, category, itemName, price, text, image, server, author: currentUserUsername, status: 'pending' };
+            pendingAdsList.push(newAd);
+            myAdsList.push(newAd);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            localStorage.setItem(getUserKey('last_ad_time'), currentTime.toString());
+            if (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) localStorage.setItem(getUserKey('owner_has_posted_ad'), 'true');
+            showCooldownTimer(120);
+            playSfx('success');
+            switchTab('feed');
+            renderFeed();
+            renderPendingAds();
+            renderMyAds();
+            document.getElementById('itemName').value = '';
+            document.getElementById('price').value = '';
+            document.getElementById('text').value = '';
+            document.getElementById('itemImage').value = '';
+        }
+
+        function showCooldownTimer(seconds) {
+            if (cooldownInterval) clearInterval(cooldownInterval);
+            let totalSeconds = seconds;
+            updateCooldownDisplay(totalSeconds);
+            openModal('cooldownModal');
+            cooldownInterval = setInterval(() => {
+                totalSeconds--;
+                if (totalSeconds <= 0) { clearInterval(cooldownInterval); cooldownInterval = null; closeModal('cooldownModal'); }
+                else updateCooldownDisplay(totalSeconds);
+            }, 1000);
+        }
+        function updateCooldownDisplay(seconds) {
+            let mins = Math.floor(seconds / 60);
+            let secs = seconds % 60;
+            document.getElementById('cooldownTimer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function renderFeed() {
+            let container = document.getElementById('feedContainer');
+            if (!container) return;
+            let approvedAds = globalAdsFeed.filter(ad => ad.status === 'approved');
+            if (approvedAds.length === 0) {
+                container.innerHTML = '<div style="color:var(--app-text-muted); text-align:center; padding:20px; font-size:12px; grid-column:1/-1;">Лента пуста.</div>';
+                return;
+            }
+            let isAdminOrOwner = ADMIN_USERNAMES.map(u => u.replace('@','').toLowerCase()).includes(currentUserUsername.replace('@','').toLowerCase()) || (currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase());
+            container.innerHTML = approvedAds.slice(0, feedDisplayLimit).map(ad => {
+                let isFav = favoritesList.some(f => f.id === ad.id);
+                let imageHtml = ad.image ? `<img src="${ad.image}" class="ad-image" loading="lazy" onerror="this.style.display='none';">` : '';
+                let deleteBtn = isAdminOrOwner ? `<button onclick="event.stopPropagation(); deleteApprovedAd(${ad.id})" class="btn btn-danger btn-sm" style="padding: 4px 8px; margin-left: auto;">🗑</button>` : '';
+                return `
+                <div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div class="ad-header-row">
+                        <div>
+                            <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                            <span>${ad.server}</span>
+                        </div>
+                        <span style="color:var(--app-accent); font-weight:600; cursor:pointer;" onclick="event.stopPropagation(); inspectUserProfile('${ad.author}')">${ad.author}</span>
+                    </div>
+                    ${imageHtml}
+                    <div class="ad-title">${ad.itemName}</div>
+                    <div class="ad-price">💰 ${ad.price}</div>
+                    <div class="ad-desc">${ad.text}</div>
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button onclick="toggleFavorite(${ad.id})" class="btn btn-outline btn-sm" style="flex:1;">${isFav ? '❤️ В избр.' : '🤍 Избр.'}</button>
+                        <button onclick="openChatWithUser('${ad.author}')" class="btn btn-success btn-sm" style="flex:1;">💬 Написать</button>
+                        ${deleteBtn}
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        function openAdDetail(adId) {
+            let ad = globalAdsFeed.find(a => a.id === adId);
+            if (!ad) return;
+            document.getElementById('adDetailTitle').innerText = ad.itemName;
+            document.getElementById('adDetailContent').innerHTML = `
+                ${ad.image ? `<img src="${ad.image}" style="width:100%; border-radius:10px; margin-bottom:12px;" onerror="this.style.display='none';">` : ''}
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                    <span>${ad.server}</span>
+                </div>
+                <div style="font-size:16px; font-weight:700; margin-bottom:4px;">${ad.itemName}</div>
+                <div style="font-size:18px; color:var(--app-accent-gold); font-weight:700; margin-bottom:8px;">💰 ${ad.price}</div>
+                <div style="font-size:13px; color:var(--app-text-muted); margin-bottom:16px;">${ad.text}</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-success" onclick="openChatWithUser('${ad.author}')">💬 Написать продавцу</button>
+                    <button class="btn btn-outline" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button>
+                </div>
+                <div style="margin-top:12px; font-size:11px; color:var(--app-text-muted);">Продавец: <span style="color:var(--app-accent); cursor:pointer;" onclick="inspectUserProfile('${ad.author}')">${ad.author}</span></div>
+            `;
+            openModal('adDetailModal');
+        }
+
+        function deleteApprovedAd(adId) {
+            if (confirm('Удалить это объявление?')) {
+                globalAdsFeed = globalAdsFeed.filter(ad => ad.id !== adId);
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderFeed();
+                playSfx('success');
+            }
+        }
+
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            let container = document.getElementById('feedContainer');
+            let btnList = document.getElementById('btnListView');
+            let btnGrid = document.getElementById('btnGridView');
+            if (mode === 'grid') {
+                container.classList.add('grid-view');
+                btnGrid.classList.add('active');
+                btnList.classList.remove('active');
+            } else {
+                container.classList.remove('grid-view');
+                btnList.classList.add('active');
+                btnGrid.classList.remove('active');
+            }
+            playSfx('click');
+            renderFeed();
+        }
+
+        function toggleFavorite(adId) {
+            let ad = globalAdsFeed.find(a => a.id === adId);
+            if (!ad) return;
+            let index = favoritesList.findIndex(f => f.id === adId);
+            if (index > -1) favoritesList.splice(index, 1);
+            else favoritesList.push(ad);
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
+            renderFeed();
+            renderFavorites();
+            playSfx('success');
+        }
+
+        function renderFavorites() {
+            let container = document.getElementById('favoritesContainer');
+            if (!container) return;
+            if (favoritesList.length === 0) {
+                container.innerHTML = '<div style="color:var(--app-text-muted); text-align:center; padding:20px; font-size:12px; grid-column:1/-1;">Нет избранного.</div>';
+                return;
+            }
+            container.innerHTML = favoritesList.map(ad => `
+                <div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div class="ad-title">${ad.itemName}</div>
+                    <div class="ad-price">${ad.price}</div>
+                    <button onclick="event.stopPropagation(); toggleFavorite(${ad.id})" class="btn btn-danger btn-sm mt-sm">❌ Удалить</button>
+                </div>
+            `).join('');
+        }
+
+        function renderMyAds() {
+            let container = document.getElementById('myAdsContainer');
+            if (!container) return;
+            if (myAdsList.length === 0) {
+                container.innerHTML = '<div style="color:var(--app-text-muted); text-align:center; padding:20px; font-size:12px; grid-column:1/-1;">Вы ещё не создавали объявлений.</div>';
+                return;
+            }
+            container.innerHTML = myAdsList.map(ad => `
+                <div class="ad-card">
+                    <div class="ad-title">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:10px; color:var(--app-accent);">Статус: ${ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации'}</div>
+                    <div class="ad-desc">${ad.text}</div>
+                </div>
+            `).join('');
+        }
+
+        function clearMyAds() {
+            if (confirm('⚠️ Очистить ваши объявления?')) {
+                myAdsList = [];
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                renderMyAds();
+                playSfx('success');
+            }
+        }
+
+        function renderPendingAds() {
+            let container = document.getElementById('pendingAdsContainer');
+            if (!container) return;
+            let isAdmin = ADMIN_USERNAMES.map(u => u.replace('@','').toLowerCase()).includes(currentUserUsername.replace('@','').toLowerCase()) || (currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase());
+            if (!isAdmin) {
+                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center;">Доступно администраторам.</div>';
+                return;
+            }
+            if (pendingAdsList.length === 0) {
+                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center;">Нет ожидающих проверки.</div>';
+                return;
+            }
+            container.innerHTML = pendingAdsList.map(ad => `
+                <div class="ad-card" style="border-color: var(--app-accent-red);">
+                    <div class="ad-title">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:10px; color:var(--app-text-muted);">От: ${ad.author} | ${ad.server}</div>
+                    <div class="ad-desc">${ad.text}</div>
+                    <div class="ad-actions">
+                        <button onclick="openEditAdModal(${ad.id})" class="btn btn-outline btn-sm" style="flex:1;">✏️ Редактировать</button>
+                    </div>
+                    <div class="ad-actions">
+                        <button onclick="approvePendingAd(${ad.id})" class="btn btn-success btn-sm" style="flex:1;">✅ Одобрить</button>
+                        <button onclick="rejectPendingAd(${ad.id})" class="btn btn-danger btn-sm" style="flex:1;">❌ Отклонить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openEditAdModal(adId) {
+            let ad = pendingAdsList.find(a => a.id === adId);
+            if (!ad) return;
+            let formHTML = `
+                <div class="form-group"><label>Название:</label><input type="text" id="editItemName" value="${ad.itemName}"></div>
+                <div class="form-group"><label>Цена:</label><input type="text" id="editPrice" value="${ad.price}"></div>
+                <div class="form-group"><label>Описание:</label><textarea id="editText" rows="3">${ad.text}</textarea></div>
+                <div class="form-group"><label>Ссылка на изображение:</label><input type="url" id="editImage" value="${ad.image || ''}"></div>
+                <div class="form-group"><label>Сервер:</label><input type="text" id="editServer" value="${ad.server}"></div>
+                <button onclick="saveEditedAd(${ad.id})" class="btn btn-success">💾 Сохранить</button>
+            `;
+            document.getElementById('editAdForm').innerHTML = formHTML;
+            openModal('editAdModal');
+        }
+
+        function saveEditedAd(adId) {
+            let ad = pendingAdsList.find(a => a.id === adId);
+            if (!ad) return;
+            ad.itemName = document.getElementById('editItemName').value.trim();
+            ad.price = document.getElementById('editPrice').value.trim();
+            ad.text = document.getElementById('editText').value.trim();
+            ad.image = document.getElementById('editImage').value.trim();
+            ad.server = document.getElementById('editServer').value.trim();
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            closeModal('editAdModal');
+            renderPendingAds();
+            playSfx('success');
+        }
+
+        function approvePendingAd(id) {
+            let idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx > -1) {
+                let ad = pendingAdsList.splice(idx, 1)[0];
+                ad.status = 'approved';
+                globalAdsFeed.unshift(ad);
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderPendingAds();
+                renderFeed();
+                playSfx('success');
+            }
+        }
+
+        function rejectPendingAd(id) {
+            let idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx > -1) {
+                pendingAdsList.splice(idx, 1);
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                renderPendingAds();
+                playSfx('success');
+            }
+        }
+
+        function clearGlobalFeedAdmin() {
+            if (confirm('⚠️ Очистить всю ленту?')) {
+                globalAdsFeed = [];
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderFeed();
+                playSfx('success');
+            }
+        }
+
+        function updateBroadcastMessage() {
+            let text = document.getElementById('newBroadcastInput').value.trim();
+            if (!text) return;
+            localStorage.setItem('arizona_broadcast_msg', text);
+            document.getElementById('broadcastText').innerHTML = `<b>Уведомление!</b> ${text}`;
+            document.getElementById('broadcastBanner').style.display = 'block';
+            alert('📢 Рассылка отправлена!');
+            playSfx('success');
+        }
+
+        function openBroadcastModal() {
+            let msg = localStorage.getItem('arizona_broadcast_msg') || 'Нет новых уведомлений.';
+            document.getElementById('broadcastModalText').innerText = msg;
+            openModal('broadcastModal');
+        }
+
+        function sendTargetAction(action) {
+            let target = document.getElementById('targetUser').value.trim();
+            if (!target) { alert('⚠️ Укажите игрока!'); return; }
+            alert(`🛡️ Действие "${action}" для ${target} выполнено.`);
+            playSfx('success');
+        }
+
+        // ==========================================================================
+        // ПИКЕРЫ
+        // ==========================================================================
+        function openPicker(type) {
+            activePickerType = type;
+            let titleEl = document.getElementById('pickerTitle');
+            let listEl = document.getElementById('pickerList');
+            if (type === 'mode') {
+                titleEl.innerText = '📌 Тип темы';
+                listEl.innerHTML = `<div class="picker-item" onclick="selectPickerValue('mode', 'sell', 'Продажа')">💎 Продажа</div><div class="picker-item" onclick="selectPickerValue('mode', 'buy', 'Покупка')">🛒 Покупка</div>`;
+            } else if (type === 'category') {
+                titleEl.innerText = '🗂 Раздел';
+                listEl.innerHTML = `<div class="picker-item" onclick="selectPickerValue('category', '💍 Аксессуары и вещи', '💍 Аксессуары и вещи')">💍 Аксессуары и вещи</div>
+                <div class="picker-item" onclick="selectPickerValue('category', '🚗 Транспорт', '🚗 Транспорт')">🚗 Транспорт</div>
+                <div class="picker-item" onclick="selectPickerValue('category', '🏠 Недвижимость', '🏠 Недвижимость')">🏠 Недвижимость</div>
+                <div class="picker-item" onclick="selectPickerValue('category', '💼 Бизнесы', '💼 Бизнесы')">💼 Бизнесы</div>
+                <div class="picker-item" onclick="selectPickerValue('category', '🔫 Оружие и материалы', '🔫 Оружие и материалы')">🔫 Оружие и материалы</div>`;
+            } else if (type === 'server') {
+                titleEl.innerText = '🌐 Сервер';
+                listEl.innerHTML = ALL_SERVERS.map(s => `<div class="picker-item" onclick="selectPickerValue('server', '${s.value}', '${s.label}')">${s.label}</div>`).join('');
+            }
+            openModal('pickerModal');
+        }
+        function selectPickerValue(type, val, text) {
+            document.getElementById(type).value = val;
+            if (type === 'mode') document.getElementById('selectedModeText').innerText = text;
+            if (type === 'category') document.getElementById('selectedCategoryText').innerText = text;
+            if (type === 'server') document.getElementById('selectedServerText').innerText = text;
+            closeModal('pickerModal');
+            playSfx('click');
+        }
+
+        // ==========================================================================
+        // ЛЕНТА ЛУКОВ И ПОПУТЧИКИ
+        // ==========================================================================
+        let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
+        function postFashionLook() {
+            let title = document.getElementById('fashionSetTitle').value.trim();
+            let image = document.getElementById('fashionSetImage').value.trim();
+            if (!title || !image) { alert('⚠️ Заполните название и ссылку!'); return; }
+            fashionLooks.unshift({ author: currentUserUsername, title, image, time: new Date().toLocaleDateString() });
+            localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks));
+            renderFashionLooks();
+            document.getElementById('fashionSetTitle').value = '';
+            document.getElementById('fashionSetImage').value = '';
+            alert('📸 Лук опубликован!');
+            playSfx('success');
+        }
+        function renderFashionLooks() {
+            let container = document.getElementById('fashionContainer');
+            if (!container) return;
+            if (fashionLooks.length === 0) {
+                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center;">Лента пуста.</div>';
+                return;
+            }
+            container.innerHTML = fashionLooks.map(l => `
+                <div style="background:var(--app-header-bg); border:1px solid var(--app-card-border); padding:8px; border-radius:10px; margin-bottom:8px;">
+                    <div style="font-weight:600; color:var(--app-accent); font-size:11px; margin-bottom:4px;">${l.author}: ${l.title}</div>
+                    <img src="${l.image}" style="width:100%; height:100px; object-fit:cover; border-radius:6px;" loading="lazy" onerror="this.style.display='none';">
+                </div>
+            `).join('');
+        }
+
+        let travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
+        function postTravelAd() {
+            let activity = document.getElementById('travelActivity').value.trim();
+            let desc = document.getElementById('travelDesc').value.trim();
+            if (!activity) { alert('⚠️ Укажите активность!'); return; }
+            travelAds.unshift({ author: currentUserUsername, activity, desc, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+            localStorage.setItem('arizona_travel_ads', JSON.stringify(travelAds));
+            renderTravelAds();
+            document.getElementById('travelActivity').value = '';
+            document.getElementById('travelDesc').value = '';
+            alert('🤝 Заявка опубликована!');
+            playSfx('success');
+        }
+        function renderTravelAds() {
+            let container = document.getElementById('travelContainer');
+            if (!container) return;
+            if (travelAds.length === 0) {
+                container.innerHTML = '<div style="font-size:11px; color:var(--app-text-muted); text-align:center;">Нет заявок.</div>';
+                return;
+            }
+            container.innerHTML = travelAds.map(t => `
+                <div style="background:var(--app-header-bg); border:1px solid var(--app-card-border); padding:8px; border-radius:10px; margin-bottom:8px; font-size:11px;">
+                    <div style="display:flex; justify-content:space-between; color:var(--app-accent-gold); font-weight:600; margin-bottom:2px;">
+                        <span>${t.activity} (${t.author})</span>
+                        <span style="font-size:9px; color:var(--app-text-muted);">${t.time}</span>
+                    </div>
+                    <div style="color:var(--app-text-main);">${t.desc || 'Без описания'}</div>
+                </div>
+            `).join('');
+        }
+
+        // ==========================================================================
+        // МУЗЫКА
+        // ==========================================================================
+        let bgMusic = document.getElementById('bgMusic');
+        let musicPlaying = true;
+        function loadCustomBackgroundMusic(event) {
+            let file = event.target.files[0];
+            if (file) {
+                let url = URL.createObjectURL(file);
+                bgMusic.src = url;
+                bgMusic.play();
+                musicPlaying = true;
+                document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+                playSfx('success');
+                alert('🎵 Музыка загружена!');
+            }
+        }
+        function toggleMusicPlayback() {
+            if (musicPlaying) { bgMusic.pause(); musicPlaying = false; document.getElementById('musicPlayToggleBtn').innerText = '▶️ Играть'; }
+            else { bgMusic.play(); musicPlaying = true; document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза'; }
+            playSfx('click');
+        }
+        function resetDefaultMusic() {
+            bgMusic.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
+            bgMusic.play();
+            musicPlaying = true;
+            document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+            playSfx('success');
+        }
+
+        // ==========================================================================
+        // ИГРА БАРЫГА
+        // ==========================================================================
+        let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || JSON.stringify({ money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800, shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000 }));
+        function saveBarygaState() { localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData)); }
+        function updateBarygaUI() {
+            document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString() + ' $';
+            document.getElementById('clickPowerLabel').innerText = `+${barygaData.clickPower} $ / клик`;
+            document.getElementById('autoIncomeLabel').innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
+            document.getElementById('clickCostLabel').innerText = `Цена: ${barygaData.clickCost.toLocaleString()} $`;
+            document.getElementById('autoCostLabel').innerText = `Цена: ${barygaData.autoCost.toLocaleString()} $`;
+            document.getElementById('proCostLabel').innerText = `Цена: ${barygaData.proCost.toLocaleString()} $`;
+            document.getElementById('shopCostLabel').innerText = `Цена: ${barygaData.shopCost.toLocaleString()} $`;
+            document.getElementById('eliteCostLabel').innerText = `Цена: ${barygaData.eliteCost.toLocaleString()} $`;
+            document.getElementById('oilCostLabel').innerText = `Цена: ${barygaData.oilCost.toLocaleString()} $`;
+            document.getElementById('cryptoCostLabel').innerText = `Цена: ${barygaData.cryptoCost.toLocaleString()} $`;
+        }
+        function barygaClick() { barygaData.money += barygaData.clickPower; updateBarygaUI(); saveBarygaState(); playSfx('cash'); }
+        function buyClickUpgrade() { if (barygaData.money >= barygaData.clickCost) { barygaData.money -= barygaData.clickCost; barygaData.clickPower += 1; barygaData.clickCost = Math.floor(barygaData.clickCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
+        function buyAutoUpgrade() { if (barygaData.money >= barygaData.autoCost) { barygaData.money -= barygaData.autoCost; barygaData.autoIncome += 5; barygaData.autoCost = Math.floor(barygaData.autoCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
+        function buyProUpgrade() { if (barygaData.money >= barygaData.proCost) { barygaData.money -= barygaData.proCost; barygaData.autoIncome += 20; barygaData.proCost = Math.floor(barygaData.proCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
+        function buyShopUpgrade() { if (barygaData.money >= barygaData.shopCost) { barygaData.money -= barygaData.shopCost; barygaData.autoIncome += 50; barygaData.shopCost = Math.floor(barygaData.shopCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
+        function buyEliteUpgrade() { if (barygaData.money >= barygaData.eliteCost) { barygaData.money -= barygaData.eliteCost; barygaData.clickPower += 10; barygaData.eliteCost = Math.floor(barygaData.eliteCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
+        function buyOilRigUpgrade() { if (barygaData.money >= barygaData.oilCost) { barygaData.money -= barygaData.oilCost; barygaData.autoIncome += 200; barygaData.oilCost = Math.floor(barygaData.oilCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
+        function buyCryptoUpgrade() { if (barygaData.money >= barygaData.cryptoCost) { barygaData.money -= barygaData.cryptoCost; barygaData.autoIncome += 1000; barygaData.cryptoCost = Math.floor(barygaData.cryptoCost * 1.5); updateBarygaUI(); saveBarygaState(); playSfx('success'); } else alert('❌ Недостаточно средств!'); }
+        setInterval(() => { if (barygaData.autoIncome > 0) { barygaData.money += Math.floor(barygaData.autoIncome / 10); if (document.getElementById('barygaModal').classList.contains('visible')) updateBarygaUI(); saveBarygaState(); } }, 100);
+
+        // ==========================================================================
+        // ПРОВЕРКА ПРАВ
+        // ==========================================================================
+        function checkUserPermissions() {
+            let isOwner = (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) || (tgUser && tgUser.id.toString() === OWNER_ID);
+            let isAdmin = isOwner || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(currentUserUsername.replace('@', '').toLowerCase());
+            if (isAdmin) document.getElementById('adminTabBtn').style.display = 'flex';
+            if (isOwner) document.getElementById('ownerSection').style.display = 'block';
+            let hasOwnerPostedAd = localStorage.getItem(getUserKey('owner_has_posted_ad')) === 'true';
+            if (hasOwnerPostedAd) document.getElementById('ownerContactItem').style.display = 'block';
+        }
+
+        function loadMoreFeedItems() {
+            feedDisplayLimit += 20;
+            renderFeed();
+            if (feedDisplayLimit >= globalAdsFeed.filter(a => a.status === 'approved').length) {
+                document.getElementById('feedPaginationContainer').style.display = 'none';
+            }
+        }
+
+        // ==========================================================================
+        // НАСТРОЙКИ И ПОМОЩЬ
+        // ==========================================================================
+        function toggleSfx() {
+            sfxEnabled = !sfxEnabled;
+            document.getElementById('toggleSfxBtn').innerText = sfxEnabled ? 'Включены' : 'Выключены';
+            playSfx('success');
+        }
+        function resetAllData() {
+            if (confirm('⚠️ Удалить все данные приложения? Это действие необратимо.')) {
+                localStorage.clear();
+                localStorage.setItem('arizona_ads_feed', '[]');
+                localStorage.setItem('arizona_pending_ads', '[]');
+                localStorage.setItem('arizona_fashion_looks', '[]');
+                localStorage.setItem('arizona_travel_ads', '[]');
+                alert('Данные сброшены. Перезагрузите страницу.');
+                location.reload();
+            }
+        }
+        function resetFeedOnly() {
+            if (confirm('Сбросить ленту объявлений?')) {
+                globalAdsFeed = [];
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderFeed();
+                playSfx('success');
+                alert('Лента сброшена.');
+            }
+        }
+        function resetMyAdsOnly() {
+            if (confirm('Сбросить ваши объявления?')) {
+                myAdsList = [];
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                renderMyAds();
+                playSfx('success');
+                alert('Ваши объявления сброшены.');
+            }
+        }
+        function resetChatsOnly() {
+            if (confirm('Сбросить все переписки?')) {
+                chatsDatabase = {};
+                localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+                renderChatsList();
+                if (activeChatUser) closeModal('chatDetailModal');
+                playSfx('success');
+                alert('Переписки сброшены.');
+            }
+        }
+
+        // ==========================================================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ==========================================================================
+        function init() {
+            let savedStyle = localStorage.getItem(getUserKey('app_style')) || 'tg';
+            let savedTheme = localStorage.getItem(getUserKey('app_theme')) || 'dark';
+            setAppStyle(savedStyle);
+            setAppTheme(savedTheme);
+            initProfileUI();
+            renderFeed();
+            let approvedCount = globalAdsFeed.filter(a => a.status === 'approved').length;
+            if (approvedCount > feedDisplayLimit) document.getElementById('feedPaginationContainer').style.display = 'block';
+            renderMyAds();
+            renderFavorites();
+            renderPendingAds();
+            checkUserPermissions();
+            let savedBroadcast = localStorage.getItem('arizona_broadcast_msg');
+            if (savedBroadcast) {
+                document.getElementById('broadcastText').innerHTML = `<b>Уведомление!</b> ${savedBroadcast}`;
+                document.getElementById('broadcastBanner').style.display = 'block';
+            }
+            updateBarygaUI();
+            updateMskClock();
+            updateTabIcons(savedStyle);
+            updateCounters();
+            console.log('Arizona RP Mini App v' + CURRENT_APP_BUILD + ' инициализирован');
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+        if (document.readyState === 'complete' || document.readyState === 'interactive') init();
+    </script>
+</body>
+</html>

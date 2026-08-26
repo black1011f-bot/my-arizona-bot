@@ -1862,3 +1862,428 @@
 </script>
 </body>
 </html>
+<style>
+    /* ============ АНИМАЦИИ ============ */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .section.active {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .ad-card {
+        animation: fadeInUp 0.4s ease-out;
+    }
+
+    .btn:active {
+        transform: scale(0.96);
+        transition: transform 0.1s;
+    }
+
+    .tab-bar-item:active {
+        transform: scale(0.95);
+        transition: transform 0.1s;
+    }
+
+    /* ============ TOOLTIP (ПОДСКАЗКИ) ============ */
+    .tooltip {
+        position: fixed;
+        background: var(--app-accent);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        z-index: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        pointer-events: none;
+        animation: fadeIn 0.3s ease;
+    }
+    .tooltip::after {
+        content: '';
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 6px 6px 0;
+        border-style: solid;
+        border-color: var(--app-accent) transparent transparent transparent;
+    }
+
+    /* ============ ИНДИКАТОР ОФФЛАЙН ============ */
+    .offline-indicator {
+        display: none;
+        position: fixed;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #dc3545;
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        z-index: 1000;
+    }
+    .offline-indicator.visible {
+        display: block;
+    }
+</style>
+<script>
+    // ==========================================================================
+    // АНИМАЦИИ
+    // ==========================================================================
+    // Автоматически добавляем анимации при добавлении карточек через renderFeed и другие функции
+    const originalRenderFeed = window.renderFeed;
+    window.renderFeed = function() {
+        originalRenderFeed();
+        // Добавляем класс анимации ко всем карточкам в feedContainer
+        document.querySelectorAll('#feedContainer .ad-card').forEach(card => {
+            card.style.animation = 'none';
+            void card.offsetWidth; // перезапуск анимации
+            card.style.animation = '';
+        });
+    };
+
+    // Аналогично для других списков (при необходимости)
+    const originalRenderFavorites = window.renderFavorites;
+    window.renderFavorites = function() {
+        originalRenderFavorites();
+        document.querySelectorAll('#favoritesContainer .ad-card').forEach(card => {
+            card.style.animation = 'none';
+            void card.offsetWidth;
+            card.style.animation = '';
+        });
+    };
+
+    // ==========================================================================
+    // ИНТЕРАКТИВНЫЙ ГИД (подсказки при первом использовании)
+    // ==========================================================================
+    let guidedFeatures = {
+        feed: false,
+        app: false,
+        myAds: false,
+        favorites: false,
+        admin: false,
+        baryga: false,
+        chats: false,
+        profile: false
+    };
+
+    // Загружаем состояние из localStorage
+    try {
+        const savedGuide = JSON.parse(localStorage.getItem('arizona_guided_features') || '{}');
+        guidedFeatures = { ...guidedFeatures, ...savedGuide };
+    } catch(e) {}
+
+    function markGuided(feature) {
+        guidedFeatures[feature] = true;
+        localStorage.setItem('arizona_guided_features', JSON.stringify(guidedFeatures));
+    }
+
+    function showTooltip(element, text) {
+        // Удаляем старый тултип
+        document.querySelectorAll('.tooltip').forEach(t => t.remove());
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        tooltip.innerText = text;
+        document.body.appendChild(tooltip);
+        const rect = element.getBoundingClientRect();
+        tooltip.style.top = (rect.top - tooltip.offsetHeight - 8) + 'px';
+        tooltip.style.left = (rect.left + rect.width/2 - tooltip.offsetWidth/2) + 'px';
+        setTimeout(() => tooltip.remove(), 2000);
+    }
+
+    function checkGuided(feature, elementSelector, message) {
+        if (!guidedFeatures[feature]) {
+            const el = document.querySelector(elementSelector);
+            if (el) {
+                showTooltip(el, message);
+                markGuided(feature);
+            }
+        }
+    }
+
+    // Вызываем при переключении вкладок
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+        originalSwitchTab(tabId);
+        // Показываем подсказку при первом открытии вкладки
+        if (tabId === 'feed') checkGuided('feed', '#tabFeed', 'Здесь вы видите объявления других игроков');
+        if (tabId === 'app') checkGuided('app', '#tabApp', 'Создавайте свои объявления');
+        if (tabId === 'myAds') checkGuided('myAds', '#tabMyAds', 'Ваши объявления и их статус');
+        if (tabId === 'favorites') checkGuided('favorites', '#tabFavorites', 'Избранные объявления');
+        if (tabId === 'admin') checkGuided('admin', '#tabAdmin', 'Модерация объявлений (для админов)');
+    };
+
+    // Подсказка при первом открытии игры Барыга
+    const originalOpenModal = window.openModal;
+    window.openModal = function(id) {
+        originalOpenModal(id);
+        if (id === 'barygaModal') {
+            checkGuided('baryga', '#barygaModal .clicker-big-btn', 'Кликайте, чтобы зарабатывать деньги!');
+        }
+        if (id === 'chatsModal') {
+            checkGuided('chats', '#chatsModal #findUserChatInput', 'Найдите игрока и начните чат');
+        }
+    };
+</script>
+<script>
+    // ==========================================================================
+    // ЭКСПОРТ / ИМПОРТ ОБЪЯВЛЕНИЙ
+    // ==========================================================================
+    function exportMyAds() {
+        if (myAdsList.length === 0) {
+            alert('Нет объявлений для экспорта');
+            return;
+        }
+        // Формируем текстовый файл (по одному объявлению на строку)
+        let text = 'Мои объявления Arizona RP\n';
+        text += '======================\n';
+        myAdsList.forEach((ad, i) => {
+            text += `${i+1}. ${ad.itemName} (${formatPrice(ad.price)})\n`;
+            text += `Тип: ${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}\n`;
+            text += `Сервер: ${ad.server}\n`;
+            text += `Описание: ${ad.text}\n`;
+            if (ad.image) text += `Фото: ${ad.image}\n`;
+            text += '----------------------\n';
+        });
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'my_ads.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function copyMyAdsToClipboard() {
+        if (myAdsList.length === 0) {
+            alert('Нет объявлений для копирования');
+            return;
+        }
+        let text = myAdsList.map(ad => `${ad.itemName} - ${formatPrice(ad.price)} (${ad.server})`).join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Объявления скопированы в буфер обмена');
+        }).catch(() => {
+            alert('Не удалось скопировать. Разрешите доступ к буферу обмена.');
+        });
+    }
+
+    function importMyAdsFromFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            // Простейший импорт: ожидаем JSON в формате массива объектов
+            try {
+                const imported = JSON.parse(content);
+                if (Array.isArray(imported)) {
+                    myAdsList = myAdsList.concat(imported);
+                    localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                    renderMyAds();
+                    alert('Импортировано объявлений: ' + imported.length);
+                } else {
+                    alert('Неверный формат файла. Ожидается JSON-массив.');
+                }
+            } catch (err) {
+                alert('Ошибка чтения файла: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // ==========================================================================
+    // РЕЗЕРВНОЕ КОПИРОВАНИЕ В CLOUDSTORAGE
+    // ==========================================================================
+    // Ключи, которые будем синхронизировать
+    const SYNC_KEYS = [
+        'my_ads',
+        'favorites',
+        'profile_frame',
+        'profile_status',
+        'baryga_money',
+        'baryga_click_power',
+        'baryga_auto_income',
+        'baryga_click_cost',
+        'baryga_auto_cost',
+        'baryga_pro_cost',
+        'baryga_shop_cost',
+        'baryga_elite_cost',
+        'baryga_oil_cost',
+        'baryga_crypto_cost',
+        'app_theme',
+        'sfx_enabled'
+    ];
+
+    async function backupToCloud() {
+        if (!window.Telegram?.WebApp?.CloudStorage) return;
+        try {
+            const data = {};
+            SYNC_KEYS.forEach(key => {
+                const value = localStorage.getItem(getUserKey(key));
+                if (value !== null) data[key] = value;
+            });
+            await window.Telegram.WebApp.CloudStorage.setItem('app_backup', JSON.stringify(data));
+            console.log('Данные сохранены в облако');
+        } catch (e) {
+            console.warn('Ошибка резервного копирования:', e);
+        }
+    }
+
+    async function restoreFromCloud() {
+        if (!window.Telegram?.WebApp?.CloudStorage) return;
+        try {
+            const backup = await window.Telegram.WebApp.CloudStorage.getItem('app_backup');
+            if (backup) {
+                const data = JSON.parse(backup);
+                Object.keys(data).forEach(key => {
+                    localStorage.setItem(getUserKey(key), data[key]);
+                });
+                console.log('Данные восстановлены из облака');
+                // Обновляем UI после загрузки
+                initProfileUI();
+                renderMyAds();
+                renderFavorites();
+                updateBarygaUI();
+            }
+        } catch (e) {
+            console.warn('Ошибка восстановления из облака:', e);
+        }
+    }
+
+    // Автоматическое резервное копирование раз в 60 секунд
+    setInterval(backupToCloud, 60000);
+    // И сразу при запуске
+    backupToCloud();
+
+    // ==========================================================================
+    // ОФФЛАЙН-РЕЖИМ (индикатор сети)
+    // ==========================================================================
+    const offlineIndicator = document.createElement('div');
+    offlineIndicator.className = 'offline-indicator';
+    offlineIndicator.innerText = 'Нет соединения с интернетом';
+    document.body.appendChild(offlineIndicator);
+
+    function updateOnlineStatus() {
+        if (navigator.onLine) {
+            offlineIndicator.classList.remove('visible');
+        } else {
+            offlineIndicator.classList.add('visible');
+        }
+    }
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+</script>
+<script>
+    // ==========================================================================
+    // ЛОКАЛИЗАЦИЯ
+    // ==========================================================================
+    let currentLanguage = localStorage.getItem('arizona_language') || 'ru';
+
+    const translations = {
+        ru: {
+            'Arizona RP': 'Arizona RP',
+            'Главная': 'Главная',
+            'Создать': 'Создать',
+            'Мои темы': 'Мои темы',
+            'Избранное': 'Избранное',
+            'Админ': 'Админ',
+            'Поиск': 'Поиск',
+            'Профиль': 'Профиль',
+            'Настройки': 'Настройки',
+            'Помощь': 'Помощь',
+            // Добавьте сюда все ключевые фразы
+        },
+        en: {
+            'Arizona RP': 'Arizona RP',
+            'Главная': 'Home',
+            'Создать': 'Create',
+            'Мои темы': 'My Ads',
+            'Избранное': 'Favorites',
+            'Админ': 'Admin',
+            'Поиск': 'Search',
+            'Профиль': 'Profile',
+            'Настройки': 'Settings',
+            'Помощь': 'Help',
+            // ...
+        }
+    };
+
+    function applyLanguage(lang) {
+        currentLanguage = lang;
+        localStorage.setItem('arizona_language', lang);
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[lang] && translations[lang][key]) {
+                el.textContent = translations[lang][key];
+            }
+        });
+        // Обновляем элементы с прямым текстом (например, заголовки вкладок)
+        document.querySelectorAll('.tab-bar-item').forEach(item => {
+            const tabId = item.getAttribute('data-tab');
+            const textMap = {
+                feed: translations[lang]['Главная'],
+                app: translations[lang]['Создать'],
+                myAds: translations[lang]['Мои темы'],
+                favorites: translations[lang]['Избранное'],
+                admin: translations[lang]['Админ']
+            };
+            if (tabId && textMap[tabId]) {
+                // Меняем только текстовую часть, иконку оставляем
+                const icon = item.querySelector('.tab-icon');
+                item.innerHTML = '';
+                if (icon) item.appendChild(icon);
+                item.appendChild(document.createTextNode(' ' + textMap[tabId]));
+            }
+        });
+        // Обновляем заголовок в шапке
+        document.querySelector('.app-header-brand span').textContent = translations[lang]['Arizona RP'];
+    }
+
+    function toggleLanguage() {
+        const newLang = currentLanguage === 'ru' ? 'en' : 'ru';
+        applyLanguage(newLang);
+    }
+
+    // Добавляем переключатель языка в настройки (при открытии модального окна)
+    const originalOpenModalSettings = window.openModal;
+    window.openModal = function(id) {
+        originalOpenModal(id);
+        if (id === 'settingsModal') {
+            // Добавляем кнопку переключения языка, если ещё нет
+            if (!document.getElementById('langToggleBtn')) {
+                const settingsContent = document.getElementById('settingsModal .modal-content');
+                const formGroup = document.createElement('div');
+                formGroup.className = 'form-group';
+                formGroup.innerHTML = `<label>🌐 Язык</label>
+                    <button id="langToggleBtn" class="btn btn-outline btn-sm" onclick="toggleLanguage()">${currentLanguage === 'ru' ? 'Switch to English' : 'Переключить на русский'}</button>`;
+                settingsContent.insertBefore(formGroup, settingsContent.lastChild);
+            } else {
+                document.getElementById('langToggleBtn').textContent = currentLanguage === 'ru' ? 'Switch to English' : 'Переключить на русский';
+            }
+        }
+    };
+
+    // При старте применяем сохранённый язык
+    document.addEventListener('DOMContentLoaded', () => {
+        applyLanguage(currentLanguage);
+        // Восстанавливаем данные из облака
+        restoreFromCloud();
+    });
+</script>

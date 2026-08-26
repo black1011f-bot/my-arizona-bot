@@ -3960,3 +3960,54 @@
         }
     })();
 </script>
+<!-- ==================== ЧАСТЬ 38: ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ОФЛАЙН‑ИНДИКАТОРА ==================== -->
+<script>
+    // ==========================================================================
+    // ПОЛНОЕ УДАЛЕНИЕ ОФЛАЙН‑ИНДИКАТОРА И ПРЕДОТВРАЩЕНИЕ ЕГО ПОЯВЛЕНИЯ
+    // ==========================================================================
+    (function() {
+        // Функция удаления всех возможных индикаторов
+        function removeAllIndicators() {
+            document.querySelectorAll('.offline-indicator, #offlineIndicator').forEach(el => el.remove());
+        }
+
+        // Удаляем индикаторы немедленно и через короткий интервал (страховка)
+        removeAllIndicators();
+        setInterval(removeAllIndicators, 500);
+
+        // Переопределяем возможные функции показа индикатора, если они есть в глобальной области
+        if (window.showOfflineIndicator) {
+            window.showOfflineIndicator = function() {};
+        }
+        if (window.hideOfflineIndicator) {
+            window.hideOfflineIndicator = function() {};
+        }
+
+        // Блокируем создание индикатора через DOM: если кто-то добавляет элемент с классом offline-indicator,
+        // удаляем его сразу (используем MutationObserver)
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) {
+                        if (node.classList && (node.classList.contains('offline-indicator') || node.id === 'offlineIndicator')) {
+                            node.remove();
+                        }
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Отключаем все стандартные обработчики online/offline, чтобы они не вызывали показ
+        window.online = null;
+        window.offline = null;
+        // Оставляем только простую проверку, но не показываем индикатор
+        window.addEventListener('offline', function() {
+            // Ничего не делаем
+        });
+        window.addEventListener('online', function() {
+            removeAllIndicators();
+        });
+    })();
+        </script>

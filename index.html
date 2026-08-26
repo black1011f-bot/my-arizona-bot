@@ -2939,3 +2939,178 @@
         if (bannerImg) bannerImg.loading = 'lazy';
     };
 </script>
+<script>
+    // ==========================================================================
+    // ИСПРАВЛЕНИЕ МУЗЫКИ: РАБОТА С ЛОКАЛЬНЫМ ФАЙЛОМ
+    // ==========================================================================
+    // Переопределяем функцию loadCustomBackgroundMusic
+    window.loadCustomBackgroundMusic = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        // Создаём Object URL для выбранного файла
+        const objectUrl = URL.createObjectURL(file);
+        const audio = document.getElementById('bgMusic');
+        audio.src = objectUrl;
+        audio.play().catch(() => {});
+        isMusicPlaying = true;
+        document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+        playSfx('success');
+        // Опционально сохраняем Object URL в localStorage (не рекомендуется, но для простоты)
+        // Лучше сохранить base64, но это может быть тяжело для больших файлов.
+        // Для надёжности просто сохраняем имя файла (бесполезно) или не сохраняем вовсе.
+        // В текущем примере мы не сохраняем, чтобы не перегружать localStorage.
+        // Если нужно сохранение, реализуйте через FileReader.readAsDataURL и сохраните base64.
+    };
+
+    // При старте, если был сохранён base64, загружаем его
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedMusic = localStorage.getItem(getUserKey('custom_music_base64'));
+        if (savedMusic) {
+            const audio = document.getElementById('bgMusic');
+            audio.src = savedMusic;
+            audio.play().catch(()=>{});
+            isMusicPlaying = true;
+            document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+        }
+    });
+
+    // Для сохранения base64 (если файл не слишком большой)
+    const originalLoadCustomBackgroundMusic = window.loadCustomBackgroundMusic;
+    window.loadCustomBackgroundMusic = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64 = e.target.result;
+            // Проверяем размер (например, не более 5 МБ)
+            if (base64.length > 5 * 1024 * 1024) {
+                alert('Файл слишком большой для сохранения. Будет воспроизведён без сохранения.');
+                // Всё равно играем через Object URL
+                const objectUrl = URL.createObjectURL(file);
+                const audio = document.getElementById('bgMusic');
+                audio.src = objectUrl;
+                audio.play().catch(()=>{});
+                isMusicPlaying = true;
+                document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+                playSfx('success');
+                return;
+            }
+            // Сохраняем base64
+            localStorage.setItem(getUserKey('custom_music_base64'), base64);
+            const audio = document.getElementById('bgMusic');
+            audio.src = base64;
+            audio.play().catch(()=>{});
+            isMusicPlaying = true;
+            document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+            playSfx('success');
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Функция resetDefaultMusic также должна очищать сохранённый base64
+    window.resetDefaultMusic = function() {
+        localStorage.removeItem(getUserKey('custom_music_base64'));
+        customMusicSrc = null;
+        const audio = document.getElementById('bgMusic');
+        audio.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
+        audio.play().catch(()=>{});
+        playSfx('success');
+    };
+</script>
+<script>
+    // ==========================================================================
+    // ИСПРАВЛЕНИЕ ЗВУКА ПРИ БЫСТРЫХ ТАПАХ
+    // ==========================================================================
+    // Кэшируем AudioContext, чтобы не создавать новый при каждом клике
+    let audioContext = null;
+
+    function getAudioContext() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioContext;
+    }
+
+    // Переопределяем playSfx
+    window.playSfx = function(type) {
+        if (!sfxEnabled) return;
+        try {
+            const ctx = getAudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            const now = ctx.currentTime;
+
+            if (type === 'cash') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.setValueAtTime(1200, now + 0.08);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } else if (type === 'success') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(880, now + 0.15);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300, now);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            }
+        } catch (e) {
+            console.warn('Ошибка воспроизведения звука:', e);
+        }
+    };
+</script>
+<script>
+    // ==========================================================================
+    // ПЕРЕНОС КНОПКИ "ОЧИСТИТЬ ВСЕ" В ИСТОРИИ УВЕДОМЛЕНИЙ
+    // ==========================================================================
+    // Удаляем кнопку из заголовка и добавляем её внизу списка
+    function renderBroadcastHistory() {
+        const cont = document.getElementById('broadcastHistoryContainer');
+        if (broadcastHistory.length === 0) {
+            cont.innerHTML = '<p style="font-size:12px;">История пуста</p>';
+            return;
+        }
+        cont.innerHTML = broadcastHistory.map((item, index) => `
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--app-card-border);">
+                <span style="font-size:12px;">${item}</span>
+                <button onclick="deleteBroadcastItem(${index})" style="background:none;border:none;color:var(--app-accent);font-size:14px;">✕</button>
+            </div>
+        `).join('');
+
+        // Добавляем кнопку "Очистить все" внизу
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'btn btn-danger btn-sm';
+        clearBtn.style.marginTop = '8px';
+        clearBtn.innerText = '🗑 Очистить все';
+        clearBtn.onclick = clearBroadcastHistory;
+        cont.appendChild(clearBtn);
+    }
+
+    // Обновляем открытие модалки, чтобы убрать кнопку из заголовка
+    const originalOpenBroadcastHistory = window.openBroadcastHistory;
+    window.openBroadcastHistory = function() {
+        renderBroadcastHistory();
+        openModal('broadcastHistoryModal');
+        // Скрываем кнопку в заголовке, если она там осталась
+        const headerClearBtn = document.querySelector('#broadcastHistoryModal .modal-header .modal-close[onclick*="clearBroadcastHistory"]');
+        if (headerClearBtn) headerClearBtn.style.display = 'none';
+    };
+
+    // Для совместимости: удаляем старую кнопку из заголовка (если есть)
+    document.addEventListener('DOMContentLoaded', () => {
+        const oldClearBtn = document.querySelector('#broadcastHistoryModal .modal-header .modal-close[onclick*="clearBroadcastHistory"]');
+        if (oldClearBtn) oldClearBtn.style.display = 'none';
+    });
+</script>

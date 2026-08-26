@@ -2875,40 +2875,6 @@
         originalOpenAdDetail(id);
         applyLazyLoading();
     };
-
-    // ==========================================================================
-    // КНОПКА "СИНХРОНИЗИРОВАТЬ СЕЙЧАС" ДЛЯ CLOUDSTORAGE
-    // ==========================================================================
-    function syncNow() {
-        showLoader();
-        backupToCloud().then(() => {
-            hideLoader();
-            alert('Синхронизация завершена.');
-        }).catch(e => {
-            hideLoader();
-            console.error('Ошибка синхронизации:', e);
-            alert('Не удалось выполнить синхронизацию.');
-        });
-    }
-
-    // Добавляем кнопку в настройки
-    const originalOpenModalSettings = window.openModal;
-    window.openModal = function(id) {
-        originalOpenModalSettings(id);
-        if (id === 'settingsModal') {
-            // Если кнопки ещё нет, добавляем
-            if (!document.getElementById('syncNowBtn')) {
-                const settingsContent = document.querySelector('#settingsModal .modal-content');
-                const formGroup = document.createElement('div');
-                formGroup.className = 'form-group';
-                formGroup.innerHTML = `<label>☁️ Облачное хранилище</label>
-                    <button id="syncNowBtn" class="btn btn-outline btn-sm" onclick="syncNow()">Синхронизировать сейчас</button>`;
-                settingsContent.appendChild(formGroup);
-            }
-        }
-    };
-</script>
-<script>
     // ==========================================================================
     // ОБРАБОТЧИК ОШИБОК БЕЗ ALERT (только console.error)
     // ==========================================================================
@@ -3634,50 +3600,6 @@
         else if (type === 'cash') hapticFeedback('light');
         else hapticFeedback('light');
     };
-</script>
-<script>
-    // ==========================================================================
-    // ПЕРЕОПРЕДЕЛЯЕМ ЛОГИКУ ОФЛАЙН‑ИНДИКАТОРА
-    // ==========================================================================
-    // Удаляем все предыдущие обработчики и создаём новый индикатор корректно.
-    function initOfflineIndicator() {
-        // Удаляем старый индикатор, если есть
-        const old = document.getElementById('offlineIndicator');
-        if (old) old.remove();
-
-        // Создаём новый
-        const indicator = document.createElement('div');
-        indicator.id = 'offlineIndicator';
-        indicator.className = 'offline-indicator';
-        indicator.innerText = 'Нет соединения с интернетом';
-        indicator.style.display = 'none';
-        document.body.appendChild(indicator);
-
-        // Функция обновления
-        function update() {
-            if (navigator.onLine) {
-                indicator.style.display = 'none';
-            } else {
-                indicator.style.display = 'block';
-            }
-        }
-
-        // Назначаем обработчики только один раз
-        window.removeEventListener('online', update);
-        window.removeEventListener('offline', update);
-        window.addEventListener('online', update);
-        window.addEventListener('offline', update);
-
-        // Вызываем сразу
-        update();
-    }
-
-    // Инициализируем после готовности DOM
-    document.addEventListener('DOMContentLoaded', initOfflineIndicator);
-    // Также сразу вызываем, если DOM уже готов
-    if (document.readyState === 'complete') {
-        initOfflineIndicator();
-    }
 </script>
 <script>
     // ==========================================================================

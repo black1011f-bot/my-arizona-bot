@@ -1305,6 +1305,18 @@
                 <label>🗑 Сбросить все данные</label>
                 <button class="btn btn-danger btn-sm" onclick="resetAllData()">Сбросить</button>
             </div>
+            <div class="form-group">
+                <label>🔄 Сбросить только ленту объявлений</label>
+                <button class="btn btn-outline btn-sm" onclick="resetFeedOnly()">Сбросить ленту</button>
+            </div>
+            <div class="form-group">
+                <label>🔄 Сбросить только мои объявления</label>
+                <button class="btn btn-outline btn-sm" onclick="resetMyAdsOnly()">Сбросить мои</button>
+            </div>
+            <div class="form-group">
+                <label>🔄 Сбросить переписки</label>
+                <button class="btn btn-outline btn-sm" onclick="resetChatsOnly()">Сбросить чаты</button>
+            </div>
             <div class="text-muted" style="font-size: 11px;">Версия: 2026.08.08-universal</div>
         </div>
     </div>
@@ -1548,21 +1560,18 @@
         }
 
         function updateTabIcons(style) {
-            // Обновляем иконки табов в зависимости от стиля
             const icons = {
                 tg: { feed: '🏠', app: '➕', myAds: '📦', favorites: '⭐', profile: '👤', admin: '🛡️' },
                 wb: { feed: '🔥', app: '➕', myAds: '📦', favorites: '⭐', profile: '👤', admin: '🛡️' },
                 ios: { feed: '⌂', app: '＋', myAds: '▦', favorites: '★', profile: '👤', admin: '🛡' }
             };
-            const tabMapping = { feed: 0, app: 1, myAds: 2, favorites: 3, profile: 4, admin: 5 };
             document.querySelectorAll('.tab-bar-item').forEach((item, index) => {
                 const iconSpan = item.querySelector('.tab-icon');
                 if (iconSpan) {
-                    const key = Object.keys(icons[style])[index];
-                    if (key) iconSpan.innerText = icons[style][key];
+                    const keys = Object.keys(icons[style]);
+                    if (keys[index]) iconSpan.innerText = icons[style][keys[index]];
                 }
             });
-            // Обновляем админ-таб, если он скрыт, ничего не делаем
         }
 
         // ==========================================================================
@@ -1704,7 +1713,7 @@
             localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
             input.value = '';
             renderActiveChatMessages();
-            // имитация ответа собеседника через 1-2 секунды (для демонстрации)
+            // имитация ответа собеседника через 1-2 секунды
             setTimeout(() => {
                 if (activeChatUser) {
                     if (!chatsDatabase[activeChatUser]) chatsDatabase[activeChatUser] = [];
@@ -1714,6 +1723,10 @@
                 }
             }, 1500);
             playSfx('success');
+            // Обновляем список чатов, если он открыт
+            if (document.getElementById('chatsModal').classList.contains('visible')) {
+                renderChatsList();
+            }
         }
 
         function clearActiveChatHistory() {
@@ -2271,8 +2284,41 @@
         function resetAllData() {
             if (confirm('⚠️ Удалить все данные приложения? Это действие необратимо.')) {
                 localStorage.clear();
+                // Устанавливаем пустые массивы, чтобы при перезагрузке не было дефолтных объявлений
+                localStorage.setItem('arizona_ads_feed', '[]');
+                localStorage.setItem('arizona_pending_ads', '[]');
+                localStorage.setItem('arizona_fashion_looks', '[]');
+                localStorage.setItem('arizona_travel_ads', '[]');
                 alert('Данные сброшены. Перезагрузите страницу.');
                 location.reload();
+            }
+        }
+        function resetFeedOnly() {
+            if (confirm('Сбросить ленту объявлений?')) {
+                globalAdsFeed = [];
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderFeed();
+                playSfx('success');
+                alert('Лента сброшена.');
+            }
+        }
+        function resetMyAdsOnly() {
+            if (confirm('Сбросить ваши объявления?')) {
+                myAdsList = [];
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                renderMyAds();
+                playSfx('success');
+                alert('Ваши объявления сброшены.');
+            }
+        }
+        function resetChatsOnly() {
+            if (confirm('Сбросить все переписки?')) {
+                chatsDatabase = {};
+                localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+                renderChatsList();
+                if (activeChatUser) closeModal('chatDetailModal');
+                playSfx('success');
+                alert('Переписки сброшены.');
             }
         }
 
@@ -2307,4 +2353,4 @@
         if (document.readyState === 'complete' || document.readyState === 'interactive') init();
     </script>
 </body>
-    </html>
+                                                                                                                                                                                                                                                                                      </html>

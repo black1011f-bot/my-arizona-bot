@@ -4394,26 +4394,29 @@
     })();
 </script>
 <script>
-<!-- ==================== ЧАСТЬ 69: ПОЛНАЯ ПЕРЕЗАГРУЗКА ОБЪЯВЛЕНИЙ ==================== -->
+<!-- ==================== ЧАСТЬ 70: ЧИСТОЕ ИСПРАВЛЕНИЕ ОТОБРАЖЕНИЯ ОБЪЯВЛЕНИЙ ==================== -->
 <script>
 (function() {
-    console.log('Часть 69 загружена.');
+    console.log('Часть 70 активирована.');
 
-    // 1. Жёстко инициализируем глобальные массивы из localStorage
-    window.globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
-    window.pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-    window.myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
-    window.favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+    // 1. Убираем сообщение о черновике
+    localStorage.removeItem(getUserKey('arizona_ad_draft'));
+    window.loadDraft = function() {};
 
-    // 2. Функция сохранения объявления
-    function saveState() {
-        localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-        localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
-        localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
-    }
+    // 2. Нормализация цены (5.000, 5000, 5к)
+    window.formatPrice = function(priceStr) {
+        if (!priceStr) return '';
+        if (/[кk]/i.test(priceStr)) return priceStr;
+        const cleaned = String(priceStr).replace(/[^0-9]/g, '');
+        if (!cleaned) return priceStr;
+        const num = parseInt(cleaned, 10);
+        if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'ккк';
+        if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'кк';
+        if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'к';
+        return num.toString();
+    };
 
-    // 3. Рендер ленты
+    // 3. Рендер ленты (главная) — упрощённый, только одобренные
     window.renderFeed = function() {
         const container = document.getElementById('feedContainer');
         if (!container) return;
@@ -4446,7 +4449,7 @@
         }).join('');
     };
 
-    // 4. Рендер ожидающих для админа
+    // 4. Рендер ожидающих для админов — с кнопками
     window.renderPendingAds = function() {
         const cont = document.getElementById('pendingAdsContainer');
         if (!cont) return;
@@ -4476,18 +4479,23 @@
         `).join('');
     };
 
-    // 5. Одобрение
+    // 5. Одобрение объявления (работает с let-переменными)
     window.approvePendingAd = function(id) {
         const idx = pendingAdsList.findIndex(a => a.id === id);
         if (idx === -1) return;
         const ad = pendingAdsList.splice(idx, 1)[0];
         ad.status = 'approved';
         globalAdsFeed.unshift(ad);
+
+        // Обновляем myAdsList
         const myIdx = myAdsList.findIndex(a => a.id === id);
         if (myIdx > -1) {
             myAdsList[myIdx].status = 'approved';
+            localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
         }
-        saveState();
+
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+        localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
         renderPendingAds();
         renderFeed();
         playSfx('success');
@@ -4497,13 +4505,13 @@
         const idx = pendingAdsList.findIndex(a => a.id === id);
         if (idx > -1) {
             pendingAdsList.splice(idx, 1);
-            saveState();
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
             renderPendingAds();
             playSfx('success');
         }
     };
 
-    // 6. Отправка объявления
+    // 6. Отправка объявления (простая, добавляет в pending)
     window.submitData = function() {
         const now = new Date();
         const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
@@ -4536,7 +4544,8 @@
         };
         pendingAdsList.push(newAd);
         myAdsList.push(newAd);
-        saveState();
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
         localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
         showCooldownTimer(120);
         playSfx('success');
@@ -4550,7 +4559,7 @@
         document.getElementById('itemImage').value = '';
     };
 
-    // 7. Привязка кнопок список/плитка
+    // 7. Переключение список/плитка
     window.setViewMode = function(mode) {
         currentViewMode = mode;
         const container = document.getElementById('feedContainer');
@@ -4566,23 +4575,7 @@
         renderFeed();
     };
 
-    // 8. Инициализация
-    document.addEventListener('DOMContentLoaded', function() {
-        // Привязываем кнопки
-        const btnList = document.getElementById('btnListView');
-        const btnGrid = document.getElementById('btnGridView');
-        if (btnList) btnList.onclick = function() { setViewMode('list'); };
-        if (btnGrid) btnGrid.onclick = function() { setViewMode('grid'); };
-        const searchBtn = document.querySelector('#tabFeed .btn-success');
-        if (searchBtn) searchBtn.onclick = function() { openModal('searchModal'); };
-        // Рисуем всё
-        renderFeed();
-        renderPendingAds();
-        renderMyAds();
-        renderFavorites();
-    });
-
-    // Переопределяем открытие объявления, чтобы были похожие
+    // 8. Просмотр объявления с похожими
     window.openAdDetail = function(id) {
         const ad = globalAdsFeed.find(a => a.id === id);
         if (!ad) return;
@@ -4619,6 +4612,22 @@
         openModal('adDetailModal');
     };
 
-    console.log('Часть 69 успешно перезапустила логику объявлений.');
+    // 9. Инициализация при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        // Привязываем кнопки
+        const btnList = document.getElementById('btnListView');
+        const btnGrid = document.getElementById('btnGridView');
+        if (btnList) btnList.onclick = function() { setViewMode('list'); };
+        if (btnGrid) btnGrid.onclick = function() { setViewMode('grid'); };
+        const searchBtn = document.querySelector('#tabFeed .btn-success');
+        if (searchBtn) searchBtn.onclick = function() { openModal('searchModal'); };
+        // Обновляем все списки
+        renderFeed();
+        renderPendingAds();
+        renderMyAds();
+        renderFavorites();
+    });
+
+    console.log('Часть 70: чистое исправление применено.');
 })();
 </script>

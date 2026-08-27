@@ -4724,3 +4724,78 @@
     console.log('Проверка пинга активирована.');
 })();
 </script>
+<!-- ==================== ЧАСТЬ 119: ИСПРАВЛЕНИЕ ПИНГА И ВОЗВРАТ ЗАГРУЗОЧНОГО ЭКРАНА ==================== -->
+<script>
+(function() {
+    console.log('Часть 119: исправление проверки сети и загрузочного экрана.');
+
+    // Удаляем старый пинг-оверлей, если он был создан
+    const oldPingOverlay = document.getElementById('pingOverlay');
+    if (oldPingOverlay) oldPingOverlay.remove();
+
+    // Создаём новый загрузочный экран (лоадер) с современным дизайном
+    let loader = document.getElementById('connectionLoader');
+    if (loader) loader.remove(); // удаляем старый, если был
+
+    loader = document.createElement('div');
+    loader.id = 'connectionLoader';
+    loader.style.cssText = `
+        position: fixed; inset: 0; background: rgba(255,255,255,0.85);
+        display: none; align-items: center; justify-content: center;
+        z-index: 99999; backdrop-filter: blur(4px);
+    `;
+    loader.innerHTML = `
+        <div style="text-align: center; max-width: 280px; padding: 20px; background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <div style="width: 48px; height: 48px; border: 5px solid #e0e0e0; border-top-color: #cb11ab; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;"></div>
+            <p style="font-size: 16px; font-weight: 600; color: #1c1c1e; margin-bottom: 6px;">Загрузка, подождите...</p>
+            <p style="font-size: 13px; color: #8e8e93;">Проверяем соединение с интернетом</p>
+        </div>
+    `;
+    document.body.appendChild(loader);
+    // Добавляем анимацию, если её ещё нет
+    if (!document.getElementById('spinAnimationStyle')) {
+        const style = document.createElement('style');
+        style.id = 'spinAnimationStyle';
+        style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+    }
+
+    // Функция проверки сети (без ложного пинга)
+    async function checkConnection() {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // ждём до 3 секунд
+            // Используем лёгкий запрос к Google (глобально доступный)
+            await fetch('https://www.gstatic.com/generate_204', { mode: 'no-cors', signal: controller.signal });
+            clearTimeout(timeoutId);
+            // Соединение есть – скрываем загрузку
+            loader.style.display = 'none';
+        } catch (error) {
+            // Соединения нет или очень медленное – показываем загрузку
+            loader.style.display = 'flex';
+        }
+    }
+
+    // Периодически проверяем сеть
+    function startNetworkMonitor() {
+        checkConnection();
+        setInterval(checkConnection, 5000);
+        // Также реагируем на события online/offline
+        window.addEventListener('online', () => {
+            loader.style.display = 'none';
+        });
+        window.addEventListener('offline', () => {
+            loader.style.display = 'flex';
+        });
+    }
+
+    // Запускаем после полной загрузки
+    if (document.readyState === 'complete') {
+        startNetworkMonitor();
+    } else {
+        document.addEventListener('DOMContentLoaded', startNetworkMonitor);
+    }
+
+    console.log('Загрузочный экран восстановлен, проверка сети исправлена.');
+})();
+</script>

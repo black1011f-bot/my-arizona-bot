@@ -4084,190 +4084,93 @@
         } else {
             document.addEventListener('DOMContentLoaded', ensureSfxEnabled);
         }
-    })();
-    <!-- ==================== ЧАСТЬ 48: КВАДРАТНЫЕ ФОТО В ТУТОРИАЛЕ ==================== -->
+        <!-- ==================== ЧАСТЬ 52: ПРАВИЛЬНАЯ ЗАГРУЗКА ФОТО ТУТОРИАЛА ==================== -->
 <script>
     (function() {
-        // Ссылки на изображения для каждого слайда (порядок: 1,2,3,4,5)
         const tutorialImages = [
             'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg',
             'https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg',
             'https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg',
             'https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg',
-            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg' // для пятого слайда можно поменять
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg' // можно заменить
         ];
 
         function replaceEmojisWithImages() {
             const icons = document.querySelectorAll('.tutorial-icon');
             icons.forEach((icon, index) => {
                 if (tutorialImages[index]) {
-                    // Создаём изображение
                     const img = document.createElement('img');
                     img.src = tutorialImages[index];
-                    img.alt = 'Tutorial image';
+                    img.alt = 'Tutorial';
                     img.loading = 'lazy';
-                    // Очищаем текущее содержимое (эмодзи)
+                    img.style.cssText = `
+                        display: block;
+                        width: 100px;
+                        height: 100px;
+                        object-fit: cover;
+                        border-radius: 16px;
+                        border: 2px solid var(--app-card-border);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                        margin: 0 auto 8px;
+                    `;
+                    // Если фото не загрузится, покажем эмодзи
+                    img.onerror = function() {
+                        this.remove();
+                        const fallback = document.createElement('span');
+                        fallback.textContent = ['👋','🏠','➕','🎮','💬'][index] || '👋';
+                        fallback.style.cssText = 'font-size:60px;';
+                        icon.appendChild(fallback);
+                    };
                     icon.innerHTML = '';
                     icon.appendChild(img);
                 }
             });
         }
 
-        // Выполняем после загрузки DOM
-        if (document.readyState === 'complete') {
-            replaceEmojisWithImages();
-        } else {
-            document.addEventListener('DOMContentLoaded', replaceEmojisWithImages);
-        }
-    })();
-</script>
-
-<style>
-    /* Квадратные изображения в туториале */
-    .tutorial-icon {
-        font-size: 0; /* убираем эмодзи-наследие */
-        line-height: 0;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        margin-bottom: 8px;
-    }
-
-    .tutorial-icon img {
-        display: block;
-        width: 100px;
-        height: 100px;
-        object-fit: cover;
-        border-radius: 16px; /* квадратные с мягкими углами */
-        border: 2px solid var(--app-card-border);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    /* Адаптация под разные экраны */
-    @media (max-width: 480px) {
-        .tutorial-icon img {
-            width: 70px;
-            height: 70px;
-            border-radius: 12px;
-        }
-    }
-
-    @media (min-width: 768px) {
-        .tutorial-icon img {
-            width: 130px;
-            height: 130px;
-            border-radius: 20px;
-        }
-    }
-
-    @media (min-width: 1024px) {
-        .tutorial-icon img {
-            width: 160px;
-            height: 160px;
-        }
-    }
-</style>
-<!-- ==================== ЧАСТЬ 49 (УЛУЧШЕННАЯ): МГНОВЕННАЯ ЗАГРУЗКА ФОТО ТУТОРИАЛА ==================== -->
-<script>
-    (function() {
-        // Ссылки на изображения (те же, что в туториале)
-        const tutorialImages = [
-            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg',
-            'https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg',
-            'https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg',
-            'https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg',
-            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg'
-        ];
-
-        // Добавляем <link rel="preload"> в <head> для максимально ранней загрузки
-        function addPreloadLinks() {
-            tutorialImages.forEach(src => {
-                const link = document.createElement('link');
-                link.rel = 'preload';
-                link.as = 'image';
-                link.href = src;
-                document.head.appendChild(link);
-            });
-        }
-
-        // Предзагрузка через fetch с сохранением в Cache API
-        async function preloadAndCache() {
-            if ('caches' in window) {
-                try {
-                    const cache = await caches.open('tutorial-images-cache');
-                    await Promise.all(tutorialImages.map(async (src) => {
-                        const response = await fetch(src, { cache: 'force-cache' });
-                        if (response.ok) {
-                            await cache.put(src, response);
-                        }
-                    }));
-                } catch (e) {
-                    console.warn('Cache API error:', e);
-                }
-            }
-            // Дополнительно подгружаем через new Image для старых браузеров
+        // Предзагрузка для скорости
+        function preloadImages() {
             tutorialImages.forEach(src => {
                 const img = new Image();
                 img.src = src;
             });
         }
 
-        // Выполняем сразу
-        addPreloadLinks();
         if (document.readyState === 'complete') {
-            preloadAndCache();
+            preloadImages();
+            replaceEmojisWithImages();
         } else {
-            document.addEventListener('DOMContentLoaded', preloadAndCache);
+            document.addEventListener('DOMContentLoaded', () => {
+                preloadImages();
+                replaceEmojisWithImages();
+            });
         }
     })();
 </script>
 
-<!-- Также можно добавить preload вручную в <head>, если хотите ещё быстрее -->
-<!-- 
-<link rel="preload" as="image" href="https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg">
-<link rel="preload" as="image" href="https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg">
-<link rel="preload" as="image" href="https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg">
-<link rel="preload" as="image" href="https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg">
--->
-<script>
-    // ==========================================================================
-    // ОТКЛЮЧАЕМ ВСЕ ВИБРАЦИИ (HapticFeedback)
-    // ==========================================================================
-    (function() {
-        // Переопределяем возможные вызовы hapticFeedback
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-            const haptic = window.Telegram.WebApp.HapticFeedback;
-            // Заменяем все методы на заглушки
-            haptic.impactOccurred = function() {};
-            haptic.notificationOccurred = function() {};
-            haptic.selectionChanged = function() {};
-        }
+<style>
+    /* Адаптивность изображений туториала */
+    .tutorial-icon {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100px;
+    }
 
-        // Также переопределяем нашу функцию hapticFeedback, если она есть
-        if (window.hapticFeedback) {
-            window.hapticFeedback = function() {};
-        }
+    .tutorial-icon img {
+        max-width: 100px;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1 / 1; /* сохраняем квадрат */
+        object-fit: cover;
+        border-radius: 16px;
+    }
 
-        // Удаляем возможные обработчики, которые вызывают вибрацию
-        const originalPlaySfx = window.playSfx;
-        if (originalPlaySfx) {
-            window.playSfx = function(type) {
-                // Вызываем только звук, без вибрации
-                // Предполагаем, что originalPlaySfx содержит только звук (без haptic)
-                originalPlaySfx(type);
-            };
-        }
-    })();
-</script>
-<script>
-    // Обработка ошибок загрузки фото в туториале
-    document.addEventListener('error', function(e) {
-        if (e.target.tagName === 'IMG' && e.target.closest('.tutorial-icon')) {
-            // Если фото не загрузилось, заменяем на эмодзи
-            const fallback = document.createElement('span');
-            fallback.textContent = '👋';
-            fallback.style.fontSize = '60px';
-            e.target.replaceWith(fallback);
-        }
-    }, true);
-</script>
+    @media (max-width: 480px) {
+        .tutorial-icon img { max-width: 70px; border-radius: 12px; }
+    }
+
+    @media (min-width: 768px) {
+        .tutorial-icon img { max-width: 130px; border-radius: 20px; }
+    }
+</style>

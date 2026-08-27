@@ -4394,16 +4394,16 @@
     })();
 </script>
 <script>
-<!-- ==================== ЧАСТЬ 70: ЧИСТОЕ ИСПРАВЛЕНИЕ ОТОБРАЖЕНИЯ ОБЪЯВЛЕНИЙ ==================== -->
+<!-- ==================== ЧАСТЬ 71: ВОССТАНОВЛЕНИЕ ЛОГИКИ ОБЪЯВЛЕНИЙ ИЗ СТАРОГО СКРИПТА ==================== -->
 <script>
 (function() {
-    console.log('Часть 70 активирована.');
+    console.log('Часть 71 активирована.');
 
-    // 1. Убираем сообщение о черновике
+    // 1. Отключаем черновик
     localStorage.removeItem(getUserKey('arizona_ad_draft'));
     window.loadDraft = function() {};
 
-    // 2. Нормализация цены (5.000, 5000, 5к)
+    // 2. Нормализация цены (для совместимости)
     window.formatPrice = function(priceStr) {
         if (!priceStr) return '';
         if (/[кk]/i.test(priceStr)) return priceStr;
@@ -4416,13 +4416,13 @@
         return num.toString();
     };
 
-    // 3. Рендер ленты (главная) — упрощённый, только одобренные
+    // 3. Рендер ленты (главная)
     window.renderFeed = function() {
         const container = document.getElementById('feedContainer');
         if (!container) return;
         const approved = globalAdsFeed.filter(ad => ad.status === 'approved');
         if (approved.length === 0) {
-            container.innerHTML = '<p>Лента пуста</p>';
+            container.innerHTML = '<p style="text-align:center; padding:20px;">Лента пуста</p>';
             return;
         }
         const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@', '').toLowerCase()) ||
@@ -4449,7 +4449,7 @@
         }).join('');
     };
 
-    // 4. Рендер ожидающих для админов — с кнопками
+    // 4. Рендер ожидающих для админов
     window.renderPendingAds = function() {
         const cont = document.getElementById('pendingAdsContainer');
         if (!cont) return;
@@ -4479,21 +4479,18 @@
         `).join('');
     };
 
-    // 5. Одобрение объявления (работает с let-переменными)
+    // 5. Одобрение (добавляет в ленту, как в старом скрипте)
     window.approvePendingAd = function(id) {
         const idx = pendingAdsList.findIndex(a => a.id === id);
         if (idx === -1) return;
         const ad = pendingAdsList.splice(idx, 1)[0];
         ad.status = 'approved';
         globalAdsFeed.unshift(ad);
-
-        // Обновляем myAdsList
         const myIdx = myAdsList.findIndex(a => a.id === id);
         if (myIdx > -1) {
             myAdsList[myIdx].status = 'approved';
             localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
         }
-
         localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
         localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
         renderPendingAds();
@@ -4511,7 +4508,7 @@
         }
     };
 
-    // 6. Отправка объявления (простая, добавляет в pending)
+    // 6. Отправка объявления (старая логика)
     window.submitData = function() {
         const now = new Date();
         const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
@@ -4522,7 +4519,7 @@
         const lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
         if (Date.now() - lastAdTime < 120000) {
             const left = Math.ceil((120000 - (Date.now() - lastAdTime)) / 1000);
-            showCooldownTimer(left);
+            alert(`Подождите ${left} сек.`);
             return;
         }
         const mode = document.getElementById('mode').value;
@@ -4547,7 +4544,7 @@
         localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
         localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
         localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
-        showCooldownTimer(120);
+        alert('Объявление отправлено на модерацию');
         playSfx('success');
         switchTab('feed');
         renderFeed();
@@ -4575,59 +4572,58 @@
         renderFeed();
     };
 
-    // 8. Просмотр объявления с похожими
-    window.openAdDetail = function(id) {
-        const ad = globalAdsFeed.find(a => a.id === id);
+    // 8. Редактирование с кнопками (упрощённое)
+    window.openEditAdModal = function(id) {
+        const ad = pendingAdsList.find(a => a.id === id);
         if (!ad) return;
-        document.getElementById('adDetailTitle').innerText = ad.itemName;
-        const container = document.getElementById('adDetailContent');
-        container.innerHTML = `
-            ${ad.image ? `<img src="${escapeHtml(ad.image)}" style="width:100%; border-radius:12px; margin-bottom:12px; max-height:300px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${escapeHtml(ad.mode === 'sell' ? 'Продажа' : 'Покупка')}</span>
-                <span style="font-size:13px; color:var(--app-text-muted);">${escapeHtml(ad.server)}</span>
+        document.getElementById('editAdForm').innerHTML = `
+            <div style="margin-bottom:8px;">
+                <label>🏷 Название</label>
+                <input id="editItemName" value="${escapeHtml(ad.itemName)}">
             </div>
-            <h4 style="font-size:20px; margin-bottom:4px;">${escapeHtml(ad.itemName)}</h4>
-            <div style="font-size:24px; font-weight:700; color:var(--app-accent-gold); margin-bottom:8px;">💰 ${escapeHtml(formatPrice(ad.price))}</div>
-            <p style="font-size:14px; margin-bottom:12px;">${escapeHtml(ad.text)}</p>
-            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-                <button class="btn btn-success btn-sm" style="flex:1; min-width:120px;" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать продавцу</button>
-                <button class="btn btn-outline btn-sm" style="flex:1; min-width:120px;" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button>
+            <div style="margin-bottom:8px;">
+                <label>💰 Цена</label>
+                <input id="editPrice" value="${escapeHtml(ad.price)}">
             </div>
-            <div style="font-size:12px; margin-bottom:8px;">
-                Продавец: <span style="color:var(--app-accent);" onclick="inspectUserProfile('${escapeHtml(ad.author)}')">${escapeHtml(ad.author)}</span>
+            <div style="margin-bottom:8px;">
+                <label>📄 Описание</label>
+                <textarea id="editText" rows="3">${escapeHtml(ad.text)}</textarea>
             </div>
-            <hr style="border:0; border-top:1px solid var(--app-card-border); margin:16px 0;">
-            <div style="font-weight:600; margin-bottom:8px;">Похожие объявления</div>
-            <div id="similarAdsContainer">
-                ${globalAdsFeed.filter(a => a.status === 'approved' && a.id !== ad.id && a.category === ad.category).slice(0, 3).map(sim => `
-                    <div class="ad-card" style="margin-bottom:8px; cursor:pointer;" onclick="openAdDetail(${sim.id})">
-                        <div class="ad-title" style="font-size:14px;">${escapeHtml(sim.itemName)}</div>
-                        <div class="ad-price" style="font-size:16px;">💰 ${escapeHtml(formatPrice(sim.price))}</div>
-                        <div style="font-size:12px; color:var(--app-text-muted);">${escapeHtml(sim.server)}</div>
-                    </div>
-                `).join('') || '<p style="font-size:13px;">Нет похожих объявлений</p>'}
+            <div style="display:flex; gap:8px; margin-top:12px;">
+                <button class="btn btn-success btn-sm" style="flex:1;" onclick="approvePendingAdFromEdit(${ad.id})">✅ Одобрить</button>
+                <button class="btn btn-outline btn-sm" style="flex:1;" onclick="closeModal('editAdModal')">🔙 Назад</button>
+                <button class="btn btn-danger btn-sm" style="flex:1;" onclick="rejectPendingAd(${ad.id}); closeModal('editAdModal');">⏭ Пропустить</button>
             </div>
         `;
-        openModal('adDetailModal');
+        openModal('editAdModal');
     };
 
-    // 9. Инициализация при загрузке
+    window.approvePendingAdFromEdit = function(id) {
+        const ad = pendingAdsList.find(a => a.id === id);
+        if (!ad) return;
+        ad.itemName = document.getElementById('editItemName').value;
+        ad.price = document.getElementById('editPrice').value;
+        ad.text = document.getElementById('editText').value;
+        approvePendingAd(id);
+        closeModal('editAdModal');
+    };
+
+    // 9. Инициализация
     document.addEventListener('DOMContentLoaded', function() {
-        // Привязываем кнопки
-        const btnList = document.getElementById('btnListView');
-        const btnGrid = document.getElementById('btnGridView');
-        if (btnList) btnList.onclick = function() { setViewMode('list'); };
-        if (btnGrid) btnGrid.onclick = function() { setViewMode('grid'); };
-        const searchBtn = document.querySelector('#tabFeed .btn-success');
-        if (searchBtn) searchBtn.onclick = function() { openModal('searchModal'); };
-        // Обновляем все списки
         renderFeed();
         renderPendingAds();
         renderMyAds();
         renderFavorites();
+        // Привязываем кнопки список/плитка
+        const btnList = document.getElementById('btnListView');
+        const btnGrid = document.getElementById('btnGridView');
+        if (btnList) btnList.onclick = function() { setViewMode('list'); };
+        if (btnGrid) btnGrid.onclick = function() { setViewMode('grid'); };
+        // Кнопка поиска
+        const searchBtn = document.querySelector('#tabFeed .btn-success');
+        if (searchBtn) searchBtn.onclick = function() { openModal('searchModal'); };
     });
 
-    console.log('Часть 70: чистое исправление применено.');
+    console.log('Часть 71 успешно применила старую логику объявлений.');
 })();
 </script>

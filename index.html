@@ -1688,3 +1688,708 @@
         .ads-container.grid-view { grid-template-columns: repeat(5, 1fr); }
     }
 </style>
+<!-- ==================== ЧАСТЬ 79: ИНТЕРФЕЙС КАК НА WB (СТИЛИ И КНОПКИ) ==================== -->
+<style>
+    /* Обновляем основные стили под Wildberries: чистые, с 3D-кнопками */
+    :root {
+        --app-bg: #f7f7fa;
+        --card-bg: #ffffff;
+        --header-bg: #ffffff;
+        --border: #e5e5ea;
+        --accent: #cb11ab;
+        --accent2: #ff5ecf;
+        --gold: #ffb800;
+        --text: #1c1c1e;
+        --muted: #8e8e93;
+        --btn-bg: linear-gradient(135deg, #cb11ab 0%, #7b0e6a 100%);
+        --radius: 12px;
+    }
+    body {
+        background: var(--app-bg);
+        color: var(--text);
+        padding: 8px;
+    }
+    .container {
+        max-width: 480px;
+        margin: 0 auto;
+    }
+    @media (min-width: 768px) {
+        .container { max-width: 720px; }
+        .ads-container:not(.grid-view) { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    }
+    @media (min-width: 1024px) {
+        .container { max-width: 1000px; }
+        .ads-container:not(.grid-view) { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* Шапка с баннером */
+    .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--header-bg);
+        border-bottom: 1px solid var(--border);
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        border-radius: 0;
+    }
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        font-size: 18px;
+        color: var(--text);
+    }
+    .brand img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--accent);
+    }
+    .header-actions {
+        display: flex;
+        gap: 6px;
+    }
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        box-shadow: 0 4px 0 rgba(0,0,0,0.05);
+        transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .icon-btn:active {
+        transform: translateY(2px);
+        box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+    }
+
+    /* Нижняя навигация как в iPhone */
+    .nav-tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-around;
+        background: var(--header-bg);
+        border-top: 1px solid var(--border);
+        padding: 8px 0 env(safe-area-inset-bottom, 0);
+        z-index: 100;
+    }
+    .nav-tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--muted);
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .nav-tab.active {
+        color: var(--accent);
+    }
+    .nav-tab .tab-icon {
+        font-size: 22px;
+    }
+    .nav-tab:active {
+        transform: scale(0.95);
+    }
+    /* Обводка при нажатии */
+    .nav-tab:active .tab-icon {
+        text-shadow: 0 0 8px var(--accent);
+    }
+
+    /* Баннер */
+    .broadcast-banner {
+        display: none;
+        background: var(--accent);
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        cursor: pointer;
+    }
+
+    /* Кнопки 3D */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 16px;
+        border-radius: 50px;
+        background: var(--btn-bg);
+        color: #fff;
+        font-weight: 700;
+        width: 100%;
+        box-shadow: 0 4px 0 #7b0e6a, 0 6px 12px rgba(0,0,0,0.1);
+        transform: translateY(0);
+        transition: all 0.1s ease;
+        font-size: 13px;
+    }
+    .btn:active {
+        transform: translateY(2px);
+        box-shadow: 0 1px 0 #7b0e6a, 0 3px 6px rgba(0,0,0,0.1);
+    }
+    .btn-sm { padding: 6px 12px; font-size: 11px; border-radius: 30px; }
+    .btn-outline { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); box-shadow: none; }
+    .btn-danger { background: linear-gradient(135deg, #dc3545, #a71d2a); }
+    .btn-success { background: var(--btn-bg); }
+
+    /* Карточки объявлений */
+    .ad-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 10px;
+        margin-bottom: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .ad-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .ad-price { font-size: 14px; font-weight: 800; color: var(--gold); }
+    .ad-text { font-size: 12px; color: var(--muted); }
+</style>
+<!-- ==================== ЧАСТЬ 80: ИСПРАВЛЕНИЕ НИЖНЕЙ НАВИГАЦИИ, БАННЕРА И ТРЁХ ТОЧЕК ==================== -->
+<script>
+    (function() {
+        // Восстанавливаем нижнюю навигацию, если она была сломана
+        function initBottomNav() {
+            let nav = document.querySelector('.nav-tabs');
+            if (!nav) {
+                nav = document.createElement('nav');
+                nav.className = 'nav-tabs';
+                nav.innerHTML = `
+                    <button class="nav-tab active" data-tab="feed" onclick="switchTab('feed')"><span class="tab-icon">🏠</span>Главная</button>
+                    <button class="nav-tab" data-tab="app" onclick="switchTab('app')"><span class="tab-icon">➕</span>Создать</button>
+                    <button class="nav-tab" data-tab="myAds" onclick="switchTab('myAds')"><span class="tab-icon">📦</span>Мои темы</button>
+                    <button class="nav-tab" data-tab="favorites" onclick="switchTab('favorites')"><span class="tab-icon">⭐</span>Избранное</button>
+                    <button class="nav-tab" id="adminTabBtn" style="display:none;" data-tab="admin" onclick="switchTab('admin')"><span class="tab-icon">🛡️</span>Админ</button>
+                `;
+                document.body.appendChild(nav);
+            } else {
+                // Обновляем содержимое, чтобы добавить иконки
+                const tabs = [
+                    { id: 'feed', icon: '🏠', label: 'Главная' },
+                    { id: 'app', icon: '➕', label: 'Создать' },
+                    { id: 'myAds', icon: '📦', label: 'Мои темы' },
+                    { id: 'favorites', icon: '⭐', label: 'Избранное' },
+                    { id: 'admin', icon: '🛡️', label: 'Админ', adminOnly: true }
+                ];
+                nav.innerHTML = tabs.map(t => `
+                    <button class="nav-tab ${t.id === 'feed' ? 'active' : ''}" data-tab="${t.id}" onclick="switchTab('${t.id}')" ${t.adminOnly ? 'id="adminTabBtn" style="display:none;"' : ''}>
+                        <span class="tab-icon">${t.icon}</span>${t.label}
+                    </button>
+                `).join('');
+            }
+            // Показываем админ-вкладку, если нужно (будет переопределено позже)
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME;
+            if (isAdmin) document.getElementById('adminTabBtn').style.display = 'flex';
+        }
+
+        // Переопределяем switchTab для работы с иконками и нижней навигацией
+        window.switchTab = function(tabId) {
+            // Скрываем все секции
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (target) target.classList.add('active');
+            // Обновляем активную вкладку
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+            if (activeTab) activeTab.classList.add('active');
+            // Вызываем рендеры
+            if (tabId === 'feed') renderFeed();
+            if (tabId === 'myAds') renderMyAds();
+            if (tabId === 'favorites') renderFavorites();
+            if (tabId === 'admin') renderPendingAds();
+            playSfx('click');
+        };
+
+        // Исправление выпадающего меню (три точки)
+        window.toggleDropdownMenu = function(e) {
+            e.stopPropagation();
+            let menu = document.getElementById('dropdownMenu');
+            if (!menu) {
+                // Если меню отсутствует, создаём заново
+                menu = document.createElement('div');
+                menu.id = 'dropdownMenu';
+                menu.className = 'dropdown-menu';
+                menu.style.display = 'none';
+                document.querySelector('.app-header').appendChild(menu);
+            }
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            if (menu.style.display === 'block') {
+                // Заполняем пункты меню (если ещё не заполнены)
+                if (menu.children.length === 0) {
+                    menu.innerHTML = `
+                        <button class="dropdown-item" onclick="openBarygaModal(); closeDropdowns();">🎮 Игра «Барыга»</button>
+                        <button class="dropdown-item" onclick="openChatsModal(); closeDropdowns();">💬 Переписки</button>
+                        <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
+                        <button class="dropdown-item" onclick="openSearchModal(); closeDropdowns();">🔍 Поиск</button>
+                        <button class="dropdown-item" onclick="openThemeModal(); closeDropdowns();">🎨 Темы</button>
+                        <button class="dropdown-item" onclick="openMusicModal(); closeDropdowns();">🎵 Музыка</button>
+                        <button class="dropdown-item" onclick="openFashionModal(); closeDropdowns();">📸 Лента «Луков»</button>
+                        <button class="dropdown-item" onclick="openTravelModal(); closeDropdowns();">🤝 Попутчики</button>
+                        <button class="dropdown-item" onclick="openSettingsModal(); closeDropdowns();">⚙️ Настройки</button>
+                    `;
+                }
+            }
+            playSfx('click');
+        };
+        window.closeDropdowns = function() {
+            const menu = document.getElementById('dropdownMenu');
+            if (menu) menu.style.display = 'none';
+        };
+        window.addEventListener('click', closeDropdowns);
+
+        // Восстанавливаем баннер
+        function initBanner() {
+            const banner = document.getElementById('broadcastBanner');
+            if (!banner) return;
+            const saved = localStorage.getItem('arizona_broadcast_msg');
+            if (saved) {
+                document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${saved}`;
+                banner.style.display = 'block';
+            }
+        }
+
+        // Инициализация
+        if (document.readyState === 'complete') {
+            initBottomNav();
+            initBanner();
+        } else {
+            document.addEventListener('DOMContentLoaded', () => {
+                initBottomNav();
+                initBanner();
+            });
+        }
+
+        console.log('Часть 80: нижняя навигация, баннер и три точки исправлены.');
+    })();
+</script>
+<!-- ==================== ЧАСТЬ 81: ПРОСМОТР ОБЪЯВЛЕНИЯ И ФОРМАТ ЦЕНЫ ==================== -->
+<script>
+    (function() {
+        // Функция нормализации цены: принимает 5000, 5.000, 5к и возвращает 5к, 5кк и т.д.
+        window.formatPrice = function(priceStr) {
+            if (!priceStr) return '';
+            // Если уже есть 'к', 'кк', 'ккк' – возвращаем как есть
+            if (/[кk]/i.test(priceStr)) return priceStr;
+            // Убираем все символы, кроме цифр
+            const cleaned = String(priceStr).replace(/[^0-9]/g, '');
+            if (!cleaned) return priceStr;
+            const num = parseInt(cleaned, 10);
+            if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'ккк';
+            if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'кк';
+            if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'к';
+            return num.toString();
+        };
+
+        // Переопределяем openAdDetail, чтобы выглядело как на Wildberries
+        window.openAdDetail = function(id) {
+            const ad = globalAdsFeed.find(a => a.id === id);
+            if (!ad) return;
+
+            // Создаём модальное окно с полным описанием, похожими, кнопками поделиться
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.display = 'flex';
+            modal.id = 'adDetailModal';
+            modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+
+            const similarAds = globalAdsFeed
+                .filter(a => a.status === 'approved' && a.id !== ad.id && a.category === ad.category)
+                .slice(0, 3);
+
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; background: var(--card-bg); color: var(--text); border-radius: 16px; padding: 16px; text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="font-size: 18px; font-weight: 700; margin: 0; color: var(--text);">${escapeHtml(ad.itemName)}</h3>
+                        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()" style="width: 30px; height: 30px; padding: 0;">✕</button>
+                    </div>
+                    ${ad.image ? `<img src="${escapeHtml(ad.image)}" style="width: 100%; border-radius: 12px; margin-bottom: 12px; max-height: 300px; object-fit: cover;" onerror="this.style.display='none'">` : ''}
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span class="forum-badge" style="background: rgba(203,17,171,0.1); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 12px;">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                        <span style="font-size: 13px; color: var(--muted);">${escapeHtml(ad.server)}</span>
+                    </div>
+                    <div style="font-size: 22px; font-weight: 800; color: var(--gold); margin-bottom: 8px;">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+                    <p style="font-size: 14px; line-height: 1.5; color: var(--text); margin-bottom: 12px;">${escapeHtml(ad.text)}</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                        <button class="btn btn-sm" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать продавцу</button>
+                        <button class="btn btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button>
+                        <button class="btn btn-outline btn-sm" onclick="shareAd(${ad.id})">🔗 Поделиться</button>
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">
+                        Продавец: <span style="color: var(--accent); cursor: pointer;" onclick="inspectUserProfile('${escapeHtml(ad.author)}')">${escapeHtml(ad.author)}</span>
+                    </div>
+                    <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;">
+                    <div style="font-weight: 700; font-size: 14px; margin-bottom: 8px;">Похожие объявления</div>
+                    <div id="similarAdsContainer">
+                        ${similarAds.map(sim => `
+                            <div class="ad-card" style="cursor: pointer; margin-bottom: 8px;" onclick="openAdDetail(${sim.id})">
+                                <div style="font-weight: 700; font-size: 14px;">${escapeHtml(sim.itemName)}</div>
+                                <div style="color: var(--gold); font-weight: 800;">💰 ${escapeHtml(formatPrice(sim.price))}</div>
+                                <div style="font-size: 12px; color: var(--muted);">${escapeHtml(sim.server)}</div>
+                            </div>
+                        `).join('') || '<p style="font-size: 13px; color: var(--muted);">Нет похожих объявлений</p>'}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        };
+
+        // Функция "Поделиться": копирует текст объявления в буфер обмена
+        window.shareAd = function(adId) {
+            const ad = globalAdsFeed.find(a => a.id === adId);
+            if (!ad) return;
+            const text = `${ad.itemName}\nЦена: ${formatPrice(ad.price)}\nСервер: ${ad.server}\n\n${ad.text}`;
+            navigator.clipboard.writeText(text).then(() => alert('Текст объявления скопирован в буфер обмена'));
+        };
+
+        // Вспомогательная функция escapeHtml уже может существовать, но продублируем
+        window.escapeHtml = window.escapeHtml || function(text) {
+            if (!text) return '';
+            return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        };
+
+        console.log('Часть 81: просмотр объявления и формат цены обновлены.');
+    })();
+</script>
+<!-- ==================== ЧАСТЬ 82: ВОССТАНОВЛЕНИЕ ТУТОРИАЛА С ФОТО ==================== -->
+<script>
+    (function() {
+        // Массив с фотографиями для туториала
+        const tutorialImages = [
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg',
+            'https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg',
+            'https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg',
+            'https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg',
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg'
+        ];
+
+        function initTutorial() {
+            const overlay = document.getElementById('tutorialOverlay');
+            if (!overlay) return;
+
+            // Заполняем слайды, если контент отсутствует
+            const slides = overlay.querySelectorAll('.tutorial-slide');
+            if (slides.length > 0 && !slides[0].querySelector('img')) {
+                // Добавляем фото в каждый слайд
+                for (let i = 0; i < slides.length; i++) {
+                    const icon = slides[i].querySelector('.tutorial-icon');
+                    if (icon && tutorialImages[i]) {
+                        icon.innerHTML = `<img src="${tutorialImages[i]}" alt="Tutorial" style="width:100px; height:100px; object-fit:cover; border-radius:16px; margin:0 auto;">`;
+                    }
+                }
+            }
+
+            // Логика переключения
+            window.currentTutorialSlide = 0;
+            window.totalTutorialSlides = slides.length || 4;
+            window.showTutorial = function() {
+                overlay.style.display = 'flex';
+                updateTutorial();
+            };
+            window.hideTutorial = function() {
+                overlay.style.display = 'none';
+            };
+            window.nextTutorialSlide = function() {
+                if (currentTutorialSlide < totalTutorialSlides - 1) {
+                    currentTutorialSlide++;
+                    updateTutorial();
+                } else {
+                    completeTutorial();
+                }
+            };
+            window.prevTutorialSlide = function() {
+                if (currentTutorialSlide > 0) {
+                    currentTutorialSlide--;
+                    updateTutorial();
+                }
+            };
+            window.skipTutorial = completeTutorial;
+            window.completeTutorial = function() {
+                hideTutorial();
+                localStorage.setItem('tutorial_completed', '1');
+                if (window.tg?.CloudStorage) {
+                    try { tg.CloudStorage.setItem('tutorial_completed', '1'); } catch(e) {}
+                }
+            };
+            window.updateTutorial = function() {
+                const allSlides = overlay.querySelectorAll('.tutorial-slide');
+                allSlides.forEach((s, idx) => s.classList.toggle('active', idx === currentTutorialSlide));
+                const dots = overlay.querySelectorAll('.dot');
+                dots.forEach((d, idx) => d.classList.toggle('active', idx === currentTutorialSlide));
+                const prevBtn = overlay.querySelector('[onclick="prevTutorialSlide()"]');
+                const nextBtn = overlay.querySelector('[onclick="nextTutorialSlide()"]');
+                if (prevBtn) prevBtn.style.display = currentTutorialSlide === 0 ? 'none' : 'inline-flex';
+                if (nextBtn) nextBtn.innerText = currentTutorialSlide === totalTutorialSlides - 1 ? 'Завершить' : 'Далее';
+            };
+
+            // Показываем туториал, если не завершён
+            const completed = localStorage.getItem('tutorial_completed') === '1';
+            if (!completed) {
+                showTutorial();
+            } else {
+                hideTutorial();
+            }
+        }
+
+        if (document.readyState === 'complete') {
+            initTutorial();
+        } else {
+            document.addEventListener('DOMContentLoaded', initTutorial);
+        }
+
+        console.log('Часть 82: туториал с фотографиями активирован.');
+    })();
+</script>
+<!-- ==================== ЧАСТЬ 83: ПОШАГОВЫЙ РЕДАКТОР ОБЪЯВЛЕНИЯ ДЛЯ АДМИНА ==================== -->
+<script>
+    (function() {
+        // Переопределяем openEditAdModal на пошаговый мастер
+        window.openEditAdModal = function(id) {
+            const ad = pendingAdsList.find(a => a.id === id);
+            if (!ad) return;
+
+            // Создаём модальное окно с шагами
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.display = 'flex';
+            modal.id = 'stepEditModal';
+            modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+
+            // Состояние шагов
+            const steps = [
+                { title: '🏷 Название', field: 'itemName', placeholder: 'Введите название' },
+                { title: '💰 Цена', field: 'price', placeholder: '5000 или 5к' },
+                { title: '📄 Описание', field: 'text', placeholder: 'Опишите предмет' },
+                { title: '🖼 Скриншот (опционально)', field: 'image', placeholder: 'Ссылка на изображение' },
+                { title: '🌐 Сервер', field: 'server', placeholder: 'Выберите сервер' }
+            ];
+            let currentStep = 0;
+            const editedValues = {
+                itemName: ad.itemName,
+                price: ad.price,
+                text: ad.text,
+                image: ad.image || '',
+                server: ad.server
+            };
+
+            function renderStep() {
+                const step = steps[currentStep];
+                modal.innerHTML = `
+                    <div class="modal-content" style="background: var(--card-bg); color: var(--text); border-radius: 16px; padding: 20px; max-width: 400px; width: 100%; text-align: left;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin:0; font-size:16px;">✏️ Редактирование (шаг ${currentStep + 1} из ${steps.length})</h3>
+                            <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()" style="width:30px;height:30px;padding:0;">✕</button>
+                        </div>
+                        <label style="font-weight:700; margin-bottom:4px; display:block;">${step.title}</label>
+                        ${step.field === 'text' 
+                            ? `<textarea id="editField" rows="3" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text);">${editedValues[step.field]}</textarea>`
+                            : step.field === 'server'
+                                ? `<select id="editField" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text);">${ALL_SERVERS.map(s => `<option value="${s}" ${s === editedValues.server ? 'selected' : ''}>${s}</option>`).join('')}</select>`
+                                : `<input id="editField" type="text" value="${editedValues[step.field]}" placeholder="${step.placeholder}" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text);">`
+                        }
+                        <div style="display: flex; gap: 6px; margin-top: 16px;">
+                            ${currentStep > 0 ? `<button class="btn btn-outline btn-sm" onclick="prevEditStep()">🔙 Назад</button>` : `<button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">🔙 Назад</button>`}
+                            ${currentStep < steps.length - 1 
+                                ? `<button class="btn btn-sm" onclick="nextEditStep()">Вперёд ➡️</button>`
+                                : `<button class="btn btn-success btn-sm" onclick="finishEditApproval(${ad.id})">✅ Одобрить</button>`
+                            }
+                        </div>
+                        <div style="text-align:center; margin-top:10px;">
+                            ${steps.map((_, i) => `<span style="display:inline-block; width:8px; height:8px; border-radius:50%; margin:0 2px; background:${i === currentStep ? 'var(--accent)' : 'var(--border)'};"></span>`).join('')}
+                        </div>
+                    </div>
+                `;
+
+                // Сохраняем текущее значение при переходе
+                const field = document.getElementById('editField');
+                if (field) {
+                    field.oninput = function() { editedValues[step.field] = field.value; };
+                }
+                // Глобальные функции для шагов
+                window.prevEditStep = function() {
+                    if (currentStep > 0) currentStep--;
+                    renderStep();
+                };
+                window.nextEditStep = function() {
+                    const val = document.getElementById('editField').value;
+                    editedValues[steps[currentStep].field] = val;
+                    if (currentStep < steps.length - 1) {
+                        currentStep++;
+                        renderStep();
+                    }
+                };
+                window.finishEditApproval = function(adId) {
+                    const val = document.getElementById('editField').value;
+                    editedValues[steps[currentStep].field] = val;
+                    // Применяем изменения
+                    const targetAd = pendingAdsList.find(a => a.id === adId);
+                    if (targetAd) {
+                        targetAd.itemName = editedValues.itemName;
+                        targetAd.price = editedValues.price;
+                        targetAd.text = editedValues.text;
+                        targetAd.image = editedValues.image;
+                        targetAd.server = editedValues.server;
+                        // Одобряем
+                        approvePendingAd(adId);
+                    }
+                    modal.remove();
+                };
+            }
+
+            renderStep();
+            document.body.appendChild(modal);
+        };
+
+        console.log('Часть 83: пошаговый редактор объявления установлен.');
+    })();
+</script>
+<!-- ==================== ЧАСТЬ 84: ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ И ПРОВЕРКА ==================== -->
+<script>
+    (function() {
+        // Функция для проверки и восстановления всех элементов после загрузки
+        function finalInit() {
+            console.log('Финальная инициализация...');
+
+            // 1. Проверяем, что все критические элементы существуют
+            ensureElement('.app-header');
+            ensureElement('.nav-tabs');
+            ensureElement('#feedContainer');
+            ensureElement('#broadcastBanner');
+            ensureElement('#dropdownMenu');
+            ensureElement('#tutorialOverlay');
+
+            // 2. Восстанавливаем баннер, если он был скрыт
+            const banner = document.getElementById('broadcastBanner');
+            if (banner) {
+                const saved = localStorage.getItem('arizona_broadcast_msg');
+                if (saved) {
+                    document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${saved}`;
+                    banner.style.display = 'block';
+                } else {
+                    banner.style.display = 'none';
+                }
+            }
+
+            // 3. Проверяем туториал: если не пройден, показываем
+            const tutorialCompleted = localStorage.getItem('tutorial_completed') === '1';
+            if (!tutorialCompleted && document.getElementById('tutorialOverlay')) {
+                showTutorial();
+            } else {
+                hideTutorial();
+            }
+
+            // 4. Инициализируем нижнюю навигацию (если ещё не сделано)
+            if (!document.querySelector('.nav-tab[data-tab]')) {
+                initBottomNav();
+            }
+
+            // 5. Убеждаемся, что активна главная вкладка
+            if (!document.querySelector('.section.active')) {
+                switchTab('feed');
+            }
+
+            // 6. Обновляем время
+            updateMskClock();
+
+            // 7. Проверяем отображение админ-кнопки
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME;
+            const adminBtn = document.getElementById('adminTabBtn');
+            if (adminBtn) adminBtn.style.display = isAdmin ? 'flex' : 'none';
+
+            // 8. Применяем правильный список серверов в пикере
+            if (typeof window.ALL_SERVERS === 'undefined' || window.ALL_SERVERS.length < 30) {
+                window.ALL_SERVERS = [
+                    '🔥 Phoenix', '🌴 Tucson', '🌵 Scottdale', '⚜️ Chandler', '❄️ Brainburg',
+                    '✨ Saint Rose', '🏛 Mesa', '❤️ Red-Rock', '🌊 Yuma', '🍀 Surprise',
+                    '⚡️ Prescott', '🌲 Glendale', '👑 Kingman', '⚓️ Winslow', '🌴 Payson',
+                    '💎 Gilbert', '🔥 Show-Low', '🌴 Casa-Grande', '🌟 Page', '☀️ Sun-City',
+                    '⚡️ Queen Creek', '🧸 Sedona', '🎄 Holiday', '📅 Wednesday', '🚀 Yava',
+                    '🔮 Faraway', '🚀 Bumble Bee', '🎄 Christmas', '🌟 Mirage', '❤️ Love',
+                    '💎 Drake', '🚀 Space', '🏠 Home', '📱 Mobile 3', '📱 Mobile 2', '📱 Mobile 1'
+                ];
+            }
+
+            // 9. Проверяем, что formatPrice работает корректно
+            if (typeof window.formatPrice !== 'function') {
+                window.formatPrice = function(priceStr) {
+                    if (!priceStr) return '';
+                    if (/[кk]/i.test(priceStr)) return priceStr;
+                    const num = parseFloat(String(priceStr).replace(/[^0-9.]/g, ''));
+                    if (isNaN(num)) return priceStr;
+                    if (num >= 1e9) return (num/1e9).toFixed(1).replace(/\.0$/,'')+'ккк';
+                    if (num >= 1e6) return (num/1e6).toFixed(1).replace(/\.0$/,'')+'кк';
+                    if (num >= 1e3) return (num/1e3).toFixed(1).replace(/\.0$/,'')+'к';
+                    return num.toString();
+                };
+            }
+
+            console.log('Финальная инициализация завершена.');
+        }
+
+        function ensureElement(selector) {
+            if (!document.querySelector(selector)) {
+                console.warn(`Элемент ${selector} не найден. Пытаемся восстановить...`);
+                // Попытка создать основные контейнеры, если их нет
+                if (selector === '.app-header') {
+                    const header = document.createElement('header');
+                    header.className = 'app-header';
+                    header.innerHTML = `
+                        <div class="brand"><img src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt=""><span>Arizona RP</span></div>
+                        <div class="header-actions">
+                            <span id="mskTime"></span>
+                            <button class="icon-btn" onclick="toggleTheme()">🌓</button>
+                            <button class="icon-btn" onclick="toggleDropdownMenu(event)">⋮</button>
+                            <div id="dropdownMenu" class="dropdown-menu" style="display:none;">
+                                <button class="dropdown-item" onclick="openBarygaModal(); closeDropdowns();">🎮 Игра «Барыга»</button>
+                                <button class="dropdown-item" onclick="openChatsModal(); closeDropdowns();">💬 Переписки</button>
+                                <button class="dropdown-item" onclick="switchTab('profile'); closeDropdowns();">👤 Профиль</button>
+                                <button class="dropdown-item" onclick="openSearchModal(); closeDropdowns();">🔍 Поиск</button>
+                                <button class="dropdown-item" onclick="openThemeModal(); closeDropdowns();">🎨 Темы</button>
+                                <button class="dropdown-item" onclick="openMusicModal(); closeDropdowns();">🎵 Музыка</button>
+                                <button class="dropdown-item" onclick="openFashionModal(); closeDropdowns();">📸 Лента «Луков»</button>
+                                <button class="dropdown-item" onclick="openTravelModal(); closeDropdowns();">🤝 Попутчики</button>
+                                <button class="dropdown-item" onclick="openSettingsModal(); closeDropdowns();">⚙️ Настройки</button>
+                            </div>
+                        </div>`;
+                    document.body.prepend(header);
+                } else if (selector === '.nav-tabs') {
+                    const nav = document.createElement('nav');
+                    nav.className = 'nav-tabs';
+                    nav.innerHTML = `
+                        <button class="nav-tab active" data-tab="feed" onclick="switchTab('feed')"><span class="tab-icon">🏠</span>Главная</button>
+                        <button class="nav-tab" data-tab="app" onclick="switchTab('app')"><span class="tab-icon">➕</span>Создать</button>
+                        <button class="nav-tab" data-tab="myAds" onclick="switchTab('myAds')"><span class="tab-icon">📦</span>Мои темы</button>
+                        <button class="nav-tab" data-tab="favorites" onclick="switchTab('favorites')"><span class="tab-icon">⭐</span>Избранное</button>
+                        <button class="nav-tab" id="adminTabBtn" style="display:none;" data-tab="admin" onclick="switchTab('admin')"><span class="tab-icon">🛡️</span>Админ</button>`;
+                    document.body.appendChild(nav);
+                }
+            }
+        }
+
+        // Запускаем после полной загрузки
+        if (document.readyState === 'complete') {
+            finalInit();
+        } else {
+            document.addEventListener('DOMContentLoaded', finalInit);
+        }
+
+        console.log('Часть 84 добавлена.');
+    })();
+</script>

@@ -4326,3 +4326,70 @@
         .tutorial-icon img { max-width: 130px; }
     }
 </style>
+<!-- ==================== ЧАСТЬ 55: ВОССТАНОВЛЕНИЕ ЗВУКОВ БЕЗ ВИБРАЦИИ ==================== -->
+<script>
+    (function() {
+        // Переопределяем playSfx заново: только звук, без hapticFeedback
+        window.playSfx = function(type) {
+            // Проверяем, включены ли звуки (sfxEnabled должна быть глобальной)
+            if (typeof window.sfxEnabled !== 'undefined' && window.sfxEnabled === false) return;
+            try {
+                // Переиспользуем AudioContext, если он есть
+                if (!window.audioContext) {
+                    window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const ctx = window.audioContext;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                const now = ctx.currentTime;
+
+                if (type === 'cash') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.setValueAtTime(1200, now + 0.08);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(880, now + 0.15);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                }
+            } catch (e) {
+                console.warn('Ошибка звука:', e);
+            }
+        };
+
+        // Гарантируем, что sfxEnabled определена и включена
+        if (typeof window.sfxEnabled === 'undefined') {
+            window.sfxEnabled = true;
+        }
+        // Если в localStorage есть флаг, но он не загружен, ставим true
+        const sfxKey = getUserKey('sfx_enabled');
+        if (localStorage.getItem(sfxKey) === null) {
+            localStorage.setItem(sfxKey, '1');
+            window.sfxEnabled = true;
+        } else {
+            window.sfxEnabled = localStorage.getItem(sfxKey) === '1';
+        }
+        // Обновляем кнопку в настройках, если она есть
+        const toggleBtn = document.getElementById('toggleSfxBtn');
+        if (toggleBtn) toggleBtn.innerText = window.sfxEnabled ? 'Включены' : 'Выключены';
+
+        console.log('Звук восстановлен без вибрации.');
+    })();
+</script>

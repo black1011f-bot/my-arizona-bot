@@ -6636,3 +6636,187 @@
     console.log('Чат полностью исправлен.');
 })();
 </script>
+<!-- ==================== ЧАСТЬ 140: УЛУЧШЕННАЯ ИГРА БАРЫГА С ТАПОМ ПО КАРТИНКЕ ==================== -->
+<style>
+    /* Квадратная кнопка-картинка для тапа */
+    .baryga-tap-img {
+        width: 120px;
+        height: 120px;
+        border-radius: 16px;
+        object-fit: cover;
+        cursor: pointer;
+        transition: transform 0.1s ease;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        border: 2px solid var(--accent, #7c3aed);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: block;
+        margin: 0 auto;
+    }
+    .baryga-tap-img:active {
+        transform: scale(0.95);
+    }
+    /* Кнопки улучшений */
+    .upgrade-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        background: var(--app-bg, #f7f7fa);
+        border: 1px solid var(--border, #e5e5ea);
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 6px;
+    }
+    .upgrade-info {
+        flex: 1;
+        font-size: 13px;
+        color: var(--text);
+    }
+    .upgrade-info .upgrade-name {
+        font-weight: 700;
+    }
+    .upgrade-info .upgrade-cost {
+        font-size: 11px;
+        color: var(--muted);
+    }
+    .upgrade-row .btn-buy {
+        background: var(--btn-bg, #7c3aed);
+        color: #fff;
+        border: none;
+        border-radius: 20px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s;
+        min-width: 80px;
+    }
+    .upgrade-row .btn-buy:active {
+        filter: brightness(0.9);
+    }
+</style>
+
+<script>
+(function() {
+    console.log('Часть 140: улучшенная игра Барыга с тапом по картинке.');
+
+    // Ссылки на изображения
+    const TAP_IMG_DEFAULT = 'https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg';
+    const TAP_IMG_ACTIVE = 'https://i.postimg.cc/Y0Pm3FQR/26dd45bd900d0a8f746895120416f957.jpg';
+
+    // Переопределяем openBarygaModal для создания нового интерфейса
+    window.openBarygaModal = function() {
+        // Удаляем старую модалку, если есть
+        const oldModal = document.getElementById('barygaModal');
+        if (oldModal) oldModal.remove();
+
+        // Создаём новую модалку
+        const modal = document.createElement('div');
+        modal.id = 'barygaModal';
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px; width: 100%; padding: 16px; background: var(--card-bg, #fff); color: var(--text, #1c1c1e); border-radius: 12px; border: 1px solid var(--border, #e5e5ea); box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">🎮 Игра «Барыга»</h3>
+                    <button class="btn btn-outline btn-sm" onclick="closeBarygaModal()" style="margin:0;">✕</button>
+                </div>
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <div style="font-size: 18px; font-weight: 700; margin-bottom: 10px;">💰 Баланс: <span id="clickerMoney">0 $</span></div>
+                    <img id="barygaTapImg" src="${TAP_IMG_DEFAULT}" alt="Тапай сюда" class="baryga-tap-img" onclick="handleBarygaTap()">
+                    <div style="font-size: 12px; color: var(--muted); margin-top: 6px;">Нажми на картинку!</div>
+                </div>
+                <div style="font-size: 14px; color: var(--muted); margin-bottom: 10px;">📈 Пассивный доход: <b id="autoIncomeLabel" style="color: var(--text);">0 $ / сек</b></div>
+                <div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">⚡ Улучшения:</div>
+                <div id="barygaUpgrades">
+                    <div class="upgrade-row">
+                        <div class="upgrade-info"><span class="upgrade-name">👆 Клик +1</span><br><span class="upgrade-cost" id="clickCostLabel">Цена: 50 $</span></div>
+                        <button class="btn-buy" onclick="buyClickUpgrade()">Купить</button>
+                    </div>
+                    <div class="upgrade-row">
+                        <div class="upgrade-info"><span class="upgrade-name">🤖 Скупщик (+5$/с)</span><br><span class="upgrade-cost" id="autoCostLabel">Цена: 200 $</span></div>
+                        <button class="btn-buy" onclick="buyAutoUpgrade()">Нанять</button>
+                    </div>
+                    <div class="upgrade-row">
+                        <div class="upgrade-info"><span class="upgrade-name">💼 Профи (+20$/с)</span><br><span class="upgrade-cost" id="proCostLabel">Цена: 800 $</span></div>
+                        <button class="btn-buy" onclick="buyProUpgrade()">Нанять</button>
+                    </div>
+                    <div class="upgrade-row">
+                        <div class="upgrade-info"><span class="upgrade-name">🏪 Авто-лавка (+50$/с)</span><br><span class="upgrade-cost" id="shopCostLabel">Цена: 3 000 $</span></div>
+                        <button class="btn-buy" onclick="buyShopUpgrade()">Купить</button>
+                    </div>
+                    <div class="upgrade-row">
+                        <div class="upgrade-info"><span class="upgrade-name">👑 Элитный (+10 клик)</span><br><span class="upgrade-cost" id="eliteCostLabel">Цена: 10 000 $</span></div>
+                        <button class="btn-buy" onclick="buyEliteUpgrade()">Купить</button>
+                    </div>
+                    <div class="upgrade-row">
+                        <div class="upgrade-info"><span class="upgrade-name">🛢 Нефтевышка (+200$/с)</span><br><span class="upgrade-cost" id="oilCostLabel">Цена: 35 000 $</span></div>
+                        <button class="btn-buy" onclick="buyOilRigUpgrade()">Купить</button>
+                    </div>
+                    <div class="upgrade-row">
+                        <div class="upgrade-info"><span class="upgrade-name">🪙 Криптоферма (+1000$/с)</span><br><span class="upgrade-cost" id="cryptoCostLabel">Цена: 150 000 $</span></div>
+                        <button class="btn-buy" onclick="buyCryptoUpgrade()">Купить</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Обновляем интерфейс
+        if (typeof updateBarygaUI === 'function') updateBarygaUI();
+
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // Закрытие модалки
+    window.closeBarygaModal = function() {
+        const modal = document.getElementById('barygaModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Обработчик тапа по картинке
+    window.handleBarygaTap = function() {
+        // Меняем картинку
+        const img = document.getElementById('barygaTapImg');
+        if (img) {
+            img.src = TAP_IMG_ACTIVE;
+            setTimeout(() => {
+                img.src = TAP_IMG_DEFAULT;
+            }, 2000);
+        }
+        // Вызываем клик
+        if (typeof barygaClick === 'function') barygaClick();
+    };
+
+    // Переопределяем updateBarygaUI, чтобы обновлять новые элементы (на случай если старые остались)
+    const originalUpdateBarygaUI = window.updateBarygaUI;
+    window.updateBarygaUI = function() {
+        if (typeof originalUpdateBarygaUI === 'function') originalUpdateBarygaUI();
+        // Обновляем также текст в новых элементах, если они есть
+        const money = document.getElementById('clickerMoney');
+        if (money && window.barygaData) money.innerText = barygaData.money.toLocaleString() + ' $';
+        const power = document.getElementById('clickPowerLabel');
+        if (power && window.barygaData) power.innerText = `+${barygaData.clickPower} $ / клик`;
+        const auto = document.getElementById('autoIncomeLabel');
+        if (auto && window.barygaData) auto.innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
+        if (window.barygaData) {
+            const costMap = {
+                clickCostLabel: barygaData.clickCost,
+                autoCostLabel: barygaData.autoCost,
+                proCostLabel: barygaData.proCost,
+                shopCostLabel: barygaData.shopCost,
+                eliteCostLabel: barygaData.eliteCost,
+                oilCostLabel: barygaData.oilCost,
+                cryptoCostLabel: barygaData.cryptoCost
+            };
+            Object.entries(costMap).forEach(([id, val]) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = `Цена: ${val.toLocaleString()} $`;
+            });
+        }
+    };
+
+    console.log('Барыга с тапом по картинке готова.');
+})();
+</script>

@@ -4394,16 +4394,26 @@
     })();
 </script>
 <script>
-    <!-- ==================== ЧАСТЬ 68: БАЗОВОЕ ИСПРАВЛЕНИЕ ОДОБРЕНИЯ И ЛЕНТЫ ==================== -->
+<!-- ==================== ЧАСТЬ 69: ПОЛНАЯ ПЕРЕЗАГРУЗКА ОБЪЯВЛЕНИЙ ==================== -->
 <script>
 (function() {
-    console.log('Часть 68 активирована.');
+    console.log('Часть 69 загружена.');
 
-    // Убираем черновик и его сообщение
-    localStorage.removeItem(getUserKey('arizona_ad_draft'));
-    window.loadDraft = function() {};
+    // 1. Жёстко инициализируем глобальные массивы из localStorage
+    window.globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+    window.pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+    window.myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+    window.favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
 
-    // Переопределяем renderFeed (главная лента)
+    // 2. Функция сохранения объявления
+    function saveState() {
+        localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+        localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
+    }
+
+    // 3. Рендер ленты
     window.renderFeed = function() {
         const container = document.getElementById('feedContainer');
         if (!container) return;
@@ -4436,7 +4446,7 @@
         }).join('');
     };
 
-    // Переопределяем renderPendingAds (список ожидающих для админов)
+    // 4. Рендер ожидающих для админа
     window.renderPendingAds = function() {
         const cont = document.getElementById('pendingAdsContainer');
         if (!cont) return;
@@ -4466,7 +4476,7 @@
         `).join('');
     };
 
-    // Функция одобрения
+    // 5. Одобрение
     window.approvePendingAd = function(id) {
         const idx = pendingAdsList.findIndex(a => a.id === id);
         if (idx === -1) return;
@@ -4476,10 +4486,8 @@
         const myIdx = myAdsList.findIndex(a => a.id === id);
         if (myIdx > -1) {
             myAdsList[myIdx].status = 'approved';
-            localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
         }
-        localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-        localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+        saveState();
         renderPendingAds();
         renderFeed();
         playSfx('success');
@@ -4489,20 +4497,128 @@
         const idx = pendingAdsList.findIndex(a => a.id === id);
         if (idx > -1) {
             pendingAdsList.splice(idx, 1);
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            saveState();
             renderPendingAds();
             playSfx('success');
         }
     };
 
-    // Обновляем интерфейс сразу
+    // 6. Отправка объявления
+    window.submitData = function() {
+        const now = new Date();
+        const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+        if (msk.getHours() < 9 || msk.getHours() >= 22) {
+            alert('Объявления принимаются с 09:00 до 22:00 МСК');
+            return;
+        }
+        const lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
+        if (Date.now() - lastAdTime < 120000) {
+            const left = Math.ceil((120000 - (Date.now() - lastAdTime)) / 1000);
+            showCooldownTimer(left);
+            return;
+        }
+        const mode = document.getElementById('mode').value;
+        const category = document.getElementById('category').value;
+        const itemName = document.getElementById('itemName').value.trim();
+        const price = document.getElementById('price').value.trim();
+        const text = document.getElementById('text').value.trim();
+        const image = document.getElementById('itemImage').value.trim();
+        const server = document.getElementById('server').value;
+        if (!itemName || !price || !text) {
+            alert('Заполните все поля');
+            return;
+        }
+        const newAd = {
+            id: Date.now(),
+            mode, category, itemName, price, text, image, server,
+            author: currentUserUsername,
+            status: 'pending'
+        };
+        pendingAdsList.push(newAd);
+        myAdsList.push(newAd);
+        saveState();
+        localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
+        showCooldownTimer(120);
+        playSfx('success');
+        switchTab('feed');
+        renderFeed();
+        renderPendingAds();
+        renderMyAds();
+        document.getElementById('itemName').value = '';
+        document.getElementById('price').value = '';
+        document.getElementById('text').value = '';
+        document.getElementById('itemImage').value = '';
+    };
+
+    // 7. Привязка кнопок список/плитка
+    window.setViewMode = function(mode) {
+        currentViewMode = mode;
+        const container = document.getElementById('feedContainer');
+        if (container) {
+            container.classList.toggle('grid-view', mode === 'grid');
+        }
+        const btnList = document.getElementById('btnListView');
+        const btnGrid = document.getElementById('btnGridView');
+        if (btnList && btnGrid) {
+            btnList.classList.toggle('active', mode === 'list');
+            btnGrid.classList.toggle('active', mode === 'grid');
+        }
+        renderFeed();
+    };
+
+    // 8. Инициализация
     document.addEventListener('DOMContentLoaded', function() {
+        // Привязываем кнопки
+        const btnList = document.getElementById('btnListView');
+        const btnGrid = document.getElementById('btnGridView');
+        if (btnList) btnList.onclick = function() { setViewMode('list'); };
+        if (btnGrid) btnGrid.onclick = function() { setViewMode('grid'); };
+        const searchBtn = document.querySelector('#tabFeed .btn-success');
+        if (searchBtn) searchBtn.onclick = function() { openModal('searchModal'); };
+        // Рисуем всё
         renderFeed();
         renderPendingAds();
         renderMyAds();
         renderFavorites();
     });
 
-    console.log('Часть 68: одобрение и лента исправлены.');
+    // Переопределяем открытие объявления, чтобы были похожие
+    window.openAdDetail = function(id) {
+        const ad = globalAdsFeed.find(a => a.id === id);
+        if (!ad) return;
+        document.getElementById('adDetailTitle').innerText = ad.itemName;
+        const container = document.getElementById('adDetailContent');
+        container.innerHTML = `
+            ${ad.image ? `<img src="${escapeHtml(ad.image)}" style="width:100%; border-radius:12px; margin-bottom:12px; max-height:300px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${escapeHtml(ad.mode === 'sell' ? 'Продажа' : 'Покупка')}</span>
+                <span style="font-size:13px; color:var(--app-text-muted);">${escapeHtml(ad.server)}</span>
+            </div>
+            <h4 style="font-size:20px; margin-bottom:4px;">${escapeHtml(ad.itemName)}</h4>
+            <div style="font-size:24px; font-weight:700; color:var(--app-accent-gold); margin-bottom:8px;">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+            <p style="font-size:14px; margin-bottom:12px;">${escapeHtml(ad.text)}</p>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                <button class="btn btn-success btn-sm" style="flex:1; min-width:120px;" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать продавцу</button>
+                <button class="btn btn-outline btn-sm" style="flex:1; min-width:120px;" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button>
+            </div>
+            <div style="font-size:12px; margin-bottom:8px;">
+                Продавец: <span style="color:var(--app-accent);" onclick="inspectUserProfile('${escapeHtml(ad.author)}')">${escapeHtml(ad.author)}</span>
+            </div>
+            <hr style="border:0; border-top:1px solid var(--app-card-border); margin:16px 0;">
+            <div style="font-weight:600; margin-bottom:8px;">Похожие объявления</div>
+            <div id="similarAdsContainer">
+                ${globalAdsFeed.filter(a => a.status === 'approved' && a.id !== ad.id && a.category === ad.category).slice(0, 3).map(sim => `
+                    <div class="ad-card" style="margin-bottom:8px; cursor:pointer;" onclick="openAdDetail(${sim.id})">
+                        <div class="ad-title" style="font-size:14px;">${escapeHtml(sim.itemName)}</div>
+                        <div class="ad-price" style="font-size:16px;">💰 ${escapeHtml(formatPrice(sim.price))}</div>
+                        <div style="font-size:12px; color:var(--app-text-muted);">${escapeHtml(sim.server)}</div>
+                    </div>
+                `).join('') || '<p style="font-size:13px;">Нет похожих объявлений</p>'}
+            </div>
+        `;
+        openModal('adDetailModal');
+    };
+
+    console.log('Часть 69 успешно перезапустила логику объявлений.');
 })();
 </script>

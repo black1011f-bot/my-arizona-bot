@@ -3565,3 +3565,134 @@
         console.log('Часть 101: кнопка "Поделиться" добавлена.');
     })();
 </script>
+<!-- ==================== ЧАСТЬ 102: ГАРАНТИРОВАННОЕ ИСПРАВЛЕНИЕ КНОПКИ ⋮ И МЕНЮ ==================== -->
+<script>
+(function() {
+    console.log('Часть 102 активирована: полное восстановление меню ⋮');
+
+    // Удаляем все старые обработчики и меню, если они есть
+    function cleanOldMenu() {
+        const oldMenu = document.getElementById('dropdownMenu');
+        if (oldMenu) oldMenu.remove();
+        // Удаляем все inline-обработчики с кнопки ⋮
+        const oldBtn = document.querySelector('[onclick*="toggleDropdownMenu"]');
+        if (oldBtn) {
+            oldBtn.removeAttribute('onclick');
+        }
+    }
+
+    // Создаём новую кнопку ⋮ и меню
+    function createMenu() {
+        cleanOldMenu();
+
+        // Находим контейнер для кнопок
+        const headerActions = document.querySelector('.app-header .header-actions');
+        if (!headerActions) return;
+
+        // Создаём кнопку ⋮
+        const menuBtn = document.createElement('button');
+        menuBtn.className = 'icon-btn';
+        menuBtn.innerHTML = '⋮';
+        menuBtn.id = 'menuButton';
+        menuBtn.style.cssText = 'position: relative;';
+        headerActions.appendChild(menuBtn);
+
+        // Создаём выпадающее меню
+        const menu = document.createElement('div');
+        menu.id = 'dropdownMenu';
+        menu.className = 'dropdown-menu';
+        menu.style.cssText = `
+            display: none;
+            position: absolute;
+            top: 42px;
+            right: 0;
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border, #e5e5ea);
+            border-radius: 12px;
+            width: 220px;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 9999;
+            padding: 6px;
+        `;
+        headerActions.appendChild(menu);
+
+        // Пункты меню с реальными функциями
+        const menuItems = [
+            { icon: '🎮', label: 'Игра «Барыга»', action: () => { if (typeof openBarygaModal === 'function') openBarygaModal(); } },
+            { icon: '💬', label: 'Переписки', action: () => { if (typeof openChatsModal === 'function') openChatsModal(); } },
+            { icon: '👤', label: 'Профиль', action: () => { if (typeof switchTab === 'function') switchTab('profile'); } },
+            { icon: '🔍', label: 'Поиск', action: () => { if (typeof openSearchModal === 'function') openSearchModal(); } },
+            { icon: '🎨', label: 'Темы', action: () => { if (typeof openThemeModal === 'function') openThemeModal(); } },
+            { icon: '🎵', label: 'Музыка', action: () => { if (typeof openMusicModal === 'function') openMusicModal(); } },
+            { icon: '📸', label: 'Лента «Луков»', action: () => { if (typeof openFashionModal === 'function') openFashionModal(); } },
+            { icon: '🤝', label: 'Попутчики', action: () => { if (typeof openTravelModal === 'function') openTravelModal(); } },
+            { icon: '⚙️', label: 'Настройки', action: () => { if (typeof openSettingsModal === 'function') openSettingsModal(); } }
+        ];
+
+        menu.innerHTML = menuItems.map(item => `
+            <button class="dropdown-item" style="display:block; width:100%; text-align:left; padding:10px 12px; background:none; border:none; color:var(--text, #1c1c1e); font-size:13px; cursor:pointer; border-radius:8px;">
+                ${item.icon} ${item.label}
+            </button>
+        `).join('');
+
+        // Привязываем события через делегирование
+        menu.addEventListener('click', (e) => {
+            const btn = e.target.closest('.dropdown-item');
+            if (!btn) return;
+            const index = Array.from(menu.children).indexOf(btn);
+            if (menuItems[index]) {
+                menuItems[index].action();
+                menu.style.display = 'none'; // закрываем меню
+                if (typeof playSfx === 'function') playSfx('click');
+            }
+        });
+
+        // Обработчик кнопки ⋮
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = menu.style.display === 'block';
+            menu.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) {
+                // Позиционируем относительно кнопки
+                const rect = menuBtn.getBoundingClientRect();
+                menu.style.top = (rect.bottom + 5) + 'px';
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+            }
+            if (typeof playSfx === 'function') playSfx('click');
+        });
+
+        // Закрытие при клике вне меню
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target) && e.target !== menuBtn) {
+                menu.style.display = 'none';
+            }
+        });
+
+        // Глобальные функции для совместимости
+        window.toggleDropdownMenu = function(e) {
+            if (e) e.stopPropagation();
+            const visible = menu.style.display === 'block';
+            menu.style.display = visible ? 'none' : 'block';
+            if (!visible) {
+                const rect = menuBtn.getBoundingClientRect();
+                menu.style.top = (rect.bottom + 5) + 'px';
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+            }
+        };
+        window.closeDropdowns = function() {
+            menu.style.display = 'none';
+        };
+    }
+
+    // Запускаем после полной загрузки
+    if (document.readyState === 'complete') {
+        createMenu();
+    } else {
+        document.addEventListener('DOMContentLoaded', createMenu);
+    }
+
+    console.log('Меню ⋮ полностью пересоздано и работает.');
+})();
+</script>

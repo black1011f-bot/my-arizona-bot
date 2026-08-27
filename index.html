@@ -4167,3 +4167,65 @@
         }
     }
 </style>
+<!-- ==================== ЧАСТЬ 49 (УЛУЧШЕННАЯ): МГНОВЕННАЯ ЗАГРУЗКА ФОТО ТУТОРИАЛА ==================== -->
+<script>
+    (function() {
+        // Ссылки на изображения (те же, что в туториале)
+        const tutorialImages = [
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg',
+            'https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg',
+            'https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg',
+            'https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg',
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg'
+        ];
+
+        // Добавляем <link rel="preload"> в <head> для максимально ранней загрузки
+        function addPreloadLinks() {
+            tutorialImages.forEach(src => {
+                const link = document.createElement('link');
+                link.rel = 'preload';
+                link.as = 'image';
+                link.href = src;
+                document.head.appendChild(link);
+            });
+        }
+
+        // Предзагрузка через fetch с сохранением в Cache API
+        async function preloadAndCache() {
+            if ('caches' in window) {
+                try {
+                    const cache = await caches.open('tutorial-images-cache');
+                    await Promise.all(tutorialImages.map(async (src) => {
+                        const response = await fetch(src, { cache: 'force-cache' });
+                        if (response.ok) {
+                            await cache.put(src, response);
+                        }
+                    }));
+                } catch (e) {
+                    console.warn('Cache API error:', e);
+                }
+            }
+            // Дополнительно подгружаем через new Image для старых браузеров
+            tutorialImages.forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+        }
+
+        // Выполняем сразу
+        addPreloadLinks();
+        if (document.readyState === 'complete') {
+            preloadAndCache();
+        } else {
+            document.addEventListener('DOMContentLoaded', preloadAndCache);
+        }
+    })();
+</script>
+
+<!-- Также можно добавить preload вручную в <head>, если хотите ещё быстрее -->
+<!-- 
+<link rel="preload" as="image" href="https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg">
+<link rel="preload" as="image" href="https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg">
+<link rel="preload" as="image" href="https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg">
+<link rel="preload" as="image" href="https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg">
+-->

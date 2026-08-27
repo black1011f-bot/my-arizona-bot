@@ -6820,3 +6820,41 @@
     console.log('Барыга с тапом по картинке готова.');
 })();
 </script>
+<!-- ==================== ЧАСТЬ 141: ПРЕДЗАГРУЗКА ФОТО ДЛЯ ИГРЫ БАРЫГА ==================== -->
+<script>
+(function() {
+    console.log('Часть 141: предзагрузка изображений Барыги.');
+
+    const TAP_IMG_DEFAULT = 'https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg';
+    const TAP_IMG_ACTIVE = 'https://i.postimg.cc/Y0Pm3FQR/26dd45bd900d0a8f746895120416f957.jpg';
+
+    function preloadImage(src) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+            img.src = src;
+        });
+    }
+
+    async function preloadBarygaImages() {
+        // Пытаемся загрузить оба изображения параллельно
+        const results = await Promise.all([
+            preloadImage(TAP_IMG_DEFAULT),
+            preloadImage(TAP_IMG_ACTIVE)
+        ]);
+        if (results.every(r => r === true)) {
+            console.log('Изображения Барыги успешно предзагружены.');
+        } else {
+            console.warn('Не все изображения Барыги предзагрузились. Будет использована стандартная загрузка.');
+        }
+    }
+
+    // Запускаем предзагрузку как можно раньше
+    if (document.readyState === 'complete') {
+        preloadBarygaImages();
+    } else {
+        document.addEventListener('DOMContentLoaded', preloadBarygaImages);
+    }
+})();
+</script>

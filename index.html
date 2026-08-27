@@ -4059,3 +4059,119 @@
         }
     }
 </style>
+<!-- ==================== ЧАСТЬ 47: ЗВУК ПОСЛЕ СБРОСА И ПЕРСОНАЖ ТУТОРИАЛА ==================== -->
+<script>
+    // ==========================================================================
+    // 1. ГАРАНТИРОВАННОЕ ВКЛЮЧЕНИЕ ЗВУКА ПОСЛЕ СБРОСА НАСТРОЕК
+    // ==========================================================================
+    (function() {
+        // При загрузке страницы проверяем флаг sfx_enabled.
+        // Если его нет (после сброса), включаем звук принудительно.
+        function ensureSfxEnabled() {
+            const key = getUserKey('sfx_enabled');
+            if (localStorage.getItem(key) === null) {
+                localStorage.setItem(key, '1');
+                sfxEnabled = true;
+                const toggleBtn = document.getElementById('toggleSfxBtn');
+                if (toggleBtn) toggleBtn.innerText = 'Включены';
+                console.log('Звук включён по умолчанию после сброса.');
+            }
+        }
+
+        // Вызываем после полной загрузки DOM
+        if (document.readyState === 'complete') {
+            ensureSfxEnabled();
+        } else {
+            document.addEventListener('DOMContentLoaded', ensureSfxEnabled);
+        }
+    })();
+
+    // ==========================================================================
+    // 2. ПЕРСОНАЖ-ПОМОЩНИК В ТУТОРИАЛЕ
+    // ==========================================================================
+    (function() {
+        function addTutorialCharacter() {
+            // Проверяем, существует ли уже персонаж
+            if (document.getElementById('tutorialCharacter')) return;
+
+            const slides = document.querySelectorAll('.tutorial-slide');
+            slides.forEach(slide => {
+                // Создаём контейнер для персонажа (эмодзи) над текстом
+                const characterDiv = document.createElement('div');
+                characterDiv.id = 'tutorialCharacter';
+                characterDiv.style.cssText = `
+                    font-size: 60px;
+                    margin-bottom: 8px;
+                    animation: characterPop 0.5s ease-out;
+                    text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                `;
+                // Разные персонажи для разных слайдов (можно заменить на свои)
+                const characters = ['🤖', '👩‍🚀', '🦊', '🧙‍♂️', '👾'];
+                const index = [...slides].indexOf(slide);
+                characterDiv.textContent = characters[index % characters.length];
+                slide.insertBefore(characterDiv, slide.firstChild);
+            });
+
+            // Добавляем анимацию появления персонажа
+            if (!document.getElementById('characterPopStyle')) {
+                const style = document.createElement('style');
+                style.id = 'characterPopStyle';
+                style.textContent = `
+                    @keyframes characterPop {
+                        0% { transform: scale(0); opacity: 0; }
+                        60% { transform: scale(1.2); }
+                        100% { transform: scale(1); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+        // Добавляем персонажа при показе туториала
+        const originalShowTutorial = window.showTutorial;
+        window.showTutorial = function() {
+            addTutorialCharacter();
+            if (originalShowTutorial) originalShowTutorial();
+        };
+
+        // Если туториал уже был показан и персонаж не добавлен (на случай)
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('tutorialOverlay').style.display === 'flex') {
+                addTutorialCharacter();
+            }
+        });
+    })();
+</script>
+
+<style>
+    /* ============ 3D КНОПКИ ТУТОРИАЛА ============ */
+    .tutorial-btn {
+        border-radius: 50px !important;
+        position: relative;
+        transform: translateY(0);
+        box-shadow: 0 6px 0 rgba(0,0,0,0.2), 0 10px 20px rgba(0,0,0,0.1);
+        transition: all 0.1s ease;
+    }
+
+    .tutorial-btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 2px 0 rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.1);
+    }
+
+    .tutorial-btn.skip {
+        box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+    }
+
+    .tutorial-btn.skip:active {
+        transform: translateY(2px);
+        box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+    }
+
+    /* Адаптация для мобильных */
+    @media (max-width: 480px) {
+        .tutorial-btn {
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+    }
+</style>

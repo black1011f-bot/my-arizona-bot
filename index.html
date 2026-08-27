@@ -5130,3 +5130,591 @@
     console.log('Финальная интеграция завершена. Приложение готово.');
 })();
 </script>
+<!-- ==================== ЧАСТЬ 126: ЕДИНЫЙ СТИЛЬ ИНТЕРФЕЙСА (КАК У ТУТОРИАЛА, НО ПОЛУКРУГЛЫЕ КНОПКИ) ==================== -->
+<style>
+    /* Универсальные переменные для тем */
+    :root {
+        --app-bg: #f7f7fa;
+        --card-bg: #ffffff;
+        --header-bg: #ffffff;
+        --border: #e5e5ea;
+        --accent: #cb11ab;
+        --accent2: #ff5ecf;
+        --gold: #ffb800;
+        --text: #1c1c1e;
+        --muted: #8e8e93;
+        --btn-bg: #cb11ab;
+        --btn-text: #ffffff;
+        --radius: 12px;
+        --btn-radius: 50px;
+    }
+    /* Тёмная тема */
+    body.dark {
+        --app-bg: #1a1a2e;
+        --card-bg: #16213e;
+        --header-bg: #0f3460;
+        --border: #2c2c3e;
+        --accent: #bb86fc;
+        --accent2: #c792ea;
+        --gold: #ffd700;
+        --text: #ffffff;
+        --muted: #a0a0b0;
+        --btn-bg: #533483;
+        --btn-text: #ffffff;
+    }
+
+    body {
+        background: var(--app-bg);
+        color: var(--text);
+        transition: background 0.3s, color 0.3s;
+    }
+    .container {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 10px;
+    }
+    /* Шапка */
+    .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--header-bg);
+        border-radius: var(--radius);
+        padding: 8px 12px;
+        margin-bottom: 8px;
+        border: 1px solid var(--border);
+    }
+    .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    .brand img {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .header-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        color: var(--text);
+        transition: background 0.2s;
+    }
+    .icon-btn:active {
+        background: var(--border);
+    }
+
+    /* Нижняя навигация */
+    .nav-tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-around;
+        background: var(--header-bg);
+        border-top: 1px solid var(--border);
+        padding: 6px 0;
+        z-index: 1000;
+    }
+    .nav-tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--muted);
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+    .nav-tab .tab-icon {
+        font-size: 22px;
+    }
+    .nav-tab.active {
+        color: var(--accent);
+    }
+
+    /* Кнопки (полукруглые) */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 16px;
+        border-radius: var(--btn-radius);
+        background: var(--btn-bg);
+        color: var(--btn-text);
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        font-size: 13px;
+        transition: background 0.2s, transform 0.1s;
+    }
+    .btn:active {
+        transform: scale(0.98);
+        filter: brightness(0.9);
+    }
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 11px;
+        border-radius: 30px;
+    }
+    .btn-outline {
+        background: var(--card-bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+    }
+    .btn-danger {
+        background: #dc3545;
+        color: #fff;
+    }
+    .btn-success {
+        background: #28a745;
+        color: #fff;
+    }
+
+    /* Карточки объявлений */
+    .ad-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+    .ad-title {
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--text);
+    }
+    .ad-price {
+        color: var(--gold);
+        font-weight: 800;
+        font-size: 14px;
+    }
+    .ad-text {
+        color: var(--muted);
+        font-size: 12px;
+    }
+
+    /* Модальные окна */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 1100;
+    }
+    .modal-content {
+        background: var(--card-bg);
+        color: var(--text);
+        border-radius: var(--radius);
+        padding: 16px;
+        max-width: 400px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    /* Выпадающее меню */
+    .dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: 40px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        width: 200px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        z-index: 1200;
+        padding: 6px;
+    }
+    .dropdown-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 8px 12px;
+        background: none;
+        border: none;
+        color: var(--text);
+        font-size: 13px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .dropdown-item:hover {
+        background: var(--border);
+    }
+
+    /* Пикер */
+    .picker-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .picker-item {
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: var(--app-bg);
+        cursor: pointer;
+    }
+    .picker-item:hover {
+        background: var(--border);
+    }
+</style>
+<!-- ==================== ЧАСТЬ 127: ВОССТАНОВЛЕНИЕ ИГРЫ «БАРЫГА» И РАСШИРЕНИЕ КАТЕГОРИЙ ==================== -->
+<script>
+(function() {
+    console.log('Часть 127: игра Барыга и новые категории.');
+
+    // === 1. Полная перезапись игры Барыга (адаптировано под новый интерфейс) ===
+    let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || JSON.stringify({
+        money: 0,
+        clickPower: 1,
+        clickCost: 50,
+        autoIncome: 0,
+        autoCost: 200,
+        proCost: 800,
+        shopCost: 3000,
+        eliteCost: 10000,
+        oilCost: 35000,
+        cryptoCost: 150000
+    }));
+
+    function saveBaryga() {
+        localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
+    }
+
+    window.updateBarygaUI = function() {
+        const moneyEl = document.getElementById('clickerMoney');
+        if (moneyEl) moneyEl.innerText = barygaData.money.toLocaleString() + ' $';
+        const powerEl = document.getElementById('clickPowerLabel');
+        if (powerEl) powerEl.innerText = `+${barygaData.clickPower} $ / клик`;
+        const autoEl = document.getElementById('autoIncomeLabel');
+        if (autoEl) autoEl.innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
+        const costEls = {
+            clickCostLabel: barygaData.clickCost,
+            autoCostLabel: barygaData.autoCost,
+            proCostLabel: barygaData.proCost,
+            shopCostLabel: barygaData.shopCost,
+            eliteCostLabel: barygaData.eliteCost,
+            oilCostLabel: barygaData.oilCost,
+            cryptoCostLabel: barygaData.cryptoCost
+        };
+        Object.entries(costEls).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = `Цена: ${val.toLocaleString()} $`;
+        });
+    };
+
+    window.barygaClick = function() {
+        barygaData.money += barygaData.clickPower;
+        updateBarygaUI();
+        saveBaryga();
+        if (typeof playSfx === 'function') playSfx('cash');
+    };
+
+    function makePurchase(costKey, valueKey, increment, isIncome) {
+        if (barygaData.money >= barygaData[costKey]) {
+            barygaData.money -= barygaData[costKey];
+            if (isIncome) barygaData[valueKey] += increment;
+            else barygaData[valueKey] += increment;
+            barygaData[costKey] = Math.floor(barygaData[costKey] * 1.5);
+            updateBarygaUI();
+            saveBaryga();
+            if (typeof playSfx === 'function') playSfx('success');
+        } else {
+            alert('❌ Недостаточно средств!');
+        }
+    }
+
+    window.buyClickUpgrade = () => makePurchase('clickCost', 'clickPower', 1, false);
+    window.buyAutoUpgrade = () => makePurchase('autoCost', 'autoIncome', 5, true);
+    window.buyProUpgrade = () => makePurchase('proCost', 'autoIncome', 20, true);
+    window.buyShopUpgrade = () => makePurchase('shopCost', 'autoIncome', 50, true);
+    window.buyEliteUpgrade = () => makePurchase('eliteCost', 'clickPower', 10, false);
+    window.buyOilRigUpgrade = () => makePurchase('oilCost', 'autoIncome', 200, true);
+    window.buyCryptoUpgrade = () => makePurchase('cryptoCost', 'autoIncome', 1000, true);
+
+    // Автодоход
+    setInterval(() => {
+        if (barygaData.autoIncome > 0) {
+            barygaData.money += Math.floor(barygaData.autoIncome / 10);
+            saveBaryga();
+            if (document.getElementById('barygaModal')?.style.display === 'flex') updateBarygaUI();
+        }
+    }, 100);
+
+    // Открытие модалки
+    window.openBarygaModal = function() {
+        const modal = document.getElementById('barygaModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            updateBarygaUI();
+        } else {
+            // Создаём модалку, если она отсутствует
+            const newModal = document.createElement('div');
+            newModal.id = 'barygaModal';
+            newModal.className = 'modal-overlay';
+            newModal.style.display = 'flex';
+            newModal.innerHTML = `
+                <div class="modal-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <h3 style="margin:0;">🎮 Игра «Барыга»</h3>
+                        <button class="btn btn-outline btn-sm" onclick="closeBarygaModal()">✕</button>
+                    </div>
+                    <div class="clicker-box">
+                        <div>💰 Баланс: <span id="clickerMoney">0 $</span></div>
+                        <button class="btn" style="font-size:18px; padding:16px;" onclick="barygaClick()">💸 ТАПАТЬ<br><span id="clickPowerLabel">+1 $ / клик</span></button>
+                        <div>📈 Пассивный доход: <b id="autoIncomeLabel">0 $ / сек</b></div>
+                        <div><b>⚡ Улучшения:</b></div>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            <div style="display:flex; justify-content:space-between;"><span>👆 Клик +1</span><span id="clickCostLabel">50 $</span><button class="btn btn-sm" onclick="buyClickUpgrade()">Купить</button></div>
+                            <div style="display:flex; justify-content:space-between;"><span>🤖 Скупщик (+5$/с)</span><span id="autoCostLabel">200 $</span><button class="btn btn-sm" onclick="buyAutoUpgrade()">Нанять</button></div>
+                            <div style="display:flex; justify-content:space-between;"><span>💼 Профи (+20$/с)</span><span id="proCostLabel">800 $</span><button class="btn btn-sm" onclick="buyProUpgrade()">Нанять</button></div>
+                            <div style="display:flex; justify-content:space-between;"><span>🏪 Авто-лавка (+50$/с)</span><span id="shopCostLabel">3000 $</span><button class="btn btn-sm" onclick="buyShopUpgrade()">Купить</button></div>
+                            <div style="display:flex; justify-content:space-between;"><span>👑 Элитный (+10 клик)</span><span id="eliteCostLabel">10000 $</span><button class="btn btn-sm" onclick="buyEliteUpgrade()">Купить</button></div>
+                            <div style="display:flex; justify-content:space-between;"><span>🛢 Нефтевышка (+200$/с)</span><span id="oilCostLabel">35000 $</span><button class="btn btn-sm" onclick="buyOilRigUpgrade()">Купить</button></div>
+                            <div style="display:flex; justify-content:space-between;"><span>🪙 Криптоферма (+1000$/с)</span><span id="cryptoCostLabel">150000 $</span><button class="btn btn-sm" onclick="buyCryptoUpgrade()">Купить</button></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(newModal);
+            updateBarygaUI();
+        }
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+    window.closeBarygaModal = function() {
+        const modal = document.getElementById('barygaModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // === 2. Расширение категорий ===
+    // Добавляем дополнительные категории в массив категорий (используется в пикере)
+    window.ALL_CATEGORIES = [
+        '💍 Аксессуары и вещи',
+        '🚗 Транспорт',
+        '🏠 Недвижимость',
+        '💼 Бизнесы',
+        '🔫 Оружие и материалы',
+        '👕 Одежда',
+        '📱 Электроника'
+    ];
+
+    // Переопределяем openPicker для category, чтобы использовались новые категории
+    const originalOpenPicker = window.openPicker;
+    window.openPicker = function(type) {
+        if (type === 'category') {
+            const list = document.getElementById('pickerList');
+            if (list) {
+                list.innerHTML = window.ALL_CATEGORIES.map(cat => `
+                    <div class="picker-item" onclick="selectPickerValue('category', '${cat}', '${cat}')">${cat}</div>
+                `).join('');
+                document.getElementById('pickerTitle').innerText = '🗂 Выберите раздел';
+                document.getElementById('pickerModal').style.display = 'flex';
+                return;
+            }
+        }
+        // Для других типов вызываем оригинал
+        if (typeof originalOpenPicker === 'function') originalOpenPicker(type);
+    };
+
+    console.log('Игра Барыга и категории обновлены.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 128: ФИНАЛЬНОЕ ЕДИНООБРАЗИЕ И АДАПТИВНОСТЬ ==================== -->
+<style>
+    /* Принудительно применяем стили ко всем элементам, которые могли остаться без учёта */
+    .modal-overlay,
+    .modal-overlay * {
+        box-sizing: border-box;
+    }
+    .modal-overlay {
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+    }
+    .modal-content,
+    .modal-overlay > div {
+        background: var(--card-bg, #ffffff);
+        color: var(--text, #1c1c1e);
+        border: 1px solid var(--border, #e5e5ea);
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 16px;
+        max-width: 400px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    .dropdown-menu {
+        background: var(--card-bg, #ffffff);
+        border: 1px solid var(--border, #e5e5ea);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .picker-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .picker-item {
+        background: var(--app-bg, #f7f7fa);
+        border: 1px solid var(--border, #e5e5ea);
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .picker-item:hover {
+        background: var(--border, #e5e5ea);
+    }
+    /* Убираем все тени и 3D эффекты, делаем плоскими */
+    .btn,
+    .btn-sm,
+    .icon-btn,
+    .nav-tab,
+    .view-mode-btn,
+    .dropdown-item,
+    .modal-content .btn,
+    .picker-item,
+    .ad-card,
+    .app-header,
+    .card {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        transform: none !important;
+        border-radius: 8px !important;
+    }
+    .btn {
+        border-radius: 50px !important;
+        font-weight: 600;
+    }
+    .btn-sm {
+        border-radius: 30px !important;
+    }
+    .icon-btn {
+        border-radius: 50% !important;
+    }
+    .nav-tab {
+        border-radius: 6px !important;
+    }
+    .view-mode-btn {
+        border-radius: 20px !important;
+    }
+    .ad-card {
+        border-radius: 10px !important;
+    }
+    /* Адаптивность для планшетов и ПК */
+    @media (min-width: 768px) {
+        .container {
+            max-width: 720px;
+        }
+        .ads-container:not(.grid-view) {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+    }
+    @media (min-width: 1024px) {
+        .container {
+            max-width: 1000px;
+        }
+        .ads-container:not(.grid-view) {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+</style>
+<script>
+(function() {
+    console.log('Часть 128: финальное единообразие и адаптивность.');
+
+    // Принудительно применяем сохранённую тему при загрузке
+    function applyThemeFromStorage() {
+        const savedTheme = localStorage.getItem(getUserKey('theme')) || 'light';
+        document.body.classList.toggle('dark', savedTheme === 'dark');
+        // Обновляем CSS-переменные, если нужно
+        if (savedTheme === 'dark') {
+            document.body.style.setProperty('--app-bg', '#1a1a2e');
+            document.body.style.setProperty('--card-bg', '#16213e');
+            document.body.style.setProperty('--header-bg', '#0f3460');
+            document.body.style.setProperty('--border', '#2c2c3e');
+            document.body.style.setProperty('--text', '#ffffff');
+            document.body.style.setProperty('--muted', '#a0a0b0');
+            document.body.style.setProperty('--btn-bg', '#533483');
+            document.body.style.setProperty('--btn-text', '#ffffff');
+        } else {
+            document.body.style.removeProperty('--app-bg');
+            document.body.style.removeProperty('--card-bg');
+            document.body.style.removeProperty('--header-bg');
+            document.body.style.removeProperty('--border');
+            document.body.style.removeProperty('--text');
+            document.body.style.removeProperty('--muted');
+            document.body.style.removeProperty('--btn-bg');
+            document.body.style.removeProperty('--btn-text');
+        }
+    }
+
+    // Переопределяем toggleTheme, чтобы использовать нашу логику
+    window.toggleTheme = function() {
+        const isDark = document.body.classList.contains('dark');
+        if (isDark) {
+            document.body.classList.remove('dark');
+            localStorage.setItem(getUserKey('theme'), 'light');
+            applyThemeFromStorage();
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem(getUserKey('theme'), 'dark');
+            applyThemeFromStorage();
+        }
+        if (typeof playSfx === 'function') playSfx('click');
+    };
+
+    // Переопределяем setAppTheme
+    window.setAppTheme = function(theme) {
+        if (theme === 'light') {
+            document.body.classList.remove('dark');
+            localStorage.setItem(getUserKey('theme'), 'light');
+        } else if (theme === 'dark') {
+            document.body.classList.add('dark');
+            localStorage.setItem(getUserKey('theme'), 'dark');
+        }
+        applyThemeFromStorage();
+        if (typeof closeModal === 'function') closeModal('themeModal');
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // Вызываем при загрузке
+    if (document.readyState === 'complete') {
+        applyThemeFromStorage();
+    } else {
+        document.addEventListener('DOMContentLoaded', applyThemeFromStorage);
+    }
+
+    console.log('Тема и адаптивность применены.');
+})();
+</script>

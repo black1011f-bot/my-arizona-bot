@@ -4085,170 +4085,85 @@
             document.addEventListener('DOMContentLoaded', ensureSfxEnabled);
         }
     })();
-
-    // ==========================================================================
-    // 2. ПЕРСОНАЖ-ПОМОЩНИК В ТУТОРИАЛЕ
-    // ==========================================================================
-    (function() {
-        function addTutorialCharacter() {
-            // Проверяем, существует ли уже персонаж
-            if (document.getElementById('tutorialCharacter')) return;
-
-            const slides = document.querySelectorAll('.tutorial-slide');
-            slides.forEach(slide => {
-                // Создаём контейнер для персонажа (эмодзи) над текстом
-                const characterDiv = document.createElement('div');
-                characterDiv.id = 'tutorialCharacter';
-                characterDiv.style.cssText = `
-                    font-size: 60px;
-                    margin-bottom: 8px;
-                    animation: characterPop 0.5s ease-out;
-                    text-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                `;
-                // Разные персонажи для разных слайдов (можно заменить на свои)
-                const characters = ['🤖', '👩‍🚀', '🦊', '🧙‍♂️', '👾'];
-                const index = [...slides].indexOf(slide);
-                characterDiv.textContent = characters[index % characters.length];
-                slide.insertBefore(characterDiv, slide.firstChild);
-            });
-
-            // Добавляем анимацию появления персонажа
-            if (!document.getElementById('characterPopStyle')) {
-                const style = document.createElement('style');
-                style.id = 'characterPopStyle';
-                style.textContent = `
-                    @keyframes characterPop {
-                        0% { transform: scale(0); opacity: 0; }
-                        60% { transform: scale(1.2); }
-                        100% { transform: scale(1); opacity: 1; }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-        }
-
-        // Добавляем персонажа при показе туториала
-        const originalShowTutorial = window.showTutorial;
-        window.showTutorial = function() {
-            addTutorialCharacter();
-            if (originalShowTutorial) originalShowTutorial();
-        };
-
-        // Если туториал уже был показан и персонаж не добавлен (на случай)
-        document.addEventListener('DOMContentLoaded', function() {
-            if (document.getElementById('tutorialOverlay').style.display === 'flex') {
-                addTutorialCharacter();
-            }
-        });
-    })();
-</script>
-
-<style>
-    /* ============ 3D КНОПКИ ТУТОРИАЛА ============ */
-    .tutorial-btn {
-        border-radius: 50px !important;
-        position: relative;
-        transform: translateY(0);
-        box-shadow: 0 6px 0 rgba(0,0,0,0.2), 0 10px 20px rgba(0,0,0,0.1);
-        transition: all 0.1s ease;
-    }
-
-    .tutorial-btn:active {
-        transform: translateY(3px);
-        box-shadow: 0 2px 0 rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.1);
-    }
-
-    .tutorial-btn.skip {
-        box-shadow: 0 4px 0 rgba(0,0,0,0.1);
-    }
-
-    .tutorial-btn.skip:active {
-        transform: translateY(2px);
-        box-shadow: 0 1px 0 rgba(0,0,0,0.1);
-    }
-
-    /* Адаптация для мобильных */
-    @media (max-width: 480px) {
-        .tutorial-btn {
-            font-size: 14px;
-            padding: 8px 16px;
-        }
-    }
-</style>
+    <!-- ==================== ЧАСТЬ 48: КВАДРАТНЫЕ ФОТО В ТУТОРИАЛЕ ==================== -->
 <script>
-    // ==========================================================================
-    // ЗАМЕНА ЭМОДЗИ ТУТОРИАЛА НА ФОТОГРАФИИ С АДАПТАЦИЕЙ
-    // ==========================================================================
     (function() {
-        // Массив ссылок на изображения (порядок соответствует слайдам)
+        // Ссылки на изображения для каждого слайда (порядок: 1,2,3,4,5)
         const tutorialImages = [
-            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg', // Слайд 1
-            'https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg', // Слайд 2
-            'https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg', // Слайд 3
-            'https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg', // Слайд 4
-            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg'  // Слайд 5 (повтор первой, можно заменить)
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg',
+            'https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg',
+            'https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg',
+            'https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg',
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg' // для пятого слайда можно поменять
         ];
 
-        function replaceTutorialIcons() {
+        function replaceEmojisWithImages() {
             const icons = document.querySelectorAll('.tutorial-icon');
             icons.forEach((icon, index) => {
                 if (tutorialImages[index]) {
                     // Создаём изображение
                     const img = document.createElement('img');
                     img.src = tutorialImages[index];
-                    img.alt = 'Tutorial';
-                    img.style.width = '80px';
-                    img.style.height = '80px';
-                    img.style.borderRadius = '50%';
-                    img.style.objectFit = 'cover';
-                    img.style.display = 'block';
-                    img.style.margin = '0 auto 8px';
-                    // Очищаем контейнер и вставляем img
+                    img.alt = 'Tutorial image';
+                    img.loading = 'lazy';
+                    // Очищаем текущее содержимое (эмодзи)
                     icon.innerHTML = '';
                     icon.appendChild(img);
                 }
             });
         }
 
-        // Вызываем после загрузки DOM
+        // Выполняем после загрузки DOM
         if (document.readyState === 'complete') {
-            replaceTutorialIcons();
+            replaceEmojisWithImages();
         } else {
-            document.addEventListener('DOMContentLoaded', replaceTutorialIcons);
+            document.addEventListener('DOMContentLoaded', replaceEmojisWithImages);
         }
     })();
 </script>
 
 <style>
-    /* ============ АДАПТИВНОСТЬ ИЗОБРАЖЕНИЙ ТУТОРИАЛА ============ */
+    /* Квадратные изображения в туториале */
     .tutorial-icon {
-        width: auto;
-        height: auto;
-        max-width: 100%;
-        text-align: center;
-        font-size: 0; /* убираем наследуемый размер шрифта */
+        font-size: 0; /* убираем эмодзи-наследие */
+        line-height: 0;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 8px;
     }
 
     .tutorial-icon img {
-        max-width: 80px;
-        height: auto;
-        border-radius: 50%;
-        margin: 0 auto;
         display: block;
+        width: 100px;
+        height: 100px;
         object-fit: cover;
+        border-radius: 16px; /* квадратные с мягкими углами */
+        border: 2px solid var(--app-card-border);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
-    /* Для маленьких экранов — уменьшаем иконки */
+    /* Адаптация под разные экраны */
     @media (max-width: 480px) {
         .tutorial-icon img {
-            max-width: 60px;
+            width: 70px;
+            height: 70px;
+            border-radius: 12px;
         }
     }
 
-    /* Для планшетов и больших экранов — можно чуть увеличить */
     @media (min-width: 768px) {
         .tutorial-icon img {
-            max-width: 100px;
+            width: 130px;
+            height: 130px;
+            border-radius: 20px;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .tutorial-icon img {
+            width: 160px;
+            height: 160px;
         }
     }
 </style>

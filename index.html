@@ -2529,3 +2529,363 @@
         console.log('Часть 86: индикатор загрузки при слабом интернете добавлен.');
     })();
 </script>
+<!-- ==================== ЧАСТЬ 87: ИСПРАВЛЕНИЕ МОДАЛЬНЫХ ОКОН (ЦЕНТРИРОВАНИЕ И РАЗМЕР) ==================== -->
+<style>
+    /* Модальные окна должны быть по центру, не на весь экран */
+    .modal-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0,0,0,0.5) !important;
+        display: none !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 16px !important;
+        z-index: 1000 !important;
+        box-sizing: border-box !important;
+    }
+    .modal-overlay.visible,
+    .modal-overlay[style*="display: flex"],
+    .modal-overlay[style*="display:flex"] {
+        display: flex !important;
+    }
+    .modal-content {
+        background: var(--card-bg, #ffffff) !important;
+        color: var(--text, #1c1c1e) !important;
+        border-radius: 16px !important;
+        padding: 20px !important;
+        max-width: 480px !important;
+        width: 100% !important;
+        max-height: 85vh !important;
+        overflow-y: auto !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+        text-align: left !important;
+        margin: 0 auto !important; /* дополнительное центрирование */
+    }
+    /* Если модалка создана динамически и не имеет класса modal-content, всё равно подстраиваем */
+    .modal-overlay > div {
+        background: var(--card-bg, #fff) !important;
+        border-radius: 16px !important;
+        padding: 20px !important;
+        max-width: 480px !important;
+        width: 100% !important;
+        max-height: 85vh !important;
+        overflow-y: auto !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+        text-align: left !important;
+    }
+    /* Заголовки и кнопки внутри модалок */
+    .modal-content h3,
+    .modal-content .modal-header h3,
+    .modal-overlay > div h3 {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        margin: 0 0 12px 0 !important;
+        color: var(--text, #1c1c1e) !important;
+    }
+    .modal-content .btn,
+    .modal-overlay > div .btn {
+        width: auto !important;
+        flex: 1 1 auto;
+        margin: 4px 0;
+    }
+    /* Адаптивность модалок */
+    @media (max-width: 480px) {
+        .modal-content, .modal-overlay > div {
+            padding: 16px !important;
+            max-width: 100% !important;
+        }
+    }
+</style>
+<!-- ==================== ЧАСТЬ 88: ДОБАВЛЕНИЕ БАННЕРА С КАРТИНКОЙ ==================== -->
+<script>
+    (function() {
+        function addWelcomeBanner() {
+            // Проверяем, есть ли уже баннер
+            if (document.querySelector('.welcome-banner-wide')) return;
+            // Создаём контейнер для баннера
+            const banner = document.createElement('div');
+            banner.className = 'welcome-banner-wide';
+            banner.style.cssText = 'width:100%; border-radius:12px; overflow:hidden; margin-bottom:8px; border:1px solid var(--border, #e5e5ea);';
+            banner.innerHTML = `<img src="https://i.postimg.cc/Y9wVnMG6/1786185439356.png" alt="Arizona RP Banner" style="width:100%; height:auto; display:block;">`;
+            // Вставляем в начало .container (или body)
+            const container = document.querySelector('.container') || document.body;
+            container.prepend(banner);
+        }
+
+        if (document.readyState === 'complete') {
+            addWelcomeBanner();
+        } else {
+            document.addEventListener('DOMContentLoaded', addWelcomeBanner);
+        }
+
+        console.log('Часть 88: баннер добавлен.');
+    })();
+</script>
+<!-- ==================== ЧАСТЬ 89: АДАПТИВНОСТЬ ДЛЯ ВСЕХ УСТРОЙСТВ ==================== -->
+<style>
+    /* Общие настройки для всех экранов */
+    body {
+        margin: 0;
+        padding: 0 8px 70px; /* нижний отступ для навигации */
+        box-sizing: border-box;
+    }
+    .container {
+        width: 100%;
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 8px 0 0;
+    }
+    .app-content {
+        padding-bottom: 70px;
+    }
+
+    /* Телефоны (портрет) */
+    @media (max-width: 480px) {
+        .container { max-width: 100%; padding: 0 4px; }
+        .ad-card { padding: 8px; font-size: 12px; }
+        .ad-title { font-size: 14px; }
+        .btn { font-size: 12px; padding: 8px 12px; }
+        .btn-sm { font-size: 10px; padding: 4px 8px; }
+        .icon-btn { width: 32px; height: 32px; font-size: 16px; }
+    }
+
+    /* Телефоны (ландшафт) */
+    @media (min-width: 481px) and (max-width: 767px) {
+        .container { max-width: 600px; }
+        .ads-container:not(.grid-view) { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    }
+
+    /* Планшеты */
+    @media (min-width: 768px) and (max-width: 1024px) {
+        .container { max-width: 720px; }
+        .ads-container:not(.grid-view) { grid-template-columns: repeat(2, 1fr); }
+        .ads-container.grid-view { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* Ноутбуки и MacBook */
+    @media (min-width: 1025px) and (max-width: 1440px) {
+        .container { max-width: 1000px; }
+        .ads-container:not(.grid-view) { grid-template-columns: repeat(3, 1fr); }
+        .ads-container.grid-view { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* ПК и большие мониторы */
+    @media (min-width: 1441px) {
+        .container { max-width: 1200px; }
+        .ads-container:not(.grid-view) { grid-template-columns: repeat(4, 1fr); }
+        .ads-container.grid-view { grid-template-columns: repeat(5, 1fr); }
+    }
+
+    /* Очень широкие экраны (4K) */
+    @media (min-width: 1920px) {
+        .container { max-width: 1600px; }
+    }
+</style>
+<!-- ==================== ЧАСТЬ 90: ИСПРАВЛЕНИЕ ПОЛЕЙ ВВОДА (БЕЛЫЙ ФОН, ВИДИМЫЙ ТЕКСТ) ==================== -->
+<style>
+    /* Все поля ввода и текстовые области получают светлый фон и тёмный текст */
+    input,
+    textarea,
+    select,
+    .custom-select-trigger {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border, #e5e5ea);
+        background: #ffffff !important;
+        color: #1c1c1e !important;
+        font-size: 14px;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+        -webkit-appearance: none;
+    }
+    /* Для тёмной темы */
+    body.dark input,
+    body.dark textarea,
+    body.dark select,
+    body.dark .custom-select-trigger {
+        background: #1c1c1e !important;
+        color: #ffffff !important;
+        border-color: #2c2c2e !important;
+    }
+    /* При фокусе */
+    input:focus,
+    textarea:focus,
+    select:focus {
+        border-color: var(--accent, #cb11ab) !important;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(203,17,171,0.2);
+    }
+    /* Стили для placeholder */
+    input::placeholder,
+    textarea::placeholder {
+        color: #8e8e93;
+    }
+    body.dark input::placeholder,
+    body.dark textarea::placeholder {
+        color: #8e8e93;
+    }
+    /* Поле цены — только цифры и точка */
+    #price {
+        font-family: inherit;
+    }
+</style>
+<!-- ==================== ЧАСТЬ 91: ОГРАНИЧЕНИЕ ЦЕНЫ ТОЛЬКО ЦИФРАМИ И ТОЧКОЙ ==================== -->
+<script>
+    (function() {
+        // Функция форматирования цены (уже должна существовать, но продублируем для надёжности)
+        window.formatPrice = window.formatPrice || function(priceStr) {
+            if (!priceStr) return '';
+            if (/[кk]/i.test(priceStr)) return priceStr;
+            const num = parseFloat(String(priceStr).replace(/[^0-9.]/g, ''));
+            if (isNaN(num)) return priceStr;
+            if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'ккк';
+            if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'кк';
+            if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'к';
+            return num.toString();
+        };
+
+        // Обработчик для поля цены
+        function initPriceInput() {
+            const priceInput = document.getElementById('price');
+            if (!priceInput) return;
+
+            // Разрешаем только цифры и точку (или запятую)
+            priceInput.addEventListener('input', function(e) {
+                let val = this.value.replace(/,/g, '.'); // заменяем запятую на точку
+                val = val.replace(/[^0-9.]/g, ''); // удаляем всё, кроме цифр и точки
+                // Убираем лишние точки (оставляем только одну)
+                const parts = val.split('.');
+                if (parts.length > 2) {
+                    val = parts[0] + '.' + parts.slice(1).join('');
+                }
+                this.value = val;
+            });
+
+            // При потере фокуса автоматически форматируем в сокращённый вид (5к, 5кк)
+            priceInput.addEventListener('blur', function() {
+                if (this.value) {
+                    this.value = formatPrice(this.value);
+                }
+            });
+        }
+
+        // Инициализация после загрузки
+        if (document.readyState === 'complete') {
+            initPriceInput();
+        } else {
+            document.addEventListener('DOMContentLoaded', initPriceInput);
+        }
+
+        console.log('Часть 91: ограничение цены только цифрами и форматирование применены.');
+    })();
+</script>
+<!-- ==================== ЧАСТЬ 92: ИСПРАВЛЕНИЕ ПЕРЕКЛЮЧЕНИЯ ТЕМЫ (СВЕТЛАЯ/ТЁМНАЯ) ==================== -->
+<script>
+    (function() {
+        // Функция применения темы
+        function applyTheme(theme) {
+            const body = document.body;
+            if (theme === 'dark') {
+                body.classList.add('dark');
+                body.style.setProperty('--app-bg', '#0f0f0f');
+                body.style.setProperty('--card-bg', '#1c1c1e');
+                body.style.setProperty('--header-bg', '#171717');
+                body.style.setProperty('--border', '#2c2c2e');
+                body.style.setProperty('--text', '#ffffff');
+                body.style.setProperty('--muted', '#8e8e93');
+            } else {
+                body.classList.remove('dark');
+                body.style.removeProperty('--app-bg');
+                body.style.removeProperty('--card-bg');
+                body.style.removeProperty('--header-bg');
+                body.style.removeProperty('--border');
+                body.style.removeProperty('--text');
+                body.style.removeProperty('--muted');
+            }
+            // Сохраняем выбор
+            localStorage.setItem(getUserKey('theme'), theme);
+        }
+
+        // Переопределяем функцию toggleTheme
+        window.toggleTheme = function() {
+            const isDark = document.body.classList.contains('dark');
+            applyTheme(isDark ? 'light' : 'dark');
+            playSfx('click');
+        };
+
+        // Переопределяем setAppTheme, если она вызывается из меню
+        window.setAppTheme = function(theme) {
+            applyTheme(theme);
+            closeModal('themeModal');
+            playSfx('success');
+        };
+
+        // При загрузке применяем сохранённую тему
+        const savedTheme = localStorage.getItem(getUserKey('theme')) || 'light';
+        applyTheme(savedTheme);
+
+        console.log('Часть 92: переключение темы исправлено.');
+    })();
+</script>
+
+<style>
+    /* Дополнительные стили для корректного отображения тёмной темы */
+    body.dark {
+        background: #0f0f0f;
+        color: #ffffff;
+    }
+    body.dark .app-header {
+        background: #171717;
+        border-color: #2c2c2e;
+    }
+    body.dark .brand {
+        color: #ffffff;
+    }
+    body.dark .icon-btn {
+        background: #1c1c1e;
+        border-color: #2c2c2e;
+        color: #ffffff;
+    }
+    body.dark .nav-tabs {
+        background: #171717;
+        border-color: #2c2c2e;
+    }
+    body.dark .nav-tab {
+        color: #8e8e93;
+    }
+    body.dark .nav-tab.active {
+        color: #cb11ab;
+        background: none;
+        box-shadow: none;
+    }
+    body.dark .btn-outline {
+        background: #1c1c1e;
+        color: #ffffff;
+        border-color: #2c2c2e;
+    }
+    body.dark .ad-card {
+        background: #1c1c1e;
+        border-color: #2c2c2e;
+    }
+    body.dark .modal-content {
+        background: #1c1c1e;
+        color: #ffffff;
+    }
+    body.dark input,
+    body.dark textarea,
+    body.dark select,
+    body.dark .custom-select-trigger {
+        background: #1c1c1e !important;
+        color: #ffffff !important;
+        border-color: #2c2c2e !important;
+    }
+    body.dark input::placeholder,
+    body.dark textarea::placeholder {
+        color: #8e8e93;
+    }
+</style>

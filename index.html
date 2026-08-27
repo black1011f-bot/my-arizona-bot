@@ -41,20 +41,7 @@
         }
 
         .container { max-width: 480px; margin: 0 auto; }
-
-        /* ========== 3D КНОПКИ ========== */
-        .btn {
-            display:inline-flex; align-items:center; justify-content:center; gap:6px;
-            padding: 10px 16px; border-radius: 50px; background: var(--btn-bg);
-            color:#fff; font-weight:700; width:100%;
-            box-shadow: 0 6px 0 #8e1f1f, 0 8px 15px rgba(0,0,0,0.3);
-            transform: translateY(0); transition: all 0.1s ease;
-        }
-        .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #8e1f1f, 0 4px 8px rgba(0,0,0,0.3); }
-        .btn-sm { padding: 6px 12px; font-size:12px; }
-        .btn-outline { background: var(--card-bg); color: var(--text); border:1px solid var(--border); box-shadow:none; }
-        .btn-danger { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-
+        
         /* ========== ШАПКА ========== */
         .app-header {
             display:flex; align-items:center; justify-content:space-between;
@@ -5718,3 +5705,82 @@
     console.log('Тема и адаптивность применены.');
 })();
 </script>
+<!-- ==================== ЧАСТЬ 129: ИСПРАВЛЕНИЕ КНОПКИ НАСТРОЙКИ ==================== -->
+<script>
+(function() {
+    console.log('Часть 129: окончательное исправление настроек.');
+
+    // Переопределяем openSettingsModal, чтобы она всегда работала
+    window.openSettingsModal = function() {
+        // Удаляем возможные старые модалки настроек
+        const oldModal = document.getElementById('settingsModal');
+        if (oldModal) oldModal.remove();
+
+        // Создаём модальное окно настроек
+        const modal = document.createElement('div');
+        modal.id = 'settingsModal';
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="background: var(--card-bg, #fff); color: var(--text, #1c1c1e); border-radius: 12px; max-width: 400px; width: 100%; padding: 16px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">⚙️ Настройки</h3>
+                    <button class="btn btn-outline btn-sm" onclick="closeSettingsModal()" style="margin: 0;">✕</button>
+                </div>
+                <div class="form-group">
+                    <label>🔊 Звуковые эффекты</label>
+                    <button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">${window.sfxEnabled ? 'Включены' : 'Выключены'}</button>
+                </div>
+                <div class="form-group">
+                    <label>🗑 Сбросить все данные</label>
+                    <button class="btn btn-danger btn-sm" onclick="resetAllData()">Сбросить</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Обновляем текст кнопки звука
+        const sfxBtn = document.getElementById('toggleSfxBtn');
+        if (sfxBtn) sfxBtn.innerText = window.sfxEnabled ? 'Включены' : 'Выключены';
+
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // Добавляем closeSettingsModal
+    window.closeSettingsModal = function() {
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Переопределяем closeModal для совместимости
+    window.closeModal = function(id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Убедимся, что toggleSfx работает
+    if (typeof window.toggleSfx !== 'function') {
+        window.toggleSfx = function() {
+            window.sfxEnabled = !window.sfxEnabled;
+            localStorage.setItem(getUserKey('sfx_enabled'), window.sfxEnabled ? '1' : '0');
+            const btn = document.getElementById('toggleSfxBtn');
+            if (btn) btn.innerText = window.sfxEnabled ? 'Включены' : 'Выключены';
+            if (typeof playSfx === 'function') playSfx('click');
+        };
+    }
+
+    console.log('Кнопка Настройки теперь работает всегда.');
+})();
+</script>
+<style>
+    /* Полный сброс 3D-эффектов */
+    .btn, .btn-sm, .icon-btn, .nav-tab, .view-mode-btn, .dropdown-item, .picker-item, .ad-card, .app-header, .card, .modal-content {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        transform: none !important;
+        border-radius: 8px !important;
+    }
+    .btn { border-radius: 50px !important; }
+    .btn-sm { border-radius: 30px !important; }
+    .icon-btn { border-radius: 50% !important; }
+</style>

@@ -4565,3 +4565,223 @@
         console.log('Часть 61: все функции исправлены и готовы.');
     })();
 </script>
+<script>
+    (function() {
+        // ============================================================
+        // 1. Убираем надоедливое сообщение о восстановлении черновика
+        // ============================================================
+        // Переопределяем loadDraft, чтобы оно не показывало alert
+        const originalLoadDraft = window.loadDraft;
+        window.loadDraft = function() {
+            const draft = localStorage.getItem(getUserKey('arizona_ad_draft'));
+            if (draft) {
+                try {
+                    const data = JSON.parse(draft);
+                    if (data.itemName) document.getElementById('itemName').value = data.itemName;
+                    if (data.price) document.getElementById('price').value = data.price;
+                    if (data.text) document.getElementById('text').value = data.text;
+                    if (data.image) document.getElementById('itemImage').value = data.image;
+                    if (data.server) {
+                        document.getElementById('server').value = data.server;
+                        document.getElementById('selectedServerText').innerText = data.server;
+                    }
+                    if (data.mode) {
+                        document.getElementById('mode').value = data.mode;
+                        document.getElementById('selectedModeText').innerText = data.mode === 'sell' ? 'Продажа' : 'Покупка';
+                    }
+                    if (data.category) {
+                        document.getElementById('category').value = data.category;
+                        document.getElementById('selectedCategoryText').innerText = data.category;
+                    }
+                    console.log('Черновик восстановлен (без уведомления).');
+                } catch(e) {}
+            }
+        };
+
+        // ============================================================
+        // 2. Полное переопределение formatPrice
+        // ============================================================
+        window.formatPrice = function(priceStr) {
+            if (!priceStr) return '';
+            if (/[кk]/i.test(priceStr)) return priceStr;
+            const cleaned = String(priceStr).replace(/[^0-9]/g, '');
+            if (!cleaned) return priceStr;
+            const num = parseInt(cleaned, 10);
+            if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'ккк';
+            if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'кк';
+            if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'к';
+            return num.toString();
+        };
+
+        // ============================================================
+        // 3. Одобрение объявления (простое и надёжное)
+        // ============================================================
+        window.approvePendingAd = function(id) {
+            const idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx === -1) {
+                console.error('Объявление не найдено в pendingAdsList, id:', id);
+                return;
+            }
+            const ad = pendingAdsList.splice(idx, 1)[0];
+            ad.status = 'approved';
+            globalAdsFeed.unshift(ad);
+
+            // Обновляем myAdsList, если объявление принадлежит текущему пользователю
+            const myIdx = myAdsList.findIndex(a => a.id === id);
+            if (myIdx > -1) {
+                myAdsList[myIdx].status = 'approved';
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            }
+
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+
+            renderPendingAds();
+            renderFeed();
+            playSfx('success');
+        };
+
+        // ============================================================
+        // 4. Отклонение объявления
+        // ============================================================
+        window.rejectPendingAd = function(id) {
+            const idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx > -1) {
+                pendingAdsList.splice(idx, 1);
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                renderPendingAds();
+                playSfx('success');
+            }
+        };
+
+        // ============================================================
+        // 5. Редактирование (упрощённое)
+        // ============================================================
+        window.openEditAdModal = function(id) {
+            const ad = pendingAdsList.find(a => a.id === id);
+            if (!ad) {
+                console.error('Объявление не найдено, id:', id);
+                return;
+            }
+
+            document.getElementById('editAdForm').innerHTML = `
+                <div style="margin-bottom:8px;">
+                    <label>🏷 Название</label>
+                    <input id="editItemName" value="${escapeHtml(ad.itemName)}">
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label>💰 Цена</label>
+                    <input id="editPrice" value="${escapeHtml(ad.price)}">
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label>📄 Описание</label>
+                    <textarea id="editText" rows="3">${escapeHtml(ad.text)}</textarea>
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label>🖼 Ссылка на скриншот</label>
+                    <input id="editImage" value="${escapeHtml(ad.image || '')}">
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label>🌐 Сервер</label>
+                    <input id="editServer" value="${escapeHtml(ad.server)}">
+                </div>
+                <div style="display:flex; gap:8px; margin-top:12px;">
+                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="approvePendingAdFromEdit(${ad.id})">✅ Одобрить</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="closeModal('editAdModal')">🔙 Назад</button>
+                    <button class="btn btn-danger btn-sm" style="flex:1;" onclick="rejectPendingAd(${ad.id}); closeModal('editAdModal');">⏭ Пропустить</button>
+                </div>
+            `;
+            openModal('editAdModal');
+        };
+
+        // Одобрение из окна редактирования
+        window.approvePendingAdFromEdit = function(id) {
+            const ad = pendingAdsList.find(a => a.id === id);
+            if (!ad) return;
+
+            ad.itemName = document.getElementById('editItemName').value;
+            ad.price = document.getElementById('editPrice').value;
+            ad.text = document.getElementById('editText').value;
+            ad.image = document.getElementById('editImage').value;
+            ad.server = document.getElementById('editServer').value;
+
+            approvePendingAd(id); // повторно используем основную функцию
+            closeModal('editAdModal');
+        };
+
+        // ============================================================
+        // 6. Рендер списка ожидающих объявлений
+        // ============================================================
+        window.renderPendingAds = function() {
+            const cont = document.getElementById('pendingAdsContainer');
+            if (!cont) return;
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@', '').toLowerCase()) ||
+                currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME;
+            if (!isAdmin) {
+                cont.innerHTML = '<p>Доступно администраторам</p>';
+                return;
+            }
+            const ownerSection = document.getElementById('ownerSection');
+            if (ownerSection) {
+                ownerSection.style.display = currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME ? 'block' : 'none';
+            }
+            if (pendingAdsList.length === 0) {
+                cont.innerHTML = '<p>Нет ожидающих проверки</p>';
+                return;
+            }
+            cont.innerHTML = pendingAdsList.map(ad => `
+                <div class="ad-card">
+                    <div class="ad-title">${escapeHtml(ad.itemName)} (${escapeHtml(formatPrice(ad.price))})</div>
+                    <div>От: ${escapeHtml(ad.author)} | ${escapeHtml(ad.server)}</div>
+                    <div>${escapeHtml(ad.text)}</div>
+                    <div class="ad-actions">
+                        <button class="btn btn-outline btn-sm" onclick="openEditAdModal(${ad.id})">✏️ Редактировать</button>
+                        <button class="btn btn-success btn-sm" onclick="approvePendingAd(${ad.id})">✅ Одобрить</button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectPendingAd(${ad.id})">❌ Отклонить</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // ============================================================
+        // 7. Рендер ленты (гарантированно обновляется)
+        // ============================================================
+        window.renderFeed = function() {
+            const container = document.getElementById('feedContainer');
+            if (!container) return;
+            const approved = globalAdsFeed.filter(ad => ad.status === 'approved');
+            if (approved.length === 0) {
+                container.innerHTML = '<p>Лента пуста</p>';
+                return;
+            }
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@', '').toLowerCase()) ||
+                currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME;
+            container.innerHTML = approved.slice(0, feedDisplayLimit).map(ad => {
+                const isFav = favoritesList.some(f => f.id === ad.id);
+                const imageHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" class="ad-image" loading="lazy" onerror="this.style.display='none'">` : '';
+                const deleteBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteApprovedAd(${ad.id})">🗑</button>` : '';
+                return `<div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${escapeHtml(ad.mode === 'sell' ? 'Продажа' : 'Покупка')}</span>
+                        <span>${escapeHtml(ad.server)}</span>
+                    </div>
+                    ${imageHtml}
+                    <div class="ad-title">${escapeHtml(ad.itemName)}</div>
+                    <div class="ad-price">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+                    <div>${escapeHtml(ad.text)}</div>
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button class="btn btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">${isFav ? '❤️' : '🤍'}</button>
+                        <button class="btn btn-success btn-sm" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать</button>
+                        ${deleteBtn}
+                    </div>
+                </div>`;
+            }).join('');
+        };
+
+        // Вызываем принудительное обновление всех списков
+        renderPendingAds();
+        renderFeed();
+
+        console.log('Часть 62: критический фикс применён.');
+    })();
+</script>

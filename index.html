@@ -4394,3 +4394,174 @@
     })();
 </script>
 <script>
+<!-- ==================== ЧАСТЬ 61: ИСПРАВЛЕНИЕ ВСЕХ БАГОВ ОДОБРЕНИЯ, РЕДАКТИРОВАНИЯ И ЦЕН ==================== -->
+<script>
+    (function() {
+        // ============================================================
+        // 1. НОРМАЛИЗАЦИЯ ЦЕНЫ: 5.000, 5000, 5к → 5к
+        // ============================================================
+        const originalFormatPrice = window.formatPrice;
+        window.formatPrice = function(priceStr) {
+            if (!priceStr) return '';
+            // Если уже есть "к", возвращаем как есть
+            if (/[кk]/i.test(priceStr)) return priceStr;
+            // Убираем всё, кроме цифр
+            const cleaned = String(priceStr).replace(/[^0-9]/g, '');
+            if (!cleaned) return priceStr;
+            const num = parseInt(cleaned, 10);
+            if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'ккк';
+            if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'кк';
+            if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'к';
+            return num.toString();
+        };
+
+        // ============================================================
+        // 2. ОДОБРЕНИЕ ОБЪЯВЛЕНИЯ (ГАРАНТИРОВАННО ДОБАВЛЯЕТ В ЛЕНТУ)
+        // ============================================================
+        window.approvePendingAd = function(id) {
+            const idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx === -1) {
+                alert('Объявление не найдено в ожидающих.');
+                return;
+            }
+            const ad = pendingAdsList.splice(idx, 1)[0];
+            ad.status = 'approved';
+            globalAdsFeed.unshift(ad);
+            // Обновляем myAdsList, если объявление принадлежит текущему пользователю
+            const myAdIndex = myAdsList.findIndex(a => a.id === id);
+            if (myAdIndex > -1) {
+                myAdsList[myAdIndex].status = 'approved';
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            }
+            // Сохраняем в localStorage
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            // Обновляем интерфейс
+            renderPendingAds();
+            renderFeed();
+            playSfx('success');
+            alert('Объявление одобрено и добавлено в ленту!');
+        };
+
+        window.rejectPendingAd = function(id) {
+            const idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx > -1) {
+                pendingAdsList.splice(idx, 1);
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                renderPendingAds();
+                playSfx('success');
+            }
+        };
+
+        // ============================================================
+        // 3. РЕДАКТИРОВАНИЕ С КНОПКАМИ ОДОБРИТЬ / НАЗАД / ПРОПУСТИТЬ
+        // ============================================================
+        window.openEditAdModal = function(id) {
+            const ad = pendingAdsList.find(a => a.id === id);
+            if (!ad) {
+                alert('Объявление не найдено.');
+                return;
+            }
+
+            document.getElementById('editAdForm').innerHTML = `
+                <div style="margin-bottom:8px;">
+                    <label>🏷 Название</label>
+                    <input id="editItemName" value="${escapeHtml(ad.itemName)}">
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label>💰 Цена</label>
+                    <input id="editPrice" value="${escapeHtml(ad.price)}">
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label>📄 Описание</label>
+                    <textarea id="editText" rows="3">${escapeHtml(ad.text)}</textarea>
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label>🖼 Ссылка на скриншот</label>
+                    <input id="editImage" value="${escapeHtml(ad.image || '')}">
+                </div>
+                <div style="margin-bottom:8px;">
+                    <label>🌐 Сервер</label>
+                    <input id="editServer" value="${escapeHtml(ad.server)}">
+                </div>
+                <div style="display:flex; gap:8px; margin-top:12px;">
+                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="approvePendingAdFromEdit(${ad.id})">✅ Одобрить</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="closeModal('editAdModal')">🔙 Назад</button>
+                    <button class="btn btn-danger btn-sm" style="flex:1;" onclick="rejectPendingAd(${ad.id}); closeModal('editAdModal');">⏭ Пропустить</button>
+                </div>
+            `;
+            openModal('editAdModal');
+        };
+
+        // Одобрение из окна редактирования (сохраняет изменения)
+        window.approvePendingAdFromEdit = function(id) {
+            const ad = pendingAdsList.find(a => a.id === id);
+            if (!ad) return;
+
+            // Сохраняем изменения из полей
+            ad.itemName = document.getElementById('editItemName').value;
+            ad.price = document.getElementById('editPrice').value;
+            ad.text = document.getElementById('editText').value;
+            ad.image = document.getElementById('editImage').value;
+            ad.server = document.getElementById('editServer').value;
+
+            // Одобряем
+            const idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx > -1) {
+                pendingAdsList.splice(idx, 1);
+                ad.status = 'approved';
+                globalAdsFeed.unshift(ad);
+                // Обновляем myAdsList
+                const myAdIndex = myAdsList.findIndex(a => a.id === id);
+                if (myAdIndex > -1) {
+                    myAdsList[myAdIndex].status = 'approved';
+                    localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                }
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                renderPendingAds();
+                renderFeed();
+                closeModal('editAdModal');
+                playSfx('success');
+                alert('Объявление одобрено и добавлено!');
+            }
+        };
+
+        // ============================================================
+        // 4. ПЕРЕОПРЕДЕЛЯЕМ РЕНДЕР ОЖИДАЮЩИХ, ЧТОБЫ КНОПКИ ВЫЗЫВАЛИ НОВЫЕ ФУНКЦИИ
+        // ============================================================
+        const originalRenderPendingAds = window.renderPendingAds;
+        window.renderPendingAds = function() {
+            const cont = document.getElementById('pendingAdsContainer');
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@', '').toLowerCase()) ||
+                currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME;
+            if (!isAdmin) {
+                cont.innerHTML = '<p>Доступно администраторам</p>';
+                return;
+            }
+            document.getElementById('ownerSection').style.display =
+                currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME ? 'block' : 'none';
+            if (pendingAdsList.length === 0) {
+                cont.innerHTML = '<p>Нет ожидающих проверки</p>';
+                return;
+            }
+            cont.innerHTML = pendingAdsList.map(ad => `
+                <div class="ad-card">
+                    <div class="ad-title">${escapeHtml(ad.itemName)} (${escapeHtml(formatPrice(ad.price))})</div>
+                    <div>От: ${escapeHtml(ad.author)} | ${escapeHtml(ad.server)}</div>
+                    <div>${escapeHtml(ad.text)}</div>
+                    <div class="ad-actions">
+                        <button class="btn btn-outline btn-sm" onclick="openEditAdModal(${ad.id})">✏️ Редактировать</button>
+                        <button class="btn btn-success btn-sm" onclick="approvePendingAd(${ad.id})">✅ Одобрить</button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectPendingAd(${ad.id})">❌ Отклонить</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // Вызываем перерисовку сейчас
+        renderPendingAds();
+
+        console.log('Часть 61: все функции исправлены и готовы.');
+    })();
+</script>

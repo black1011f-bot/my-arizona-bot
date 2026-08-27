@@ -7380,3 +7380,55 @@
     console.log('Приложение готово к использованию.');
 })();
 </script>
+<!-- Замените в вашем HTML кнопку отправки сообщения на эту -->
+<button class="btn btn-success btn-sm" onclick="sendChatMessage()">Отправить</button>
+
+<!-- И добавьте этот JavaScript перед закрывающим </script> -->
+<script>
+// Исправленная функция отправки сообщения
+function sendChatMessage() {
+    const input = document.getElementById('chatInputMessage');
+    const text = input.value.trim();
+    if (!text || !activeChatUser) {
+        alert('Сначала выберите чат или введите сообщение');
+        return;
+    }
+    if (!chatsDatabase[activeChatUser]) chatsDatabase[activeChatUser] = [];
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    chatsDatabase[activeChatUser].push({ sender: currentUserUsername, text, time: timeStr });
+    localStorage.setItem('arizona_global_chats_db', JSON.stringify(chatsDatabase));
+    input.value = '';
+    renderActiveChatMessages();
+    playSfx('success');
+    if (document.getElementById('chatsModal').classList.contains('visible')) renderChatsList();
+}
+
+// Функция открытия чата (убедитесь, что она есть)
+function openChatWithUser(user) {
+    if (!user) return;
+    activeChatUser = user.startsWith('@') ? user : '@' + user;
+    document.getElementById('chatTitle').innerText = '💬 Чат с ' + activeChatUser;
+    closeModal('chatsModal');
+    closeModal('profileInspectModal');
+    openModal('chatDetailModal');
+    renderActiveChatMessages();
+}
+
+// Функция отображения сообщений
+function renderActiveChatMessages() {
+    const cont = document.getElementById('chatMessages');
+    if (!chatsDatabase[activeChatUser] || chatsDatabase[activeChatUser].length === 0) {
+        cont.innerHTML = '<p>История пуста</p>';
+        return;
+    }
+    cont.innerHTML = chatsDatabase[activeChatUser].map(msg => `
+        <div style="align-self:${msg.sender === currentUserUsername ? 'flex-end' : 'flex-start'};
+            background:${msg.sender === currentUserUsername ? 'var(--app-btn-bg)' : 'var(--app-card-bg)'};
+            color:${msg.sender === currentUserUsername ? '#fff' : 'var(--app-text-main)'};
+            padding:8px 12px; border-radius:12px; max-width:80%;">
+            ${msg.text}<br><small>${msg.time}</small>
+        </div>
+    `).join('');
+    cont.scrollTop = cont.scrollHeight;
+}
+</script>

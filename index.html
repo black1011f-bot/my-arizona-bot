@@ -2889,3 +2889,202 @@
         color: #8e8e93;
     }
 </style>
+<!-- ==================== ЧАСТЬ 93: ПЕРЕМЕЩЕНИЕ БАННЕРА ПОД ШАПКУ И ИСПРАВЛЕНИЕ МЕНЮ ==================== -->
+<script>
+    (function() {
+        // Перемещаем баннер ниже шапки (если он есть)
+        function reorderBanner() {
+            const header = document.querySelector('.app-header');
+            const banner = document.getElementById('broadcastBanner');
+            if (header && banner) {
+                // Вставляем баннер сразу после шапки
+                header.parentNode.insertBefore(banner, header.nextSibling);
+            }
+        }
+
+        // Полностью пересоздаём выпадающее меню и привязываем функции
+        function rebuildDropdownMenu() {
+            let menu = document.getElementById('dropdownMenu');
+            if (!menu) {
+                menu = document.createElement('div');
+                menu.id = 'dropdownMenu';
+                menu.className = 'dropdown-menu';
+                menu.style.display = 'none';
+                const headerActions = document.querySelector('.app-header .header-actions');
+                if (headerActions) {
+                    headerActions.appendChild(menu);
+                } else {
+                    document.body.appendChild(menu);
+                }
+            }
+
+            // Заполняем пункты меню с проверкой существования функций
+            const menuItems = [
+                { icon: '🎮', label: 'Игра «Барыга»', action: 'openBarygaModal()' },
+                { icon: '💬', label: 'Переписки', action: 'openChatsModal()' },
+                { icon: '👤', label: 'Профиль', action: `switchTab('profile')` },
+                { icon: '🔍', label: 'Поиск', action: 'openSearchModal()' },
+                { icon: '🎨', label: 'Темы', action: 'openThemeModal()' },
+                { icon: '🎵', label: 'Музыка', action: 'openMusicModal()' },
+                { icon: '📸', label: 'Лента «Луков»', action: 'openFashionModal()' },
+                { icon: '🤝', label: 'Попутчики', action: 'openTravelModal()' },
+                { icon: '⚙️', label: 'Настройки', action: 'openSettingsModal()' }
+            ];
+
+            menu.innerHTML = menuItems.map(item => `
+                <button class="dropdown-item" onclick="${item.action}; closeDropdowns();">
+                    ${item.icon} ${item.label}
+                </button>
+            `).join('');
+        }
+
+        // Переопределяем toggleDropdownMenu для гарантии
+        window.toggleDropdownMenu = function(e) {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById('dropdownMenu');
+            if (menu) {
+                const isVisible = menu.style.display === 'block';
+                menu.style.display = isVisible ? 'none' : 'block';
+                if (!isVisible) {
+                    // Позиционируем под кнопкой
+                    menu.style.position = 'absolute';
+                    menu.style.top = '100%';
+                    menu.style.right = '0';
+                }
+            }
+            playSfx('click');
+        };
+
+        window.closeDropdowns = function() {
+            const menu = document.getElementById('dropdownMenu');
+            if (menu) menu.style.display = 'none';
+        };
+
+        // Закрываем при клике вне меню
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#dropdownMenu') && !e.target.closest('[onclick="toggleDropdownMenu(event)"]')) {
+                closeDropdowns();
+            }
+        });
+
+        // Выполняем при загрузке
+        if (document.readyState === 'complete') {
+            reorderBanner();
+            rebuildDropdownMenu();
+        } else {
+            document.addEventListener('DOMContentLoaded', () => {
+                reorderBanner();
+                rebuildDropdownMenu();
+            });
+        }
+
+        console.log('Часть 93: баннер под шапкой, меню пересоздано.');
+    })();
+</script>
+<!-- ==================== ЧАСТЬ 94: ОБЕСПЕЧЕНИЕ РАБОТЫ ФУНКЦИЙ МЕНЮ ==================== -->
+<script>
+    (function() {
+        // Гарантируем существование всех функций, вызываемых из меню
+        function ensureMenuFunctions() {
+            // Если функции не определены, создаём заглушки (или восстанавливаем)
+            if (typeof window.openBarygaModal !== 'function') {
+                window.openBarygaModal = function() { alert('Игра Барыга'); };
+            }
+            if (typeof window.openChatsModal !== 'function') {
+                window.openChatsModal = function() { alert('Переписки'); };
+            }
+            if (typeof window.openSearchModal !== 'function') {
+                window.openSearchModal = function() { alert('Поиск'); };
+            }
+            if (typeof window.openThemeModal !== 'function') {
+                window.openThemeModal = function() { alert('Темы'); };
+            }
+            if (typeof window.openMusicModal !== 'function') {
+                window.openMusicModal = function() { alert('Музыка'); };
+            }
+            if (typeof window.openFashionModal !== 'function') {
+                window.openFashionModal = function() { alert('Лента Луков'); };
+            }
+            if (typeof window.openTravelModal !== 'function') {
+                window.openTravelModal = function() { alert('Попутчики'); };
+            }
+            if (typeof window.openSettingsModal !== 'function') {
+                window.openSettingsModal = function() { alert('Настройки'); };
+            }
+            // profile switchTab уже есть
+            if (typeof window.switchTab !== 'function') {
+                window.switchTab = function(tabId) {
+                    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                    const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+                    if (target) target.classList.add('active');
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+                    if (activeTab) activeTab.classList.add('active');
+                    if (tabId === 'feed') renderFeed();
+                    if (tabId === 'myAds') renderMyAds();
+                    if (tabId === 'favorites') renderFavorites();
+                    if (tabId === 'admin') renderPendingAds();
+                    playSfx('click');
+                };
+            }
+        }
+
+        // Вызываем после загрузки
+        if (document.readyState === 'complete') {
+            ensureMenuFunctions();
+        } else {
+            document.addEventListener('DOMContentLoaded', ensureMenuFunctions);
+        }
+        console.log('Часть 94: функции меню гарантированы.');
+    })();
+</script>
+<!-- ==================== ЧАСТЬ 95: ИСПРАВЛЕНИЕ ПОЛЯ ЦЕНЫ В РЕДАКТОРЕ (ПОЛНАЯ ЗАМЕНА) ==================== -->
+<script>
+    (function() {
+        // Функция для очистки поля при фокусе, если оно содержит отформатированную цену
+        function setupPriceFieldClearing() {
+            // Используем делегирование, так как поле появляется динамически
+            document.addEventListener('focusin', function(e) {
+                if (e.target.id === 'editPrice' || e.target.id === 'price') {
+                    // Если в поле уже есть значение в формате "5к" и пользователь кликает, очищаем
+                    const current = e.target.value;
+                    if (current && /[кk]/i.test(current)) {
+                        // Очищаем поле, чтобы можно было ввести новое число
+                        e.target.value = '';
+                    }
+                }
+            });
+
+            // Ограничение ввода: только цифры и точка (для поля цены)
+            document.addEventListener('input', function(e) {
+                if (e.target.id === 'editPrice' || e.target.id === 'price') {
+                    let val = e.target.value.replace(/,/g, '.');
+                    val = val.replace(/[^0-9.]/g, '');
+                    // Разрешаем только одну точку
+                    const parts = val.split('.');
+                    if (parts.length > 2) {
+                        val = parts[0] + '.' + parts.slice(1).join('');
+                    }
+                    e.target.value = val;
+                }
+            });
+
+            // При потере фокуса форматируем цену
+            document.addEventListener('blur', function(e) {
+                if (e.target.id === 'editPrice' || e.target.id === 'price') {
+                    if (e.target.value) {
+                        e.target.value = formatPrice(e.target.value);
+                    }
+                }
+            }, true); // используем фазу захвата, чтобы поймать динамические поля
+        }
+
+        // Запускаем после полной загрузки
+        if (document.readyState === 'complete') {
+            setupPriceFieldClearing();
+        } else {
+            document.addEventListener('DOMContentLoaded', setupPriceFieldClearing);
+        }
+        console.log('Часть 95: поле цены очищается при фокусе, только цифры, автоформат.');
+    })();
+</script>

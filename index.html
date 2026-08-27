@@ -4239,3 +4239,90 @@
         console.log('Вибрация полностью отключена.');
     })();
 </script>
+<!-- ==================== ЧАСТЬ 54: ГАРАНТИРОВАННАЯ ЗАМЕНА ФОТО ТУТОРИАЛА ==================== -->
+<script>
+    (function() {
+        const tutorialImages = [
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg',
+            'https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg',
+            'https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg',
+            'https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg',
+            'https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg'
+        ];
+
+        function replaceIcons() {
+            const icons = document.querySelectorAll('.tutorial-icon');
+            console.log('Найдено элементов .tutorial-icon:', icons.length);
+            icons.forEach((icon, index) => {
+                if (tutorialImages[index]) {
+                    // Если внутри уже есть изображение, пропускаем
+                    if (icon.querySelector('img')) return;
+                    
+                    // Очищаем содержимое (убираем эмодзи)
+                    icon.innerHTML = '';
+                    const img = document.createElement('img');
+                    img.src = tutorialImages[index];
+                    img.alt = 'Tutorial image';
+                    img.loading = 'eager'; // грузим сразу
+                    img.style.cssText = `
+                        display: block;
+                        width: 100px;
+                        height: 100px;
+                        object-fit: cover;
+                        border-radius: 16px;
+                        border: 2px solid var(--app-card-border);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                        margin: 0 auto;
+                    `;
+                    // В случае ошибки — вернуть эмодзи
+                    img.onerror = function() {
+                        this.remove();
+                        icon.textContent = ['👋','🏠','➕','🎮','💬'][index] || '👋';
+                        icon.style.fontSize = '60px';
+                    };
+                    icon.appendChild(img);
+                }
+            });
+        }
+
+        // Запускаем сразу и после полной загрузки
+        if (document.readyState === 'complete') {
+            replaceIcons();
+        } else {
+            document.addEventListener('DOMContentLoaded', replaceIcons);
+        }
+
+        // Дополнительно следим за появлением туториала (если он создаётся динамически)
+        const observer = new MutationObserver(function(mutations) {
+            replaceIcons();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    })();
+</script>
+
+<style>
+    /* Принудительно убираем наследие эмодзи и задаём правильные размеры */
+    .tutorial-icon {
+        font-size: 0 !important;
+        line-height: 0 !important;
+        width: 100%;
+        display: flex !important;
+        justify-content: center;
+        align-items: center;
+        min-height: 100px;
+    }
+    .tutorial-icon img {
+        max-width: 100px;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        border-radius: 16px;
+    }
+    @media (max-width: 480px) {
+        .tutorial-icon img { max-width: 70px; }
+    }
+    @media (min-width: 768px) {
+        .tutorial-icon img { max-width: 130px; }
+    }
+</style>

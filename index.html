@@ -4174,3 +4174,68 @@
         .tutorial-icon img { max-width: 130px; border-radius: 20px; }
     }
 </style>
+<!-- ==================== ЧАСТЬ 53: ПОЛНОЕ ОТКЛЮЧЕНИЕ ВИБРАЦИИ ==================== -->
+<script>
+    (function() {
+        // 1. Отключаем Telegram HapticFeedback, если он есть
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            const haptic = window.Telegram.WebApp.HapticFeedback;
+            haptic.impactOccurred = function() {};
+            haptic.notificationOccurred = function() {};
+            haptic.selectionChanged = function() {};
+        }
+
+        // 2. Переопределяем нашу функцию hapticFeedback (если она существует)
+        if (window.hapticFeedback) {
+            window.hapticFeedback = function() {};
+        }
+
+        // 3. Переопределяем playSfx, чтобы она не вызывала вибрацию
+        //    (восстанавливаем чистую реализацию без hapticFeedback)
+        window.playSfx = function(type) {
+            if (!window.sfxEnabled) return; // sfxEnabled может быть глобальной
+            try {
+                const ctx = window.audioContext || new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                const now = ctx.currentTime;
+
+                if (type === 'cash') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.setValueAtTime(1200, now + 0.08);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'success') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(880, now + 0.15);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                }
+            } catch (e) {
+                console.warn('Ошибка воспроизведения звука:', e);
+            }
+        };
+
+        // 4. Отключаем вибрацию через navigator.vibrate (на всякий случай)
+        if (navigator.vibrate) {
+            navigator.vibrate = function() {};
+        }
+
+        console.log('Вибрация полностью отключена.');
+    })();
+</script>

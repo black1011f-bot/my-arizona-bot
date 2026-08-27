@@ -5784,3 +5784,214 @@
     .btn-sm { border-radius: 30px !important; }
     .icon-btn { border-radius: 50% !important; }
 </style>
+<!-- ==================== ЧАСТЬ 130: ИСПРАВЛЕНИЕ ОТСТУПОВ И ЦВЕТА (ФИОЛЕТОВЫЙ) ==================== -->
+<style>
+    /* Добавляем зазоры между кнопками и элементами */
+    .header-actions {
+        gap: 8px !important;
+    }
+    .header-actions .icon-btn {
+        margin: 0 4px !important;
+    }
+    .nav-tabs {
+        gap: 6px !important;
+    }
+    .nav-tab {
+        margin: 0 4px !important;
+    }
+    .view-mode-btns {
+        gap: 8px !important;
+    }
+    .view-mode-btn {
+        margin: 0 4px !important;
+    }
+    .ad-actions {
+        gap: 8px !important;
+        margin-top: 8px !important;
+    }
+    .ad-actions .btn {
+        margin: 0 !important;
+    }
+    .dropdown-menu .dropdown-item {
+        margin: 4px 0 !important;
+    }
+    .picker-list .picker-item {
+        margin: 4px 0 !important;
+    }
+
+    /* Смена основного цвета на фиолетовый (аккуратно, без синего) */
+    :root {
+        --accent: #7c3aed;           /* фиолетовый */
+        --accent2: #a78bfa;          /* светлый фиолетовый */
+        --btn-bg: #7c3aed;           /* фон кнопок */
+        --btn-text: #ffffff;
+    }
+    body.dark {
+        --accent: #bb86fc;           /* фиолетовый в тёмной теме */
+        --accent2: #c792ea;
+        --btn-bg: #533483;           /* тёмно-фиолетовый */
+    }
+    /* Применяем к элементам, которые используют accent */
+    .btn {
+        background: var(--btn-bg) !important;
+        color: var(--btn-text) !important;
+    }
+    .btn-outline {
+        background: transparent !important;
+        color: var(--text) !important;
+        border: 1px solid var(--border) !important;
+    }
+    .nav-tab.active {
+        background: var(--btn-bg) !important;
+        color: #fff !important;
+    }
+    .view-mode-btn.active {
+        background: var(--btn-bg) !important;
+        color: #fff !important;
+        border-color: var(--btn-bg) !important;
+    }
+    .icon-btn {
+        color: var(--text);
+    }
+    /* Убираем возможные синие оттенки */
+    .modal-content,
+    .dropdown-menu,
+    .picker-item {
+        border-color: var(--border) !important;
+    }
+</style>
+<!-- ==================== ЧАСТЬ 131: ПЕРЕНОС SMS В ПРАВЫЙ БОК ПО ЦЕНТРУ ==================== -->
+<script>
+(function() {
+    console.log('Часть 131: позиция SMS справа по центру.');
+
+    // Переопределяем контейнер и функцию показа SMS
+    function ensureSmsContainer() {
+        let container = document.getElementById('smsNotificationContainer');
+        if (container) container.remove();
+        container = document.createElement('div');
+        container.id = 'smsNotificationContainer';
+        container.style.cssText = `
+            position: fixed;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 99999;
+            pointer-events: none;
+        `;
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // Показываем SMS
+    window.showSmsNotification = function(text) {
+        const container = ensureSmsContainer();
+        const sms = document.createElement('div');
+        sms.style.cssText = `
+            background: #fff;
+            color: #1c1c1e;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            font-size: 13px;
+            max-width: 260px;
+            word-wrap: break-word;
+            pointer-events: auto;
+            animation: fadeIn 0.3s ease;
+            cursor: pointer;
+            border-left: 4px solid var(--accent, #7c3aed);
+        `;
+        sms.innerText = text;
+        sms.addEventListener('click', () => {
+            if (typeof openBroadcastsModal === 'function') openBroadcastsModal();
+            sms.remove();
+        });
+        container.appendChild(sms);
+        setTimeout(() => { if (sms.parentNode) sms.remove(); }, 10000);
+    };
+
+    // При загрузке проверяем историю и показываем последнюю
+    function showLastBroadcast() {
+        const history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        if (history.length > 0) {
+            setTimeout(() => showSmsNotification(history[0]), 500);
+        }
+    }
+
+    if (document.readyState === 'complete') {
+        showLastBroadcast();
+    } else {
+        document.addEventListener('DOMContentLoaded', showLastBroadcast);
+    }
+})();
+</script>
+<!-- ==================== ЧАСТЬ 132: ПОЛНЫЙ СПИСОК ИЗ 36 СЕРВЕРОВ ==================== -->
+<script>
+(function() {
+    console.log('Часть 132: принудительно устанавливаем 36 серверов.');
+
+    // Полный список серверов Arizona RP (36 серверов)
+    window.ALL_SERVERS = [
+        '🔥 Phoenix',
+        '🌴 Tucson',
+        '🌵 Scottdale',
+        '⚜️ Chandler',
+        '❄️ Brainburg',
+        '✨ Saint Rose',
+        '🏛 Mesa',
+        '❤️ Red-Rock',
+        '🌊 Yuma',
+        '🍀 Surprise',
+        '⚡️ Prescott',
+        '🌲 Glendale',
+        '👑 Kingman',
+        '⚓️ Winslow',
+        '🌴 Payson',
+        '💎 Gilbert',
+        '🔥 Show-Low',
+        '🌴 Casa-Grande',
+        '🌟 Page',
+        '☀️ Sun-City',
+        '⚡️ Queen Creek',
+        '🧸 Sedona',
+        '🎄 Holiday',
+        '📅 Wednesday',
+        '🚀 Yava',
+        '🔮 Faraway',
+        '🚀 Bumble Bee',
+        '🎄 Christmas',
+        '🌟 Mirage',
+        '❤️ Love',
+        '💎 Drake',
+        '🚀 Space',
+        '🏠 Home',
+        '📱 Mobile 3',
+        '📱 Mobile 2',
+        '📱 Mobile 1'
+    ];
+
+    // Обновляем пикер, если он открыт
+    if (typeof openPicker === 'function') {
+        const originalOpenPicker = window.openPicker;
+        window.openPicker = function(type) {
+            if (type === 'server') {
+                const list = document.getElementById('pickerList');
+                if (list) {
+                    list.innerHTML = window.ALL_SERVERS.map(server => `
+                        <div class="picker-item" onclick="selectPickerValue('server', '${server}', '${server}')">${server}</div>
+                    `).join('');
+                    document.getElementById('pickerTitle').innerText = '🌐 Выберите сервер';
+                    document.getElementById('pickerModal').style.display = 'flex';
+                    return;
+                }
+            }
+            if (typeof originalOpenPicker === 'function') originalOpenPicker(type);
+        };
+    }
+
+    console.log('Список серверов обновлён (36).');
+})();
+</script>

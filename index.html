@@ -4717,3 +4717,416 @@
     console.log('Загрузочный экран восстановлен, проверка сети исправлена.');
 })();
 </script>
+<!-- ==================== ЧАСТЬ 121: ИСПРАВЛЕНИЕ ПИНГА (МАКСИМУМ 666 МС) ==================== -->
+<script>
+(function() {
+    console.log('Часть 121: корректировка порога пинга до 666 мс.');
+
+    // Удаляем старый загрузчик, если он есть (старый connectionLoader)
+    const oldLoader = document.getElementById('connectionLoader');
+    if (oldLoader) {
+        oldLoader.style.display = 'none';
+        oldLoader.style.pointerEvents = 'none';
+    }
+
+    // Создаём новый загрузчик
+    let loader = document.getElementById('pingLoader');
+    if (loader) loader.remove();
+    loader = document.createElement('div');
+    loader.id = 'pingLoader';
+    loader.style.cssText = `
+        position: fixed; inset: 0; background: rgba(255,255,255,0.9);
+        display: none; align-items: center; justify-content: center;
+        z-index: 99999; backdrop-filter: blur(4px);
+    `;
+    loader.innerHTML = `
+        <div style="text-align: center; max-width: 280px; padding: 20px; background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <div style="width: 48px; height: 48px; border: 5px solid #e0e0e0; border-top-color: #cb11ab; border-radius: 50%; animation: pingSpin 0.8s linear infinite; margin: 0 auto 16px;"></div>
+            <p style="font-size: 16px; font-weight: 600; color: #1c1c1e; margin-bottom: 6px;">Загрузка, подождите...</p>
+            <p style="font-size: 13px; color: #8e8e93;">Проверяем соединение с интернетом</p>
+        </div>
+    `;
+    document.body.appendChild(loader);
+    // Добавляем анимацию
+    if (!document.getElementById('pingSpinStyle')) {
+        const style = document.createElement('style');
+        style.id = 'pingSpinStyle';
+        style.textContent = `@keyframes pingSpin { to { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+    }
+
+    // Максимальный пинг = 666 мс
+    const MAX_PING = 666;
+    const CHECK_URL = 'https://www.gstatic.com/generate_204';
+    const CHECK_INTERVAL = 5000;
+
+    async function checkPing() {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 700); // чуть больше максимума
+        const start = performance.now();
+        try {
+            await fetch(CHECK_URL, { mode: 'no-cors', signal: controller.signal });
+            const ping = performance.now() - start;
+            clearTimeout(timeoutId);
+            if (ping > MAX_PING) {
+                loader.style.display = 'flex';
+            } else {
+                loader.style.display = 'none';
+            }
+        } catch (e) {
+            clearTimeout(timeoutId);
+            loader.style.display = 'flex';
+        }
+    }
+
+    // Запускаем проверку
+    checkPing();
+    setInterval(checkPing, CHECK_INTERVAL);
+    window.addEventListener('online', checkPing);
+    window.addEventListener('offline', () => { loader.style.display = 'flex'; });
+
+    console.log('Порог пинга установлен на 666 мс.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 122: SMS СЛЕВА, СКРЫТИЕ БАННЕРА ==================== -->
+<script>
+(function() {
+    console.log('Часть 122: перенос SMS влево, скрытие баннера.');
+
+    // === 1. Полностью скрываем старый баннер ===
+    const banner = document.getElementById('broadcastBanner');
+    if (banner) {
+        banner.style.display = 'none';
+        // На будущее: переопределим функцию показа баннера, чтобы она ничего не делала
+        window.showBroadcastBanner = function() {};
+        window.openBroadcastModal = function() {};
+    }
+
+    // === 2. Удаляем старый контейнер SMS, если есть ===
+    const oldSms = document.getElementById('smsNotificationContainer');
+    if (oldSms) oldSms.remove();
+
+    // === 3. Создаём новый контейнер для SMS слева по центру ===
+    const smsContainer = document.createElement('div');
+    smsContainer.id = 'smsNotificationContainer';
+    smsContainer.style.cssText = `
+        position: fixed;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 99999;
+        pointer-events: none;
+    `;
+    document.body.appendChild(smsContainer);
+
+    // === 4. Функция показа SMS (аналог предыдущей, но позиция слева) ===
+    window.showSmsNotification = function(text) {
+        const sms = document.createElement('div');
+        sms.style.cssText = `
+            background: #fff;
+            color: #1c1c1e;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            font-size: 13px;
+            max-width: 260px;
+            word-wrap: break-word;
+            pointer-events: auto;
+            animation: fadeIn 0.3s ease;
+            cursor: pointer;
+            border-left: 4px solid #cb11ab;
+        `;
+        sms.innerText = text;
+        sms.addEventListener('click', () => {
+            // Открываем историю рассылок
+            if (typeof openBroadcastsModal === 'function') openBroadcastsModal();
+            sms.remove();
+        });
+        smsContainer.appendChild(sms);
+        setTimeout(() => {
+            if (sms.parentNode) sms.remove();
+        }, 10000);
+    };
+
+    // === 5. Переопределяем функцию отправки рассылки, чтобы она использовала SMS вместо баннера ===
+    window.updateBroadcastMessage = function() {
+        const input = document.getElementById('newBroadcastInput');
+        const text = input ? input.value.trim() : '';
+        if (!text) {
+            alert('⚠️ Введите текст уведомления!');
+            return;
+        }
+        // Добавляем в историю
+        let history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        history.unshift(`📢 ${new Date().toLocaleString()}: ${text}`);
+        localStorage.setItem('arizona_broadcast_history', JSON.stringify(history));
+        // Показываем SMS (слева)
+        showSmsNotification(text);
+        // Убираем баннер (на всякий случай)
+        if (banner) banner.style.display = 'none';
+        localStorage.removeItem('arizona_broadcast_msg'); // чтобы не показывался баннер при обновлении
+        if (input) input.value = '';
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // === 6. При загрузке: если в истории есть последняя рассылка, показать SMS ===
+    const history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+    if (history.length > 0) {
+        // Показываем последнюю (но только один раз за сессию, чтобы не спамило)
+        const last = history[0];
+        setTimeout(() => showSmsNotification(last), 500);
+    }
+
+    console.log('SMS слева, баннер скрыт.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 123: ИСПРАВЛЕНИЕ КНОПКИ «НАСТРОЙКИ» (ОТКРЫВАЕТСЯ ПРАВИЛЬНОЕ ОКНО) ==================== -->
+<script>
+(function() {
+    console.log('Часть 123: исправление кнопки Настройки.');
+
+    // Удаляем старую модалку настроек, если она была создана неправильно
+    const oldSettings = document.getElementById('settingsModal');
+    if (oldSettings) oldSettings.remove();
+
+    // Переопределяем openSettingsModal – теперь она создаёт корректное модальное окно
+    window.openSettingsModal = function() {
+        // Если уже есть правильное окно, просто показываем
+        let modal = document.getElementById('settingsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'settingsModal';
+            modal.className = 'modal-overlay';
+            modal.style.display = 'none';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 400px; width: 90%; background: var(--card-bg, #fff); color: var(--text, #1c1c1e);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin: 0;">⚙️ Настройки</h3>
+                        <button class="btn btn-outline btn-sm" onclick="closeModal('settingsModal')" style="margin:0;">✕</button>
+                    </div>
+                    <div class="form-group">
+                        <label>🔊 Звуковые эффекты</label>
+                        <button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">${window.sfxEnabled ? 'Включены' : 'Выключены'}</button>
+                    </div>
+                    <div class="form-group">
+                        <label>🗑 Сбросить все данные</label>
+                        <button class="btn btn-danger btn-sm" onclick="resetAllData()">Сбросить</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+        // Обновляем текст кнопки звука
+        const sfxBtn = document.getElementById('toggleSfxBtn');
+        if (sfxBtn) sfxBtn.innerText = window.sfxEnabled ? 'Включены' : 'Выключены';
+    };
+
+    // Переопределяем closeModal для гарантии
+    window.closeModal = function(id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Убедимся, что toggleSfx и resetAllData существуют
+    if (typeof window.toggleSfx !== 'function') {
+        window.toggleSfx = function() {
+            window.sfxEnabled = !window.sfxEnabled;
+            localStorage.setItem(getUserKey('sfx_enabled'), window.sfxEnabled ? '1' : '0');
+            const btn = document.getElementById('toggleSfxBtn');
+            if (btn) btn.innerText = window.sfxEnabled ? 'Включены' : 'Выключены';
+        };
+    }
+    if (typeof window.resetAllData !== 'function') {
+        window.resetAllData = function() {
+            if (confirm('Сбросить все данные?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        };
+    }
+
+    console.log('Кнопка Настройки теперь открывает правильное окно.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 124: УПРОЩЕНИЕ ИНТЕРФЕЙСА (СТИЛЬ ТУТОРИАЛА, БЕЗ 3D) ==================== -->
+<style>
+    /* Убираем 3D-эффекты, делаем плоские кнопки и карточки */
+    .btn,
+    .btn-sm,
+    .icon-btn,
+    .nav-tab,
+    .view-mode-btn,
+    .dropdown-item,
+    .modal-content .btn {
+        box-shadow: none !important;
+        text-shadow: none !important;
+        transform: none !important;
+        border-radius: 8px !important;
+        transition: background 0.2s, color 0.2s;
+    }
+    .btn {
+        background: #cb11ab !important;
+        color: #fff !important;
+        border: none !important;
+        font-weight: 600;
+    }
+    .btn:active {
+        background: #a10e87 !important;
+    }
+    .btn-outline {
+        background: #fff !important;
+        color: #cb11ab !important;
+        border: 1px solid #cb11ab !important;
+    }
+    .btn-outline:active {
+        background: #f3e8f7 !important;
+    }
+    .icon-btn {
+        background: #fff !important;
+        border: 1px solid #e5e5ea !important;
+        color: #1c1c1e !important;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+    .nav-tab {
+        background: transparent !important;
+        color: #8e8e93 !important;
+        font-weight: 600;
+    }
+    .nav-tab.active {
+        background: #cb11ab !important;
+        color: #fff !important;
+    }
+    .view-mode-btn {
+        background: #fff !important;
+        color: #8e8e93 !important;
+        border: 1px solid #e5e5ea !important;
+    }
+    .view-mode-btn.active {
+        background: #cb11ab !important;
+        color: #fff !important;
+        border-color: #cb11ab !important;
+    }
+    .dropdown-menu {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        border-radius: 8px !important;
+    }
+    .dropdown-item {
+        background: #fff !important;
+        color: #1c1c1e !important;
+        padding: 8px 12px;
+        border-radius: 0 !important;
+        margin: 0;
+    }
+    .dropdown-item:hover {
+        background: #f2f2f7 !important;
+    }
+    .ad-card {
+        box-shadow: none !important;
+        border: 1px solid #e5e5ea !important;
+        border-radius: 10px !important;
+        background: #fff;
+    }
+    .modal-overlay {
+        background: rgba(0,0,0,0.4) !important;
+    }
+    .modal-content,
+    .modal-overlay > div {
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+        border-radius: 12px !important;
+    }
+    /* Картинки в туториале остаются как есть */
+    .tutorial-icon img {
+        border-radius: 12px;
+    }
+    /* Отступы как в туториале (просторно, но без теней) */
+    .app-header,
+    .nav-tabs,
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #e5e5ea;
+        border-radius: 10px;
+    }
+    .app-header {
+        background: #fff;
+    }
+    .nav-tabs {
+        background: #f7f7fa;
+        border: none;
+        padding: 4px;
+    }
+    .nav-tab {
+        border-radius: 6px !important;
+    }
+</style>
+<!-- ==================== ЧАСТЬ 125: ФИНАЛЬНАЯ ИНТЕГРАЦИЯ И ПРОВЕРКА ==================== -->
+<script>
+(function() {
+    console.log('Часть 125: финальная интеграция.');
+
+    // Проверяем, что все ключевые функции определены
+    const requiredFunctions = [
+        'switchTab', 'renderFeed', 'renderMyAds', 'renderFavorites', 'renderPendingAds',
+        'approvePendingAd', 'rejectPendingAd', 'submitData', 'setViewMode', 'openAdDetail',
+        'toggleFavorite', 'formatPrice', 'openChatWithUser', 'sendChatMessage', 'renderChatsList',
+        'barygaClick', 'buyClickUpgrade', 'buyAutoUpgrade', 'buyProUpgrade', 'buyShopUpgrade',
+        'buyEliteUpgrade', 'buyOilRigUpgrade', 'buyCryptoUpgrade', 'updateBarygaUI',
+        'toggleTheme', 'setAppTheme', 'toggleDropdownMenu', 'closeDropdowns', 'openModal',
+        'closeModal', 'handleOverlayClick', 'playSfx', 'updateMskClock', 'initProfileUI',
+        'changeAvatarFrame', 'saveCustomStatus', 'switchProfileSubtab', 'postWallComment',
+        'renderWallComments', 'executeAdvancedSearch', 'inspectUserProfile', 'inspectSubscribeUser',
+        'inspectOpenChat', 'startChatByUsername', 'clearActiveChatHistory', 'deleteChat',
+        'clearAllChats', 'openBarygaModal', 'closeBarygaModal', 'openChatsModal', 'closeChatsModal',
+        'openSearchModal', 'closeSearchModal', 'openThemeModal', 'closeThemeModal',
+        'openMusicModal', 'closeMusicModal', 'openFashionModal', 'closeFashionModal',
+        'openTravelModal', 'closeTravelModal', 'openSettingsModal', 'closeSettingsModal',
+        'sendTargetAction', 'updateBroadcastMessage', 'clearGlobalFeedAdmin', 'openPicker',
+        'selectPickerValue', 'openBroadcastsModal', 'deleteBroadcastItem', 'clearAllBroadcasts',
+        'deleteMyAdPermanently', 'clearMyAds', 'deleteApprovedAd'
+    ];
+
+    let missing = [];
+    requiredFunctions.forEach(fn => {
+        if (typeof window[fn] !== 'function') {
+            missing.push(fn);
+        }
+    });
+
+    if (missing.length > 0) {
+        console.warn('Отсутствуют функции:', missing);
+    } else {
+        console.log('Все функции на месте.');
+    }
+
+    // Принудительно скрываем баннер (мы используем SMS)
+    const banner = document.getElementById('broadcastBanner');
+    if (banner) banner.style.display = 'none';
+
+    // Запускаем первоначальный рендер
+    function finalInit() {
+        if (typeof renderFeed === 'function') renderFeed();
+        if (typeof renderMyAds === 'function') renderMyAds();
+        if (typeof renderFavorites === 'function') renderFavorites();
+        if (typeof renderPendingAds === 'function') renderPendingAds();
+        if (typeof updateBarygaUI === 'function') updateBarygaUI();
+        if (typeof initProfileUI === 'function') initProfileUI();
+        if (typeof updateMskClock === 'function') updateMskClock();
+    }
+
+    if (document.readyState === 'complete') {
+        finalInit();
+    } else {
+        document.addEventListener('DOMContentLoaded', finalInit);
+    }
+
+    console.log('Финальная интеграция завершена. Приложение готово.');
+})();
+</script>

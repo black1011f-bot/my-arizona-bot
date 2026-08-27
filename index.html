@@ -4393,3 +4393,156 @@
         console.log('Звук восстановлен без вибрации.');
     })();
 </script>
+<script>
+    // ==========================================================================
+    // ГАРАНТИРОВАННОЕ ДОБАВЛЕНИЕ ОДОБРЕННОГО ОБЪЯВЛЕНИЯ В ЛЕНТУ
+    // ==========================================================================
+    (function() {
+        const originalApprovePendingAd = window.approvePendingAd;
+        if (originalApprovePendingAd) {
+            window.approvePendingAd = function(id) {
+                // Ищем объявление в pendingAdsList
+                const idx = pendingAdsList.findIndex(a => a.id === id);
+                if (idx > -1) {
+                    const ad = pendingAdsList.splice(idx, 1)[0];
+                    ad.status = 'approved';
+                    // Добавляем в начало глобальной ленты (как на WB)
+                    globalAdsFeed.unshift(ad);
+                    // Сохраняем в localStorage
+                    localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                    localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                    // Обновляем все интерфейсы
+                    renderPendingAds();
+                    renderFeed();
+                    playSfx('success');
+                } else {
+                    // Если не нашли, просто вызываем оригинал
+                    originalApprovePendingAd(id);
+                }
+            };
+        } else {
+            // Если функции нет, создаём заново
+            window.approvePendingAd = function(id) {
+                const idx = pendingAdsList.findIndex(a => a.id === id);
+                if (idx > -1) {
+                    const ad = pendingAdsList.splice(idx, 1)[0];
+                    ad.status = 'approved';
+                    globalAdsFeed.unshift(ad);
+                    localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                    localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                    renderPendingAds();
+                    renderFeed();
+                    playSfx('success');
+                }
+            };
+        }
+    })();
+</script>
+<script>
+    // ==========================================================================
+    // УЛУЧШЕННЫЙ ПРОСМОТР ОБЪЯВЛЕНИЯ (ПОХОЖИЕ, ФОТО, ПРОДАВЕЦ)
+    // ==========================================================================
+    (function() {
+        const originalOpenAdDetail = window.openAdDetail;
+        window.openAdDetail = function(id) {
+            const ad = globalAdsFeed.find(a => a.id === id);
+            if (!ad) return;
+
+            // Создаём контент вручную, чтобы было красиво
+            document.getElementById('adDetailTitle').innerText = ad.itemName;
+            const container = document.getElementById('adDetailContent');
+            container.innerHTML = `
+                ${ad.image ? `<img src="${escapeHtml(ad.image)}" style="width:100%; border-radius:12px; margin-bottom:12px; max-height:300px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                    <span class="forum-badge ${ad.mode === 'sell' ? 'badge-sell' : 'badge-buy'}">${escapeHtml(ad.mode === 'sell' ? 'Продажа' : 'Покупка')}</span>
+                    <span style="font-size:13px; color:var(--app-text-muted);">${escapeHtml(ad.server)}</span>
+                </div>
+                <h4 style="font-size:20px; margin-bottom:4px;">${escapeHtml(ad.itemName)}</h4>
+                <div style="font-size:24px; font-weight:700; color:var(--app-accent-gold); margin-bottom:8px;">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+                <p style="font-size:14px; margin-bottom:12px;">${escapeHtml(ad.text)}</p>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                    <button class="btn btn-success btn-sm" style="flex:1; min-width:120px;" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать продавцу</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1; min-width:120px;" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button>
+                    <button class="btn btn-outline btn-sm" onclick="shareAd(${ad.id})">🔗 Поделиться</button>
+                </div>
+                <div style="font-size:12px; margin-bottom:8px;">
+                    Продавец: <span style="color:var(--app-accent);" onclick="inspectUserProfile('${escapeHtml(ad.author)}')">${escapeHtml(ad.author)}</span>
+                </div>
+                <hr style="border:0; border-top:1px solid var(--app-card-border); margin:16px 0;">
+                <div style="font-weight:600; margin-bottom:8px;">Похожие объявления</div>
+                <div id="similarAdsContainer">
+                    ${globalAdsFeed.filter(a => a.status === 'approved' && a.id !== ad.id && a.category === ad.category).slice(0, 3).map(sim => `
+                        <div class="ad-card" style="margin-bottom:8px; cursor:pointer;" onclick="openAdDetail(${sim.id})">
+                            <div class="ad-title" style="font-size:14px;">${escapeHtml(sim.itemName)}</div>
+                            <div class="ad-price" style="font-size:16px;">💰 ${escapeHtml(formatPrice(sim.price))}</div>
+                            <div style="font-size:12px; color:var(--app-text-muted);">${escapeHtml(sim.server)}</div>
+                        </div>
+                    `).join('') || '<p style="font-size:13px;">Нет похожих объявлений</p>'}
+                </div>
+            `;
+            openModal('adDetailModal');
+        };
+
+        // Функция "Поделиться" (копирует текст в буфер)
+        window.shareAd = function(adId) {
+            const ad = globalAdsFeed.find(a => a.id === adId);
+            if (!ad) return;
+            const text = `${ad.itemName}\nЦена: ${formatPrice(ad.price)}\nСервер: ${ad.server}\n\n${ad.text}`;
+            navigator.clipboard.writeText(text).then(() => alert('Текст объявления скопирован'));
+        };
+    })();
+</script>
+
+<style>
+    /* Стили для блока похожих объявлений */
+    #similarAdsContainer .ad-card {
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+    #similarAdsContainer .ad-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+</style>
+<script>
+    // ==========================================================================
+    // УЛУЧШЕННАЯ НОРМАЛИЗАЦИЯ ЦЕНЫ
+    // ==========================================================================
+    (function() {
+        // Сохраняем оригинальную formatPrice
+        const originalFormatPrice = window.formatPrice;
+
+        // Новая функция
+        window.formatPrice = function(priceStr) {
+            if (!priceStr) return '';
+            
+            // Если уже содержит "к", "кк" и т.п., возвращаем как есть
+            if (/[кk]/i.test(priceStr)) return priceStr;
+
+            // Убираем все символы, кроме цифр и буквы 'к' (уже нет, но для надёжности)
+            let cleaned = String(priceStr).replace(/[^0-9кk]/gi, '');
+            
+            // Если после очистки остались только цифры
+            if (/^\d+$/.test(cleaned)) {
+                const num = parseInt(cleaned, 10);
+                if (isNaN(num)) return priceStr;
+                if (num >= 1e9) return (num / 1e9).toFixed(1).replace(/\.0$/, '') + 'ккк';
+                if (num >= 1e6) return (num / 1e6).toFixed(1).replace(/\.0$/, '') + 'кк';
+                if (num >= 1e3) return (num / 1e3).toFixed(1).replace(/\.0$/, '') + 'к';
+                return num.toString();
+            }
+            
+            // Если после очистки что-то осталось, возвращаем очищенное
+            return cleaned || priceStr;
+        };
+
+        // Дополнительно: при вводе в поле цены автоматически форматируем
+        document.addEventListener('input', function(e) {
+            if (e.target.id === 'price') {
+                // Можно сразу показывать подсказку, но не менять значение, чтобы не мешать вводу
+                // Лучше оставить как есть, а при отправке уже будет нормализация
+            }
+        });
+
+        console.log('Функция formatPrice переопределена для обработки 5.000, 5000, 5к');
+    })();
+</script>

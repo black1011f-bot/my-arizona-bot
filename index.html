@@ -3996,3 +3996,731 @@
     console.log('Система банов и разбанов готова.');
 })();
 </script>
+<!-- ==================== ЧАСТЬ 110: ВОССТАНОВЛЕНИЕ ИГРЫ «БАРЫГА» (СТАРАЯ РАБОЧАЯ ВЕРСИЯ) ==================== -->
+<script>
+(function() {
+    console.log('Часть 110: восстановление игры Барыга.');
+
+    // Загружаем сохранённые данные или создаём новые
+    let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || JSON.stringify({
+        money: 0,
+        clickPower: 1,
+        clickCost: 50,
+        autoIncome: 0,
+        autoCost: 200,
+        proCost: 800,
+        shopCost: 3000,
+        eliteCost: 10000,
+        oilCost: 35000,
+        cryptoCost: 150000
+    }));
+
+    function saveBaryga() {
+        localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
+    }
+
+    // Обновляем UI (если модалка открыта)
+    window.updateBarygaUI = function() {
+        const moneyEl = document.getElementById('clickerMoney');
+        if (moneyEl) moneyEl.innerText = barygaData.money.toLocaleString() + ' $';
+        const powerEl = document.getElementById('clickPowerLabel');
+        if (powerEl) powerEl.innerText = `+${barygaData.clickPower} $ / клик`;
+        const autoEl = document.getElementById('autoIncomeLabel');
+        if (autoEl) autoEl.innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
+        const costEls = {
+            clickCostLabel: barygaData.clickCost,
+            autoCostLabel: barygaData.autoCost,
+            proCostLabel: barygaData.proCost,
+            shopCostLabel: barygaData.shopCost,
+            eliteCostLabel: barygaData.eliteCost,
+            oilCostLabel: barygaData.oilCost,
+            cryptoCostLabel: barygaData.cryptoCost
+        };
+        Object.entries(costEls).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = `Цена: ${val.toLocaleString()} $`;
+        });
+    };
+
+    // Клик по основной кнопке
+    window.barygaClick = function() {
+        barygaData.money += barygaData.clickPower;
+        updateBarygaUI();
+        saveBaryga();
+        if (typeof playSfx === 'function') playSfx('cash');
+    };
+
+    // Покупки улучшений
+    function makeBuy(costKey, powerKey, increase, isIncome) {
+        if (barygaData.money >= barygaData[costKey]) {
+            barygaData.money -= barygaData[costKey];
+            if (isIncome) barygaData[powerKey] += increase;
+            else barygaData[powerKey] += increase;
+            barygaData[costKey] = Math.floor(barygaData[costKey] * 1.5);
+            updateBarygaUI();
+            saveBaryga();
+            if (typeof playSfx === 'function') playSfx('success');
+        } else {
+            alert('❌ Недостаточно средств!');
+        }
+    }
+
+    window.buyClickUpgrade = function() { makeBuy('clickCost', 'clickPower', 1, false); };
+    window.buyAutoUpgrade = function() { makeBuy('autoCost', 'autoIncome', 5, true); };
+    window.buyProUpgrade = function() { makeBuy('proCost', 'autoIncome', 20, true); };
+    window.buyShopUpgrade = function() { makeBuy('shopCost', 'autoIncome', 50, true); };
+    window.buyEliteUpgrade = function() { makeBuy('eliteCost', 'clickPower', 10, false); };
+    window.buyOilRigUpgrade = function() { makeBuy('oilCost', 'autoIncome', 200, true); };
+    window.buyCryptoUpgrade = function() { makeBuy('cryptoCost', 'autoIncome', 1000, true); };
+
+    // Автодоход (каждые 100 мс добавляем часть)
+    setInterval(() => {
+        if (barygaData.autoIncome > 0) {
+            barygaData.money += Math.floor(barygaData.autoIncome / 10);
+            saveBaryga();
+            if (document.getElementById('barygaModal')?.style.display === 'flex') updateBarygaUI();
+        }
+    }, 100);
+
+    // Открываем модалку игры
+    window.openBarygaModal = function() {
+        const modal = document.getElementById('barygaModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            updateBarygaUI();
+        } else {
+            // Если модалки нет, создаём простую
+            alert('Игра Барыга временно недоступна');
+        }
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+    window.closeBarygaModal = function() {
+        const modal = document.getElementById('barygaModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    updateBarygaUI();
+    console.log('Игра Барыга восстановлена.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 111: КЛИКИ ПО ИКОНКЕ/НАЗВАНИЮ И БАННЕРУ ==================== -->
+<script>
+(function() {
+    console.log('Часть 111: привязка ссылок.');
+
+    function bindBrandLink() {
+        // Иконка и название в шапке -> бот @arizona_coin_bot
+        const brand = document.querySelector('.app-header .brand');
+        if (brand) {
+            brand.style.cursor = 'pointer';
+            brand.addEventListener('click', () => {
+                window.open('https://t.me/arizona_coin_bot', '_blank');
+            });
+            brand.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                window.open('https://t.me/arizona_coin_bot', '_blank');
+            });
+        }
+    }
+
+    function bindBannerLink() {
+        // Баннер (welcome-banner-wide) -> тгк @Bounty_Squad31
+        const banner = document.querySelector('.welcome-banner-wide');
+        if (banner) {
+            banner.style.cursor = 'pointer';
+            banner.addEventListener('click', () => {
+                window.open('https://t.me/Bounty_Squad31', '_blank');
+            });
+            banner.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                window.open('https://t.me/Bounty_Squad31', '_blank');
+            });
+        }
+    }
+
+    if (document.readyState === 'complete') {
+        bindBrandLink();
+        bindBannerLink();
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            bindBrandLink();
+            bindBannerLink();
+        });
+    }
+})();
+</script>
+<!-- ==================== ЧАСТЬ 112: СИСТЕМА РАССЫЛКИ С SMS-УВЕДОМЛЕНИЯМИ ==================== -->
+<script>
+(function() {
+    console.log('Часть 112: настройка системы рассылки.');
+
+    // Массив истории уведомлений (общий для всех, но храним в localStorage)
+    let broadcastHistory = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+
+    function saveBroadcastHistory() {
+        localStorage.setItem('arizona_broadcast_history', JSON.stringify(broadcastHistory));
+    }
+
+    // Создаём контейнер для SMS-уведомлений (если его нет)
+    function ensureSmsContainer() {
+        let container = document.getElementById('smsNotificationContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'smsNotificationContainer';
+            container.style.cssText = `
+                position: fixed;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 99999;
+                pointer-events: none;
+            `;
+            document.body.appendChild(container);
+        }
+        return container;
+    }
+
+    // Показать SMS-уведомление (плашка справа)
+    function showSmsNotification(text) {
+        const container = ensureSmsContainer();
+        const sms = document.createElement('div');
+        sms.style.cssText = `
+            background: #fff;
+            color: #1c1c1e;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            font-size: 13px;
+            max-width: 260px;
+            word-wrap: break-word;
+            pointer-events: auto;
+            animation: fadeIn 0.3s ease;
+            cursor: pointer;
+            border-left: 4px solid #cb11ab;
+        `;
+        sms.innerText = text;
+        sms.addEventListener('click', () => {
+            openBroadcastsModal();
+            sms.remove();
+        });
+        container.appendChild(sms);
+        // Автоматически скрыть через 10 секунд
+        setTimeout(() => {
+            if (sms.parentNode) sms.remove();
+        }, 10000);
+    }
+
+    // Открыть модальное окно с историей рассылок
+    window.openBroadcastsModal = function() {
+        let modal = document.getElementById('broadcastsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'broadcastsModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 400px; width: 90%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin: 0;">📩 Рассылки</h3>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn btn-outline btn-sm" onclick="clearAllBroadcasts()" style="margin:0;">🗑 Очистить все</button>
+                            <button class="btn btn-outline btn-sm" onclick="closeModal('broadcastsModal')" style="margin:0;">✕</button>
+                        </div>
+                    </div>
+                    <div id="broadcastHistoryList" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        renderBroadcastHistory();
+        modal.style.display = 'flex';
+    };
+
+    // Рендер списка уведомлений
+    function renderBroadcastHistory() {
+        const container = document.getElementById('broadcastHistoryList');
+        if (!container) return;
+        if (broadcastHistory.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:var(--muted);">Нет уведомлений</div>';
+            return;
+        }
+        container.innerHTML = broadcastHistory.map((item, index) => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border);">
+                <span style="flex:1; margin-right:8px; font-size:13px;">${item}</span>
+                <button class="btn btn-outline btn-sm" onclick="deleteBroadcastItem(${index})" style="margin:0;">🗑</button>
+            </div>
+        `).join('');
+    }
+
+    // Удалить одно уведомление
+    window.deleteBroadcastItem = function(index) {
+        broadcastHistory.splice(index, 1);
+        saveBroadcastHistory();
+        renderBroadcastHistory();
+    };
+
+    // Очистить все уведомления
+    window.clearAllBroadcasts = function() {
+        if (confirm('Удалить все уведомления?')) {
+            broadcastHistory = [];
+            saveBroadcastHistory();
+            renderBroadcastHistory();
+        }
+    };
+
+    // Переопределяем функцию отправки рассылки (владелец)
+    const originalUpdateBroadcastMessage = window.updateBroadcastMessage;
+    window.updateBroadcastMessage = function() {
+        const input = document.getElementById('newBroadcastInput');
+        const text = input ? input.value.trim() : '';
+        if (!text) {
+            alert('⚠️ Введите текст уведомления!');
+            return;
+        }
+        // Добавляем в историю
+        broadcastHistory.unshift(`📢 ${new Date().toLocaleString()}: ${text}`);
+        saveBroadcastHistory();
+        // Показываем SMS-уведомление у отправителя (для наглядности)
+        showSmsNotification(text);
+        // Также сохраняем как баннер (для совместимости)
+        localStorage.setItem('arizona_broadcast_msg', text);
+        const banner = document.getElementById('broadcastBanner');
+        if (banner) {
+            const span = document.getElementById('broadcastText');
+            if (span) span.innerHTML = `<b>Уведомление от администрации!</b> ${text}`;
+            banner.style.display = 'block';
+        }
+        if (input) input.value = '';
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // При загрузке проверяем, есть ли непрочитанная рассылка (последняя)
+    function checkForNewBroadcast() {
+        if (broadcastHistory.length > 0) {
+            // Показываем последнее уведомление, если оно ещё не было показано
+            const lastNotification = broadcastHistory[0];
+            // В реальности нужно хранить флаг прочтения, но для простоты показываем всегда при загрузке
+            showSmsNotification(lastNotification);
+        }
+    }
+
+    // Добавляем пункт в меню ⋮ (если меню существует)
+    function addBroadcastMenuItem() {
+        const menu = document.getElementById('dropdownMenu');
+        if (menu) {
+            // Проверяем, есть ли уже такой пункт
+            if (!Array.from(menu.children).some(child => child.textContent.includes('Рассылки'))) {
+                const broadcastItem = document.createElement('button');
+                broadcastItem.className = 'dropdown-item';
+                broadcastItem.style.cssText = 'display: block; width: 100%; text-align: left; padding: 10px 12px; background: none; border: none; color: var(--text, #1c1c1e); font-size: 13px; cursor: pointer; border-radius: 8px;';
+                broadcastItem.textContent = '📩 Рассылки';
+                broadcastItem.addEventListener('click', () => {
+                    openBroadcastsModal();
+                    closeDropdowns();
+                });
+                menu.appendChild(broadcastItem);
+            }
+        }
+    }
+
+    // Инициализация
+    if (document.readyState === 'complete') {
+        checkForNewBroadcast();
+        addBroadcastMenuItem();
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            checkForNewBroadcast();
+            addBroadcastMenuItem();
+        });
+    }
+
+    console.log('Система рассылки активирована.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 113: ИСПРАВЛЕНИЕ АДМИН-ПАНЕЛИ (КНОПКИ ОТДЕЛЬНО ОТ ТЕКСТА) ==================== -->
+<style>
+    /* Разделяем кнопки и текст в админ-панели */
+    #tabAdmin .admin-section-title,
+    #tabAdmin .admin-controls-card {
+        margin-bottom: 12px;
+    }
+    #tabAdmin .admin-controls-card .form-group {
+        margin-bottom: 10px;
+    }
+    #tabAdmin button {
+        display: inline-block;
+        width: auto;
+        margin: 4px 4px 4px 0;
+    }
+    #tabAdmin .admin-actions-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 0;
+    }
+    #tabAdmin label {
+        margin-bottom: 4px;
+    }
+    #tabAdmin input {
+        margin-bottom: 6px;
+    }
+    #tabAdmin #ownerSection {
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+    }
+</style>
+<!-- ==================== ЧАСТЬ 114: ТУТОРИАЛ ПРИ ПЕРВОМ ИСПОЛЬЗОВАНИИ (ПОДСКАЗКИ) ==================== -->
+<script>
+(function() {
+    console.log('Часть 114: интерактивный гид.');
+
+    // Флаги: какие подсказки уже показывались
+    let guidedFeatures = {};
+    try {
+        guidedFeatures = JSON.parse(localStorage.getItem('arizona_guided_features') || '{}');
+    } catch(e) {}
+
+    function markGuided(feature) {
+        guidedFeatures[feature] = true;
+        localStorage.setItem('arizona_guided_features', JSON.stringify(guidedFeatures));
+    }
+
+    function showTooltip(element, text) {
+        document.querySelectorAll('.tooltip').forEach(t => t.remove());
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        tooltip.innerText = text;
+        tooltip.style.cssText = `
+            position: fixed;
+            background: var(--accent, #cb11ab);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 10000;
+            pointer-events: none;
+            max-width: 260px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        `;
+        document.body.appendChild(tooltip);
+        const rect = element.getBoundingClientRect();
+        tooltip.style.top = (rect.top - tooltip.offsetHeight - 8) + 'px';
+        tooltip.style.left = (rect.left + rect.width/2 - tooltip.offsetWidth/2) + 'px';
+        setTimeout(() => tooltip.remove(), 2500);
+    }
+
+    function checkGuided(feature, selector, message) {
+        if (!guidedFeatures[feature]) {
+            const el = document.querySelector(selector);
+            if (el) {
+                showTooltip(el, message);
+                markGuided(feature);
+            }
+        }
+    }
+
+    // Подсказки при первом открытии вкладок
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+        if (typeof originalSwitchTab === 'function') originalSwitchTab(tabId);
+        setTimeout(() => {
+            if (tabId === 'feed') checkGuided('feed', '#feedContainer', 'Здесь отображаются одобренные объявления.');
+            if (tabId === 'app') checkGuided('app', '#tabApp', 'Заполните форму, чтобы создать объявление.');
+            if (tabId === 'myAds') checkGuided('myAds', '#myAdsContainer', 'Здесь вы видите свои объявления и их статус.');
+            if (tabId === 'favorites') checkGuided('favorites', '#favoritesContainer', 'Избранные объявления сохраняются здесь.');
+            if (tabId === 'admin') checkGuided('admin', '#pendingAdsContainer', 'Модерация объявлений доступна только админам.');
+        }, 300);
+    };
+
+    // Подсказка при первом открытии игры Барыга
+    const originalOpenBarygaModal = window.openBarygaModal;
+    window.openBarygaModal = function() {
+        if (typeof originalOpenBarygaModal === 'function') originalOpenBarygaModal();
+        setTimeout(() => {
+            checkGuided('baryga', '#barygaModal .big-click-btn', 'Нажимайте на кнопку, чтобы зарабатывать!');
+        }, 200);
+    };
+
+    console.log('Интерактивные подсказки готовы.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 115: УДАЛЕНИЕ ЧАТОВ ==================== -->
+<script>
+(function() {
+    console.log('Часть 115: добавление удаления чатов.');
+
+    // Переопределяем renderChatsList, чтобы добавить кнопку удаления
+    const originalRenderChatsList = window.renderChatsList;
+    window.renderChatsList = function() {
+        if (typeof originalRenderChatsList === 'function') {
+            originalRenderChatsList();
+        }
+        const container = document.getElementById('chatsList');
+        if (!container) return;
+        const users = Object.keys(chatsDatabase);
+        if (users.length === 0) return;
+        container.innerHTML = users.map(user => {
+            const lastMsg = chatsDatabase[user][chatsDatabase[user].length - 1] || { text: 'Нет сообщений' };
+            return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border);">
+                    <div onclick="openChatWithUser('${user}')" style="flex:1; cursor:pointer;">
+                        <div style="font-weight:700;">${user}</div>
+                        <div style="font-size:11px; color:var(--muted);">${lastMsg.text}</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="deleteChat('${user}')" style="margin:0;">🗑</button>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // Функция удаления конкретного чата
+    window.deleteChat = function(user) {
+        if (confirm(`Удалить переписку с ${user}?`)) {
+            delete chatsDatabase[user];
+            localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+            renderChatsList();
+            if (activeChatUser === user) {
+                activeChatUser = '';
+                document.getElementById('chatDetailModal').style.display = 'none';
+            }
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    // Функция удаления всех чатов (добавим в модалку переписок)
+    window.clearAllChats = function() {
+        if (confirm('Удалить все переписки?')) {
+            chatsDatabase = {};
+            localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+            renderChatsList();
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    // Добавим кнопку "Очистить все" в модалку переписок, если её нет
+    function addClearAllButtonToChats() {
+        const modal = document.getElementById('chatsModal');
+        if (modal && !document.getElementById('clearAllChatsBtn')) {
+            const header = modal.querySelector('.modal-header, div[style*="display: flex; justify-content: space-between"]');
+            if (header) {
+                const btn = document.createElement('button');
+                btn.id = 'clearAllChatsBtn';
+                btn.className = 'btn btn-outline btn-sm';
+                btn.innerText = '🧹 Очистить все';
+                btn.onclick = clearAllChats;
+                header.appendChild(btn);
+            }
+        }
+    }
+
+    if (document.readyState === 'complete') {
+        renderChatsList();
+        addClearAllButtonToChats();
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            renderChatsList();
+            addClearAllButtonToChats();
+        });
+    }
+})();
+</script>
+<!-- ==================== ЧАСТЬ 116: ПОМЕТКА "УДАЛЕНО" И УДАЛЕНИЕ ОБЪЯВЛЕНИЙ В "МОИХ ТЕМАХ" ==================== -->
+<script>
+(function() {
+    console.log('Часть 116: улучшение управления своими объявлениями.');
+
+    // Переопределяем renderMyAds, чтобы помечать удалённые объявления
+    window.renderMyAds = function() {
+        const container = document.getElementById('myAdsContainer');
+        if (!container) return;
+        if (myAdsList.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">Вы ещё не создавали объявлений</div>';
+            return;
+        }
+        container.innerHTML = myAdsList.map(ad => {
+            const isDeleted = ad.status === 'deleted';
+            const statusText = isDeleted ? '❌ Удалено' : (ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации');
+            return `
+                <div class="ad-card" style="${isDeleted ? 'opacity:0.6; border-color: #dc3545;' : ''}">
+                    <div class="ad-title">${escapeHtml(ad.itemName)} (${escapeHtml(formatPrice(ad.price))})</div>
+                    <div style="font-size:12px; color:${isDeleted ? '#dc3545' : 'var(--accent2)'};">Статус: ${statusText}</div>
+                    ${isDeleted ? '<div style="color:#dc3545; font-weight:700; margin-top:4px;">Это объявление было удалено модерацией</div>' : ''}
+                    <button class="btn btn-danger btn-sm" onclick="deleteMyAdPermanently(${ad.id})" style="margin-top:6px;">🗑 Удалить</button>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // Функция полного удаления своего объявления (из myAdsList и связанных)
+    window.deleteMyAdPermanently = function(id) {
+        if (!confirm('Удалить это объявление навсегда?')) return;
+        myAdsList = myAdsList.filter(a => a.id !== id);
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+        // Также удаляем из pendingAdsList, если оно ещё там
+        pendingAdsList = pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+        // Удаляем из избранного, если есть
+        favoritesList = favoritesList.filter(f => f.id !== id);
+        localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
+        renderMyAds();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // Функция удаления всех своих объявлений
+    window.clearMyAds = function() {
+        if (confirm('Удалить все ваши объявления?')) {
+            myAdsList = [];
+            localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            renderMyAds();
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    // Переопределяем deleteApprovedAd (удаление админом) для пометки в myAdsList
+    window.deleteApprovedAd = function(id) {
+        if (confirm('Удалить объявление из ленты?')) {
+            // Помечаем как удалённое в myAdsList, если принадлежит текущему пользователю
+            const myAdIndex = myAdsList.findIndex(a => a.id === id);
+            if (myAdIndex > -1) {
+                myAdsList[myAdIndex].status = 'deleted';
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            }
+            // Удаляем из глобальной ленты
+            globalAdsFeed = globalAdsFeed.filter(a => a.id !== id);
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            // Удаляем из избранного
+            favoritesList = favoritesList.filter(f => f.id !== id);
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
+            renderFeed();
+            renderMyAds();
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    console.log('Управление объявлениями улучшено.');
+})();
+ </script>
+ <!-- ==================== ЧАСТЬ 117: УДАЛЕНИЕ «ТЕМЫ» ИЗ МЕНЮ И КД ПРИ СБРОСЕ НАСТРОЕК ==================== -->
+<script>
+(function() {
+    console.log('Часть 117: корректировка меню и сброса настроек.');
+
+    // 1. Удаляем пункт «Темы» из выпадающего меню (⋮), если он есть.
+    function removeThemeFromMenu() {
+        const menu = document.getElementById('dropdownMenu');
+        if (!menu) return;
+        const items = menu.querySelectorAll('.dropdown-item');
+        items.forEach(item => {
+            if (item.textContent.includes('Темы')) {
+                item.remove();
+            }
+        });
+    }
+
+    // 2. Переопределяем resetAllData так, чтобы после сброса действовал КД 2 минуты
+    //    и старые объявления удалялись, но нельзя было сразу создавать новое.
+    window.resetAllData = function() {
+        if (confirm('⚠️ Сбросить ВСЕ данные приложения?')) {
+            // Очищаем localStorage
+            localStorage.clear();
+            // Устанавливаем время последнего объявления = сейчас, чтобы КД начался заново
+            localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
+            // Уведомляем
+            alert('✅ Данные сброшены. Подождите 2 минуты перед созданием нового объявления.');
+            // Перезагружаем страницу
+            location.reload();
+        }
+    };
+
+    // Выполняем после загрузки
+    if (document.readyState === 'complete') {
+        removeThemeFromMenu();
+    } else {
+        document.addEventListener('DOMContentLoaded', removeThemeFromMenu);
+    }
+})();
+</script>
+<!-- ==================== ЧАСТЬ 118: ПРОВЕРКА ПИНГА И БЛОКИРОВКА ПРИ ВЫСОКОМ ПИНГЕ ==================== -->
+<script>
+(function() {
+    console.log('Часть 118: проверка пинга.');
+
+    const MAX_PING = 399; // максимально допустимый пинг в мс
+    const CHECK_URL = 'https://api.telegram.org'; // можно заменить на другой
+    const CHECK_INTERVAL = 5000; // проверяем каждые 5 секунд
+
+    let pingOverlay = null;
+
+    function createPingOverlay() {
+        if (pingOverlay) return pingOverlay;
+        pingOverlay = document.createElement('div');
+        pingOverlay.id = 'pingOverlay';
+        pingOverlay.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            z-index: 100000; display: none; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            padding: 20px; color: #fff;
+        `;
+        pingOverlay.innerHTML = `
+            <div style="font-size: 40px; margin-bottom: 16px;">📡</div>
+            <h2 style="margin-bottom: 8px;">Высокий пинг</h2>
+            <p style="max-width: 400px; line-height: 1.5; color: #ccc;">
+                Ваше соединение слишком медленное (пинг более ${MAX_PING} мс).<br>
+                Пожалуйста, подождите или смените сеть.
+            </p>
+            <div style="margin-top: 20px; width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #cb11ab; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        `;
+        document.body.appendChild(pingOverlay);
+        const style = document.createElement('style');
+        style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+        return pingOverlay;
+    }
+
+    function showPingOverlay() {
+        const overlay = createPingOverlay();
+        overlay.style.display = 'flex';
+    }
+
+    function hidePingOverlay() {
+        if (pingOverlay) pingOverlay.style.display = 'none';
+    }
+
+    async function checkPing() {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), MAX_PING + 100);
+        const startTime = performance.now();
+        try {
+            await fetch(CHECK_URL, { mode: 'no-cors', signal: controller.signal });
+            const ping = performance.now() - startTime;
+            clearTimeout(timeoutId);
+            if (ping > MAX_PING) {
+                showPingOverlay();
+            } else {
+                hidePingOverlay();
+            }
+        } catch (error) {
+            showPingOverlay();
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    function startPingMonitor() {
+        checkPing();
+        setInterval(checkPing, CHECK_INTERVAL);
+        window.addEventListener('online', checkPing);
+        window.addEventListener('offline', showPingOverlay);
+    }
+
+    if (document.readyState === 'complete') {
+        startPingMonitor();
+    } else {
+        document.addEventListener('DOMContentLoaded', startPingMonitor);
+    }
+
+    console.log('Проверка пинга активирована.');
+})();
+</script>

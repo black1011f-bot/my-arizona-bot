@@ -958,3 +958,433 @@
 </script>
 </body>
 </html>
+<!-- ==================== ЧАСТЬ 72: ИСПРАВЛЕНИЕ СТИЛЕЙ (ШАПКА, БАННЕР, НИЖНИЕ ТАБЫ, 3D) ==================== -->
+<style>
+    /* ========== ВОССТАНОВЛЕНИЕ ШАПКИ ========== */
+    .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--header-bg, #1a1a1a);
+        border: 1px solid var(--border, #2a2a2a);
+        border-radius: 16px;
+        padding: 10px 14px;
+        margin-bottom: 10px;
+        gap: 8px;
+    }
+    .app-header .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 900;
+        font-size: 16px;
+    }
+    .app-header .brand img {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        border: 2px solid var(--accent, #ff3b30);
+    }
+    .app-header .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--card-bg, #161616);
+        border: 1px solid var(--border, #2a2a2a);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+        transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .icon-btn:active {
+        transform: translateY(2px);
+        box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+    }
+
+    /* ========== БАННЕР ========== */
+    .broadcast-banner {
+        display: none;
+        background: var(--accent, #ff3b30);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        cursor: pointer;
+        text-align: center;
+    }
+
+    /* ========== НИЖНИЕ ТАБЫ (НАВИГАЦИЯ) ========== */
+    .nav-tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 10px;
+        background: var(--header-bg, #1a1a1a);
+        padding: 6px;
+        border-radius: 14px;
+        border: 1px solid var(--border, #2a2a2a);
+        overflow-x: auto;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+    }
+    .nav-tab {
+        flex: 1;
+        padding: 8px 4px;
+        background: transparent;
+        border: none;
+        border-radius: 10px;
+        color: var(--muted, #aaaaaa);
+        font-weight: 700;
+        white-space: nowrap;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .nav-tab.active {
+        background: var(--btn-bg, linear-gradient(135deg, #ff3b30, #c0392b));
+        color: #fff;
+        box-shadow: 0 6px 0 #8e1f1f, 0 8px 15px rgba(0,0,0,0.3);
+        transform: translateY(0);
+    }
+    .nav-tab:active {
+        transform: translateY(3px);
+        box-shadow: 0 2px 0 #8e1f1f, 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    /* ========== 3D ДЛЯ ВСЕХ КНОПОК ========== */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 16px;
+        border-radius: 50px;
+        background: var(--btn-bg, linear-gradient(135deg, #ff3b30, #c0392b));
+        color: #fff;
+        font-weight: 700;
+        width: 100%;
+        border: none;
+        box-shadow: 0 6px 0 #8e1f1f, 0 8px 15px rgba(0,0,0,0.3);
+        transform: translateY(0);
+        transition: all 0.1s ease;
+        font-size: 13px;
+    }
+    .btn:active {
+        transform: translateY(3px);
+        box-shadow: 0 2px 0 #8e1f1f, 0 4px 8px rgba(0,0,0,0.3);
+    }
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 11px;
+        border-radius: 30px;
+    }
+    .btn-outline {
+        background: var(--card-bg, #161616);
+        color: var(--text, #fff);
+        border: 1px solid var(--border, #2a2a2a);
+        box-shadow: none;
+    }
+    .btn-danger {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+    }
+
+    /* ========== КНОПКИ В ОБЪЯВЛЕНИЯХ ========== */
+    .ad-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+    .ad-actions .btn {
+        width: auto;
+        flex: 1;
+        min-width: 80px;
+    }
+
+    /* ========== АДАПТИВНОСТЬ ========== */
+    @media (max-width: 480px) {
+        .app-header { padding: 8px 10px; }
+        .app-header .brand { font-size: 15px; }
+        .app-header .brand img { width: 32px; height: 32px; }
+        .icon-btn { width: 32px; height: 32px; font-size: 16px; }
+        .nav-tab { font-size: 11px; padding: 6px 2px; }
+    }
+</style>
+<script>
+    (function() {
+        // Восстанавливаем корректное отображение шапки, баннера и нижней навигации
+        function initUI() {
+            // Убедимся, что шапка не пустая
+            const header = document.querySelector('.app-header');
+            if (header) {
+                // Проверяем наличие бренда
+                if (!header.querySelector('.brand')) {
+                    const brand = document.createElement('div');
+                    brand.className = 'brand';
+                    brand.innerHTML = `<img src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP"><span>Arizona RP</span>`;
+                    header.prepend(brand);
+                }
+                // Время МСК
+                if (!header.querySelector('#mskTime')) {
+                    const timeSpan = document.createElement('span');
+                    timeSpan.id = 'mskTime';
+                    timeSpan.style.cssText = 'font-size:11px; margin-left:auto;';
+                    header.querySelector('.header-actions')?.prepend(timeSpan);
+                }
+                // Кнопки ⋮ и темы
+                if (!header.querySelector('[onclick="toggleTheme()"]')) {
+                    const themeBtn = document.createElement('button');
+                    themeBtn.className = 'icon-btn';
+                    themeBtn.innerHTML = '🌓';
+                    themeBtn.onclick = toggleTheme;
+                    header.querySelector('.header-actions')?.prepend(themeBtn);
+                }
+                if (!header.querySelector('[onclick="toggleDropdownMenu(event)"]')) {
+                    const menuBtn = document.createElement('button');
+                    menuBtn.className = 'icon-btn';
+                    menuBtn.innerHTML = '⋮';
+                    menuBtn.onclick = toggleDropdownMenu;
+                    header.querySelector('.header-actions')?.append(menuBtn);
+                }
+            }
+
+            // Восстанавливаем нижние табы, если их нет
+            if (!document.querySelector('.nav-tabs')) {
+                const nav = document.createElement('nav');
+                nav.className = 'nav-tabs';
+                nav.innerHTML = `
+                    <button class="nav-tab active" onclick="switchTab('feed')">🌍 Главная</button>
+                    <button class="nav-tab" onclick="switchTab('app')">📝 Создать</button>
+                    <button class="nav-tab" onclick="switchTab('myAds')">📂 Мои темы</button>
+                    <button class="nav-tab" onclick="switchTab('favorites')">❤️ Избранное</button>
+                    <button class="nav-tab" id="adminTabBtn" style="display:none;" onclick="switchTab('admin')">⚙️ Админ</button>
+                `;
+                document.querySelector('.container').prepend(nav);
+            }
+
+            // Баннер рассылки
+            const banner = document.getElementById('broadcastBanner');
+            if (banner) {
+                banner.style.display = 'none'; // по умолчанию скрыт
+                const savedBroadcast = localStorage.getItem('arizona_broadcast_msg');
+                if (savedBroadcast) {
+                    document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${savedBroadcast}`;
+                    banner.style.display = 'block';
+                }
+            }
+        }
+
+        // Обновляем время каждую секунду
+        function updateTime() {
+            const el = document.getElementById('mskTime');
+            if (el) {
+                const now = new Date();
+                const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+                el.innerText = msk.toTimeString().split(' ')[0] + ' МСК';
+            }
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Переопределяем switchTab для корректного обновления активной вкладки
+        const originalSwitchTab = window.switchTab;
+        window.switchTab = function(tabId) {
+            // Скрываем все секции
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            // Показываем нужную
+            const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (target) target.classList.add('active');
+            // Обновляем активную вкладку в навигации
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            const activeTab = document.querySelector(`.nav-tab[onclick="switchTab('${tabId}')"]`);
+            if (activeTab) activeTab.classList.add('active');
+            // Вызываем рендеры
+            if (tabId === 'feed') renderFeed();
+            if (tabId === 'myAds') renderMyAds();
+            if (tabId === 'favorites') renderFavorites();
+            if (tabId === 'admin') renderPendingAds();
+            playSfx('click');
+        };
+
+        // Инициализация после загрузки
+        if (document.readyState === 'complete') {
+            initUI();
+        } else {
+            document.addEventListener('DOMContentLoaded', initUI);
+        }
+
+        // Исправление toggleDropdownMenu
+        window.toggleDropdownMenu = function(e) {
+            e.stopPropagation();
+            const menu = document.getElementById('dropdownMenu');
+            if (menu) {
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                playSfx('click');
+            }
+        };
+        window.closeDropdowns = function() {
+            const menu = document.getElementById('dropdownMenu');
+            if (menu) menu.style.display = 'none';
+        };
+        window.addEventListener('click', closeDropdowns);
+    })();
+</script>
+<script>
+    (function() {
+        // Функция безопасного вывода текста
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        }
+
+        // Переопределяем renderFeed, чтобы он корректно выводил объявления
+        const originalRenderFeed = window.renderFeed;
+        window.renderFeed = function() {
+            const container = document.getElementById('feedContainer');
+            if (!container) return;
+            const approved = globalAdsFeed.filter(ad => ad.status === 'approved');
+            if (approved.length === 0) {
+                container.innerHTML = '<div style="color:var(--muted); text-align:center;">Лента пуста</div>';
+                return;
+            }
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME;
+            container.innerHTML = approved.slice(0, feedDisplayLimit || 20).map(ad => {
+                const isFav = favoritesList.some(f => f.id === ad.id);
+                const imageHtml = ad.image ? `<img src="${escapeHtml(ad.image)}" style="width:100%; height:120px; object-fit:cover; border-radius:10px; margin-bottom:6px;" onerror="this.style.display='none'">` : '';
+                const deleteBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteApprovedAd(${ad.id})">🗑</button>` : '';
+                return `<div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--muted);">
+                        <span class="forum-badge" style="background:rgba(255,59,48,0.2); color:var(--accent2); padding:2px 8px; border-radius:10px;">${escapeHtml(ad.mode === 'sell' ? 'Продажа' : 'Покупка')}</span>
+                        <span>${escapeHtml(ad.server)}</span>
+                    </div>
+                    ${imageHtml}
+                    <div class="ad-title" style="font-weight:900; font-size:15px;">${escapeHtml(ad.itemName)}</div>
+                    <div class="ad-price" style="color:var(--gold); font-weight:800;">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+                    <div style="color:var(--muted); font-size:12px; line-height:1.4;">${escapeHtml(ad.text)}</div>
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button class="btn btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">${isFav ? '❤️' : '🤍'}</button>
+                        <button class="btn btn-sm" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать</button>
+                        ${deleteBtn}
+                    </div>
+                </div>`;
+            }).join('');
+        };
+
+        // Переопределяем renderPendingAds для отображения админам
+        const originalRenderPendingAds = window.renderPendingAds;
+        window.renderPendingAds = function() {
+            const container = document.getElementById('pendingAdsContainer');
+            if (!container) return;
+            const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME;
+            if (!isAdmin) {
+                container.innerHTML = '<div style="font-size:12px; color:var(--muted);">Доступно только администраторам</div>';
+                return;
+            }
+            document.getElementById('ownerSection').style.display = currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME ? 'block' : 'none';
+            if (pendingAdsList.length === 0) {
+                container.innerHTML = '<div style="font-size:12px; color:var(--muted);">Нет ожидающих проверки</div>';
+                return;
+            }
+            container.innerHTML = pendingAdsList.map(ad => `
+                <div class="ad-card" style="border-color:var(--accent);">
+                    <div class="ad-title">${escapeHtml(ad.itemName)} (${escapeHtml(formatPrice(ad.price))})</div>
+                    <div style="font-size:11px;">От: ${escapeHtml(ad.author)} | ${escapeHtml(ad.server)}</div>
+                    <p style="font-size:12px;">${escapeHtml(ad.text)}</p>
+                    <div class="ad-actions">
+                        <button class="btn btn-outline btn-sm" onclick="openEditAdModal(${ad.id})">✏️ Редактировать</button>
+                        <button class="btn btn-success btn-sm" onclick="approvePendingAd(${ad.id})">✅ Одобрить</button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectPendingAd(${ad.id})">❌ Отклонить</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // Переопределяем openAdDetail для корректного отображения
+        window.openAdDetail = function(id) {
+            const ad = globalAdsFeed.find(a => a.id === id);
+            if (!ad) return;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.display = 'flex';
+            modal.id = 'adDetailModal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <h3 style="color:#fff; margin:0;">${escapeHtml(ad.itemName)}</h3>
+                        <button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                    </div>
+                    ${ad.image ? `<img src="${escapeHtml(ad.image)}" style="width:100%; border-radius:12px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
+                    <div style="font-weight:800; color:var(--gold); font-size:18px; margin-bottom:6px;">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+                    <p style="font-size:13px;">${escapeHtml(ad.text)}</p>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="btn btn-sm" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать</button>
+                        <button class="btn btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button>
+                    </div>
+                    <div style="margin-top:8px; font-size:12px;">Продавец: <span style="color:var(--accent2); cursor:pointer;" onclick="inspectUserProfile('${escapeHtml(ad.author)}')">${escapeHtml(ad.author)}</span></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        };
+
+        // Исправляем submitData для корректной работы и отсутствия лишних сообщений
+        const originalSubmitData = window.submitData;
+        window.submitData = function() {
+            const now = new Date();
+            const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            if (msk.getHours() < 9 || msk.getHours() >= 22) {
+                alert('🕒 Объявления принимаются с 09:00 до 22:00 МСК');
+                return;
+            }
+            const last = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
+            if (Date.now() - last < 120000) {
+                alert('⏳ Подождите 2 минуты перед отправкой следующего объявления');
+                return;
+            }
+            const mode = document.getElementById('mode').value;
+            const category = document.getElementById('category').value;
+            const itemName = document.getElementById('itemName').value.trim();
+            const price = document.getElementById('price').value.trim();
+            const text = document.getElementById('text').value.trim();
+            const image = document.getElementById('itemImage').value.trim();
+            const server = document.getElementById('server').value;
+            if (!itemName || !price || !text) {
+                alert('⚠️ Заполните все обязательные поля');
+                return;
+            }
+            const newAd = {
+                id: Date.now(),
+                mode, category, itemName, price, text, image, server,
+                author: currentUserUsername,
+                status: 'pending'
+            };
+            pendingAdsList.push(newAd);
+            myAdsList.push(newAd);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
+            alert('🚀 Объявление отправлено на модерацию');
+            playSfx('success');
+            switchTab('feed');
+            renderFeed();
+            renderPendingAds();
+            renderMyAds();
+            ['itemName','price','text','itemImage'].forEach(id => document.getElementById(id).value = '');
+        };
+
+        // Убираем сообщение о черновике
+        localStorage.removeItem(getUserKey('arizona_ad_draft'));
+        window.loadDraft = function() {};
+
+        console.log('Части 72-74 применены: интерфейс исправлен, баги с текстом устранены.');
+    })();
+</script>

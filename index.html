@@ -4229,3 +4229,45 @@
 <link rel="preload" as="image" href="https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg">
 <link rel="preload" as="image" href="https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg">
 -->
+<script>
+    // ==========================================================================
+    // ОТКЛЮЧАЕМ ВСЕ ВИБРАЦИИ (HapticFeedback)
+    // ==========================================================================
+    (function() {
+        // Переопределяем возможные вызовы hapticFeedback
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            const haptic = window.Telegram.WebApp.HapticFeedback;
+            // Заменяем все методы на заглушки
+            haptic.impactOccurred = function() {};
+            haptic.notificationOccurred = function() {};
+            haptic.selectionChanged = function() {};
+        }
+
+        // Также переопределяем нашу функцию hapticFeedback, если она есть
+        if (window.hapticFeedback) {
+            window.hapticFeedback = function() {};
+        }
+
+        // Удаляем возможные обработчики, которые вызывают вибрацию
+        const originalPlaySfx = window.playSfx;
+        if (originalPlaySfx) {
+            window.playSfx = function(type) {
+                // Вызываем только звук, без вибрации
+                // Предполагаем, что originalPlaySfx содержит только звук (без haptic)
+                originalPlaySfx(type);
+            };
+        }
+    })();
+</script>
+<script>
+    // Обработка ошибок загрузки фото в туториале
+    document.addEventListener('error', function(e) {
+        if (e.target.tagName === 'IMG' && e.target.closest('.tutorial-icon')) {
+            // Если фото не загрузилось, заменяем на эмодзи
+            const fallback = document.createElement('span');
+            fallback.textContent = '👋';
+            fallback.style.fontSize = '60px';
+            e.target.replaceWith(fallback);
+        }
+    }, true);
+</script>

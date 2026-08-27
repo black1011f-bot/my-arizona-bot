@@ -3592,3 +3592,407 @@
     }
 })();
             </script>
+<!-- ==================== ЧАСТЬ 107: ВОССТАНОВЛЕНИЕ ФУНКЦИЙ МЕНЮ ⋮ ==================== -->
+<script>
+(function() {
+    console.log('Часть 107: восстановление функций меню.');
+
+    // Убеждаемся, что все функции, вызываемые из меню, существуют и работают.
+    // Берём реализацию из старого скрипта (приводим к текущему стилю).
+
+    // Открытие игры Барыга
+    window.openBarygaModal = function() {
+        const modal = document.getElementById('barygaModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            if (typeof updateBarygaUI === 'function') updateBarygaUI();
+        } else {
+            alert('Игра Барыга временно недоступна');
+        }
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+    window.closeBarygaModal = function() {
+        const modal = document.getElementById('barygaModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Переписки
+    window.openChatsModal = function() {
+        const modal = document.getElementById('chatsModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            if (typeof renderChatsList === 'function') renderChatsList();
+        } else {
+            alert('Переписки временно недоступны');
+        }
+    };
+    window.closeChatsModal = function() {
+        const modal = document.getElementById('chatsModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Профиль (просто переключаем вкладку)
+    // switchTab уже должна существовать, но продублируем для надёжности
+    if (typeof window.switchTab !== 'function') {
+        window.switchTab = function(tabId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (target) target.classList.add('active');
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+            if (activeTab) activeTab.classList.add('active');
+            if (tabId === 'feed') renderFeed();
+            if (tabId === 'myAds') renderMyAds();
+            if (tabId === 'favorites') renderFavorites();
+            if (tabId === 'admin') renderPendingAds();
+            playSfx('click');
+        };
+    }
+
+    // Поиск
+    window.openSearchModal = function() {
+        const modal = document.getElementById('searchModal');
+        if (modal) modal.style.display = 'flex';
+        else alert('Поиск временно недоступен');
+    };
+    window.closeSearchModal = function() {
+        const modal = document.getElementById('searchModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Темы
+    window.openThemeModal = function() {
+        const modal = document.getElementById('themeModal');
+        if (modal) modal.style.display = 'flex';
+        else alert('Темы временно недоступны');
+    };
+    window.closeThemeModal = function() {
+        const modal = document.getElementById('themeModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Музыка
+    window.openMusicModal = function() {
+        const modal = document.getElementById('musicModal');
+        if (modal) modal.style.display = 'flex';
+        else alert('Музыка временно недоступна');
+    };
+    window.closeMusicModal = function() {
+        const modal = document.getElementById('musicModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Лента Луков
+    window.openFashionModal = function() {
+        const modal = document.getElementById('fashionModal');
+        if (modal) modal.style.display = 'flex';
+        else alert('Лента Луков временно недоступна');
+    };
+    window.closeFashionModal = function() {
+        const modal = document.getElementById('fashionModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Попутчики
+    window.openTravelModal = function() {
+        const modal = document.getElementById('travelModal');
+        if (modal) modal.style.display = 'flex';
+        else alert('Попутчики временно недоступны');
+    };
+    window.closeTravelModal = function() {
+        const modal = document.getElementById('travelModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Настройки (создаём, если нет модалки)
+    window.openSettingsModal = function() {
+        let modal = document.getElementById('settingsModal');
+        if (!modal) {
+            // Если модалки нет, создаём простую
+            modal = document.createElement('div');
+            modal.id = 'settingsModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>⚙️ Настройки</h3>
+                        <button class="btn btn-outline btn-sm" onclick="closeModal('settingsModal')">✕</button>
+                    </div>
+                    <div class="form-group">
+                        <label>🔊 Звук</label>
+                        <button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">${sfxEnabled ? 'Включены' : 'Выключены'}</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-danger btn-sm" onclick="resetAllData()">🗑 Сбросить все данные</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+    };
+    window.closeSettingsModal = function() {
+        const modal = document.getElementById('settingsModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Дополнительно переопределяем closeModal, если она не работает
+    window.closeModal = function(id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Если playSfx отсутствует, создаём заглушку
+    if (typeof window.playSfx !== 'function') {
+        window.playSfx = function() {};
+    }
+
+    console.log('Все функции меню восстановлены.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 108: ИСПРАВЛЕНИЕ АДМИН-ПАНЕЛИ И РАССЫЛКИ ==================== -->
+<script>
+(function() {
+    console.log('Часть 108: восстановление функций админ-панели и рассылки.');
+
+    // 1. Функция отправки действия для админа/владельца
+    window.sendTargetAction = function(action) {
+        const targetInput = document.getElementById('targetUser');
+        const target = targetInput ? targetInput.value.trim() : '';
+        if (!target) {
+            alert('⚠️ Укажите целевого игрока!');
+            return;
+        }
+
+        // Обработка действий
+        if (action === 'ban') {
+            // Баним пользователя
+            let banned = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
+            const username = target.replace('@','').toLowerCase();
+            if (!banned.includes(username)) {
+                banned.push(username);
+                localStorage.setItem('arizona_banned_users', JSON.stringify(banned));
+                alert(`🚫 Игрок @${username} забанен.`);
+            } else {
+                alert('Этот игрок уже забанен.');
+            }
+        } else if (action === 'unban') {
+            // Разбаниваем
+            let banned = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
+            const username = target.replace('@','').toLowerCase();
+            const index = banned.indexOf(username);
+            if (index > -1) {
+                banned.splice(index, 1);
+                localStorage.setItem('arizona_banned_users', JSON.stringify(banned));
+                alert(`✅ Игрок @${username} разбанен.`);
+                // Если разбанили текущего пользователя, показываем экран разбана
+                if (currentUserUsername.replace('@','').toLowerCase() === username) {
+                    showUnbanScreen();
+                }
+            } else {
+                alert('Этот игрок не был забанен.');
+            }
+        } else if (action === 'make_admin') {
+            let admins = JSON.parse(localStorage.getItem('arizona_admin_list') || '[]');
+            const username = target.replace('@','').toLowerCase();
+            if (!admins.includes(username)) {
+                admins.push(username);
+                localStorage.setItem('arizona_admin_list', JSON.stringify(admins));
+                alert(`➕ Игрок @${username} назначен админом.`);
+            } else {
+                alert('Этот игрок уже админ.');
+            }
+        } else if (action === 'remove_admin') {
+            let admins = JSON.parse(localStorage.getItem('arizona_admin_list') || '[]');
+            const username = target.replace('@','').toLowerCase();
+            const index = admins.indexOf(username);
+            if (index > -1) {
+                admins.splice(index, 1);
+                localStorage.setItem('arizona_admin_list', JSON.stringify(admins));
+                alert(`➖ Игрок @${username} снят с админа.`);
+            } else {
+                alert('Этот игрок не был админом.');
+            }
+        }
+    };
+
+    // 2. Функция обновления системного баннера (рассылки)
+    window.updateBroadcastMessage = function() {
+        const input = document.getElementById('newBroadcastInput');
+        const text = input ? input.value.trim() : '';
+        if (!text) {
+            alert('⚠️ Введите текст уведомления!');
+            return;
+        }
+        // Сохраняем текст
+        localStorage.setItem('arizona_broadcast_msg', text);
+        // Показываем баннер у текущего пользователя
+        const banner = document.getElementById('broadcastBanner');
+        if (banner) {
+            const span = document.getElementById('broadcastText');
+            if (span) span.innerHTML = `<b>Уведомление от администрации!</b> ${text}`;
+            banner.style.display = 'block';
+        }
+        if (input) input.value = '';
+        alert('📢 Рассылка отправлена!');
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // 3. Очистка глобальной ленты (для админа)
+    window.clearGlobalFeedAdmin = function() {
+        if (confirm('⚠️ Вы уверены, что хотите очистить всю ленту объявлений?')) {
+            globalAdsFeed = [];
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            if (typeof renderFeed === 'function') renderFeed();
+            alert('🗑 Лента очищена.');
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    // 4. Открытие/закрытие модалки настроек (если используется)
+    window.openSettingsModal = function() {
+        let modal = document.getElementById('settingsModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'settingsModal';
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <h3 style="margin:0;">⚙️ Настройки</h3>
+                        <button class="btn btn-outline btn-sm" onclick="closeModal('settingsModal')">✕</button>
+                    </div>
+                    <div class="form-group">
+                        <label>🔊 Звуковые эффекты</label>
+                        <button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">${sfxEnabled ? 'Включены' : 'Выключены'}</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-danger btn-sm" onclick="resetAllData()">🗑 Сбросить все данные</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+    };
+
+    console.log('Функции админки и рассылки восстановлены.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 109: ФИНАЛЬНАЯ СИСТЕМА БАНОВ И РАЗБАНОВ С ПОДТВЕРЖДЕНИЕМ ==================== -->
+<script>
+(function() {
+    console.log('Часть 109: финальная система банов.');
+
+    // Загружаем список забаненных
+    let bannedUsers = [];
+    try {
+        bannedUsers = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
+    } catch(e) { bannedUsers = []; }
+
+    function isCurrentUserBanned() {
+        return bannedUsers.includes(currentUserUsername.replace('@','').toLowerCase());
+    }
+
+    // Проверяем, есть ли отложенное подтверждение разбана
+    function hasPendingUnban() {
+        return localStorage.getItem(getUserKey('pending_unban')) === 'true';
+    }
+
+    // Создаём оверлей для бана (полноэкранный, без возможности закрыть)
+    function createBanOverlay() {
+        let overlay = document.getElementById('banOverlay');
+        if (overlay) overlay.remove();
+        overlay = document.createElement('div');
+        overlay.id = 'banOverlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.97);
+            z-index: 100000; display: none; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            padding: 20px; color: #fff;
+        `;
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    // Показываем экран бана
+    function showBanScreen() {
+        const overlay = createBanOverlay();
+        overlay.innerHTML = `
+            <img src="https://i.postimg.cc/HLkMtJdg/fcf6efb0789c809c22b2b4c7cfe229a8.jpg" alt="Забанен" style="max-width: 200px; border-radius: 16px; margin-bottom: 20px;">
+            <h2 style="color: #ff3b30; font-size: 24px; margin-bottom: 8px;">🚫 ВЫ ЗАБЛОКИРОВАНЫ</h2>
+            <p style="font-size: 16px; max-width: 400px; line-height: 1.5; color: #ccc;">
+                Доступ к приложению ограничен администрацией.<br>
+                Если вы считаете, что это ошибка, обратитесь к владельцу.
+            </p>
+        `;
+        overlay.style.display = 'flex';
+    }
+
+    // Показываем экран разбана с кнопкой "Далее"
+    function showUnbanScreen() {
+        const overlay = createBanOverlay();
+        overlay.innerHTML = `
+            <img src="https://i.postimg.cc/vH76F7m4/b99270d8df0135112b68ebbd5057f965.jpg" alt="Разбанен" style="max-width: 200px; border-radius: 16px; margin-bottom: 20px;">
+            <h2 style="color: #4ade80; font-size: 24px; margin-bottom: 8px;">✅ ВЫ РАЗБЛОКИРОВАНЫ</h2>
+            <p style="font-size: 16px; max-width: 400px; line-height: 1.5; color: #ccc;">
+                Доступ восстановлен. Нажмите «Далее», чтобы продолжить.
+            </p>
+            <button id="unbanContinueBtn" style="margin-top: 20px; padding: 12px 24px; background: #4ade80; color: #000; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 16px;">Далее ➡️</button>
+        `;
+        overlay.style.display = 'flex';
+        document.getElementById('unbanContinueBtn').addEventListener('click', function() {
+            localStorage.setItem(getUserKey('pending_unban'), 'false');
+            overlay.style.display = 'none';
+            // При желании можно перезагрузить или просто показать интерфейс
+        });
+    }
+
+    // Функция проверки при загрузке
+    function checkBanAndUnban() {
+        if (isCurrentUserBanned()) {
+            showBanScreen();
+            // Блокируем любые клики
+            document.addEventListener('click', function(e) {
+                if (isCurrentUserBanned()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+        } else if (hasPendingUnban()) {
+            showUnbanScreen();
+        } else {
+            // Всё нормально, скрываем оверлей, если он остался
+            const overlay = document.getElementById('banOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+    }
+
+    // Переопределяем sendTargetAction для установки pending_unban при разбане текущего пользователя
+    const originalSendTargetAction = window.sendTargetAction;
+    window.sendTargetAction = function(action) {
+        // Вызываем оригинал (он уже обрабатывает бан/разбан)
+        if (typeof originalSendTargetAction === 'function') {
+            originalSendTargetAction(action);
+        }
+        // Дополнительно: если действие unban и цель - текущий пользователь, ставим pending_unban
+        if (action === 'unban') {
+            const target = document.getElementById('targetUser')?.value.trim().replace('@','').toLowerCase();
+            if (target && target === currentUserUsername.replace('@','').toLowerCase()) {
+                localStorage.setItem(getUserKey('pending_unban'), 'true');
+                // Показываем экран разбана сразу
+                showUnbanScreen();
+            }
+        }
+    };
+
+    // Запускаем проверку при загрузке
+    if (document.readyState === 'complete') {
+        checkBanAndUnban();
+    } else {
+        document.addEventListener('DOMContentLoaded', checkBanAndUnban);
+    }
+
+    console.log('Система банов и разбанов готова.');
+})();
+</script>

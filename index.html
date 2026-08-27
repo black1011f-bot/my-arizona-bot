@@ -6906,3 +6906,477 @@
     console.log('Отклик тапа улучшен: смена на 1 секунду.');
 })();
     </script>
+<!-- ==================== ЧАСТЬ 143: ИСПРАВЛЕНИЕ ОТПРАВКИ СООБЩЕНИЙ В ЧАТЕ ==================== -->
+<script>
+(function() {
+    console.log('Часть 143: чат и отправка сообщений.');
+
+    // Переопределяем sendChatMessage с проверкой и привязкой кнопки
+    window.sendChatMessage = function() {
+        const input = document.getElementById('chatInputMessage');
+        if (!input) return;
+        const text = input.value.trim();
+        if (!text || !activeChatUser) {
+            alert('Введите сообщение');
+            return;
+        }
+        if (!chatsDatabase[activeChatUser]) chatsDatabase[activeChatUser] = [];
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        chatsDatabase[activeChatUser].push({ sender: currentUserUsername, text, time: timeStr });
+        localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+        input.value = '';
+        renderActiveChatMessages();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // Привязываем кнопку отправки, если она существует
+    function bindSendButton() {
+        const sendBtn = document.querySelector('#chatDetailModal button[onclick="sendChatMessage()"]');
+        if (sendBtn) {
+            sendBtn.onclick = sendChatMessage;
+        }
+        // Также обрабатываем Enter
+        const input = document.getElementById('chatInputMessage');
+        if (input) {
+            input.onkeypress = function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendChatMessage();
+                }
+            };
+        }
+    }
+
+    if (document.readyState === 'complete') {
+        bindSendButton();
+    } else {
+        document.addEventListener('DOMContentLoaded', bindSendButton);
+    }
+})();
+</script>
+<!-- ==================== ЧАСТЬ 144: УДАЛЕНИЕ СООБЩЕНИЙ В ПОПУТЧИКАХ И ЛЕНТЕ ЛУКОВ ==================== -->
+<script>
+(function() {
+    console.log('Часть 144: удаление записей в Попутчиках и Ленте Луков.');
+
+    // ========== ЛЕНТА ЛУКОВ (FASHION) ==========
+    window.renderFashionLooks = function() {
+        const container = document.getElementById('fashionContainer');
+        if (!container) return;
+        if (fashionLooks.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center;">Лента пуста</div>';
+            return;
+        }
+        const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME;
+        container.innerHTML = fashionLooks.map((look, index) => `
+            <div class="ad-card" style="padding:8px; margin-bottom:6px; position:relative;">
+                <div style="font-weight:700; font-size:13px;">${escapeHtml(look.author)}: ${escapeHtml(look.title)}</div>
+                <img src="${escapeHtml(look.image)}" style="width:100%; height:100px; object-fit:cover; border-radius:8px; margin:4px 0;" onerror="this.style.display='none'">
+                <div style="font-size:11px; color:var(--muted);">${escapeHtml(look.time || '')}</div>
+                ${isAdmin || look.author === currentUserUsername ? `<button class="btn btn-danger btn-sm" onclick="deleteFashionLook(${index})" style="margin-top:4px;">🗑 Удалить</button>` : ''}
+            </div>
+        `).join('');
+    };
+
+    window.deleteFashionLook = function(index) {
+        if (!confirm('Удалить этот лук?')) return;
+        fashionLooks.splice(index, 1);
+        localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks));
+        renderFashionLooks();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // ========== ПОПУТЧИКИ (TRAVEL) ==========
+    window.renderTravelAds = function() {
+        const container = document.getElementById('travelContainer');
+        if (!container) return;
+        if (travelAds.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center;">Нет активных заявок</div>';
+            return;
+        }
+        const isAdmin = ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME;
+        container.innerHTML = travelAds.map((ad, index) => `
+            <div class="ad-card" style="padding:8px; margin-bottom:6px; position:relative;">
+                <div style="font-weight:700; font-size:13px;">${escapeHtml(ad.activity)} (${escapeHtml(ad.author)})</div>
+                <div style="font-size:12px; color:var(--muted);">${escapeHtml(ad.desc || 'Без описания')}</div>
+                <div style="font-size:10px; color:var(--muted);">${escapeHtml(ad.time || '')}</div>
+                ${isAdmin || ad.author === currentUserUsername ? `<button class="btn btn-danger btn-sm" onclick="deleteTravelAd(${index})" style="margin-top:4px;">🗑 Удалить</button>` : ''}
+            </div>
+        `).join('');
+    };
+
+    window.deleteTravelAd = function(index) {
+        if (!confirm('Удалить эту заявку?')) return;
+        travelAds.splice(index, 1);
+        localStorage.setItem('arizona_travel_ads', JSON.stringify(travelAds));
+        renderTravelAds();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // Обновляем рендеры при загрузке
+    if (document.readyState === 'complete') {
+        renderFashionLooks();
+        renderTravelAds();
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            renderFashionLooks();
+            renderTravelAds();
+        });
+    }
+})();
+</script>
+<!-- ==================== ЧАСТЬ 145: ИСПРАВЛЕНИЕ СКУПЩИКА И АВТОДОХОДА В БАРЫГЕ ==================== -->
+<script>
+(function() {
+    console.log('Часть 145: исправление пассивного дохода и улучшений Барыги.');
+
+    // Убеждаемся, что объект barygaData существует и имеет все поля
+    if (typeof window.barygaData === 'undefined') {
+        window.barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || JSON.stringify({
+            money: 0,
+            clickPower: 1,
+            clickCost: 50,
+            autoIncome: 0,
+            autoCost: 200,
+            proCost: 800,
+            shopCost: 3000,
+            eliteCost: 10000,
+            oilCost: 35000,
+            cryptoCost: 150000
+        }));
+    }
+
+    // Сохранение состояния
+    function saveBaryga() {
+        localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(window.barygaData));
+    }
+
+    // Обновление интерфейса (на случай, если элементы другие)
+    window.updateBarygaUI = function() {
+        const d = window.barygaData;
+        const moneyEl = document.getElementById('clickerMoney');
+        if (moneyEl) moneyEl.innerText = d.money.toLocaleString() + ' $';
+        const powerEl = document.getElementById('clickPowerLabel');
+        if (powerEl) powerEl.innerText = `+${d.clickPower} $ / клик`;
+        const autoEl = document.getElementById('autoIncomeLabel');
+        if (autoEl) autoEl.innerText = `${d.autoIncome.toLocaleString()} $ / сек`;
+        const costEls = {
+            clickCostLabel: d.clickCost,
+            autoCostLabel: d.autoCost,
+            proCostLabel: d.proCost,
+            shopCostLabel: d.shopCost,
+            eliteCostLabel: d.eliteCost,
+            oilCostLabel: d.oilCost,
+            cryptoCostLabel: d.cryptoCost
+        };
+        Object.entries(costEls).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = `Цена: ${val.toLocaleString()} $`;
+        });
+    };
+
+    // Функция покупки (универсальная)
+    function makePurchase(costKey, valueKey, increment, isIncome) {
+        const d = window.barygaData;
+        if (d.money >= d[costKey]) {
+            d.money -= d[costKey];
+            if (isIncome) d[valueKey] += increment;
+            else d[valueKey] += increment;
+            d[costKey] = Math.floor(d[costKey] * 1.5);
+            saveBaryga();
+            window.updateBarygaUI();
+            if (typeof playSfx === 'function') playSfx('success');
+        } else {
+            alert('❌ Недостаточно средств!');
+        }
+    }
+
+    // Покупки
+    window.buyClickUpgrade = function() { makePurchase('clickCost', 'clickPower', 1, false); };
+    window.buyAutoUpgrade = function() { makePurchase('autoCost', 'autoIncome', 5, true); };
+    window.buyProUpgrade = function() { makePurchase('proCost', 'autoIncome', 20, true); };
+    window.buyShopUpgrade = function() { makePurchase('shopCost', 'autoIncome', 50, true); };
+    window.buyEliteUpgrade = function() { makePurchase('eliteCost', 'clickPower', 10, false); };
+    window.buyOilRigUpgrade = function() { makePurchase('oilCost', 'autoIncome', 200, true); };
+    window.buyCryptoUpgrade = function() { makePurchase('cryptoCost', 'autoIncome', 1000, true); };
+
+    // Запуск интервала автодохода (если ещё не запущен)
+    if (!window.barygaAutoInterval) {
+        window.barygaAutoInterval = setInterval(function() {
+            const d = window.barygaData;
+            if (d.autoIncome > 0) {
+                d.money += Math.floor(d.autoIncome / 10);
+                saveBaryga();
+                if (document.getElementById('barygaModal') && document.getElementById('barygaModal').style.display === 'flex') {
+                    window.updateBarygaUI();
+                }
+            }
+        }, 100);
+        console.log('Интервал автодохода запущен.');
+    }
+
+    // Переопределяем openBarygaModal, чтобы при открытии обновлялся интерфейс
+    const originalOpenBarygaModal = window.openBarygaModal;
+    window.openBarygaModal = function() {
+        if (typeof originalOpenBarygaModal === 'function') originalOpenBarygaModal();
+        setTimeout(() => window.updateBarygaUI(), 0);
+    };
+
+    console.log('Барыга: скупщик и автодоход исправлены.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 146: РАССЫЛКИ СРАЗУ В РАЗДЕЛ «РАССЫЛКИ» ==================== -->
+<script>
+(function() {
+    console.log('Часть 146: мгновенное добавление рассылок в раздел.');
+
+    // Переопределяем updateBroadcastMessage, чтобы добавлять в историю и показывать в разделе
+    window.updateBroadcastMessage = function() {
+        const input = document.getElementById('newBroadcastInput');
+        const text = input ? input.value.trim() : '';
+        if (!text) {
+            alert('⚠️ Введите текст уведомления!');
+            return;
+        }
+        // Добавляем в историю
+        let history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        history.unshift(`📢 ${new Date().toLocaleString()}: ${text}`);
+        localStorage.setItem('arizona_broadcast_history', JSON.stringify(history));
+        // Показываем SMS
+        if (typeof showSmsNotification === 'function') showSmsNotification(text);
+        // Убираем баннер
+        const banner = document.getElementById('broadcastBanner');
+        if (banner) banner.style.display = 'none';
+        localStorage.removeItem('arizona_broadcast_msg');
+        if (input) input.value = '';
+        if (typeof playSfx === 'function') playSfx('success');
+        // Если открыт раздел рассылок, обновляем его
+        if (typeof renderBroadcastHistory === 'function') renderBroadcastHistory();
+    };
+
+    // Переопределяем renderBroadcastHistory, чтобы он всегда отображал актуальный список
+    window.renderBroadcastHistory = function() {
+        const container = document.getElementById('broadcastHistoryList') || document.getElementById('broadcastHistoryContainer');
+        if (!container) return;
+        const history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        if (history.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:var(--muted);">Нет уведомлений</div>';
+            return;
+        }
+        container.innerHTML = history.map((item, index) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid var(--border);">
+                <span style="flex:1; font-size:13px;">${escapeHtml(item)}</span>
+                <button class="btn btn-outline btn-sm" onclick="deleteBroadcastItem(${index})" style="margin:0;">🗑</button>
+            </div>
+        `).join('');
+    };
+
+    // Если escapeHtml нет, создаём
+    if (typeof window.escapeHtml !== 'function') {
+        window.escapeHtml = function(text) {
+            if (!text) return '';
+            return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        };
+    }
+
+    console.log('Рассылки теперь сразу попадают в раздел.');
+})();
+</script>
+<!-- ==================== ЧАСТЬ 147: ОТКРЫТИЕ ОБЪЯВЛЕНИЯ КАК СТРАНИЦА (С КРЕСТИКОМ) ==================== -->
+<script>
+(function() {
+    console.log('Часть 147: объявление открывается как страница.');
+
+    // Переопределяем openAdDetail
+    window.openAdDetail = function(id) {
+        const ad = globalAdsFeed.find(a => a.id === id);
+        if (!ad) return;
+
+        // Удаляем старую модалку, если есть
+        const old = document.getElementById('adDetailModal');
+        if (old) old.remove();
+
+        // Создаём полноэкранный контейнер (страницу)
+        const page = document.createElement('div');
+        page.id = 'adDetailPage';
+        page.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--app-bg, #f7f7fa);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 16px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            animation: fadeIn 0.2s ease;
+        `;
+
+        // Крестик (нормального размера)
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'btn btn-outline btn-sm';
+        closeBtn.style.cssText = 'position: absolute; top: 16px; right: 16px; width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 18px;';
+        closeBtn.innerHTML = '✕';
+        closeBtn.onclick = function() { page.remove(); };
+
+        // Контент
+        page.innerHTML = `
+            <div style="max-width: 600px; margin: 0 auto; width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                    <h2 style="font-size: 20px; font-weight: 800; color: var(--text); margin: 0;">${escapeHtml(ad.itemName)}</h2>
+                </div>
+                ${ad.image ? `<img src="${escapeHtml(ad.image)}" style="width:100%; border-radius:12px; max-height: 300px; object-fit: cover; margin-bottom: 12px;" onerror="this.style.display='none'">` : ''}
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span class="forum-badge" style="background: rgba(124,58,237,0.1); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 12px;">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                    <span style="font-size: 13px; color: var(--muted);">${escapeHtml(ad.server)}</span>
+                </div>
+                <div style="font-size: 22px; font-weight: 800; color: var(--gold); margin-bottom: 8px;">💰 ${escapeHtml(formatPrice(ad.price))}</div>
+                <p style="font-size: 14px; line-height: 1.6; color: var(--text); margin-bottom: 12px;">${escapeHtml(ad.text)}</p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+                    <button class="btn btn-sm" onclick="openChatWithUser('${escapeHtml(ad.author)}')">💬 Написать</button>
+                    <button class="btn btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">❤️ В избранное</button>
+                    <button class="btn btn-outline btn-sm" onclick="shareAd(${ad.id})">🔗 Поделиться</button>
+                </div>
+                <div style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">
+                    Продавец: <span style="color: var(--accent); cursor: pointer;" onclick="inspectUserProfile('${escapeHtml(ad.author)}')">${escapeHtml(ad.author)}</span>
+                </div>
+                <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;">
+                <div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">Похожие объявления</div>
+                <div id="similarAdsContainer">
+                    ${globalAdsFeed.filter(a => a.status === 'approved' && a.id !== ad.id && a.category === ad.category).slice(0, 3).map(sim => `
+                        <div class="ad-card" style="cursor: pointer; margin-bottom: 8px;" onclick="openAdDetail(${sim.id})">
+                            <div style="font-weight: 700; font-size: 14px;">${escapeHtml(sim.itemName)}</div>
+                            <div style="color: var(--gold); font-weight: 800;">💰 ${escapeHtml(formatPrice(sim.price))}</div>
+                            <div style="font-size: 12px; color: var(--muted);">${escapeHtml(sim.server)}</div>
+                        </div>
+                    `).join('') || '<p style="font-size: 13px; color: var(--muted);">Нет похожих объявлений</p>'}
+                </div>
+            </div>
+        `;
+        page.appendChild(closeBtn);
+        document.body.appendChild(page);
+    };
+
+    // Если escapeHtml нет, создаём
+    if (typeof window.escapeHtml !== 'function') {
+        window.escapeHtml = function(text) {
+            if (!text) return '';
+            return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        };
+    }
+})();
+</script>
+<!-- ==================== ЧАСТЬ 148: НОРМАЛЬНЫЙ РАЗМЕР КРЕСТИКОВ ==================== -->
+<style>
+    /* Применяем ко всем крестикам и кнопкам закрытия */
+    .modal-close,
+    .btn-close,
+    .icon-btn.close,
+    button[onclick*="closeModal"],
+    button[onclick*="closeBarygaModal"],
+    button[onclick*="closeChatsModal"],
+    button[onclick*="closeSearchModal"],
+    button[onclick*="closeThemeModal"],
+    button[onclick*="closeMusicModal"],
+    button[onclick*="closeFashionModal"],
+    button[onclick*="closeTravelModal"],
+    button[onclick*="closeSettingsModal"],
+    button[onclick*="closePicker"],
+    button[onclick*="closeProfileInspect"],
+    button[onclick*="closeChatDetail"] {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 14px !important;
+        line-height: 1 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 50% !important;
+    }
+    /* Кнопка закрытия в полноэкранном объявлении */
+    #adDetailPage > button,
+    #adDetailModal button[onclick*="remove"] {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 18px !important;
+    }
+    /* Крестик в выпадающем меню и т.п. */
+    .dropdown-item button {
+        width: auto;
+        height: auto;
+        font-size: inherit;
+    }
+</style>
+<!-- ==================== ЧАСТЬ 150: ФИНАЛЬНАЯ ИНТЕГРАЦИЯ И АКТИВАЦИЯ ==================== -->
+<script>
+(function() {
+    console.log('Часть 150: финальная интеграция.');
+
+    // Проверяем наличие всех нужных функций и переменных
+    const criticalFunctions = [
+        'openBarygaModal', 'closeBarygaModal', 'barygaClick', 'buyClickUpgrade', 'buyAutoUpgrade',
+        'buyProUpgrade', 'buyShopUpgrade', 'buyEliteUpgrade', 'buyOilRigUpgrade', 'buyCryptoUpgrade',
+        'updateBarygaUI', 'sendChatMessage', 'renderActiveChatMessages', 'openChatWithUser',
+        'deleteChat', 'clearActiveChatHistory', 'renderChatsList', 'startChatByUsername',
+        'renderFashionLooks', 'deleteFashionLook', 'renderTravelAds', 'deleteTravelAd',
+        'updateBroadcastMessage', 'renderBroadcastHistory', 'deleteBroadcastItem',
+        'openAdDetail', 'shareAd', 'toggleFavorite', 'formatPrice', 'switchTab', 'setViewMode',
+        'submitData', 'approvePendingAd', 'rejectPendingAd', 'deleteApprovedAd',
+        'openSettingsModal', 'closeSettingsModal', 'toggleSfx', 'resetAllData',
+        'openPicker', 'selectPickerValue', 'inspectUserProfile', 'inspectSubscribeUser', 'inspectOpenChat'
+    ];
+
+    let missing = [];
+    criticalFunctions.forEach(fn => {
+        if (typeof window[fn] !== 'function') {
+            missing.push(fn);
+        }
+    });
+
+    if (missing.length > 0) {
+        console.warn('Отсутствуют функции:', missing);
+        // Создаём заглушки для отсутствующих, чтобы не ломать приложение
+        missing.forEach(fn => {
+            window[fn] = function() {
+                console.warn(`Заглушка для ${fn}`);
+            };
+        });
+    } else {
+        console.log('Все критические функции на месте.');
+    }
+
+    // Принудительно обновляем интерфейс после загрузки
+    function finalInit() {
+        // Применяем тему
+        const savedTheme = localStorage.getItem(getUserKey('theme')) || 'light';
+        document.body.classList.toggle('dark', savedTheme === 'dark');
+
+        // Рендерим все списки
+        if (typeof renderFeed === 'function') renderFeed();
+        if (typeof renderMyAds === 'function') renderMyAds();
+        if (typeof renderFavorites === 'function') renderFavorites();
+        if (typeof renderPendingAds === 'function') renderPendingAds();
+        if (typeof renderFashionLooks === 'function') renderFashionLooks();
+        if (typeof renderTravelAds === 'function') renderTravelAds();
+        if (typeof updateBarygaUI === 'function') updateBarygaUI();
+
+        // Убираем старые оверлеи
+        document.querySelectorAll('.offline-indicator, #offlineIndicator, .ping-overlay').forEach(el => el.remove());
+
+        console.log('Финальная инициализация выполнена.');
+    }
+
+    if (document.readyState === 'complete') {
+        finalInit();
+    } else {
+        document.addEventListener('DOMContentLoaded', finalInit);
+    }
+
+    console.log('Приложение готово к использованию.');
+})();
+</script>

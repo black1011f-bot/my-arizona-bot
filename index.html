@@ -7263,3 +7263,408 @@
         font-size: inherit;
     }
 </style>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Дурак переводной</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        #table {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            min-height: 120px;
+        }
+        .card {
+            width: 70px;
+            height: 100px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+            position: relative;
+            color: #333;
+        }
+        .card.red { color: #c0392b; }
+        .card.black { color: #2c3e50; }
+        .card.trump { border: 2px solid gold; }
+        .card.selected { transform: translateY(-15px); }
+        .hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin: 10px 0;
+            min-height: 110px;
+            justify-content: center;
+        }
+        .player-label {
+            font-size: 18px;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        .active { background: rgba(46, 204, 113, 0.3); }
+        #controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 20px;
+            background: #3498db;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled { background: #7f8c8d; cursor: not-allowed; }
+        #message {
+            margin: 10px;
+            font-size: 18px;
+            min-height: 24px;
+        }
+        #deck-info {
+            display: flex;
+            gap: 20px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Дурак переводной (hot-seat)</h2>
+    <div id="deck-info">
+        <span>Колода: <span id="deck-count">0</span></span>
+        <span>Козырь: <span id="trump-suit"></span></span>
+    </div>
+    <div id="table"></div>
+    <div id="message"></div>
+    <div id="hands-container"></div>
+    <div id="controls">
+        <button id="btn-take">Взять</button>
+        <button id="btn-done">Бито</button>
+        <button id="btn-transfer">Перевести</button>
+    </div>
+
+    <script>
+        // ================== ЛОГИКА ИГРЫ ==================
+        const SUITS = ['♠', '♥', '♦', '♣'];
+        const RANKS = ['6','7','8','9','10','J','Q','K','A'];
+        const RANK_VALUES = { '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
+
+        class Card {
+            constructor(suit, rank) {
+                this.suit = suit;
+                this.rank = rank;
+                this.isRed = (suit === '♥' || suit === '♦');
+            }
+            get value() { return RANK_VALUES[this.rank]; }
+            toString() { return this.rank + this.suit; }
+        }
+
+        class Player {
+            constructor(name, isHuman = false) {
+                this.name = name;
+                this.hand = [];
+                this.isHuman = isHuman;
+            }
+            sortHand() {
+                this.hand.sort((a,b) => a.suit.localeCompare(b.suit) || a.value - b.value);
+            }
+        }
+
+        let deck = [];
+        let trumpSuit = '';
+        let players = [];
+        let currentPlayerIndex = 0;   // кто сейчас ходит (атакует)
+        let defenderIndex = 0;        // кто отбивается
+        let nextPlayerIndex = 0;      // кто ходит после защищающегося
+        let tableCards = [];          // карты на столе (пары атака/защита)
+        let turnPhase = 'attack';     // 'attack', 'defense', 'transfer'
+        let selectedCard = null;
+        let canAddMore = true;
+        let gameOver = false;
+
+        // ================== ИНИЦИАЛИЗАЦИЯ ==================
+        function createDeck() {
+            deck = [];
+            for (let suit of SUITS) {
+                for (let rank of RANKS) {
+                    deck.push(new Card(suit, rank));
+                }
+            }
+            // перемешивание
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function setupGame(numPlayers) {
+            createDeck();
+            // определяем козырь по нижней карте
+            trumpSuit = deck[deck.length - 1].suit;
+            // раздаём по 6 карт
+            players = [];
+            for (let i = 0; i < numPlayers; i++) {
+                players.push(new Player(`Игрок ${i+1}`, i === 0)); // первый - человек
+                for (let j = 0; j < 6; j++) {
+                    players[i].hand.push(deck.pop());
+                }
+                players[i].sortHand();
+            }
+            // определяем первого ходящего (у кого младший козырь, или просто случайно)
+            currentPlayerIndex = 0;
+            defenderIndex = 1;
+            nextPlayerIndex = 2 % numPlayers;
+            tableCards = [];
+            selectedCard = null;
+            turnPhase = 'attack';
+            canAddMore = true;
+            gameOver = false;
+            render();
+        }
+
+        // ================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==================
+        function isTrump(card) { return card.suit === trumpSuit; }
+        function canBeat(attackCard, defendCard) {
+            if (isTrump(attackCard) && !isTrump(defendCard)) return false;
+            if (!isTrump(attackCard) && isTrump(defendCard)) return true;
+            return defendCard.value > attackCard.value && defendCard.suit === attackCard.suit ||
+                   (isTrump(defendCard) && isTrump(attackCard) && defendCard.value > attackCard.value);
+        }
+        function drawCards(player) {
+            while (player.hand.length < 6 && deck.length > 0) {
+                player.hand.push(deck.pop());
+            }
+            player.sortHand();
+        }
+        function nextPlayerAfter(index) {
+            return (index + 1) % players.length;
+        }
+        function isGameOver() {
+            return deck.length === 0 && players.some(p => p.hand.length === 0);
+        }
+
+        // ================== ОСНОВНЫЕ ДЕЙСТВИЯ ==================
+        function attack(card) {
+            if (turnPhase !== 'attack') return;
+            const player = players[currentPlayerIndex];
+            if (!player.hand.includes(card)) return;
+            // проверка: если на столе уже есть карты, то можно подкидывать только карты того же достоинства
+            if (tableCards.length > 0) {
+                const allowedRanks = new Set();
+                tableCards.forEach(pair => {
+                    allowedRanks.add(pair.attack.rank);
+                    if (pair.defense) allowedRanks.add(pair.defense.rank);
+                });
+                if (!allowedRanks.has(card.rank)) return;
+            }
+            player.hand.splice(player.hand.indexOf(card), 1);
+            tableCards.push({ attack: card, defense: null });
+            selectedCard = null;
+            turnPhase = 'defense';
+            render();
+        }
+
+        function defend(card) {
+            if (turnPhase !== 'defense') return;
+            const player = players[defenderIndex];
+            if (!player.hand.includes(card)) return;
+            const lastAttack = tableCards[tableCards.length - 1].attack;
+            if (!canBeat(lastAttack, card)) return;
+            player.hand.splice(player.hand.indexOf(card), 1);
+            tableCards[tableCards.length - 1].defense = card;
+            // проверяем, может ли атакующий ещё подкинуть
+            const canAdd = canAddMore && deck.length > 0 && players[currentPlayerIndex].hand.length > 0;
+            if (canAdd) {
+                turnPhase = 'attack';
+            } else {
+                turnPhase = 'done';
+            }
+            render();
+        }
+
+        function transfer(card) {
+            // перевод возможен только если защищающийся ещё не отбивался и у него есть карта того же ранга
+            if (turnPhase !== 'defense' || tableCards.length === 0) return;
+            const player = players[defenderIndex];
+            if (!player.hand.includes(card)) return;
+            const firstAttack = tableCards[0].attack;
+            if (card.rank !== firstAttack.rank) return;
+            // перевод: карта уходит на стол как новая атака, защищающимся становится следующий
+            player.hand.splice(player.hand.indexOf(card), 1);
+            tableCards.push({ attack: card, defense: null });
+            // меняем роли
+            currentPlayerIndex = defenderIndex;
+            defenderIndex = nextPlayerIndex;
+            nextPlayerIndex = nextPlayerAfter(defenderIndex);
+            turnPhase = 'defense';
+            render();
+        }
+
+        function takeCards() {
+            if (turnPhase !== 'defense') return;
+            const defender = players[defenderIndex];
+            // забрать все карты со стола
+            tableCards.forEach(pair => {
+                defender.hand.push(pair.attack);
+                if (pair.defense) defender.hand.push(pair.defense);
+            });
+            tableCards = [];
+            defender.sortHand();
+            // следующий ходит после защищавшегося
+            currentPlayerIndex = nextPlayerIndex;
+            defenderIndex = nextPlayerAfter(currentPlayerIndex);
+            nextPlayerIndex = nextPlayerAfter(defenderIndex);
+            turnPhase = 'attack';
+            // добор карт
+            drawCards(players[currentPlayerIndex]);
+            drawCards(players[defenderIndex]);
+            // проверка на конец игры
+            if (isGameOver()) endGame();
+            render();
+        }
+
+        function doneTurn() {
+            if (turnPhase !== 'done') return;
+            // все отбились, карты уходят в сброс
+            tableCards = [];
+            // следующий ходит после защищавшегося
+            currentPlayerIndex = nextPlayerIndex;
+            defenderIndex = nextPlayerAfter(currentPlayerIndex);
+            nextPlayerIndex = nextPlayerAfter(defenderIndex);
+            turnPhase = 'attack';
+            // добор
+            drawCards(players[currentPlayerIndex]);
+            drawCards(players[defenderIndex]);
+            if (isGameOver()) endGame();
+            render();
+        }
+
+        function endGame() {
+            gameOver = true;
+            const loser = players.find(p => p.hand.length > 0);
+            document.getElementById('message').textContent = `Игра окончена! ${loser.name} остался дураком.`;
+            document.querySelectorAll('button').forEach(b => b.disabled = true);
+        }
+
+        // ================== ОТРИСОВКА ==================
+        function render() {
+            // обновляем информацию о колоде
+            document.getElementById('deck-count').textContent = deck.length;
+            document.getElementById('trump-suit').textContent = trumpSuit;
+
+            // стол
+            const tableDiv = document.getElementById('table');
+            tableDiv.innerHTML = '';
+            tableCards.forEach(pair => {
+                const attackCardEl = createCardElement(pair.attack);
+                attackCardEl.classList.add('attack');
+                tableDiv.appendChild(attackCardEl);
+                if (pair.defense) {
+                    const defenseCardEl = createCardElement(pair.defense);
+                    defenseCardEl.classList.add('defense');
+                    tableDiv.appendChild(defenseCardEl);
+                }
+            });
+
+            // руки игроков
+            const handsContainer = document.getElementById('hands-container');
+            handsContainer.innerHTML = '';
+            players.forEach((player, idx) => {
+                const handDiv = document.createElement('div');
+                handDiv.className = 'hand';
+                if (idx === currentPlayerIndex && turnPhase === 'attack') handDiv.classList.add('active');
+                if (idx === defenderIndex && (turnPhase === 'defense' || turnPhase === 'done')) handDiv.classList.add('active');
+                const label = document.createElement('div');
+                label.className = 'player-label';
+                label.textContent = `${player.name} (${player.hand.length} карт)`;
+                handDiv.appendChild(label);
+                player.hand.forEach(card => {
+                    const cardEl = createCardElement(card);
+                    cardEl.addEventListener('click', () => {
+                        if (gameOver) return;
+                        if (idx === currentPlayerIndex && turnPhase === 'attack') {
+                            attack(card);
+                        } else if (idx === defenderIndex && turnPhase === 'defense') {
+                            if (selectedCard === card) {
+                                defend(card);
+                            } else {
+                                // для перевода нужно выбрать карту и нажать кнопку "Перевести"
+                                selectedCard = card;
+                                render();
+                            }
+                        } else if (idx === defenderIndex && turnPhase === 'done') {
+                            // ничего
+                        }
+                    });
+                    if (selectedCard === card) cardEl.classList.add('selected');
+                    handDiv.appendChild(cardEl);
+                });
+                handsContainer.appendChild(handDiv);
+            });
+
+            // сообщения
+            const msgEl = document.getElementById('message');
+            if (turnPhase === 'attack') msgEl.textContent = `Ходит: ${players[currentPlayerIndex].name}`;
+            else if (turnPhase === 'defense') msgEl.textContent = `Отбивается: ${players[defenderIndex].name}`;
+            else if (turnPhase === 'done') msgEl.textContent = 'Ход завершён. Нажмите "Бито".';
+            else msgEl.textContent = '';
+
+            // кнопки
+            document.getElementById('btn-take').disabled = (turnPhase !== 'defense');
+            document.getElementById('btn-done').disabled = (turnPhase !== 'done');
+            document.getElementById('btn-transfer').disabled = (turnPhase !== 'defense' || !selectedCard);
+        }
+
+        function createCardElement(card) {
+            const div = document.createElement('div');
+            div.className = 'card ' + (card.isRed ? 'red' : 'black');
+            if (isTrump(card)) div.classList.add('trump');
+            div.textContent = card.toString();
+            return div;
+        }
+
+        // ================== ОБРАБОТЧИКИ КНОПОК ==================
+        document.getElementById('btn-take').addEventListener('click', takeCards);
+        document.getElementById('btn-done').addEventListener('click', doneTurn);
+        document.getElementById('btn-transfer').addEventListener('click', () => {
+            if (selectedCard) transfer(selectedCard);
+        });
+
+        // ================== ЗАПУСК ==================
+        setupGame(2); // 2 игрока для примера, можно изменить на 3 или 4
+
+        // Интеграция с Telegram (раскомментируйте при использовании)
+        // const tg = window.Telegram.WebApp;
+        // tg.ready();
+        // tg.expand();
+    </script>
+</body>
+</html>

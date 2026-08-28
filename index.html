@@ -3807,3 +3807,267 @@
     console.log('Обычный туториал улучшен.');
 })();
 </script>
+<script>
+(function() {
+    console.log('Часть 23: SMS слева, баннер заменён, шрифт Audiowide.');
+
+    // ==================== ПОДКЛЮЧЕНИЕ ШРИФТА AUDIOWIDE ====================
+    if (!document.getElementById('audiowideFontLink')) {
+        const link = document.createElement('link');
+        link.id = 'audiowideFontLink';
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Audiowide&display=swap';
+        document.head.appendChild(link);
+    }
+    // Применяем шрифт ко всем элементам
+    const styleFont = document.createElement('style');
+    styleFont.textContent = `
+        body, button, input, textarea, select, .custom-select-trigger, .btn, .nav-tab, .dropdown-item, .picker-item, .ad-card, .modal-content {
+            font-family: 'Audiowide', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+    `;
+    document.head.appendChild(styleFont);
+
+    // ==================== УДАЛЯЕМ СТАРЫЙ БАННЕР И ВСТАВЛЯЕМ КАРТИНКУ ====================
+    function replaceBannerWithImage() {
+        // Удаляем все существующие #broadcastBanner
+        const oldBanners = document.querySelectorAll('#broadcastBanner');
+        oldBanners.forEach(b => b.remove());
+
+        // Создаём блок с картинкой, если его ещё нет
+        if (!document.querySelector('.welcome-banner-wide')) {
+            const bannerDiv = document.createElement('div');
+            bannerDiv.className = 'welcome-banner-wide';
+            bannerDiv.style.cssText = `
+                width: 100%;
+                border-radius: 14px;
+                overflow: hidden;
+                border: 1px solid var(--accent-red, #7c3aed);
+                margin-bottom: 14px;
+                box-shadow: 0 6px 20px rgba(220, 38, 38, 0.25);
+                animation: fadeIn 0.3s ease;
+                background: var(--forum-card-bg, var(--card-bg, #fff));
+            `;
+            const img = document.createElement('img');
+            img.src = 'https://i.postimg.cc/NfRFmHCQ/1786185439356.png';
+            img.alt = 'Arizona RP Banner';
+            img.loading = 'lazy';
+            img.style.cssText = 'width:100%; height:auto; display:block;';
+            bannerDiv.appendChild(img);
+
+            const container = document.querySelector('.container');
+            if (container) {
+                container.prepend(bannerDiv);
+            } else {
+                document.body.prepend(bannerDiv);
+            }
+        }
+    }
+
+    // Вызываем после загрузки DOM
+    if (document.readyState === 'complete') {
+        replaceBannerWithImage();
+    } else {
+        document.addEventListener('DOMContentLoaded', replaceBannerWithImage);
+    }
+
+    // ==================== SMS-УВЕДОМЛЕНИЯ СЛЕВА ====================
+    function createSmsContainerLeft() {
+        let container = document.getElementById('smsNotificationContainer');
+        if (container) container.remove();
+
+        container = document.createElement('div');
+        container.id = 'smsNotificationContainer';
+        container.style.cssText = `
+            position: fixed;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 99999;
+            pointer-events: none;
+        `;
+        document.body.appendChild(container);
+        return container;
+    }
+    const smsContainer = createSmsContainerLeft();
+
+    window.showSmsNotification = function(text) {
+        const sms = document.createElement('div');
+        sms.style.cssText = `
+            background: #fff;
+            color: #1c1c1e;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            font-size: 13px;
+            max-width: 260px;
+            word-wrap: break-word;
+            pointer-events: auto;
+            animation: slideInLeft 0.3s ease;
+            cursor: pointer;
+            border-left: 4px solid #7c3aed;
+        `;
+        sms.innerText = text;
+
+        const removeSms = () => {
+            if (sms.parentNode) sms.remove();
+        };
+
+        sms.addEventListener('click', () => {
+            if (typeof openBroadcastsModal === 'function') openBroadcastsModal();
+            removeSms();
+        });
+
+        setTimeout(removeSms, 10000);
+
+        smsContainer.appendChild(sms);
+    };
+
+    // Добавляем анимацию slideInLeft, если нет
+    if (!document.getElementById('slideInLeftStyle')) {
+        const animStyle = document.createElement('style');
+        animStyle.id = 'slideInLeftStyle';
+        animStyle.textContent = `
+            @keyframes slideInLeft {
+                from { transform: translateX(-100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(animStyle);
+    }
+
+    // ==================== ОТКЛЮЧАЕМ ПОКАЗ БАННЕРА ПРИ РАССЫЛКЕ ====================
+    // Переопределяем updateBroadcastMessage, чтобы не трогать баннер, только SMS и историю
+    window.updateBroadcastMessage = function() {
+        const textInput = document.getElementById('newBroadcastInput');
+        const text = textInput ? textInput.value.trim() : '';
+        if (!text) {
+            alert('Введите текст рассылки');
+            return;
+        }
+
+        // Добавляем в историю
+        let history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        history.unshift(`📢 ${new Date().toLocaleString()}: ${text}`);
+        localStorage.setItem('arizona_broadcast_history', JSON.stringify(history));
+
+        // Убираем сохранённое сообщение, чтобы не показывался баннер при следующей загрузке
+        localStorage.removeItem('arizona_broadcast_msg');
+
+        // Показываем SMS
+        showSmsNotification(text);
+
+        if (textInput) textInput.value = '';
+
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    console.log('Часть 23 применена: SMS слева, картинка вместо баннера, шрифт Audiowide.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 24: Финальная полировка.');
+
+    // ==================== УДАЛЕНИЕ ДУБЛИКАТОВ КРИТИЧЕСКИХ ЭЛЕМЕНТОВ ====================
+    function removeDuplicates() {
+        // Удаляем все #broadcastBanner, кроме последнего (если есть)
+        const banners = document.querySelectorAll('#broadcastBanner');
+        if (banners.length > 1) {
+            for (let i = 0; i < banners.length - 1; i++) {
+                banners[i].remove();
+            }
+        }
+        // Удаляем лишние #smsNotificationContainer
+        const smsContainers = document.querySelectorAll('#smsNotificationContainer');
+        if (smsContainers.length > 1) {
+            for (let i = 0; i < smsContainers.length - 1; i++) {
+                smsContainers[i].remove();
+            }
+        }
+        // Удаляем старые оверлеи, если их несколько
+        ['banOverlay', 'connectionLoader', 'tutorialOverlay', 'adminTutorialOverlay'].forEach(id => {
+            const els = document.querySelectorAll('#' + id);
+            if (els.length > 1) {
+                for (let i = 0; i < els.length - 1; i++) {
+                    els[i].remove();
+                }
+            }
+        });
+    }
+
+    // ==================== ДЕЛЕГИРОВАНИЕ ДЛЯ ДИНАМИЧЕСКИХ КНОПОК ====================
+    // Для кнопок в модальных окнах, которые создаются динамически, используем делегирование
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        // Кнопки закрытия модалок по data-атрибуту
+        if (target.hasAttribute('data-close-modal')) {
+            const modalId = target.getAttribute('data-close-modal');
+            const modal = document.getElementById(modalId);
+            if (modal) modal.style.display = 'none';
+        }
+
+        // Кнопки удаления рассылок (делегирование)
+        if (target.hasAttribute('data-delete-broadcast')) {
+            const index = parseInt(target.getAttribute('data-delete-broadcast'), 10);
+            if (!isNaN(index)) {
+                let history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+                history.splice(index, 1);
+                localStorage.setItem('arizona_broadcast_history', JSON.stringify(history));
+                if (typeof renderBroadcastHistory === 'function') renderBroadcastHistory();
+            }
+        }
+    });
+
+    // ==================== ПРОВЕРКА НАЛИЧИЯ ОСНОВНЫХ ФУНКЦИЙ ====================
+    const required = [
+        'switchTab', 'renderFeed', 'renderMyAds', 'renderFavorites', 'renderPendingAds',
+        'submitData', 'setViewMode', 'toggleFavorite', 'openChatWithUser', 'sendChatMessage',
+        'openSearchModal', 'openBarygaModal', 'openMusicModal', 'openFashionModal', 'openTravelModal',
+        'openSettingsModal', 'openBroadcastsModal', 'updateBroadcastMessage', 'sendTargetAction'
+    ];
+    required.forEach(fn => {
+        if (typeof window[fn] !== 'function') {
+            console.warn('Отсутствует функция:', fn);
+            window[fn] = function() {
+                alert('⚠️ Функция временно недоступна.');
+            };
+        }
+    });
+
+    // ==================== ФИНАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ ====================
+    function finalCleanup() {
+        removeDuplicates();
+        // Убеждаемся, что тема применена
+        const savedTheme = localStorage.getItem(getUserKey('theme')) || 'light';
+        document.body.classList.toggle('dark', savedTheme === 'dark');
+        // Вызываем рендеры, если страница уже загружена
+        try {
+            if (typeof renderFeed === 'function') renderFeed();
+            if (typeof renderMyAds === 'function') renderMyAds();
+            if (typeof renderFavorites === 'function') renderFavorites();
+            if (typeof renderPendingAds === 'function') renderPendingAds();
+            if (typeof updateBarygaUI === 'function') updateBarygaUI();
+            if (typeof initProfileUI === 'function') initProfileUI();
+            if (typeof renderFashionLooks === 'function') renderFashionLooks();
+            if (typeof renderTravelAds === 'function') renderTravelAds();
+            if (typeof renderChatsList === 'function') renderChatsList();
+        } catch(e) {
+            console.error('Ошибка при финальном рендере:', e);
+        }
+    }
+
+    if (document.readyState === 'complete') {
+        finalCleanup();
+    } else {
+        document.addEventListener('DOMContentLoaded', finalCleanup);
+    }
+
+    console.log('Финальная полировка завершена.');
+})();
+</script>

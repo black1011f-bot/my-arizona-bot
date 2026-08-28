@@ -1494,3 +1494,116 @@
     </script>
 </body>
 </html>
+<style>
+    /* ========== УВЕЛИЧИВАЕМ ОТСТУПЫ МЕЖДУ КНОПКАМИ ========== */
+    .header-actions { gap: 10px !important; }
+    .header-actions .icon-btn { margin: 0 4px !important; }
+    .nav-tabs { gap: 8px !important; }
+    .nav-tab { margin: 0 4px !important; }
+    .view-mode-btns { gap: 10px !important; }
+    .view-mode-btn { margin: 0 4px !important; }
+    .ad-actions { gap: 10px !important; margin-top: 10px !important; }
+    .ad-actions .btn { margin: 0 !important; }
+    .dropdown-menu .dropdown-item { margin: 6px 0 !important; }
+    .picker-list .picker-item { margin: 6px 0 !important; }
+    .upgrade-row { margin-bottom: 10px !important; }
+    .form-group { margin-bottom: 12px !important; }
+
+    /* ========== ЕДИНЫЙ СТИЛЬ КНОПОК ========== */
+    .btn, .btn-sm, .icon-btn, .nav-tab, .view-mode-btn, .dropdown-item, .picker-item, .btn-buy {
+        border-radius: 10px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    }
+    .btn, .btn-sm {
+        background: linear-gradient(135deg, #7c3aed, #5b21b6) !important;
+        color: #fff !important;
+        font-weight: 700 !important;
+    }
+    .btn-outline {
+        background: transparent !important;
+        border: 1px solid #7c3aed !important;
+        color: #7c3aed !important;
+    }
+    .nav-tab.active {
+        background: #7c3aed !important;
+        color: #fff !important;
+        border-radius: 8px !important;
+    }
+    .view-mode-btn.active {
+        background: #7c3aed !important;
+        color: #fff !important;
+        border-color: #7c3aed !important;
+    }
+
+    /* ========== СКРЫВАЕМ ПРОФИЛЬ В НИЖНЕЙ ПАНЕЛИ ========== */
+    .nav-tab[data-tab="profile"] {
+        display: none !important;
+    }
+</style>
+
+<script>
+(function() {
+    console.log('Часть 6: исправление интерфейса.');
+
+    // ========== ВОЗВРАЩАЕМ БАННЕР ==========
+    function restoreBanner() {
+        // Проверяем, есть ли уже баннер
+        let banner = document.getElementById('broadcastBanner');
+        if (!banner) {
+            // Создаём баннер и вставляем после шапки
+            banner = document.createElement('div');
+            banner.id = 'broadcastBanner';
+            banner.className = 'broadcast-banner';
+            banner.style.display = 'none';
+            banner.style.background = '#7c3aed';
+            banner.style.color = '#fff';
+            banner.style.padding = '8px 12px';
+            banner.style.borderRadius = '8px';
+            banner.style.marginBottom = '8px';
+            banner.style.cursor = 'pointer';
+            banner.onclick = function() {
+                alert('📢 ' + (localStorage.getItem('arizona_broadcast_msg') || 'Нет активного уведомления'));
+            };
+            const header = document.querySelector('.app-header');
+            if (header && header.parentNode) {
+                header.parentNode.insertBefore(banner, header.nextSibling);
+            } else {
+                const container = document.querySelector('.container');
+                if (container) container.prepend(banner);
+            }
+        }
+        // Если есть сохранённое сообщение, показываем
+        const savedMsg = localStorage.getItem('arizona_broadcast_msg');
+        if (savedMsg) {
+            banner.innerHTML = `<b>Уведомление от администрации!</b> ${savedMsg}`;
+            banner.style.display = 'block';
+        }
+    }
+
+    // ========== ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ МЕНЮ (УБИРАЕМ ПРОФИЛЬ ИЗ НИЖНЕЙ НАВИГАЦИИ, ОН ОСТАЁТСЯ В ⋮) ==========
+    function removeProfileFromBottomNav() {
+        const profileTab = document.querySelector('.nav-tab[data-tab="profile"]');
+        if (profileTab) profileTab.style.display = 'none';
+    }
+
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
+    function initPart6() {
+        restoreBanner();
+        removeProfileFromBottomNav();
+        // Применяем стили к уже существующим элементам
+        document.querySelectorAll('.btn, .btn-sm, .icon-btn, .nav-tab, .view-mode-btn, .dropdown-item, .picker-item').forEach(el => {
+            el.style.borderRadius = '10px';
+            el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        });
+        document.querySelectorAll('.btn, .btn-sm').forEach(el => {
+            if (!el.classList.contains('btn-outline')) {
+                el.style.background = 'linear-gradient(135deg, #7c3aed, #5b21b6)';
+                el.style.color = '#fff';
+            }
+        });
+    }
+
+    if (document.readyState === 'complete') initPart6();
+    else document.addEventListener('DOMContentLoaded', initPart6);
+})();
+        </script>

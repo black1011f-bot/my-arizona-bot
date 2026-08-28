@@ -1171,3 +1171,462 @@ function init(){
 }
 if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
         </script>
+<script>
+(function() {
+    console.log('Часть 50: Исправление шапки и кнопки ⋮.');
+
+    // Убедимся, что header доступен глобально
+    const header = document.querySelector('.app-header') || document.querySelector('.forum-topbar');
+    if (!header) return;
+
+    // Функция управления видимостью шапки (только на главной)
+    window.updateHeaderVisibility = function(tabId) {
+        if (header) {
+            header.style.display = (tabId === 'feed') ? 'flex' : 'none';
+        }
+    };
+
+    // Переопределяем switchTab, чтобы всегда вызывать updateHeaderVisibility
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+        if (typeof originalSwitchTab === 'function') originalSwitchTab(tabId);
+        // Принудительно показываем шапку на главной и скрываем на других
+        updateHeaderVisibility(tabId);
+        // Скрываем меню при переключении
+        const menu = document.getElementById('dropdownMenu');
+        if (menu) menu.style.display = 'none';
+    };
+
+    // Исправляем toggleDropdownMenu (для главной шапки)
+    window.toggleDropdownMenu = function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('dropdownMenu');
+        if (!menu) return;
+        // Если меню ещё не построено, строим
+        if (typeof buildDropdownMenu === 'function' && menu.children.length === 0) {
+            buildDropdownMenu();
+        }
+        const visible = menu.style.display === 'block';
+        if (visible) {
+            menu.style.display = 'none';
+        } else {
+            // Позиционируем относительно кнопки
+            const btn = document.getElementById('menuButton') || e.currentTarget;
+            const rect = btn.getBoundingClientRect();
+            menu.style.position = 'fixed';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.right = (window.innerWidth - rect.right) + 'px';
+            menu.style.display = 'block';
+        }
+        if (typeof playSfx === 'function') playSfx('click');
+    };
+
+    // Исправляем toggleDropdownMenuFor (для секционных кнопок ⋮)
+    window.toggleDropdownMenuFor = function(event, anchorBtn) {
+        event.stopPropagation();
+        const menu = document.getElementById('dropdownMenu');
+        if (!menu) return;
+        if (typeof buildDropdownMenu === 'function' && menu.children.length === 0) {
+            buildDropdownMenu();
+        }
+        const visible = menu.style.display === 'block';
+        if (visible) {
+            menu.style.display = 'none';
+        } else {
+            const rect = anchorBtn.getBoundingClientRect();
+            menu.style.position = 'fixed';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.right = (window.innerWidth - rect.right) + 'px';
+            menu.style.display = 'block';
+        }
+    };
+
+    // Убираем все крестики .section-close-btn, оставляем только ⋮
+    document.querySelectorAll('.section-close-btn').forEach(btn => btn.remove());
+
+    // Пересоздаём кнопки ⋮ в секциях (если их ещё нет)
+    function ensureSectionMenuButtons() {
+        const sections = ['tabApp', 'tabMyAds', 'tabFavorites', 'tabAdmin', 'tabProfile'];
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+            // Удаляем старые .section-menu-btn, если были
+            section.querySelectorAll('.section-menu-btn').forEach(btn => btn.remove());
+
+            // Создаём кнопку ⋮
+            const menuBtn = document.createElement('button');
+            menuBtn.className = 'section-menu-btn';
+            menuBtn.innerHTML = '⋮';
+            menuBtn.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                background: var(--card-bg, #fff);
+                border: 1px solid var(--border, #e5e5ea);
+                border-radius: 50%;
+                font-size: 18px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                color: var(--text, #1c1c1e);
+                z-index: 20;
+            `;
+            menuBtn.onclick = function(e) {
+                e.stopPropagation();
+                toggleDropdownMenuFor(e, menuBtn);
+            };
+            section.prepend(menuBtn);
+            // Убедимся, что секция позиционирована
+            if (getComputedStyle(section).position === 'static') {
+                section.style.position = 'relative';
+            }
+            section.style.paddingTop = '40px';
+        });
+    }
+    ensureSectionMenuButtons();
+
+    // Глобальный обработчик кликов для закрытия меню
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('dropdownMenu');
+        if (menu && !menu.contains(e.target) && !e.target.closest('.icon-btn') && !e.target.closest('.section-menu-btn')) {
+            menu.style.display = 'none';
+        }
+    });
+
+    // При загрузке показываем шапку, если активна главная
+    updateHeaderVisibility('feed');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 51: Исправление кнопок, редактирования и управления объявлениями.');
+
+    // ==================== ГАРАНТИРУЕМ ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+    if (!window.pendingAdsList) window.pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+    if (!window.globalAdsFeed) window.globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+    if (!window.myAdsList) window.myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+    if (!window.favoritesList) window.favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+
+    // ==================== РЕНДЕР ЛЕНТЫ ====================
+    window.renderFeed = function() {
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+        const approved = window.globalAdsFeed.filter(ad => ad.status === 'approved');
+        if (approved.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;">Лента пуста</div>';
+            return;
+        }
+        const admin = (typeof isAdmin === 'function') ? isAdmin() : false;
+        container.innerHTML = approved.slice(0, feedDisplayLimit || 20).map(ad => {
+            const isFav = window.favoritesList.some(f => f.id === ad.id);
+            const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
+            const imageHtml = firstImage ? `<img src="${firstImage}" style="height:100px;object-fit:cover;border-radius:8px;margin:4px 0;" onerror="this.style.display='none'">` : '';
+            return `
+                <div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);">
+                        <span class="forum-badge">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                        <span>${ad.server}</span>
+                    </div>
+                    ${imageHtml}
+                    <div class="ad-title">${ad.itemName}</div>
+                    <div class="ad-price">💰 ${ad.price}</div>
+                    <div class="ad-text">${ad.text}</div>
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button class="btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">${isFav ? '❤️' : '🤍'}</button>
+                        <button class="btn-sm" onclick="openChatWithUser('${ad.author}')">💬 Написать</button>
+                        ${admin ? `<button class="btn-danger btn-sm" onclick="deleteApprovedAd(${ad.id})">🗑</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // ==================== ПЕРЕКЛЮЧЕНИЕ ВИДА ====================
+    window.setViewMode = function(mode) {
+        currentViewMode = mode;
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+        if (mode === 'grid') {
+            container.classList.add('grid-view');
+            document.getElementById('btnGridView')?.classList.add('active');
+            document.getElementById('btnListView')?.classList.remove('active');
+        } else {
+            container.classList.remove('grid-view');
+            document.getElementById('btnListView')?.classList.add('active');
+            document.getElementById('btnGridView')?.classList.remove('active');
+        }
+        renderFeed();
+    };
+
+    // ==================== ОДОБРЕНИЕ / ОТКЛОНЕНИЕ ====================
+    window.approvePendingAd = function(id) {
+        const idx = window.pendingAdsList.findIndex(a => a.id === id);
+        if (idx > -1) {
+            const ad = window.pendingAdsList.splice(idx, 1)[0];
+            ad.status = 'approved';
+            window.globalAdsFeed.unshift(ad);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(window.globalAdsFeed));
+            renderPendingAds();
+            renderFeed();
+            if (typeof playSfx === 'function') playSfx('success');
+        } else {
+            console.warn('Объявление не найдено в pendingAdsList');
+        }
+    };
+
+    window.rejectPendingAd = function(id) {
+        window.pendingAdsList = window.pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+        renderPendingAds();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // ==================== РЕДАКТИРОВАНИЕ ====================
+    window.openEditAdModal = function(id) {
+        const ad = window.pendingAdsList.find(a => a.id === id);
+        if (!ad) { alert('Объявление не найдено'); return; }
+        // Удаляем старую модалку, если есть
+        document.querySelectorAll('#editAdModal').forEach(el => el.remove());
+        const modal = document.createElement('div');
+        modal.id = 'editAdModal';
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.style.zIndex = '1500';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 420px; width: 100%; text-align: left;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                    <h3>✏️ Редактирование</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()" style="width:32px;height:32px;padding:0;border-radius:50%;">✕</button>
+                </div>
+                <div class="form-group"><label>🏷 Название</label><input type="text" id="editItemName" value="${ad.itemName}"></div>
+                <div class="form-group"><label>💰 Цена</label><input type="text" id="editPrice" value="${ad.price}"></div>
+                <div class="form-group"><label>📄 Описание</label><textarea id="editText" rows="3">${ad.text}</textarea></div>
+                <div class="form-group"><label>🖼 Ссылки на скриншоты</label><input type="text" id="editImage" value="${ad.image || ''}"></div>
+                <div class="form-group"><label>🌐 Сервер</label><select id="editServer">${ALL_SERVERS.map(s => `<option value="${s}" ${s===ad.server?'selected':''}>${s}</option>`).join('')}</select></div>
+                <div style="display:flex;gap:10px;margin-top:20px;">
+                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">🔙 Отмена</button>
+                    <button class="btn btn-success" onclick="saveEditedAd(${ad.id})">✅ Сохранить и одобрить</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        const priceInput = document.getElementById('editPrice');
+        if (priceInput) {
+            priceInput.addEventListener('input', function(e) {
+                let val = e.target.value.replace(/[^\d.]/g, '');
+                let parts = val.split('.');
+                if (parts.length > 6) val = parts.slice(0,6).join('.') + parts.slice(6).join('');
+                e.target.value = val;
+            });
+        }
+    };
+
+    window.saveEditedAd = function(id) {
+        const ad = window.pendingAdsList.find(a => a.id === id);
+        if (!ad) { alert('Объявление не найдено'); return; }
+        const itemName = document.getElementById('editItemName')?.value.trim();
+        const price = document.getElementById('editPrice')?.value.trim();
+        const text = document.getElementById('editText')?.value.trim();
+        const image = document.getElementById('editImage')?.value.trim();
+        const server = document.getElementById('editServer')?.value;
+        if (!itemName || !price || !text) { alert('Заполните обязательные поля'); return; }
+        ad.itemName = itemName; ad.price = price; ad.text = text; ad.image = image; ad.server = server;
+        // Одобряем
+        window.approvePendingAd(id);
+        // Закрываем модалку
+        document.querySelectorAll('#editAdModal').forEach(el => el.remove());
+        renderFeed();
+    };
+
+    // ==================== УДАЛЕНИЕ ИЗ ЛЕНТЫ (АДМИН) ====================
+    window.deleteApprovedAd = function(id) {
+        if (!confirm('Удалить объявление из ленты?')) return;
+        const idx = window.globalAdsFeed.findIndex(a => a.id === id);
+        if (idx > -1) {
+            // Помечаем в myAdsList как удалённое, если принадлежит текущему пользователю
+            const myIdx = window.myAdsList.findIndex(a => a.id === id);
+            if (myIdx > -1) {
+                window.myAdsList[myIdx].status = 'deleted';
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+            }
+            window.globalAdsFeed.splice(idx, 1);
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(window.globalAdsFeed));
+            window.favoritesList = window.favoritesList.filter(f => f.id !== id);
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(window.favoritesList));
+            renderFeed();
+            renderMyAds();
+            renderFavorites();
+        }
+    };
+
+    // ==================== МОИ ОБЪЯВЛЕНИЯ ====================
+    window.renderMyAds = function() {
+        const container = document.getElementById('myAdsContainer');
+        if (!container) return;
+        if (window.myAdsList.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted);text-align:center;">Вы ещё не создавали объявлений</div>';
+            return;
+        }
+        container.innerHTML = window.myAdsList.map(ad => {
+            const isDeleted = ad.status === 'deleted';
+            const statusText = isDeleted ? '❌ Удалено' : (ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации');
+            return `
+                <div class="ad-card" style="${isDeleted ? 'opacity:0.6; border-color:#dc3545;' : ''}">
+                    <div class="ad-title">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:12px; color:${isDeleted ? '#dc3545' : 'var(--muted)'}">Статус: ${statusText}</div>
+                    ${isDeleted ? '<div style="color:#dc3545;font-weight:700;">Это объявление было удалено модерацией</div>' : ''}
+                    <p>${ad.text}</p>
+                    <button class="btn-danger btn-sm" onclick="deleteMyAdPermanently(${ad.id})">🗑 Удалить навсегда</button>
+                </div>
+            `;
+        }).join('');
+
+        // Добавляем кнопку "Очистить все", если её ещё нет
+        if (!document.getElementById('clearAllMyAdsBtn')) {
+            const clearBtn = document.createElement('button');
+            clearBtn.id = 'clearAllMyAdsBtn';
+            clearBtn.className = 'btn btn-danger btn-sm';
+            clearBtn.innerText = '🗑 Очистить всё';
+            clearBtn.style.marginTop = '10px';
+            clearBtn.onclick = function() { clearMyAds(); };
+            container.appendChild(clearBtn);
+        }
+    };
+
+    window.deleteMyAdPermanently = function(id) {
+        if (!confirm('Удалить это объявление навсегда?')) return;
+        window.myAdsList = window.myAdsList.filter(a => a.id !== id);
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+        window.pendingAdsList = window.pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+        window.favoritesList = window.favoritesList.filter(f => f.id !== id);
+        localStorage.setItem(getUserKey('favorites'), JSON.stringify(window.favoritesList));
+        renderMyAds();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    window.clearMyAds = function() {
+        if (!confirm('Удалить все ваши объявления?')) return;
+        window.myAdsList = [];
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+        renderMyAds();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    // Вызываем рендеры при загрузке
+    function initPart51() {
+        renderFeed();
+        renderMyAds();
+        renderFavorites();
+        renderPendingAds();
+    }
+    if (document.readyState === 'complete') initPart51();
+    else document.addEventListener('DOMContentLoaded', initPart51);
+
+    console.log('Часть 51 применена: кнопки, редактирование, удаление исправлены.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 52: Финальная проверка и автозапуск.');
+
+    // ==================== ГАРАНТИРУЕМ НАЛИЧИЕ ФУНКЦИЙ ====================
+    const requiredFunctions = [
+        'switchTab', 'renderFeed', 'renderMyAds', 'renderFavorites', 'renderPendingAds',
+        'submitData', 'setViewMode', 'toggleFavorite', 'openChatWithUser', 'openAdDetail',
+        'approvePendingAd', 'rejectPendingAd', 'openEditAdModal', 'saveEditedAd',
+        'deleteApprovedAd', 'deleteMyAdPermanently', 'clearMyAds',
+        'openBarygaModal', 'barygaClick', 'updateBarygaUI',
+        'openSearchModal', 'executeAdvancedSearch', 'inspectUserProfile',
+        'openMusicModal', 'toggleMusicPlayback',
+        'openFashionModal', 'postFashionLook',
+        'openTravelModal', 'postTravelAd',
+        'openSettingsModal', 'toggleSfx',
+        'openBroadcastsModal', 'updateBroadcastMessage',
+        'toggleDropdownMenu', 'toggleDropdownMenuFor', 'buildDropdownMenu',
+        'showTutorial', 'showAdminTutorial', 'completeTutorial', 'completeAdminTutorial'
+    ];
+
+    requiredFunctions.forEach(fn => {
+        if (typeof window[fn] !== 'function') {
+            console.warn('Отсутствует функция:', fn);
+            window[fn] = function() {
+                alert(`⚠️ Функция "${fn}" временно недоступна.`);
+            };
+        }
+    });
+
+    // ==================== ПРОВЕРКА ГЛОБАЛЬНЫХ ПЕРЕМЕННЫХ ====================
+    if (!window.pendingAdsList) window.pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+    if (!window.globalAdsFeed) window.globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+    if (!window.myAdsList) window.myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+    if (!window.favoritesList) window.favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+    if (!window.barygaData) window.barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || '{"money":0,"clickPower":1,"clickCost":50,"autoIncome":0,"autoCost":200,"proCost":800,"shopCost":3000,"eliteCost":10000,"oilCost":35000,"cryptoCost":150000}');
+
+    // ==================== ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ ШАПКИ ====================
+    function forceHeaderVisibility() {
+        const header = document.querySelector('.app-header') || document.querySelector('.forum-topbar');
+        if (header) {
+            const activeTab = document.querySelector('.nav-tab.active');
+            const tabId = activeTab ? activeTab.getAttribute('data-tab') : 'feed';
+            header.style.display = (tabId === 'feed') ? 'flex' : 'none';
+        }
+    }
+
+    // ==================== ОБЕСПЕЧИВАЕМ РАБОТУ МЕНЮ ====================
+    // Создаём меню, если оно ещё не построено
+    function ensureMenu() {
+        const menu = document.getElementById('dropdownMenu');
+        if (menu && menu.children.length === 0 && typeof buildDropdownMenu === 'function') {
+            buildDropdownMenu();
+        }
+    }
+
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    function finalInit() {
+        forceHeaderVisibility();
+        ensureMenu();
+        // Вызываем все рендеры
+        try {
+            if (typeof renderFeed === 'function') renderFeed();
+            if (typeof renderMyAds === 'function') renderMyAds();
+            if (typeof renderFavorites === 'function') renderFavorites();
+            if (typeof renderPendingAds === 'function') renderPendingAds();
+            if (typeof updateBarygaUI === 'function') updateBarygaUI();
+            if (typeof initProfileUI === 'function') initProfileUI();
+            if (typeof renderFashionLooks === 'function') renderFashionLooks();
+            if (typeof renderTravelAds === 'function') renderTravelAds();
+            if (typeof renderChatsList === 'function') renderChatsList();
+            if (typeof updateMskClock === 'function') updateMskClock();
+            if (typeof checkBan === 'function') checkBan();
+        } catch(e) {
+            console.error('Ошибка при финальной инициализации:', e);
+        }
+        // Показываем баннер, если есть сохранённое сообщение
+        const savedBroadcast = localStorage.getItem('arizona_broadcast_msg');
+        if (savedBroadcast) {
+            const banner = document.getElementById('broadcastBanner');
+            if (banner) {
+                banner.style.display = 'block';
+                const textEl = document.getElementById('broadcastText');
+                if (textEl) textEl.innerHTML = `<b>Уведомление от администрации!</b> ${savedBroadcast}`;
+            }
+        }
+    }
+
+    // Запускаем после готовности DOM
+    if (document.readyState === 'complete') {
+        finalInit();
+    } else {
+        document.addEventListener('DOMContentLoaded', finalInit);
+    }
+
+    console.log('Часть 52 применена: финальная инициализация.');
+})();
+</script>

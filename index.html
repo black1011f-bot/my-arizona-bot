@@ -192,6 +192,8 @@
             transition: transform 0.15s, box-shadow 0.15s;
         }
         .ad-card:active { transform: scale(0.98); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .ad-card.no-click { cursor: default; }
+        .ad-card.no-click:active { transform: none; box-shadow: var(--shadow); }
         .ad-image-wrap {
             position: relative;
             width: 100%;
@@ -580,7 +582,7 @@
         </div>
     </div>
 
-    <!-- Основной контейнер -->
+    <!-- Основной контейнер приложения -->
     <div class="container" id="appContainer">
         <!-- Шапка -->
         <header class="app-header">
@@ -602,24 +604,19 @@
         <!-- Нижняя навигация -->
         <nav class="nav-tabs">
             <button class="nav-tab active" data-tab="feed" onclick="switchTab('feed')">
-                <span class="tab-icon">🏠</span>
-                <span>Главная</span>
+                <span class="tab-icon">🏠</span><span>Главная</span>
             </button>
             <button class="nav-tab" data-tab="favorites" onclick="switchTab('favorites')">
-                <span class="tab-icon">⭐</span>
-                <span>Избранное</span>
+                <span class="tab-icon">⭐</span><span>Избранное</span>
             </button>
             <button class="nav-tab" data-tab="app" onclick="switchTab('app')">
-                <span class="tab-icon">➕</span>
-                <span>Отправка</span>
+                <span class="tab-icon">➕</span><span>Отправка</span>
             </button>
             <button class="nav-tab" id="adminTabBtn" style="display:none;" data-tab="admin" onclick="switchTab('admin')">
-                <span class="tab-icon">🛡️</span>
-                <span>Админ</span>
+                <span class="tab-icon">🛡️</span><span>Админ</span>
             </button>
             <button class="nav-tab" data-tab="more" onclick="switchTab('more')">
-                <span class="tab-icon">☰</span>
-                <span>Все разделы</span>
+                <span class="tab-icon">☰</span><span>Все разделы</span>
             </button>
         </nav>
 
@@ -655,7 +652,7 @@
         </main>
     </div>
 
-    <!-- Модальные окна -->
+    <!-- ==================== МОДАЛЬНЫЕ ОКНА ==================== -->
     <div id="searchModal" class="modal-overlay" onclick="if(event.target===this) closeModal('searchModal')">
         <div class="modal-content">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -867,10 +864,7 @@
         ];
 
         let tg = window.Telegram?.WebApp || null;
-        if (tg) {
-            tg.expand?.();
-            tg.ready?.();
-        }
+        if (tg) { tg.expand?.(); tg.ready?.(); }
         const tgUser = tg?.initDataUnsafe?.user || null;
         const currentUserId = tgUser?.id?.toString() || 'default_user';
         const currentUserUsername = tgUser?.username ? '@' + tgUser.username : null;
@@ -904,6 +898,17 @@
             if (n >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'')+'кк';
             if (n >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'')+'к';
             return n.toString();
+        }
+        function parsePriceToNumber(priceStr) {
+            if (!priceStr) return 0;
+            if (typeof priceStr === 'number') return priceStr;
+            let str = priceStr.toLowerCase().replace(/\s/g, '');
+            let multiplier = 1;
+            if (str.endsWith('ккк')) { multiplier = 1e9; str = str.slice(0, -3); }
+            else if (str.endsWith('кк')) { multiplier = 1e6; str = str.slice(0, -2); }
+            else if (str.endsWith('к')) { multiplier = 1e3; str = str.slice(0, -1); }
+            const num = parseFloat(str);
+            return isNaN(num) ? 0 : num * multiplier;
         }
         function playSfx(type) {
             if (!sfxEnabled) return;
@@ -951,7 +956,7 @@
             fetch('https://t.me/favicon.ico', { method: 'HEAD', cache: 'no-store' })
                 .then(() => {
                     const ping = Date.now() - pingStart;
-                    if (ping > 700) {
+                    if (ping > 900) {
                         showLoadingScreen('Слабый интернет, загрузка...');
                     } else {
                         hideLoadingScreen();
@@ -1046,18 +1051,17 @@
         }
 
         function createAdCard(ad, options = {}) {
-            const { showActions = true, showAuthor = true } = options;
+            const { showActions = true, showAuthor = true, disableClick = false } = options;
             const isFav = favoritesList.some(f => f.id === ad.id);
             const admin = isAdmin();
             const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
             const imageHtml = firstImage
                 ? `<img src="${firstImage}" class="ad-image" onerror="this.style.display='none'">`
                 : `<div class="ad-image-placeholder"></div>`;
+            const clickAttr = disableClick ? '' : `onclick="openAdDetail(${ad.id})"`;
             return `
-                <div class="ad-card" onclick="openAdDetail(${ad.id})">
-                    <div class="ad-image-wrap">
-                        ${imageHtml}
-                    </div>
+                <div class="ad-card ${disableClick ? 'no-click' : ''}" ${clickAttr}>
+                    <div class="ad-image-wrap">${imageHtml}</div>
                     <div class="ad-info">
                         <div class="ad-badges">
                             <span class="badge ${ad.mode === 'sell' ? '' : 'badge-warning'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
@@ -1137,7 +1141,7 @@
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">В избранном пусто</div>';
                 return;
             }
-            container.innerHTML = favoritesList.map(ad => createAdCard(ad, {showActions:false})).join('');
+            container.innerHTML = favoritesList.map(ad => createAdCard(ad, {showActions:false, disableClick:true})).join('');
         }
 
         // ==================== ПРОФИЛЬ ====================
@@ -1203,6 +1207,13 @@
                 <button class="btn" onclick="submitData()">Отправить на модерацию</button>
                 <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px;">Время отправки: с 09:00 до 22:00 по МСК (КД 2 минуты)</div>
             `;
+            // Ограничение ввода цены — только цифры
+            const priceInput = document.getElementById('price');
+            if (priceInput) {
+                priceInput.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                });
+            }
         }
 
         function submitData() {
@@ -1214,7 +1225,12 @@
             const mode = document.getElementById('mode').value;
             const category = document.getElementById('category').value;
             const itemName = document.getElementById('itemName').value.trim();
-            const price = document.getElementById('price').value.trim();
+            let price = document.getElementById('price').value.trim();
+            // Преобразуем цену в сокращённый вид
+            const numericPrice = parseInt(price, 10);
+            if (!isNaN(numericPrice)) {
+                price = formatPrice(numericPrice);
+            }
             const text = document.getElementById('text').value.trim();
             const image = document.getElementById('itemImage').value.trim();
             const server = document.getElementById('server').value;
@@ -1292,7 +1308,7 @@
                         <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
                     </div>
                     <div class="form-group"><label>Название</label><input type="text" id="editItemName" value="${ad.itemName}"></div>
-                    <div class="form-group"><label>Цена</label><input type="text" id="editPrice" value="${ad.price}"></div>
+                    <div class="form-group"><label>Цена</label><input type="text" id="editPrice" value="${parsePriceToNumber(ad.price)}"></div>
                     <div class="form-group"><label>Описание</label><textarea id="editText" rows="3">${ad.text}</textarea></div>
                     <div class="form-group"><label>Скриншоты (через запятую)</label><input type="text" id="editImage" value="${ad.image || ''}"></div>
                     <div class="form-group"><label>Сервер</label>
@@ -1306,13 +1322,24 @@
             `;
             document.body.appendChild(modal);
             modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+            // Ограничение ввода цены — только цифры
+            const priceInput = document.getElementById('editPrice');
+            if (priceInput) {
+                priceInput.addEventListener('input', function() {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                });
+            }
         }
 
         function saveEditedAd(id) {
             const ad = pendingAdsList.find(a => a.id === id);
             if (!ad) return;
             const itemName = document.getElementById('editItemName')?.value.trim();
-            const price = document.getElementById('editPrice')?.value.trim();
+            let price = document.getElementById('editPrice')?.value.trim();
+            const numericPrice = parseInt(price, 10);
+            if (!isNaN(numericPrice)) {
+                price = formatPrice(numericPrice);
+            }
             const text = document.getElementById('editText')?.value.trim();
             const image = document.getElementById('editImage')?.value.trim();
             const server = document.getElementById('editServer')?.value;
@@ -1678,6 +1705,24 @@
             }
         }
         if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
+
+        // ==================== МЕСТО ДЛЯ ДОБАВЛЕНИЯ НОВЫХ ЧАСТЕЙ ====================
+        // Вы можете добавлять новые функции, переопределять существующие через window.App
+        window.App = {
+            renderFeed,
+            createAdCard,
+            openAdDetail,
+            submitData,
+            openEditAdModal,
+            saveEditedAd,
+            checkInternetSpeed,
+            parsePriceToNumber,
+            formatPrice,
+            switchTab,
+            openModal,
+            closeModal,
+            // и любые другие функции, которые вам нужны для расширения
+        };
     </script>
 </body>
-                </html>
+    </html>

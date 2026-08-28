@@ -444,3 +444,268 @@
     </script>
 </body>
 </html>
+// ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+const CURRENT_APP_BUILD = '2026.08.08';
+const OWNER_USERNAME = 'bounqy';
+const OWNER_ID = '777';
+let tg = window.Telegram?.WebApp || null;
+if (tg) { tg.expand?.(); tg.ready?.(); }
+const tgUser = tg?.initDataUnsafe?.user || null;
+const currentUserId = tgUser?.id?.toString() || 'default_user';
+const currentUserUsername = tgUser?.username ? '@' + tgUser.username : '@user_' + currentUserId;
+const currentUserNameDisplay = tgUser?.first_name || 'Игрок';
+let sfxEnabled = true;
+function getUserKey(key) { return `arizona_${currentUserId}_${key}`; }
+
+const ALL_SERVERS = [
+    '🔥 Phoenix','🌴 Tucson','🌵 Scottdale','⚜️ Chandler','❄️ Brainburg','✨ Saint Rose','🏛 Mesa','❤️ Red-Rock','🌊 Yuma','🍀 Surprise',
+    '⚡️ Prescott','🌲 Glendale','👑 Kingman','⚓️ Winslow','🌴 Payson','💎 Gilbert','🔥 Show-Low','🌴 Casa-Grande','🌟 Page','☀️ Sun-City',
+    '⚡️ Queen Creek','🧸 Sedona','🎄 Holiday','📅 Wednesday','🚀 Yava','🔮 Faraway','🚀 Bumble Bee','🎄 Christmas','🌟 Mirage','❤️ Love',
+    '💎 Drake','🚀 Space','🏠 Home','📱 Mobile 3','📱 Mobile 2','📱 Mobile 1'
+];
+const ALL_CATEGORIES = [
+    '💍 Аксессуары и вещи','🚗 Транспорт','🏠 Недвижимость','💼 Бизнесы','🔫 Оружие и материалы','👕 Одежда','📱 Электроника'
+];
+
+let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || '["admin","bounqy"]');
+let globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+let myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+let favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+let pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
+let travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
+let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || '{"money":0,"clickPower":1,"clickCost":50,"autoIncome":0,"autoCost":200,"proCost":800,"shopCost":3000,"eliteCost":10000,"oilCost":35000,"cryptoCost":150000}');
+
+let currentViewMode = 'list';
+let activePickerType = '';
+let musicPlaying = true;
+let audioCtx = null;
+let activeInspectedUser = '';
+
+// ==================== УТИЛИТЫ ====================
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function formatPrice(priceStr) {
+    if (!priceStr) return '';
+    if (/[кk]/i.test(priceStr)) return priceStr;
+    const num = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
+    if (isNaN(num)) return priceStr;
+    if (num >= 1e9) return (num/1e9).toFixed(1).replace(/\.0$/,'')+'ккк';
+    if (num >= 1e6) return (num/1e6).toFixed(1).replace(/\.0$/,'')+'кк';
+    if (num >= 1e3) return (num/1e3).toFixed(1).replace(/\.0$/,'')+'к';
+    return num.toString();
+}
+
+function playSfx(type) {
+    if (!sfxEnabled) return;
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        if (type === 'cash') { osc.type='triangle'; osc.frequency.setValueAtTime(800,now); osc.frequency.setValueAtTime(1200,now+0.08); gain.gain.setValueAtTime(0.2,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.35); osc.start(now); osc.stop(now+0.35); }
+        else if (type === 'success') { osc.type='sine'; osc.frequency.setValueAtTime(440,now); osc.frequency.setValueAtTime(880,now+0.15); gain.gain.setValueAtTime(0.15,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.3); osc.start(now); osc.stop(now+0.3); }
+        else { osc.type='square'; osc.frequency.setValueAtTime(300,now); gain.gain.setValueAtTime(0.08,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.05); osc.start(now); osc.stop(now+0.05); }
+    } catch(e) {}
+}
+
+function updateMskClock() {
+    const now = new Date();
+    const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+    const el = document.getElementById('mskTime');
+    if (el) el.innerText = msk.toTimeString().split(' ')[0] + ' МСК';
+}
+setInterval(updateMskClock, 1000);
+updateMskClock();
+
+// ==================== ТЕМА ====================
+function applyThemeFromStorage() {
+    const savedTheme = localStorage.getItem(getUserKey('theme')) || 'light';
+    document.body.classList.toggle('dark', savedTheme === 'dark');
+}
+function toggleTheme() {
+    const isDark = document.body.classList.contains('dark');
+    document.body.classList.toggle('dark', !isDark);
+    localStorage.setItem(getUserKey('theme'), isDark ? 'light' : 'dark');
+    playSfx('click');
+}
+function setAppTheme(theme) {
+    document.body.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem(getUserKey('theme'), theme);
+    closeModal('themeModal');
+    playSfx('success');
+}
+
+// ==================== НАВИГАЦИЯ ====================
+function switchTab(tabId) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+    if (target) target.classList.add('active');
+    const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+    if (activeTab) activeTab.classList.add('active');
+    if (tabId === 'feed') renderFeed();
+    if (tabId === 'myAds') renderMyAds();
+    if (tabId === 'favorites') renderFavorites();
+    if (tabId === 'admin') renderPendingAds();
+    playSfx('click');
+}
+
+// ==================== МЕНЮ ⋮ ====================
+function buildDropdownMenu() {
+    const menu = document.getElementById('dropdownMenu');
+    if (!menu) return;
+    const items = [
+        { label: '🎮 Игра «Барыга»', action: () => openBarygaModal() },
+        { label: '🔍 Поиск', action: () => openSearchModal() },
+        { label: '💬 Переписки', action: () => openChatsModal() },
+        { label: '📄 Список', action: () => switchTab('feed') },
+        { label: '👤 Профиль', action: () => switchTab('profile') },
+        { label: '🎵 Музыка', action: () => openMusicModal() },
+        { label: '📸 Лента «Луков»', action: () => openFashionModal() },
+        { label: '🤝 Попутчики', action: () => openTravelModal() },
+        { label: '⚙️ Настройки', action: () => openSettingsModal() },
+        { label: '📩 Рассылки', action: () => openBroadcastsModal() }
+    ];
+    menu.innerHTML = items.map(item => `<button class="dropdown-item">${item.label}</button>`).join('');
+    menu.querySelectorAll('.dropdown-item').forEach((btn, i) => {
+        btn.addEventListener('click', () => {
+            items[i].action();
+            menu.style.display = 'none';
+            playSfx('click');
+        });
+    });
+}
+function toggleDropdownMenu(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('dropdownMenu');
+    if (!menu) return;
+    if (menu.children.length === 0) buildDropdownMenu();
+    const visible = menu.style.display === 'block';
+    menu.style.display = visible ? 'none' : 'block';
+    if (!visible) {
+        const btn = document.getElementById('menuButton');
+        const rect = btn.getBoundingClientRect();
+        menu.style.top = (rect.bottom + 5) + 'px';
+        menu.style.right = (window.innerWidth - rect.right) + 'px';
+    }
+}
+document.addEventListener('click', () => {
+    const menu = document.getElementById('dropdownMenu');
+    if (menu) menu.style.display = 'none';
+});
+
+// ==================== МОДАЛЬНЫЕ ОКНА ====================
+function openModal(id) { document.getElementById(id).style.display = 'flex'; playSfx('success'); }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function handleOverlayClick(e, id) { if (e.target.id === id) closeModal(id); }
+
+// ==================== ПОИСК ====================
+function openSearchModal() { openModal('searchModal'); }
+function executeAdvancedSearch(type) {
+    const query = document.getElementById('modalSearchInput').value.trim();
+    closeModal('searchModal');
+    if (!query) return;
+    if (type === 'profile') {
+        inspectUserProfile(query);
+    } else {
+        switchTab('feed');
+        alert(`Поиск "${query}" в ленте`);
+    }
+}
+
+// ==================== ПРОФИЛЬ ====================
+function inspectUserProfile(username) {
+    activeInspectedUser = username.startsWith('@') ? username : '@' + username;
+    document.getElementById('inspectUsername').innerText = activeInspectedUser;
+    openModal('profileInspectModal');
+}
+function inspectSubscribeUser() {
+    alert('Вы подписались на ' + activeInspectedUser);
+    closeModal('profileInspectModal');
+}
+function openTelegramChatForInspect() {
+    if (activeInspectedUser) {
+        window.open('https://t.me/' + activeInspectedUser.replace('@',''), '_blank');
+    }
+}
+
+// ==================== ЧАТЫ (заглушка) ====================
+function openChatsModal() { openModal('chatsModal'); }
+function openChatWithUser(user) {
+    // Переход в Telegram
+    const username = user.startsWith('@') ? user.slice(1) : user;
+    window.open('https://t.me/' + username, '_blank');
+}
+
+// ==================== ИГРА БАРЫГА ====================
+function saveBaryga() { localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData)); }
+function updateBarygaUI() {
+    const moneyEl = document.getElementById('clickerMoney');
+    if (moneyEl) moneyEl.innerText = barygaData.money.toLocaleString() + ' $';
+    const powerEl = document.getElementById('clickPowerLabel');
+    if (powerEl) powerEl.innerText = `+${barygaData.clickPower} $ / клик`;
+    const autoEl = document.getElementById('autoIncomeLabel');
+    if (autoEl) autoEl.innerText = `${barygaData.autoIncome.toLocaleString()} $ / сек`;
+    const costEls = {
+        clickCostLabel: barygaData.clickCost,
+        autoCostLabel: barygaData.autoCost,
+        proCostLabel: barygaData.proCost,
+        shopCostLabel: barygaData.shopCost,
+        eliteCostLabel: barygaData.eliteCost,
+        oilCostLabel: barygaData.oilCost,
+        cryptoCostLabel: barygaData.cryptoCost
+    };
+    Object.entries(costEls).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = `Цена: ${val.toLocaleString()} $`;
+    });
+}
+function makePurchase(costKey, valueKey, increment) {
+    if (barygaData.money >= barygaData[costKey]) {
+        barygaData.money -= barygaData[costKey];
+        barygaData[valueKey] += increment;
+        barygaData[costKey] = Math.floor(barygaData[costKey] * 1.5);
+        saveBaryga();
+        updateBarygaUI();
+        playSfx('success');
+    } else {
+        alert('❌ Недостаточно средств!');
+    }
+}
+function barygaClick() {
+    barygaData.money += barygaData.clickPower;
+    saveBaryga();
+    updateBarygaUI();
+    playSfx('cash');
+    const img = document.getElementById('barygaTapImg');
+    if (img) {
+        img.src = 'https://i.postimg.cc/Y0Pm3FQR/26dd45bd900d0a8f746895120416f957.jpg';
+        setTimeout(() => { img.src = 'https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg'; }, 1000);
+    }
+}
+function buyClickUpgrade() { makePurchase('clickCost', 'clickPower', 1); }
+function buyAutoUpgrade() { makePurchase('autoCost', 'autoIncome', 5); }
+function buyProUpgrade() { makePurchase('proCost', 'autoIncome', 20); }
+function buyShopUpgrade() { makePurchase('shopCost', 'autoIncome', 50); }
+function buyEliteUpgrade() { makePurchase('eliteCost', 'clickPower', 10); }
+function buyOilRigUpgrade() { makePurchase('oilCost', 'autoIncome', 200); }
+function buyCryptoUpgrade() { makePurchase('cryptoCost', 'autoIncome', 1000); }
+
+setInterval(() => {
+    if (barygaData.autoIncome > 0) {
+        barygaData.money += Math.floor(barygaData.autoIncome / 10);
+        saveBaryga();
+        if (document.getElementById('barygaModal')?.style.display === 'flex') updateBarygaUI();
+    }
+}, 100);
+
+function openBarygaModal() {
+    openModal('barygaModal');
+    updateBarygaUI();
+}
+function closeBarygaModal() { closeModal('barygaModal'); }

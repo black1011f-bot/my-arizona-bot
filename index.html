@@ -1607,3 +1607,254 @@
     else document.addEventListener('DOMContentLoaded', initPart6);
 })();
         </script>
+<script>
+(function() {
+    console.log('Часть 7: расширенные функции восстановлены.');
+
+    // ==================== БЕЗОПАСНАЯ РАБОТА С LOCALSTORAGE ====================
+    const originalGetItem = localStorage.getItem.bind(localStorage);
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    localStorage.getItem = function(key) {
+        try { return originalGetItem(key); } catch(e) { return null; }
+    };
+    localStorage.setItem = function(key, value) {
+        try { originalSetItem(key, value); } catch(e) { console.warn('localStorage переполнен'); }
+    };
+
+    // ==================== БАН-СИСТЕМА ====================
+    let bannedUsers = [];
+    try {
+        bannedUsers = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
+    } catch(e) { bannedUsers = []; }
+
+    function saveBannedUsers() {
+        localStorage.setItem('arizona_banned_users', JSON.stringify(bannedUsers));
+    }
+    function isCurrentUserBanned() {
+        return bannedUsers.includes(currentUserUsername.replace('@','').toLowerCase());
+    }
+
+    function createBanOverlay() {
+        let overlay = document.getElementById('banOverlay');
+        if (overlay) overlay.remove();
+        overlay = document.createElement('div');
+        overlay.id = 'banOverlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.97);
+            z-index: 100000; display: none; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            padding: 20px; color: #fff;
+        `;
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    function showBanScreen() {
+        const overlay = createBanOverlay();
+        overlay.innerHTML = `
+            <img src="https://i.postimg.cc/HLkMtJdg/fcf6efb0789c809c22b2b4c7cfe229a8.jpg" alt="Забанен" style="max-width: 200px; border-radius: 16px; margin-bottom: 20px;">
+            <h2 style="color: #ff3b30; font-size: 24px; margin-bottom: 8px;">🚫 ВЫ ЗАБЛОКИРОВАНЫ</h2>
+            <p style="font-size: 16px; max-width: 400px; line-height: 1.5; color: #ccc;">
+                Доступ к приложению ограничен администрацией.<br>
+                Если вы считаете, что это ошибка, обратитесь к владельцу.
+            </p>
+        `;
+        overlay.style.display = 'flex';
+    }
+
+    function showUnbanScreen() {
+        const overlay = createBanOverlay();
+        overlay.innerHTML = `
+            <img src="https://i.postimg.cc/vH76F7m4/b99270d8df0135112b68ebbd5057f965.jpg" alt="Разбанен" style="max-width: 200px; border-radius: 16px; margin-bottom: 20px;">
+            <h2 style="color: #4ade80; font-size: 24px; margin-bottom: 8px;">✅ ВЫ РАЗБЛОКИРОВАНЫ</h2>
+            <p style="font-size: 16px; max-width: 400px; line-height: 1.5; color: #ccc;">
+                Доступ восстановлен. Нажмите «Далее», чтобы продолжить.
+            </p>
+            <button id="unbanContinueBtn" style="margin-top: 20px; padding: 12px 24px; background: #4ade80; color: #000; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 16px;">Далее ➡️</button>
+        `;
+        overlay.style.display = 'flex';
+        document.getElementById('unbanContinueBtn').addEventListener('click', () => {
+            overlay.style.display = 'none';
+        });
+    }
+
+    // Переопределяем sendTargetAction, чтобы обрабатывать бан и разбан с оверлеем
+    const originalSendTargetAction = window.sendTargetAction;
+    window.sendTargetAction = function(action) {
+        const targetInput = document.getElementById('targetUser');
+        const target = targetInput ? targetInput.value.trim().replace('@','').toLowerCase() : '';
+        if (!target) { alert('Укажите целевого игрока!'); return; }
+        if (action === 'ban') {
+            if (!bannedUsers.includes(target)) {
+                bannedUsers.push(target);
+                saveBannedUsers();
+                alert(`🚫 Игрок @${target} забанен.`);
+            } else {
+                alert('Этот игрок уже забанен.');
+            }
+        } else if (action === 'unban') {
+            const idx = bannedUsers.indexOf(target);
+            if (idx > -1) {
+                bannedUsers.splice(idx, 1);
+                saveBannedUsers();
+                alert(`✅ Игрок @${target} разбанен.`);
+                if (currentUserUsername.replace('@','').toLowerCase() === target) {
+                    showUnbanScreen();
+                }
+            } else {
+                alert('Этот игрок не был забанен.');
+            }
+        } else {
+            // Для других действий вызываем оригинал
+            if (typeof originalSendTargetAction === 'function') {
+                originalSendTargetAction(action);
+            }
+        }
+    };
+
+    // Проверяем бан при загрузке
+    function checkBan() {
+        if (isCurrentUserBanned()) {
+            showBanScreen();
+            document.addEventListener('click', (e) => {
+                if (isCurrentUserBanned()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+        }
+    }
+    checkBan();
+
+    // ==================== ИНДИКАТОР ЗАГРУЗКИ ====================
+    function createLoader() {
+        let loader = document.getElementById('connectionLoader');
+        if (loader) loader.remove();
+        loader = document.createElement('div');
+        loader.id = 'connectionLoader';
+        loader.style.cssText = `
+            position: fixed; inset: 0; background: rgba(255,255,255,0.9);
+            display: none; align-items: center; justify-content: center;
+            z-index: 99999; backdrop-filter: blur(4px);
+        `;
+        loader.innerHTML = `
+            <div style="text-align: center; max-width: 280px; padding: 20px; background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                <div style="width: 48px; height: 48px; border: 5px solid #e0e0e0; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;"></div>
+                <p style="font-size: 16px; font-weight: 600; color: #1c1c1e; margin-bottom: 6px;">Загрузка, подождите...</p>
+                <p style="font-size: 13px; color: #8e8e93;">Проверяем соединение с интернетом</p>
+            </div>
+        `;
+        document.body.appendChild(loader);
+        if (!document.getElementById('spinStyle')) {
+            const style = document.createElement('style');
+            style.id = 'spinStyle';
+            style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+        }
+        return loader;
+    }
+
+    const loader = createLoader();
+    let isCheckingNet = false;
+    async function checkInternet() {
+        if (isCheckingNet) return;
+        isCheckingNet = true;
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
+            await fetch('https://www.gstatic.com/generate_204', { mode: 'no-cors', signal: controller.signal });
+            clearTimeout(timeoutId);
+            loader.style.display = 'none';
+        } catch (e) {
+            loader.style.display = 'flex';
+        } finally {
+            isCheckingNet = false;
+        }
+    }
+    function startNetworkMonitor() {
+        checkInternet();
+        setInterval(checkInternet, 5000);
+        window.addEventListener('online', () => loader.style.display = 'none');
+        window.addEventListener('offline', () => loader.style.display = 'flex');
+    }
+    startNetworkMonitor();
+
+    // ==================== SMS-УВЕДОМЛЕНИЯ ====================
+    function createSmsContainer() {
+        let container = document.getElementById('smsNotificationContainer');
+        if (container) container.remove();
+        container = document.createElement('div');
+        container.id = 'smsNotificationContainer';
+        container.style.cssText = `
+            position: fixed; left: 10px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; gap: 8px;
+            z-index: 99999; pointer-events: none;
+        `;
+        document.body.appendChild(container);
+        return container;
+    }
+    const smsContainer = createSmsContainer();
+
+    window.showSmsNotification = function(text) {
+        const sms = document.createElement('div');
+        sms.style.cssText = `
+            background: #fff; color: #1c1c1e; padding: 12px 16px;
+            border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            font-size: 13px; max-width: 260px; word-wrap: break-word;
+            pointer-events: auto; animation: slideInLeft 0.3s ease;
+            cursor: pointer; border-left: 4px solid #7c3aed;
+        `;
+        sms.innerText = text;
+        sms.addEventListener('click', () => {
+            if (typeof openBroadcastsModal === 'function') openBroadcastsModal();
+            sms.remove();
+        });
+        smsContainer.appendChild(sms);
+        setTimeout(() => { if (sms.parentNode) sms.remove(); }, 10000);
+    };
+
+    // Показываем последнюю рассылку, если есть
+    const broadcastHistory = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+    if (broadcastHistory.length > 0) {
+        setTimeout(() => showSmsNotification(broadcastHistory[0]), 500);
+    }
+
+    // ==================== ПОШАГОВЫЙ РЕДАКТОР ОБЪЯВЛЕНИЯ ====================
+    window.openEditAdModal = function(id) {
+        const ad = pendingAdsList.find(a => a.id === id);
+        if (!ad) return;
+        const steps = [
+            { title: '🏷 Название', field: 'itemName', placeholder: 'Введите название' },
+            { title: '💰 Цена', field: 'price', placeholder: '5000 или 5к' },
+            { title: '📄 Описание', field: 'text', placeholder: 'Опишите предмет' },
+            { title: '🖼 Скриншот (опционально)', field: 'image', placeholder: 'Ссылка на изображение' },
+            { title: '🌐 Сервер', field: 'server', placeholder: 'Выберите сервер' }
+        ];
+        let currentStep = 0;
+        const editedValues = {
+            itemName: ad.itemName,
+            price: ad.price,
+            text: ad.text,
+            image: ad.image || '',
+            server: ad.server
+        };
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.id = 'stepEditModal';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+        function renderStep() {
+            const step = steps[currentStep];
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 400px; width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3>✏️ Редактирование (шаг ${currentStep + 1} из ${steps.length})</h3>
+                        <button class="modal-close btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                    </div>
+                    <label style="font-weight:700; margin-bottom:4px; display:block;">${step.title}</label>
+                    ${step.field === 'text' 
+                        ? `<textarea id="editField" rows="3" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text);">${editedValues[step.field]}</textarea>`
+                        : step.field === 'server'
+                            ? `<select id="editField" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text);">${ALL_SERVERS.map(s => `<option value="${s}" ${s === editedValues.server ? '

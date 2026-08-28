@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -289,6 +290,40 @@
             padding: 6px 10px;
             font-size: 11px;
             margin: 0;
+        }
+
+        /* ==================== АДАПТАЦИЯ ПОД УСТРОЙСТВА ==================== */
+        @media (max-width: 480px) {
+            .container { padding: 0 8px; }
+            .btn { padding: 10px 14px; font-size: 13px; }
+            .btn-sm { padding: 6px 10px; font-size: 11px; }
+            .nav-tab .tab-icon { font-size: 20px; }
+            .nav-tab { font-size: 9px; }
+            .ad-card .ad-image-wrap { width: 90px; min-width: 90px; height: 90px; }
+            .ad-title { font-size: 13px; }
+            .ad-price { font-size: 14px; }
+            .section-title { font-size: 16px; }
+        }
+        @media (min-width: 481px) and (max-width: 768px) {
+            .container { max-width: 100%; padding: 0 16px; }
+            .btn { font-size: 15px; }
+            .nav-tab { font-size: 11px; }
+            .ad-card .ad-image-wrap { width: 120px; min-width: 120px; height: 120px; }
+            .section-title { font-size: 20px; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container { max-width: 900px; }
+            .nav-tab { font-size: 12px; }
+            .ad-card .ad-image-wrap { width: 140px; min-width: 140px; height: 140px; }
+            .btn { font-size: 16px; }
+            .section-title { font-size: 22px; }
+        }
+        @media (min-width: 1025px) {
+            .container { max-width: 1200px; }
+            .nav-tab { font-size: 13px; }
+            .ad-card .ad-image-wrap { width: 160px; min-width: 160px; height: 160px; }
+            .btn { font-size: 16px; }
+            .section-title { font-size: 24px; }
         }
     </style>
 </head>
@@ -888,22 +923,25 @@
         });
     }
 
+    // ИСПРАВЛЕННАЯ ФУНКЦИЯ submitData: для всех одинаковое ограничение
     function submitData() {
         const now = new Date();
         const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
         const hour = msk.getHours();
-        const isAdminUser = isAdmin();
-        if (!isAdminUser && (hour < 9 || hour >= 22)) {
+
+        // Проверка времени для ВСЕХ
+        if (hour < 9 || hour >= 22) {
             alert('Объявления принимаются с 09:00 до 22:00 МСК');
             return;
         }
+
+        // Проверка кулдауна для ВСЕХ
         const last = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
-        if (!isAdminUser || (hour >= 9 && hour < 22)) {
-            if (Date.now() - last < 120000) {
-                alert('Подождите 2 минуты');
-                return;
-            }
+        if (Date.now() - last < 120000) {
+            alert('Подождите 2 минуты');
+            return;
         }
+
         const mode = document.getElementById('mode').value;
         const category = document.getElementById('category').value;
         const itemName = document.getElementById('itemName').value.trim();
@@ -913,13 +951,31 @@
         const text = document.getElementById('text').value.trim();
         const image = document.getElementById('itemImage').value.trim();
         const server = document.getElementById('server').value;
-        if (!itemName || !price || !text) { alert('Заполните обязательные поля'); return; }
-        const newAd = { id: Date.now(), mode, category, itemName, price, text, image, server, author: currentUserUsername, status: 'pending' };
+
+        if (!itemName || !price || !text) {
+            alert('Заполните обязательные поля');
+            return;
+        }
+
+        const newAd = {
+            id: Date.now(),
+            mode,
+            category,
+            itemName,
+            price,
+            text,
+            image,
+            server,
+            author: currentUserUsername,
+            status: 'pending'
+        };
+
         pendingAdsList.push(newAd);
         myAdsList.push(newAd);
         localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
         localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
         localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
+
         alert('Объявление отправлено на модерацию');
         switchTab('feed');
     }
@@ -1618,6 +1674,6 @@
         sendTargetAction,
         isAdmin
     };
-                                </script>
+    </script>
 </body>
-    </html>
+</html>

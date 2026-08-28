@@ -258,6 +258,19 @@
             outline: none;
         }
         textarea { resize: vertical; min-height: 80px; }
+        .custom-select-trigger {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+            background:var(--app-bg); color:var(--text); font-size:14px; font-weight:600; cursor:pointer;
+        }
+        .picker-list { display:flex; flex-direction:column; gap:4px; }
+        .picker-item {
+            padding:12px 14px; border-radius:10px;
+            background: var(--app-bg); cursor:pointer; font-weight:500;
+            display:flex; justify-content:space-between; align-items:center;
+            border:none; font-size:14px;
+        }
+        .picker-item:hover { background: var(--accent-light); color: var(--accent); }
 
         /* ========== ПРОФИЛЬ ========== */
         .profile-header {
@@ -294,11 +307,10 @@
         <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
         <header class="app-header">
             <div class="header-left">
-                <span class="header-icon" onclick="openTravel()">✈️</span>
-                <div class="header-city" onclick="alert('Выбор города')">
+                <span class="header-city" onclick="alert('Выбор города')">
                     <span>Москва</span>
                     <span class="arrow">▼</span>
-                </div>
+                </span>
             </div>
             <div class="header-search" onclick="openSearchModal()">
                 <span>🔍 Поиск товаров</span>
@@ -341,7 +353,6 @@
                     <div class="category-item" onclick="filterByCategory('👕 Одежда')">👕</div>
                     <div class="category-item" onclick="filterByCategory('📱 Электроника')">📱</div>
                 </div>
-                <!-- Основной контент -->
                 <div id="feedContainer"></div>
             </section>
 
@@ -365,7 +376,6 @@
                     <div style="text-align:center; padding:40px; color:var(--muted);">
                         <div style="font-size:48px; margin-bottom:16px;">🛒</div>
                         <div style="font-weight:700; font-size:18px;">В корзине пока пусто</div>
-                        <div style="margin-top:8px;">Добавляйте товары из ленты</div>
                     </div>
                 </div>
             </section>
@@ -382,18 +392,21 @@
                 <div class="settings-list" id="profileSettings"></div>
             </section>
 
-            <!-- ОТПРАВКА ОБЪЯВЛЕНИЯ (скрытая секция, вызывается из каталога) -->
+            <!-- ОТПРАВКА ОБЪЯВЛЕНИЯ (скрытая секция) -->
             <section id="tabApp" class="section"></section>
 
             <!-- АДМИН (скрытая, только для админов) -->
             <section id="tabAdmin" class="section">
+                <h2 class="section-title">Админ-панель</h2>
                 <div id="pendingAdsContainer"></div>
-                <div id="ownerSection" style="display:none;"></div>
+                <div id="ownerSection" style="display:none;">
+                    <button class="btn btn-danger btn-sm" onclick="clearGlobalFeedAdmin()">🗑 Очистить всю ленту</button>
+                </div>
             </section>
         </main>
     </div>
 
-    <!-- МОДАЛЬНЫЕ ОКНА -->
+    <!-- ==================== МОДАЛЬНЫЕ ОКНА ==================== -->
     <div id="searchModal" class="modal-overlay" onclick="if(event.target===this) closeModal('searchModal')">
         <div class="modal-content">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -408,7 +421,7 @@
         </div>
     </div>
 
-    <!-- профиль игрока -->
+    <!-- Профиль игрока -->
     <div id="profileModal" class="modal-overlay" onclick="if(event.target===this) closeModal('profileModal')">
         <div class="modal-content">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -543,8 +556,16 @@
     <script>
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
         const OWNER_USERNAME = 'bounqy';
-        const ALL_SERVERS = ['🔥 Phoenix','🌴 Tucson','🌵 Scottdale','⚜️ Chandler','❄️ Brainburg','✨ Saint Rose','🏛 Mesa','❤️ Red-Rock','🌊 Yuma','🍀 Surprise'];
-        const ALL_CATEGORIES = ['💍 Аксессуары и вещи','🚗 Транспорт','🏠 Недвижимость','💼 Бизнесы','🔫 Оружие и материалы','👕 Одежда','📱 Электроника'];
+        // Полный список серверов (37 штук, включая мобильные)
+        const ALL_SERVERS = [
+            '🔥 Phoenix','🌴 Tucson','🌵 Scottdale','⚜️ Chandler','❄️ Brainburg','✨ Saint Rose','🏛 Mesa','❤️ Red-Rock','🌊 Yuma','🍀 Surprise',
+            '⚡️ Prescott','🌲 Glendale','👑 Kingman','⚓️ Winslow','🌴 Payson','💎 Gilbert','🔥 Show-Low','🌴 Casa-Grande','🌟 Page','☀️ Sun-City',
+            '⚡️ Queen Creek','🧸 Sedona','🎄 Holiday','📅 Wednesday','🚀 Yava','🔮 Faraway','🚀 Bumble Bee','🎄 Christmas','🌟 Mirage','❤️ Love',
+            '💎 Drake','🚀 Space','🏠 Home','📱 Mobile 3','📱 Mobile 2','📱 Mobile 1'
+        ];
+        const ALL_CATEGORIES = [
+            '💍 Аксессуары и вещи','🚗 Транспорт','🏠 Недвижимость','💼 Бизнесы','🔫 Оружие и материалы','👕 Одежда','📱 Электроника'
+        ];
 
         let tg = window.Telegram?.WebApp || null;
         if (tg) { tg.expand?.(); tg.ready?.(); }
@@ -616,7 +637,6 @@
             if (target) target.classList.add('active');
             const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
             if (activeTab) activeTab.classList.add('active');
-            // Скрыть верхнюю панель не нужно, она всегда видна
             if (tabId === 'feed') renderFeed();
             if (tabId === 'catalog') renderCatalog();
             if (tabId === 'favorites') renderFavorites();
@@ -643,18 +663,10 @@
             const rec = approved.slice(5, 20);
             const itemsRec = rec.length > 0 ? rec : approved.slice(0, 20);
             let html = '';
-            // Хиты продаж (горизонтальный)
             if (hot.length > 0) {
                 html += `<div class="section-title">🔥 Хиты продаж</div>`;
                 html += `<div class="horizontal-scroll">${hot.map(ad => createAdCard(ad, {showActions:false, showAuthor:false})).join('')}</div>`;
             }
-            // Нативный баннер
-            html += `<div class="ad-card" onclick="openBarygaModal()" style="background:var(--accent); color:#fff; padding:20px; text-align:center; margin:16px 0;">
-                <div style="font-size:32px;">🎮</div>
-                <div style="font-weight:800;">Играй в «Барыгу»</div>
-                <div style="opacity:0.8; font-size:12px;">Зарабатывай виртуальные доллары</div>
-            </div>`;
-            // Рекомендуем
             html += `<div class="section-title">💎 Рекомендуем вам</div>`;
             html += itemsRec.map(ad => createAdCard(ad)).join('');
             container.innerHTML = html;
@@ -719,7 +731,6 @@
 
         // ==================== КОРЗИНА ====================
         function renderCart() {
-            // Заглушка, можно хранить товары для покупки, но у нас их нет
             const container = document.getElementById('cartContainer');
             container.innerHTML = `
                 <div style="text-align:center; padding:40px; color:var(--muted);">
@@ -732,9 +743,11 @@
         // ==================== ПРОФИЛЬ ====================
         function renderProfile() {
             document.getElementById('profileName').innerText = currentUserNameDisplay;
-            document.getElementById('profileUsername').innerText = currentUserUsername;
+            document.getElementById('profileUsername').innerText = currentUserUsername + ' | ID: ' + currentUserId;
             const settings = document.getElementById('profileSettings');
             const items = [
+                { icon: '📦', label: 'Мои объявления', action: () => switchTab('myAds') },
+                { icon: '➕', label: 'Подать объявление', action: () => switchTab('app') },
                 { icon: '🎨', label: 'Сменить тему', action: () => openModal('themeModal') },
                 { icon: '🎵', label: 'Музыка', action: () => openModal('musicModal') },
                 { icon: '📸', label: 'Лента «Луков»', action: () => openModal('fashionModal') },
@@ -809,7 +822,8 @@
         }
         function renderPendingAds() {
             const container = document.getElementById('pendingAdsContainer');
-            if (!isAdmin()) { container.innerHTML = 'Доступно администраторам'; return; }
+            if (!isAdmin()) { container.innerHTML = 'Доступно администраторам'; if(document.getElementById('ownerSection')) document.getElementById('ownerSection').style.display='none'; return; }
+            if(document.getElementById('ownerSection')) document.getElementById('ownerSection').style.display = currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME ? 'block' : 'none';
             if (pendingAdsList.length === 0) { container.innerHTML = 'Нет ожидающих проверки'; return; }
             container.innerHTML = pendingAdsList.map(ad => `
                 <div class="ad-card" style="border-left:4px solid var(--accent); padding:12px; margin-bottom:10px;">
@@ -848,8 +862,57 @@
         function openEditAdModal(id) {
             const ad = pendingAdsList.find(a => a.id === id);
             if (!ad) return;
-            // простая реализация
-            alert('Редактирование пока недоступно. Одобрить или отклонить можно.');
+            // Удаляем старое модальное окно, если есть
+            document.querySelectorAll('#editAdModal').forEach(el => el.remove());
+            const modal = document.createElement('div');
+            modal.id = 'editAdModal';
+            modal.className = 'modal-overlay';
+            modal.style.display = 'flex';
+            modal.style.zIndex = '1500';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width:420px;width:100%;text-align:left;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3>✏️ Редактирование</h3>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                    </div>
+                    <div class="form-group"><label>Название</label><input type="text" id="editItemName" value="${ad.itemName}"></div>
+                    <div class="form-group"><label>Цена</label><input type="text" id="editPrice" value="${ad.price}"></div>
+                    <div class="form-group"><label>Описание</label><textarea id="editText" rows="3">${ad.text}</textarea></div>
+                    <div class="form-group"><label>Скриншоты (через запятую)</label><input type="text" id="editImage" value="${ad.image || ''}"></div>
+                    <div class="form-group"><label>Сервер</label><select id="editServer">${ALL_SERVERS.map(s => `<option value="${s}" ${s===ad.server?'selected':''}>${s}</option>`).join('')}</select></div>
+                    <div style="display:flex;gap:10px;margin-top:20px;">
+                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Отмена</button>
+                        <button class="btn btn-success" onclick="saveEditedAd(${ad.id})">Сохранить и одобрить</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+        }
+        function saveEditedAd(id) {
+            const ad = pendingAdsList.find(a => a.id === id);
+            if (!ad) return;
+            const itemName = document.getElementById('editItemName')?.value.trim();
+            const price = document.getElementById('editPrice')?.value.trim();
+            const text = document.getElementById('editText')?.value.trim();
+            const image = document.getElementById('editImage')?.value.trim();
+            const server = document.getElementById('editServer')?.value;
+            if (!itemName || !price || !text) { alert('Заполните обязательные поля'); return; }
+            ad.itemName = itemName;
+            ad.price = price;
+            ad.text = text;
+            ad.image = image;
+            ad.server = server;
+            // Одобряем
+            approveAd(id);
+            document.querySelectorAll('#editAdModal').forEach(el => el.remove());
+            renderFeed();
+        }
+        function clearGlobalFeedAdmin() {
+            if (!confirm('Очистить всю ленту?')) return;
+            globalAdsFeed = [];
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            renderFeed();
         }
 
         // ==================== ИГРА БАРЫГА ====================
@@ -925,7 +988,6 @@
         }
         function openChatWithInspected() { if (activeInspectedUser) window.open('https://t.me/' + activeInspectedUser.replace('@',''), '_blank'); }
         function inspectSubscribe() { alert('Подписка оформлена'); closeModal('profileModal'); }
-        function openTravel() { alert('Раздел путешествий'); }
         function openBarygaModal() { openModal('barygaModal'); updateBarygaUI(); }
         function toggleMusic() { const a = document.getElementById('bgMusic'); if (musicPlaying) { a.pause(); musicPlaying=false; document.getElementById('musicToggleBtn').innerText='▶ Играть'; } else { a.play(); musicPlaying=true; document.getElementById('musicToggleBtn').innerText='⏸ Пауза'; } }
         function resetMusic() { document.getElementById('bgMusic').src='https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3'; document.getElementById('bgMusic').play(); musicPlaying=true; }
@@ -947,8 +1009,33 @@
             else if(type==='server') document.getElementById('selectedServerText').innerText = text;
             closeModal('pickerModal');
         }
-
-        // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+        // Функция для удаления из избранного и т.д. (добавим)
+        function toggleFavorite(id) {
+            const ad = globalAdsFeed.find(a => a.id === id);
+            if (!ad) return;
+            const idx = favoritesList.findIndex(f => f.id === id);
+            if (idx > -1) favoritesList.splice(idx, 1); else favoritesList.push(ad);
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
+            renderFeed(); renderFavorites();
+        }
+        function deleteApprovedAd(id) {
+            if (!confirm('Удалить объявление из ленты?')) return;
+            const idx = globalAdsFeed.findIndex(a => a.id === id);
+            if (idx > -1) {
+                const myIdx = myAdsList.findIndex(a => a.id === id);
+                if (myIdx > -1) { myAdsList[myIdx].status = 'deleted'; localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList)); }
+                globalAdsFeed.splice(idx, 1);
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+                favoritesList = favoritesList.filter(f => f.id !== id);
+                localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
+                renderFeed(); renderFavorites();
+            }
+        }
+        function openChatWithUser(user) {
+            const username = user.startsWith('@') ? user.slice(1) : user;
+            window.open('https://t.me/' + username, '_blank');
+        }
+        // Инициализация
         function init() {
             applyThemeFromStorage();
             renderFeed();
@@ -957,11 +1044,8 @@
             renderCart();
             renderProfile();
             updateBarygaUI();
-            // скрыть вкладку админа если не админ
-            if (!isAdmin()) {
-                const adminTab = document.querySelector('.nav-tab[data-tab="admin"]');
-                if (adminTab) adminTab.style.display = 'none';
-            }
+            // Скрыть админ-вкладку (она не в таббаре, но на всякий случай)
+            // В нижней навигации нет админа, поэтому не требуется
         }
         if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
     </script>

@@ -3132,3 +3132,678 @@
     console.log('Бан-система с картинками восстановлена.');
 })();
 </script>
+<script>
+(function() {
+    console.log('Часть 16: Баннер перемещён вверх (перед шапкой).');
+
+    function moveBannerToTop() {
+        // Удаляем все существующие баннеры
+        const oldBanner = document.getElementById('broadcastBanner');
+        if (oldBanner) oldBanner.remove();
+
+        // Создаём новый баннер
+        const banner = document.createElement('div');
+        banner.id = 'broadcastBanner';
+        banner.className = 'broadcast-banner';
+        banner.style.display = 'none';
+        banner.style.background = '#7c3aed';
+        banner.style.color = '#fff';
+        banner.style.padding = '10px 14px';
+        banner.style.borderRadius = '10px';
+        banner.style.marginBottom = '10px';
+        banner.style.cursor = 'pointer';
+        banner.onclick = function() {
+            if (typeof openBroadcastsModal === 'function') openBroadcastsModal();
+            else alert('📢 ' + (localStorage.getItem('arizona_broadcast_msg') || 'Нет активного уведомления'));
+        };
+
+        // Вставляем баннер первым элементом в .container (перед шапкой)
+        const container = document.querySelector('.container');
+        if (container) {
+            container.prepend(banner);
+        } else {
+            // Если .container нет, вставляем в начало body
+            document.body.prepend(banner);
+        }
+
+        // Показываем, если есть сообщение
+        const savedMsg = localStorage.getItem('arizona_broadcast_msg');
+        if (savedMsg) {
+            banner.innerHTML = `<b>Уведомление от администрации!</b> ${savedMsg}`;
+            banner.style.display = 'block';
+        }
+    }
+
+    // Выполняем после загрузки DOM
+    if (document.readyState === 'complete') {
+        moveBannerToTop();
+    } else {
+        document.addEventListener('DOMContentLoaded', moveBannerToTop);
+    }
+
+    console.log('Баннер теперь сверху.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 17: Исправление поведения SMS-уведомлений.');
+
+    // ==================== УДАЛЯЕМ АВТОПОКАЗ ПОСЛЕДНЕЙ РАССЫЛКИ ПРИ ЗАГРУЗКЕ ====================
+    // Если в предыдущих частях был автопоказ, переопределяем showSmsNotification
+    // и убираем вызов при загрузке.
+
+    // Сохраняем оригинальную функцию, если она была
+    const originalShowSms = window.showSmsNotification;
+
+    window.showSmsNotification = function(text) {
+        // Удаляем старый контейнер, если есть дубли
+        let container = document.getElementById('smsNotificationContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'smsNotificationContainer';
+            container.style.cssText = `
+                position: fixed;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 99999;
+                pointer-events: none;
+            `;
+            document.body.appendChild(container);
+        }
+
+        const sms = document.createElement('div');
+        sms.style.cssText = `
+            background: #fff;
+            color: #1c1c1e;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            font-size: 13px;
+            max-width: 260px;
+            word-wrap: break-word;
+            pointer-events: auto;
+            animation: slideInRight 0.3s ease;
+            cursor: pointer;
+            border-right: 4px solid #7c3aed;
+        `;
+        sms.innerText = text;
+
+        // Функция удаления SMS
+        const removeSms = () => {
+            if (sms.parentNode) sms.remove();
+        };
+
+        // Клик — открыть рассылки и удалить SMS
+        sms.addEventListener('click', () => {
+            if (typeof openBroadcastsModal === 'function') openBroadcastsModal();
+            removeSms();
+        });
+
+        // Автоудаление через 10 секунд
+        setTimeout(removeSms, 10000);
+
+        container.appendChild(sms);
+    };
+
+    // Убираем автопоказ при загрузке — просто не вызываем showSmsNotification для старых рассылок.
+    // Если в предыдущем коде был такой вызов, он переопределён этой функцией и не сработает,
+    // потому что мы не вызываем его снова.
+
+    // Дополнительно: удаляем возможные старые SMS-контейнеры, чтобы не накапливались
+    function cleanupOldSmsContainers() {
+        document.querySelectorAll('#smsNotificationContainer').forEach(el => {
+            if (el.children.length === 0) el.remove(); // удаляем пустые
+        });
+    }
+
+    // Запускаем очистку после загрузки
+    if (document.readyState === 'complete') {
+        cleanupOldSmsContainers();
+    } else {
+        document.addEventListener('DOMContentLoaded', cleanupOldSmsContainers);
+    }
+
+    console.log('SMS-уведомления: автопоказ отключен, автоскрытие через 10 сек работает.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 18: Оптимизация загрузки при слабом интернете.');
+
+    // ==================== СОЗДАНИЕ ИНДИКАТОРА ЗАГРУЗКИ ====================
+    function createLoader() {
+        let loader = document.getElementById('connectionLoader');
+        if (loader) loader.remove();
+
+        loader = document.createElement('div');
+        loader.id = 'connectionLoader';
+        loader.style.cssText = `
+            position: fixed; inset: 0; background: rgba(255,255,255,0.9);
+            display: none; align-items: center; justify-content: center;
+            z-index: 99999; backdrop-filter: blur(4px);
+        `;
+        loader.innerHTML = `
+            <div style="text-align: center; max-width: 280px; padding: 20px; background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                <div style="width: 48px; height: 48px; border: 5px solid #e0e0e0; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;"></div>
+                <p style="font-size: 16px; font-weight: 600; color: #1c1c1e; margin-bottom: 6px;">Загрузка, подождите...</p>
+                <p style="font-size: 13px; color: #8e8e93;">Проверяем соединение с интернетом</p>
+            </div>
+        `;
+        document.body.appendChild(loader);
+
+        // Добавляем анимацию, если ещё нет
+        if (!document.getElementById('spinStyle')) {
+            const style = document.createElement('style');
+            style.id = 'spinStyle';
+            style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+        }
+        return loader;
+    }
+
+    const loader = createLoader();
+
+    // ==================== ПРОВЕРКА СЕТИ ====================
+    let isChecking = false;
+    async function checkInternet() {
+        if (isChecking) return;
+        isChecking = true;
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // ждём до 3 сек
+            await fetch('https://www.gstatic.com/generate_204', {
+                mode: 'no-cors',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            // Сеть есть — скрываем оверлей
+            loader.style.display = 'none';
+        } catch (e) {
+            // Сети нет или медленная — показываем оверлей
+            loader.style.display = 'flex';
+        } finally {
+            isChecking = false;
+        }
+    }
+
+    // ==================== МОНИТОРИНГ ====================
+    function startNetworkMonitor() {
+        checkInternet();
+        setInterval(checkInternet, 5000); // каждые 5 секунд
+        window.addEventListener('online', () => loader.style.display = 'none');
+        window.addEventListener('offline', () => loader.style.display = 'flex');
+    }
+    startNetworkMonitor();
+
+    // ==================== ЛЕНИВАЯ ЗАГРУЗКА ИЗОБРАЖЕНИЙ ====================
+    function applyLazyLoading() {
+        document.querySelectorAll('img').forEach(img => {
+            if (!img.hasAttribute('loading')) {
+                img.setAttribute('loading', 'lazy');
+            }
+        });
+    }
+    if (document.readyState === 'complete') {
+        applyLazyLoading();
+    } else {
+        document.addEventListener('DOMContentLoaded', applyLazyLoading);
+    }
+
+    console.log('Оптимизация загрузки активирована.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 19: Улучшенная лента.');
+
+    // Убедимся, что глобальные переменные существуют
+    if (typeof window.globalAdsFeed === 'undefined') {
+        window.globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+    }
+    if (typeof window.favoritesList === 'undefined') {
+        window.favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+    }
+
+    // ==================== УЛУЧШЕННЫЙ РЕНДЕР ЛЕНТЫ ====================
+    window.renderFeed = function() {
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+
+        const approved = globalAdsFeed.filter(ad => ad.status === 'approved');
+        if (approved.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted, var(--muted));text-align:center;padding:20px;font-size:12px;">В ленте пока нет одобренных объявлений.</div>';
+            return;
+        }
+
+        const admin = (typeof isAdmin === 'function') ? isAdmin() : false;
+
+        container.innerHTML = approved.slice(0, feedDisplayLimit || 20).map(ad => {
+            const isFav = favoritesList.some(f => f.id === ad.id);
+            const imageHtml = ad.image ? `<img src="${ad.image}" style="width:100%;height:130px;object-fit:cover;border-radius:10px;margin-bottom:8px;" onerror="this.style.display='none';">` : '';
+
+            return `
+                <div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div class="ad-header">
+                        <div>
+                            <span class="forum-badge ${ad.mode === 'sell' ? 'badge-success' : 'badge-auction'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                            <span style="font-size:11px;color:var(--text-muted);">${ad.server}</span>
+                        </div>
+                        <span style="color:var(--accent-secondary, #a78bfa);font-weight:700;cursor:pointer;" onclick="event.stopPropagation(); inspectUserProfile('${ad.author}')">${ad.author}</span>
+                    </div>
+                    ${imageHtml}
+                    <div style="font-weight:900;font-size:14px;color:var(--text-main, #fff);margin-bottom:4px;">${ad.itemName}</div>
+                    <div style="font-weight:800;color:var(--accent-gold, var(--gold));margin-bottom:6px;">💰 ${ad.price}</div>
+                    <div style="color:var(--text-muted, var(--muted));font-size:11px;margin-bottom:8px;line-height:1.4;">${ad.text}</div>
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button onclick="toggleFavorite(${ad.id})" class="btn-secondary" style="flex:1;">${isFav ? '❤️ В избранном' : '🤍 В избранное'}</button>
+                        <button onclick="openChatWithUser('${ad.author}')" class="btn-success" style="flex:1;">💬 Написать</button>
+                        ${admin ? `<button onclick="deleteApprovedAd(${ad.id})" class="btn-danger" style="flex:0 0 auto;">🗑</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // ==================== УЛУЧШЕННОЕ ПЕРЕКЛЮЧЕНИЕ ВИДА ====================
+    window.setViewMode = function(mode) {
+        currentViewMode = mode;
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+
+        if (mode === 'grid') {
+            container.classList.add('grid-view');
+            document.getElementById('btnGridView')?.classList.add('active');
+            document.getElementById('btnListView')?.classList.remove('active');
+        } else {
+            container.classList.remove('grid-view');
+            document.getElementById('btnListView')?.classList.add('active');
+            document.getElementById('btnGridView')?.classList.remove('active');
+        }
+        renderFeed(); // перерисовываем с новым режимом
+        playSfx && playSfx('click');
+    };
+
+    // ==================== ПРИМЕНЯЕМ СРАЗУ ====================
+    if (document.readyState === 'complete') {
+        renderFeed();
+    } else {
+        document.addEventListener('DOMContentLoaded', renderFeed);
+    }
+
+    console.log('Лента улучшена.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 20: Форма создания объявления переработана.');
+
+    function rebuildCreateAdForm() {
+        const section = document.getElementById('tabApp');
+        if (!section) return;
+
+        // Сохраняем старые значения, если есть
+        const old = {
+            mode: document.getElementById('mode')?.value || 'sell',
+            category: document.getElementById('category')?.value || '💍 Аксессуары и вещи',
+            itemName: document.getElementById('itemName')?.value || '',
+            price: document.getElementById('price')?.value || '',
+            text: document.getElementById('text')?.value || '',
+            image: document.getElementById('itemImage')?.value || '',
+            server: document.getElementById('server')?.value || '🌴 Tucson'
+        };
+
+        section.innerHTML = `
+            <div class="admin-section-title">📝 Создать объявление (требует модерации)</div>
+
+            <div class="form-group">
+                <label>📌 Тип темы:</label>
+                <div class="custom-select-trigger" onclick="openPicker('mode')">
+                    <span id="selectedModeText">${old.mode === 'sell' ? 'Продажа' : 'Покупка'}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="mode" value="${old.mode}">
+            </div>
+
+            <div class="form-group">
+                <label>🗂 Раздел бота:</label>
+                <div class="custom-select-trigger" onclick="openPicker('category')">
+                    <span id="selectedCategoryText">${old.category}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="category" value="${old.category}">
+            </div>
+
+            <div class="form-group">
+                <label for="itemName">🏷 Название предмета / товара:</label>
+                <input type="text" id="itemName" placeholder="Например: Магический шар +12" value="${old.itemName}">
+            </div>
+
+            <div class="form-group">
+                <label for="price">💰 Цена ($):</label>
+                <input type="text" id="price" placeholder="Например: 50кк или 50000000" value="${old.price}">
+            </div>
+
+            <div class="form-group">
+                <label for="text">📄 Описание / характеристики предмета:</label>
+                <textarea id="text" rows="4" placeholder="Опишите состояние предмета или условия...">${old.text}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="itemImage">🖼 Ссылка на скриншот предмета (опционально):</label>
+                <input type="url" id="itemImage" placeholder="https://i.imgur.com/..." value="${old.image}">
+            </div>
+
+            <div class="form-group">
+                <label>🌐 Игровой сервер:</label>
+                <div class="custom-select-trigger" onclick="openPicker('server')">
+                    <span id="selectedServerText">${old.server}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="server" value="${old.server}">
+            </div>
+
+            <button onclick="submitData()">🚀 Отправить на модерацию</button>
+            <div style="font-size:10px;color:var(--text-muted, var(--muted));text-align:center;margin-top:6px;">
+                🕒 Время отправки объявлений: с 09:00 до 22:00 по МСК (КД 2 минуты)
+            </div>
+        `;
+    }
+
+    // Выполняем при загрузке
+    if (document.readyState === 'complete') {
+        rebuildCreateAdForm();
+    } else {
+        document.addEventListener('DOMContentLoaded', rebuildCreateAdForm);
+    }
+
+    console.log('Форма готова.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 21: Туториал для админов.');
+
+    // ==================== ФУНКЦИЯ ПРОВЕРКИ АДМИНА ====================
+    function isAdminUser() {
+        return (typeof isAdmin === 'function') ? isAdmin() : false;
+    }
+
+    // ==================== СОЗДАНИЕ ОВЕРЛЕЯ ТУТОРИАЛА ДЛЯ АДМИНА ====================
+    function ensureAdminTutorialOverlay() {
+        let overlay = document.getElementById('adminTutorialOverlay');
+        if (overlay) overlay.remove();
+
+        overlay = document.createElement('div');
+        overlay.id = 'adminTutorialOverlay';
+        overlay.className = 'tutorial-overlay';
+        overlay.style.display = 'none';
+        overlay.innerHTML = `
+            <div class="tutorial-slider">
+                <div class="tutorial-slide active">
+                    <div class="tutorial-icon"><img src="https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg" alt=""></div>
+                    <div class="tutorial-title">🛡️ Админ-панель</div>
+                    <div class="tutorial-text">Добро пожаловать в панель модерации. Здесь вы можете одобрять или отклонять объявления игроков.</div>
+                </div>
+                <div class="tutorial-slide">
+                    <div class="tutorial-icon"><img src="https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg" alt=""></div>
+                    <div class="tutorial-title">🛡️ Модерация</div>
+                    <div class="tutorial-text">В разделе «Модерация» вы увидите список ожидающих объявлений. Нажмите «✅ Одобрить», чтобы опубликовать, или «❌ Отклонить», чтобы отклонить.</div>
+                </div>
+                <div class="tutorial-slide">
+                    <div class="tutorial-icon"><img src="https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg" alt=""></div>
+                    <div class="tutorial-title">👑 Панель владельца</div>
+                    <div class="tutorial-text">Если вы владелец, вам доступны дополнительные функции: назначение/снятие админов, бан/разбан игроков, очистка ленты, рассылка.</div>
+                </div>
+                <div class="tutorial-slide">
+                    <div class="tutorial-icon"><img src="https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg" alt=""></div>
+                    <div class="tutorial-title">📩 Рассылки</div>
+                    <div class="tutorial-text">Вы можете отправлять уведомления всем пользователям через системный баннер. Они появятся в разделе «Рассылки» и как SMS.</div>
+                </div>
+                <div class="tutorial-nav">
+                    <button class="btn btn-outline btn-sm" onclick="skipAdminTutorial()">Пропустить</button>
+                    <button class="btn btn-outline btn-sm" onclick="prevAdminTutorialSlide()">Назад</button>
+                    <button class="btn btn-sm" onclick="nextAdminTutorialSlide()">Далее</button>
+                </div>
+                <div class="tutorial-dots" id="adminTutorialDots">
+                    <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    // ==================== ЛОГИКА ТУТОРИАЛА ====================
+    let adminTutorialSlide = 0;
+    const adminTotalSlides = 4;
+    let adminAutoTimer = null;
+
+    function updateAdminTutorial() {
+        document.querySelectorAll('#adminTutorialOverlay .tutorial-slide').forEach((s, i) => {
+            s.classList.toggle('active', i === adminTutorialSlide);
+        });
+        document.querySelectorAll('#adminTutorialOverlay .dot').forEach((d, i) => {
+            d.classList.toggle('active', i === adminTutorialSlide);
+        });
+        // Автопереход через 4 секунды
+        if (adminAutoTimer) clearTimeout(adminAutoTimer);
+        adminAutoTimer = setTimeout(() => {
+            if (adminTutorialSlide < adminTotalSlides - 1) {
+                adminTutorialSlide++;
+                updateAdminTutorial();
+            } else {
+                completeAdminTutorial();
+            }
+        }, 4000);
+    }
+
+    window.nextAdminTutorialSlide = function() {
+        if (adminTutorialSlide < adminTotalSlides - 1) {
+            adminTutorialSlide++;
+            updateAdminTutorial();
+        } else {
+            completeAdminTutorial();
+        }
+    };
+
+    window.prevAdminTutorialSlide = function() {
+        if (adminTutorialSlide > 0) {
+            adminTutorialSlide--;
+            updateAdminTutorial();
+        }
+    };
+
+    window.skipAdminTutorial = function() {
+        completeAdminTutorial();
+    };
+
+    function completeAdminTutorial() {
+        if (adminAutoTimer) clearTimeout(adminAutoTimer);
+        const overlay = document.getElementById('adminTutorialOverlay');
+        if (overlay) overlay.style.display = 'none';
+        localStorage.setItem(getUserKey('admin_tutorial_completed'), '1');
+        // Если это был владелец, возможно, показать обычный туториал? Нет, обычный уже должен был быть показан ранее.
+    }
+
+    window.showAdminTutorial = function() {
+        ensureAdminTutorialOverlay();
+        adminTutorialSlide = 0;
+        updateAdminTutorial();
+        document.getElementById('adminTutorialOverlay').style.display = 'flex';
+    };
+
+    // ==================== ПРОВЕРКА ПРИ ЗАГРУЗКЕ ====================
+    function checkAdminTutorial() {
+        if (!isAdminUser()) return;
+        const completed = localStorage.getItem(getUserKey('admin_tutorial_completed')) === '1';
+        if (!completed) {
+            showAdminTutorial();
+        }
+    }
+
+    // Переопределяем resetAllData, чтобы сбрасывать флаг админ-туториала
+    const originalResetAllData = window.resetAllData;
+    window.resetAllData = function() {
+        if (confirm('Сбросить все данные?')) {
+            localStorage.removeItem(getUserKey('admin_tutorial_completed'));
+            localStorage.removeItem('tutorial_completed');
+            localStorage.clear();
+            location.reload();
+        }
+    };
+
+    // Запускаем проверку после готовности DOM
+    if (document.readyState === 'complete') {
+        checkAdminTutorial();
+    } else {
+        document.addEventListener('DOMContentLoaded', checkAdminTutorial);
+    }
+
+    console.log('Админ-туториал добавлен.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 22: Улучшенный обычный туториал.');
+
+    // ==================== СОЗДАНИЕ ОВЕРЛЕЯ ТУТОРИАЛА ====================
+    function ensureTutorialOverlay() {
+        let overlay = document.getElementById('tutorialOverlay');
+        if (overlay) overlay.remove(); // удаляем старый
+
+        overlay = document.createElement('div');
+        overlay.id = 'tutorialOverlay';
+        overlay.className = 'tutorial-overlay';
+        overlay.style.display = 'none';
+        overlay.innerHTML = `
+            <div class="tutorial-slider">
+                <div class="tutorial-slide active">
+                    <div class="tutorial-icon"><img src="https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg" alt=""></div>
+                    <div class="tutorial-title">Добро пожаловать!</div>
+                    <div class="tutorial-text">Это Arizona RP Mini App — торгуй, общайся, зарабатывай.</div>
+                </div>
+                <div class="tutorial-slide">
+                    <div class="tutorial-icon"><img src="https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg" alt=""></div>
+                    <div class="tutorial-title">Главная</div>
+                    <div class="tutorial-text">Просматривай объявления игроков, жми «Написать» для сделки.</div>
+                </div>
+                <div class="tutorial-slide">
+                    <div class="tutorial-icon"><img src="https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg" alt=""></div>
+                    <div class="tutorial-title">Создание</div>
+                    <div class="tutorial-text">Заполни форму и отправь на модерацию. После одобрения попадёт в ленту.</div>
+                </div>
+                <div class="tutorial-slide">
+                    <div class="tutorial-icon"><img src="https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg" alt=""></div>
+                    <div class="tutorial-title">Игра «Барыга»</div>
+                    <div class="tutorial-text">Тапай, покупай улучшения, зарабатывай виртуальные доллары!</div>
+                </div>
+                <div class="tutorial-nav">
+                    <button class="btn btn-outline btn-sm" onclick="skipTutorial()">Пропустить</button>
+                    <button class="btn btn-outline btn-sm" onclick="prevTutorialSlide()">Назад</button>
+                    <button class="btn btn-sm" onclick="nextTutorialSlide()">Далее</button>
+                </div>
+                <div class="tutorial-dots" id="tutorialDots">
+                    <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    // ==================== ЛОГИКА ТУТОРИАЛА ====================
+    let tutorialSlide = 0;
+    const totalSlides = 4;
+    let autoTimer = null;
+
+    function updateTutorial() {
+        document.querySelectorAll('#tutorialOverlay .tutorial-slide').forEach((s, i) => {
+            s.classList.toggle('active', i === tutorialSlide);
+        });
+        document.querySelectorAll('#tutorialOverlay .dot').forEach((d, i) => {
+            d.classList.toggle('active', i === tutorialSlide);
+        });
+        // Автопереход через 5 секунд
+        if (autoTimer) clearTimeout(autoTimer);
+        autoTimer = setTimeout(() => {
+            if (tutorialSlide < totalSlides - 1) {
+                tutorialSlide++;
+                updateTutorial();
+            } else {
+                completeTutorial();
+            }
+        }, 5000);
+    }
+
+    window.nextTutorialSlide = function() {
+        if (tutorialSlide < totalSlides - 1) {
+            tutorialSlide++;
+            updateTutorial();
+        } else {
+            completeTutorial();
+        }
+    };
+
+    window.prevTutorialSlide = function() {
+        if (tutorialSlide > 0) {
+            tutorialSlide--;
+            updateTutorial();
+        }
+    };
+
+    window.skipTutorial = function() {
+        completeTutorial();
+    };
+
+    function completeTutorial() {
+        if (autoTimer) clearTimeout(autoTimer);
+        const overlay = document.getElementById('tutorialOverlay');
+        if (overlay) overlay.style.display = 'none';
+        localStorage.setItem('tutorial_completed', '1');
+        if (tg?.CloudStorage) tg.CloudStorage.setItem('tutorial_completed', '1');
+    }
+
+    window.showTutorial = function() {
+        ensureTutorialOverlay();
+        tutorialSlide = 0;
+        updateTutorial();
+        document.getElementById('tutorialOverlay').style.display = 'flex';
+    };
+
+    window.hideTutorial = function() {
+        const overlay = document.getElementById('tutorialOverlay');
+        if (overlay) overlay.style.display = 'none';
+    };
+
+    // ==================== ПРОВЕРКА ПРИ ЗАГРУЗКЕ ====================
+    function checkTutorial() {
+        const completed = localStorage.getItem('tutorial_completed') === '1';
+        if (!completed) {
+            showTutorial();
+        } else {
+            hideTutorial();
+        }
+    }
+
+    // Переопределяем resetAllData, чтобы сбрасывать флаг обычного туториала
+    const originalReset = window.resetAllData;
+    window.resetAllData = function() {
+        if (confirm('Сбросить все данные?')) {
+            localStorage.removeItem('tutorial_completed');
+            localStorage.removeItem(getUserKey('admin_tutorial_completed'));
+            localStorage.clear();
+            location.reload();
+        }
+    };
+
+    // Запускаем после готовности DOM
+    if (document.readyState === 'complete') {
+        checkTutorial();
+    } else {
+        document.addEventListener('DOMContentLoaded', checkTutorial);
+    }
+
+    console.log('Обычный туториал улучшен.');
+})();
+</script>

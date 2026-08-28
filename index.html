@@ -4071,3 +4071,585 @@
     console.log('Финальная полировка завершена.');
 })();
 </script>
+<script>
+(function() {
+    console.log('Часть 25: Предзагрузка изображений.');
+
+    // ==================== ПРЕДЗАГРУЗКА КРИТИЧЕСКИХ ИЗОБРАЖЕНИЙ ====================
+    function preloadCriticalImages() {
+        const images = [
+            'https://i.postimg.cc/NfRFmHCQ/1786185439356.png', // баннер
+            'https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg', // аватар
+            'https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg', // картинка Барыги
+            'https://i.postimg.cc/Y0Pm3FQR/26dd45bd900d0a8f746895120416f957.jpg' // активная картинка Барыги
+        ];
+
+        images.forEach(src => {
+            const img = new Image();
+            img.src = src;
+        });
+    }
+
+    // ==================== УСТАНОВКА LOADING="EAGER" ДЛЯ КРИТИЧЕСКИХ ====================
+    function setEagerLoading() {
+        const selectors = [
+            '.welcome-banner-wide img', // баннер
+            '.brand img',                // аватар в шапке
+            '#azAvatarImg',              // аватар профиля
+            '#barygaTapImg'              // картинка Барыги
+        ];
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(img => {
+                img.setAttribute('loading', 'eager');
+                img.setAttribute('decoding', 'sync');
+            });
+        });
+    }
+
+    // Выполняем после загрузки DOM
+    if (document.readyState === 'complete') {
+        preloadCriticalImages();
+        setEagerLoading();
+    } else {
+        document.addEventListener('DOMContentLoaded', () => {
+            preloadCriticalImages();
+            setEagerLoading();
+        });
+    }
+
+    console.log('Предзагрузка завершена.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 26: Форма создания объявления как отдельная страница.');
+
+    function rebuildCreateAdPage() {
+        const section = document.getElementById('tabApp');
+        if (!section) return;
+
+        // Сохраняем значения, если пользователь что-то ввёл
+        const old = {
+            mode: document.getElementById('mode')?.value || 'sell',
+            category: document.getElementById('category')?.value || '💍 Аксессуары и вещи',
+            itemName: document.getElementById('itemName')?.value || '',
+            price: document.getElementById('price')?.value || '',
+            text: document.getElementById('text')?.value || '',
+            image: document.getElementById('itemImage')?.value || '',
+            server: document.getElementById('server')?.value || '🌴 Tucson'
+        };
+
+        section.innerHTML = `
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:0 4px;">
+                <h2 style="margin:0;color:var(--accent);font-size:18px;font-weight:800;">📝 Создать объявление</h2>
+                <button class="modal-close btn btn-outline btn-sm" onclick="switchTab('feed')" style="width:32px;height:32px;padding:0;">✕</button>
+            </div>
+
+            <div class="form-group">
+                <label>📌 Тип темы:</label>
+                <div class="custom-select-trigger" onclick="openPicker('mode')">
+                    <span id="selectedModeText">${old.mode === 'sell' ? 'Продажа' : 'Покупка'}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="mode" value="${old.mode}">
+            </div>
+
+            <div class="form-group">
+                <label>🗂 Раздел бота:</label>
+                <div class="custom-select-trigger" onclick="openPicker('category')">
+                    <span id="selectedCategoryText">${old.category}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="category" value="${old.category}">
+            </div>
+
+            <div class="form-group">
+                <label>🏷 Название предмета / товара:</label>
+                <input type="text" id="itemName" placeholder="Например: Магический шар +12" value="${old.itemName}">
+            </div>
+
+            <div class="form-group">
+                <label>💰 Цена ($):</label>
+                <input type="text" id="price" placeholder="Например: 50кк или 50000000" value="${old.price}">
+            </div>
+
+            <div class="form-group">
+                <label>📄 Описание / характеристики предмета:</label>
+                <textarea id="text" rows="4" placeholder="Опишите состояние предмета или условия...">${old.text}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>🖼 Ссылка на скриншот предмета (опционально):</label>
+                <input type="url" id="itemImage" placeholder="https://i.imgur.com/..." value="${old.image}">
+            </div>
+
+            <div class="form-group">
+                <label>🌐 Игровой сервер:</label>
+                <div class="custom-select-trigger" onclick="openPicker('server')">
+                    <span id="selectedServerText">${old.server}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="server" value="${old.server}">
+            </div>
+
+            <button onclick="submitData()" class="btn" style="margin-top:10px;padding:14px;font-size:16px;font-weight:900;">🚀 Отправить на модерацию</button>
+            <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px;">
+                🕒 Время отправки объявлений: с 09:00 до 22:00 по МСК (КД 2 минуты)
+            </div>
+        `;
+    }
+
+    // Выполняем при загрузке
+    if (document.readyState === 'complete') {
+        rebuildCreateAdPage();
+    } else {
+        document.addEventListener('DOMContentLoaded', rebuildCreateAdPage);
+    }
+
+    console.log('Страница создания объявления обновлена.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 27: Шрифты обновлены.');
+
+    // ==================== ПОДКЛЮЧЕНИЕ ШРИФТОВ ====================
+    function addFontLinks() {
+        if (!document.getElementById('audiowideFontLink')) {
+            const link1 = document.createElement('link');
+            link1.id = 'audiowideFontLink';
+            link1.rel = 'stylesheet';
+            link1.href = 'https://fonts.googleapis.com/css2?family=Audiowide&display=swap';
+            document.head.appendChild(link1);
+        }
+        if (!document.getElementById('interFontLink')) {
+            const link2 = document.createElement('link');
+            link2.id = 'interFontLink';
+            link2.rel = 'stylesheet';
+            link2.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap';
+            document.head.appendChild(link2);
+        }
+    }
+    addFontLinks();
+
+    // ==================== ПРИМЕНЕНИЕ ШРИФТОВ ====================
+    const style = document.createElement('style');
+    style.textContent = `
+        /* Основной текст — Inter */
+        body, button, input, textarea, select, .custom-select-trigger,
+        .btn, .nav-tab, .dropdown-item, .picker-item, .ad-card,
+        .modal-content, .form-group label, .admin-section-title,
+        .profile-subtab, .view-mode-btn, .upgrade-row, .clicker-upgrade-row,
+        .app-footer, .tutorial-title, .tutorial-text {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        }
+
+        /* Бренд Arizona RP — Audiowide */
+        .brand span, .brand, .forum-brand-title, .topbar-center .forum-brand-title {
+            font-family: 'Audiowide', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            letter-spacing: 0.5px;
+        }
+
+        /* Дополнительно для заголовков */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 800;
+        }
+    `;
+    document.head.appendChild(style);
+
+    console.log('Шрифт бренда — Audiowide, остальной текст — Inter.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 28: Баннер только на главной.');
+
+    function moveBannerToFeed() {
+        const feedSection = document.getElementById('tabFeed');
+        if (!feedSection) return;
+
+        // Ищем существующий баннер
+        let banner = document.querySelector('.welcome-banner-wide');
+        if (banner) {
+            // Перемещаем в начало секции feed, если он не там
+            if (banner.parentElement !== feedSection) {
+                feedSection.prepend(banner);
+            }
+        } else {
+            // Создаём баннер заново
+            banner = document.createElement('div');
+            banner.className = 'welcome-banner-wide';
+            banner.style.cssText = `
+                width: 100%;
+                border-radius: 14px;
+                overflow: hidden;
+                border: 1px solid var(--accent-red, #7c3aed);
+                margin-bottom: 14px;
+                box-shadow: 0 6px 20px rgba(220, 38, 38, 0.25);
+                animation: fadeIn 0.3s ease;
+                background: var(--forum-card-bg, var(--card-bg, #fff));
+            `;
+            const img = document.createElement('img');
+            img.src = 'https://i.postimg.cc/NfRFmHCQ/1786185439356.png';
+            img.alt = 'Arizona RP Banner';
+            img.loading = 'eager';
+            img.decoding = 'sync';
+            img.style.cssText = 'width:100%; height:auto; display:block;';
+            banner.appendChild(img);
+            feedSection.prepend(banner);
+        }
+    }
+
+    // Выполняем сразу после загрузки DOM
+    if (document.readyState === 'complete') {
+        moveBannerToFeed();
+    } else {
+        document.addEventListener('DOMContentLoaded', moveBannerToFeed);
+    }
+
+    // Также при переключении вкладок баннер останется внутри секции,
+    // поэтому он будет виден только при активной вкладке "Главная".
+    console.log('Баннер привязан к главной вкладке.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 29: SMS-уведомления справа по центру.');
+
+    // ==================== УДАЛЯЕМ ВСЕ СТАРЫЕ КОНТЕЙНЕРЫ SMS ====================
+    document.querySelectorAll('#smsNotificationContainer').forEach(el => el.remove());
+
+    // ==================== СОЗДАЁМ НОВЫЙ КОНТЕЙНЕР СПРАВА ====================
+    const smsContainer = document.createElement('div');
+    smsContainer.id = 'smsNotificationContainer';
+    smsContainer.style.cssText = `
+        position: fixed;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 99999;
+        pointer-events: none;
+    `;
+    document.body.appendChild(smsContainer);
+
+    // ==================== ФУНКЦИЯ ПОКАЗА SMS ====================
+    window.showSmsNotification = function(text) {
+        const sms = document.createElement('div');
+        sms.style.cssText = `
+            background: #fff;
+            color: #1c1c1e;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            font-size: 13px;
+            max-width: 260px;
+            word-wrap: break-word;
+            pointer-events: auto;
+            animation: slideInRight 0.3s ease;
+            cursor: pointer;
+            border-right: 4px solid #7c3aed;
+        `;
+        sms.innerText = text;
+
+        const removeSms = () => {
+            if (sms.parentNode) sms.remove();
+        };
+
+        sms.addEventListener('click', () => {
+            if (typeof openBroadcastsModal === 'function') openBroadcastsModal();
+            removeSms();
+        });
+
+        setTimeout(removeSms, 10000);
+
+        smsContainer.appendChild(sms);
+    };
+
+    // ==================== ДОБАВЛЯЕМ АНИМАЦИЮ slideInRight ====================
+    if (!document.getElementById('slideInRightStyle')) {
+        const style = document.createElement('style');
+        style.id = 'slideInRightStyle';
+        style.textContent = `
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    console.log('SMS-уведомления теперь справа по центру.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 30: Адаптивность под устройства.');
+
+    // ==================== ОПРЕДЕЛЕНИЕ ТИПА УСТРОЙСТВА ====================
+    function detectDeviceType() {
+        const body = document.body;
+        body.classList.remove('device-mobile', 'device-tablet', 'device-pc', 'device-laptop');
+
+        const width = window.innerWidth;
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isMac = /macintosh|mac os x/.test(userAgent);
+        const isTablet = /ipad|tablet|android(?!.*mobile)/i.test(userAgent);
+
+        if (width < 600 || (isTablet && width < 900)) {
+            body.classList.add('device-mobile');
+        } else if (width >= 600 && width < 1024) {
+            body.classList.add('device-tablet');
+        } else if (width >= 1024 && width < 1440) {
+            body.classList.add('device-laptop');
+        } else {
+            body.classList.add('device-pc');
+        }
+
+        // Для MacBook дополнительно можно уточнить, но класс уже добавлен
+        if (isMac && width >= 1024) {
+            body.classList.add('device-laptop');
+        }
+    }
+
+    // Вызываем при загрузке и при изменении размера
+    window.addEventListener('resize', detectDeviceType);
+    detectDeviceType();
+
+    // ==================== CSS-ПРАВИЛА АДАПТИВНОСТИ ====================
+    const style = document.createElement('style');
+    style.textContent = `
+        /* Базовые настройки */
+        .container {
+            max-width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        /* Телефоны */
+        body.device-mobile .container {
+            max-width: 100%;
+            padding: 4px;
+        }
+        body.device-mobile .ads-container:not(.grid-view) .ad-card {
+            margin-bottom: 8px;
+        }
+        body.device-mobile .btn {
+            padding: 12px 10px;
+            font-size: 13px;
+        }
+        body.device-mobile .nav-tab {
+            font-size: 8px;
+        }
+        body.device-mobile .nav-tab .tab-icon {
+            font-size: 20px;
+        }
+
+        /* Планшеты */
+        body.device-tablet .container {
+            max-width: 720px;
+            padding: 10px;
+        }
+        body.device-tablet .ads-container:not(.grid-view) {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        body.device-tablet .nav-tab {
+            font-size: 10px;
+        }
+
+        /* Ноутбуки */
+        body.device-laptop .container {
+            max-width: 960px;
+            padding: 12px;
+        }
+        body.device-laptop .ads-container:not(.grid-view) {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        /* ПК и большие мониторы */
+        body.device-pc .container {
+            max-width: 1200px;
+            padding: 14px;
+        }
+        body.device-pc .ads-container:not(.grid-view) {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+        body.device-pc .nav-tab {
+            font-size: 12px;
+        }
+
+        /* Специфические правки для очень маленьких экранов */
+        @media (max-width: 380px) {
+            .brand span {
+                font-size: 14px;
+            }
+            .icon-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 15px;
+            }
+            .nav-tab {
+                font-size: 7px;
+            }
+            .nav-tab .tab-icon {
+                font-size: 18px;
+            }
+            .btn {
+                padding: 10px 8px;
+                font-size: 12px;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    console.log('Адаптивность применена.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 31: Крестики для выхода из разделов.');
+
+    function addCloseButtonsToSections() {
+        // Секции, кроме главной
+        const sections = [
+            'tabApp',
+            'tabMyAds',
+            'tabFavorites',
+            'tabAdmin',
+            'tabProfile'
+        ];
+
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+
+            // Если кнопка уже есть, не дублируем
+            if (section.querySelector('.section-close-btn')) return;
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'section-close-btn modal-close btn btn-outline btn-sm';
+            closeBtn.innerHTML = '✕';
+            closeBtn.style.cssText = `
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 32px;
+                height: 32px;
+                padding: 0;
+                z-index: 10;
+            `;
+            closeBtn.onclick = function() {
+                switchTab('feed');
+            };
+
+            // Делаем секцию relative, если она ещё не relative
+            if (getComputedStyle(section).position === 'static') {
+                section.style.position = 'relative';
+            }
+
+            section.prepend(closeBtn);
+        });
+    }
+
+    // Выполняем после загрузки
+    if (document.readyState === 'complete') {
+        addCloseButtonsToSections();
+    } else {
+        document.addEventListener('DOMContentLoaded', addCloseButtonsToSections);
+    }
+
+    console.log('Кнопки выхода добавлены в разделы.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 32: Улучшенная мобильная навигация.');
+
+    // ==================== УЛУЧШЕНИЕ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК ====================
+    // Переопределяем switchTab, чтобы всегда корректно подсвечивать активную вкладку
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+        // Скрываем все секции
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        // Показываем нужную
+        const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+        if (target) target.classList.add('active');
+
+        // Убираем active у всех вкладок
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        // Подсвечиваем активную вкладку
+        const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+        if (activeTab) activeTab.classList.add('active');
+
+        // Вызываем рендеры
+        if (tabId === 'feed') renderFeed();
+        if (tabId === 'myAds') renderMyAds();
+        if (tabId === 'favorites') renderFavorites();
+        if (tabId === 'admin') renderPendingAds();
+        if (tabId === 'profile') initProfileUI();
+
+        playSfx && playSfx('click');
+    };
+
+    // ==================== АДАПТИВНАЯ НАВИГАЦИЯ ДЛЯ МОБИЛЬНЫХ ====================
+    const style = document.createElement('style');
+    style.textContent = `
+        /* На маленьких экранах скрываем текст вкладок, оставляем только иконки */
+        @media (max-width: 480px) {
+            .nav-tab {
+                font-size: 0 !important;
+                padding: 6px 2px !important;
+            }
+            .nav-tab .tab-icon {
+                font-size: 24px !important;
+            }
+            .nav-tabs {
+                padding: 6px 2px !important;
+                gap: 2px !important;
+            }
+            /* Увеличиваем область касания */
+            .nav-tab {
+                min-width: 48px;
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            /* Кнопки в карточках объявлений */
+            .ad-actions .btn {
+                padding: 8px 6px !important;
+                font-size: 10px !important;
+            }
+        }
+
+        /* На планшетах и выше текст виден */
+        @media (min-width: 481px) {
+            .nav-tab {
+                font-size: 10px !important;
+            }
+            .nav-tab .tab-icon {
+                font-size: 22px !important;
+            }
+        }
+
+        /* ПК и ноутбуки */
+        @media (min-width: 1024px) {
+            .nav-tab {
+                font-size: 12px !important;
+            }
+            .nav-tab .tab-icon {
+                font-size: 24px !important;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+
+    console.log('Мобильная навигация оптимизирована.');
+})();
+</script>

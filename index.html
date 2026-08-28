@@ -1630,3 +1630,353 @@ if(document.readyState==='complete') init(); else document.addEventListener('DOM
     console.log('Часть 52 применена: финальная инициализация.');
 })();
 </script>
+<script>
+(function() {
+    console.log('Финальный блок исправлений.');
+
+    // ========== 1. ШАПКА: скрываем везде, кроме главной ==========
+    const header = document.querySelector('.forum-topbar') || document.querySelector('.app-header');
+    function updateHeaderVisibility(tabId) {
+        if (header) header.style.display = (tabId === 'feed') ? 'flex' : 'none';
+    }
+
+    // ========== 2. КНОПКА ⋮: используем #threeDotsDropdown из старого скрипта ==========
+    function toggleDropdownMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('threeDotsDropdown') || document.getElementById('dropdownMenu');
+        if (!menu) return;
+        const visible = menu.style.display === 'block';
+        menu.style.display = visible ? 'none' : 'block';
+        if (!visible) {
+            const btn = e.currentTarget || document.querySelector('.forum-icon-btn[onclick*="toggleDropdownMenu"]');
+            if (btn) {
+                const rect = btn.getBoundingClientRect();
+                menu.style.position = 'fixed';
+                menu.style.top = (rect.bottom + 5) + 'px';
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+            }
+        }
+        if (typeof playSfx === 'function') playSfx('click');
+    }
+
+    // Для секционных кнопок ⋮
+    function toggleDropdownMenuFor(event, anchorBtn) {
+        event.stopPropagation();
+        const menu = document.getElementById('threeDotsDropdown') || document.getElementById('dropdownMenu');
+        if (!menu) return;
+        const visible = menu.style.display === 'block';
+        if (visible) {
+            menu.style.display = 'none';
+        } else {
+            const rect = anchorBtn.getBoundingClientRect();
+            menu.style.position = 'fixed';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.right = (window.innerWidth - rect.right) + 'px';
+            menu.style.display = 'block';
+        }
+    }
+
+    // ========== 3. УБИРАЕМ КРЕСТИКИ, ДОБАВЛЯЕМ КНОПКИ ⋮ В СЕКЦИИ ==========
+    document.querySelectorAll('.section-close-btn').forEach(btn => btn.remove());
+
+    function addSectionMenuButtons() {
+        const sections = ['tabApp', 'tabMyAds', 'tabFavorites', 'tabAdmin', 'tabProfile'];
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+            section.querySelectorAll('.section-menu-btn').forEach(btn => btn.remove());
+
+            const menuBtn = document.createElement('button');
+            menuBtn.className = 'section-menu-btn';
+            menuBtn.innerHTML = '⋮';
+            menuBtn.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                background: var(--forum-card-bg, #fff);
+                border: 1px solid var(--forum-card-border, #e5e5ea);
+                border-radius: 50%;
+                font-size: 18px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                color: var(--text-main, #1c1c1e);
+                z-index: 20;
+            `;
+            menuBtn.onclick = function(e) {
+                toggleDropdownMenuFor(e, menuBtn);
+            };
+            section.prepend(menuBtn);
+            if (getComputedStyle(section).position === 'static') section.style.position = 'relative';
+            section.style.paddingTop = '40px';
+        });
+    }
+    addSectionMenuButtons();
+
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('threeDotsDropdown') || document.getElementById('dropdownMenu');
+        if (menu && !menu.contains(e.target) && !e.target.closest('.forum-icon-btn') && !e.target.closest('.section-menu-btn')) {
+            menu.style.display = 'none';
+        }
+    });
+
+    // ========== 4. ПЕРЕОПРЕДЕЛЯЕМ switchTab ==========
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+        if (typeof originalSwitchTab === 'function') originalSwitchTab(tabId);
+        updateHeaderVisibility(tabId);
+        const menu = document.getElementById('threeDotsDropdown') || document.getElementById('dropdownMenu');
+        if (menu) menu.style.display = 'none';
+    };
+    updateHeaderVisibility('feed');
+
+    // ========== 5. ИСПРАВЛЕНИЕ ФУНКЦИЙ МОДЕРАЦИИ И ЛЕНТЫ ==========
+    // Гарантируем глобальные переменные
+    if (!window.pendingAdsList) window.pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+    if (!window.globalAdsFeed) window.globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+    if (!window.myAdsList) window.myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+    if (!window.favoritesList) window.favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+
+    // Лента
+    window.renderFeed = function() {
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+        const approved = window.globalAdsFeed.filter(ad => ad.status === 'approved');
+        if (approved.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px;">Лента пуста</div>';
+            return;
+        }
+        const admin = (typeof isAdmin === 'function') ? isAdmin() : false;
+        container.innerHTML = approved.slice(0, 20).map(ad => {
+            const isFav = window.favoritesList.some(f => f.id === ad.id);
+            const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
+            const imageHtml = firstImage ? `<img src="${firstImage}" style="height:100px;object-fit:cover;border-radius:8px;margin:4px 0;" onerror="this.style.display='none'">` : '';
+            return `
+                <div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);">
+                        <span class="forum-badge">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                        <span>${ad.server}</span>
+                    </div>
+                    ${imageHtml}
+                    <div class="ad-title">${ad.itemName}</div>
+                    <div class="ad-price">💰 ${ad.price}</div>
+                    <div class="ad-text">${ad.text}</div>
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button class="btn-outline btn-sm" onclick="toggleFavorite(${ad.id})">${isFav ? '❤️' : '🤍'}</button>
+                        <button class="btn-sm" onclick="openChatWithUser('${ad.author}')">💬 Написать</button>
+                        ${admin ? `<button class="btn-danger btn-sm" onclick="deleteApprovedAd(${ad.id})">🗑</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // Переключение вида
+    window.setViewMode = function(mode) {
+        currentViewMode = mode;
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+        container.classList.toggle('grid-view', mode === 'grid');
+        document.querySelectorAll('.view-mode-btn').forEach(b => b.classList.toggle('active', b.textContent.includes(mode === 'list' ? 'Список' : 'Плитка')));
+        renderFeed();
+    };
+
+    // Одобрение
+    window.approvePendingAd = function(id) {
+        const idx = window.pendingAdsList.findIndex(a => a.id === id);
+        if (idx > -1) {
+            const ad = window.pendingAdsList.splice(idx, 1)[0];
+            ad.status = 'approved';
+            window.globalAdsFeed.unshift(ad);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(window.globalAdsFeed));
+            renderPendingAds();
+            renderFeed();
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    window.rejectPendingAd = function(id) {
+        window.pendingAdsList = window.pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+        renderPendingAds();
+    };
+
+    // Редактирование
+    window.openEditAdModal = function(id) {
+        const ad = window.pendingAdsList.find(a => a.id === id);
+        if (!ad) { alert('Объявление не найдено'); return; }
+        document.querySelectorAll('#editAdModal').forEach(el => el.remove());
+        const modal = document.createElement('div');
+        modal.id = 'editAdModal';
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width:420px;width:100%;text-align:left;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3>✏️ Редактирование</h3><button class="modal-close btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">✕</button></div>
+                <div class="form-group"><label>🏷 Название</label><input type="text" id="editItemName" value="${ad.itemName}"></div>
+                <div class="form-group"><label>💰 Цена</label><input type="text" id="editPrice" value="${ad.price}"></div>
+                <div class="form-group"><label>📄 Описание</label><textarea id="editText" rows="3">${ad.text}</textarea></div>
+                <div class="form-group"><label>🖼 Ссылки на скриншоты</label><input type="text" id="editImage" value="${ad.image || ''}"></div>
+                <div class="form-group"><label>🌐 Сервер</label><select id="editServer">${ALL_SERVERS.map(s => `<option value="${s}" ${s===ad.server?'selected':''}>${s}</option>`).join('')}</select></div>
+                <div style="display:flex;gap:10px;margin-top:20px;"><button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">🔙 Отмена</button><button class="btn btn-success" onclick="saveEditedAd(${ad.id})">✅ Сохранить и одобрить</button></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    };
+
+    window.saveEditedAd = function(id) {
+        const ad = window.pendingAdsList.find(a => a.id === id);
+        if (!ad) { alert('Объявление не найдено'); return; }
+        const itemName = document.getElementById('editItemName').value.trim();
+        const price = document.getElementById('editPrice').value.trim();
+        const text = document.getElementById('editText').value.trim();
+        const image = document.getElementById('editImage').value.trim();
+        const server = document.getElementById('editServer').value;
+        if (!itemName || !price || !text) { alert('Заполните обязательные поля'); return; }
+        ad.itemName=itemName; ad.price=price; ad.text=text; ad.image=image; ad.server=server;
+        approvePendingAd(id);
+        document.querySelectorAll('#editAdModal').forEach(el => el.remove());
+        renderFeed();
+    };
+
+    // Удаление из ленты
+    window.deleteApprovedAd = function(id) {
+        if (!confirm('Удалить объявление из ленты?')) return;
+        const idx = window.globalAdsFeed.findIndex(a => a.id === id);
+        if (idx > -1) {
+            const myIdx = window.myAdsList.findIndex(a => a.id === id);
+            if (myIdx > -1) {
+                window.myAdsList[myIdx].status = 'deleted';
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+            }
+            window.globalAdsFeed.splice(idx, 1);
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(window.globalAdsFeed));
+            window.favoritesList = window.favoritesList.filter(f => f.id !== id);
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(window.favoritesList));
+            renderFeed();
+            renderMyAds();
+        }
+    };
+
+    // Мои объявления
+    window.renderMyAds = function() {
+        const container = document.getElementById('myAdsContainer');
+        if (!container) return;
+        if (window.myAdsList.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted);text-align:center;">Вы ещё не создавали объявлений</div>';
+            return;
+        }
+        container.innerHTML = window.myAdsList.map(ad => {
+            const isDeleted = ad.status === 'deleted';
+            const statusText = isDeleted ? '❌ Удалено' : (ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации');
+            return `
+                <div class="ad-card" style="${isDeleted ? 'opacity:0.6; border-color:#dc3545;' : ''}">
+                    <div class="ad-title">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:12px;color:${isDeleted ? '#dc3545' : 'var(--muted)'}">Статус: ${statusText}</div>
+                    ${isDeleted ? '<div style="color:#dc3545;font-weight:700;">Это объявление было удалено модерацией</div>' : ''}
+                    <p>${ad.text}</p>
+                    <button class="btn-danger btn-sm" onclick="deleteMyAdPermanently(${ad.id})">🗑 Удалить навсегда</button>
+                </div>
+            `;
+        }).join('');
+        // Кнопка очистить все
+        if (!document.getElementById('clearAllMyAdsBtn')) {
+            const btn = document.createElement('button');
+            btn.id = 'clearAllMyAdsBtn';
+            btn.className = 'btn btn-danger btn-sm';
+            btn.innerText = '🗑 Очистить все';
+            btn.onclick = clearMyAds;
+            container.appendChild(btn);
+        }
+    };
+
+    window.deleteMyAdPermanently = function(id) {
+        if (!confirm('Удалить навсегда?')) return;
+        window.myAdsList = window.myAdsList.filter(a => a.id !== id);
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+        window.pendingAdsList = window.pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+        window.favoritesList = window.favoritesList.filter(f => f.id !== id);
+        localStorage.setItem(getUserKey('favorites'), JSON.stringify(window.favoritesList));
+        renderMyAds();
+    };
+
+    window.clearMyAds = function() {
+        if (!confirm('Удалить все ваши объявления?')) return;
+        window.myAdsList = [];
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+        renderMyAds();
+    };
+
+    // ========== 6. ТУТОРИАЛЫ: обычный сначала, админский при входе в админку ==========
+    window.showAdminTutorial = function() {
+        if (localStorage.getItem(getUserKey('admin_tutorial_completed')) === '1') return;
+        // используем простой alert, чтобы не создавать сложный оверлей
+        alert('🛡️ Добро пожаловать в админ-панель!\n\nЗдесь вы можете:\n- Одобрять или отклонять объявления\n- Редактировать их\n- Управлять админами и банами (владелец)');
+        localStorage.setItem(getUserKey('admin_tutorial_completed'), '1');
+    };
+
+    const originalSwitchTabForTutorial = window.switchTab;
+    window.switchTab = function(tabId) {
+        if (tabId === 'admin' && localStorage.getItem('tutorial_completed') !== '1') {
+            if (typeof showTutorial === 'function') showTutorial();
+            return;
+        }
+        originalSwitchTabForTutorial(tabId);
+        updateHeaderVisibility(tabId);
+        if (tabId === 'admin' && typeof isAdmin === 'function' && isAdmin()) {
+            showAdminTutorial();
+        }
+    };
+
+    // ========== 7. ЕДИНЫЙ СТИЛЬ ДЛЯ ПИКЕРОВ И МОДАЛОК ==========
+    const style = document.createElement('style');
+    style.textContent = `
+        .picker-item {
+            padding: 12px 14px !important;
+            border-radius: 8px !important;
+            border: 1px solid var(--forum-card-border) !important;
+            background: var(--forum-card-bg) !important;
+            margin-bottom: 6px !important;
+            font-weight: 700 !important;
+        }
+        .picker-item:hover { background: var(--forum-header-bg) !important; border-color: var(--accent-red) !important; }
+        .modal-overlay .modal-content {
+            background: var(--forum-header-bg) !important;
+            color: var(--text-main) !important;
+            border-radius: 16px !important;
+            border: 1px solid var(--accent-red) !important;
+        }
+        .modal-overlay input, .modal-overlay textarea, .modal-overlay select,
+        #editAdModal input, #editAdModal textarea, #editAdModal select {
+            background: var(--forum-bg) !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--forum-card-border) !important;
+            padding: 10px !important;
+            border-radius: 8px !important;
+            margin-bottom: 8px !important;
+        }
+        .modal-overlay .btn, #editAdModal .btn {
+            border-radius: 10px !important;
+            font-weight: 800 !important;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // ========== 8. ИНИЦИАЛИЗАЦИЯ ==========
+    function init() {
+        renderFeed();
+        renderMyAds();
+        renderFavorites();
+        renderPendingAds();
+    }
+    if (document.readyState === 'complete') init();
+    else document.addEventListener('DOMContentLoaded', init);
+
+})();
+</script>

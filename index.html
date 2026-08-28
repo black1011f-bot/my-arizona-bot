@@ -4653,3 +4653,511 @@
     console.log('Мобильная навигация оптимизирована.');
 })();
 </script>
+<script>
+(function() {
+    console.log('Часть 33: Форма создания объявления, фильтр цены, крестики.');
+
+    // ==================== ФУНКЦИЯ ФОРМАТИРОВАНИЯ ЦЕНЫ ====================
+    // Если formatPrice уже есть, не переопределяем, но гарантируем её наличие
+    if (typeof window.formatPrice !== 'function') {
+        window.formatPrice = function(priceStr) {
+            if (!priceStr) return '';
+            if (/[кk]/i.test(priceStr)) return priceStr;
+            const num = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
+            if (isNaN(num)) return priceStr;
+            if (num >= 1e9) return (num/1e9).toFixed(1).replace(/\.0$/,'')+'ккк';
+            if (num >= 1e6) return (num/1e6).toFixed(1).replace(/\.0$/,'')+'кк';
+            if (num >= 1e3) return (num/1e3).toFixed(1).replace(/\.0$/,'')+'к';
+            return num.toString();
+        };
+    }
+
+    // ==================== ФИЛЬТР ВВОДА ЦЕНЫ ====================
+    function handlePriceInput(e) {
+        let val = e.target.value;
+        // Убираем всё, кроме цифр и точек
+        val = val.replace(/[^\d.]/g, '');
+        // Ограничиваем количество точек до 6
+        let parts = val.split('.');
+        if (parts.length > 6) {
+            // Оставляем первые 6 точек, остальные удаляем
+            val = parts.slice(0, 6).join('.') + parts.slice(6).join('');
+        }
+        e.target.value = val;
+    }
+
+    function handlePriceBlur(e) {
+        if (!e.target.value) return;
+        const digits = e.target.value.replace(/\D/g, '');
+        if (digits) {
+            const num = parseInt(digits, 10);
+            if (!isNaN(num)) {
+                e.target.value = window.formatPrice(num.toString());
+            }
+        }
+    }
+
+    // Делегирование на все поля цены (включая динамические)
+    document.addEventListener('input', function(e) {
+        if (e.target && (e.target.id === 'price' || e.target.id === 'editPrice')) {
+            handlePriceInput(e);
+        }
+    });
+
+    document.addEventListener('blur', function(e) {
+        if (e.target && (e.target.id === 'price' || e.target.id === 'editPrice')) {
+            handlePriceBlur(e);
+        }
+    }, true); // capture, чтобы поймать динамические поля
+
+    // ==================== ПЕРЕСБОРКА ФОРМЫ СОЗДАНИЯ ОБЪЯВЛЕНИЯ ====================
+    function rebuildCreateAdForm() {
+        const section = document.getElementById('tabApp');
+        if (!section) return;
+
+        // Сохраняем текущие значения (если есть)
+        const old = {
+            mode: document.getElementById('mode')?.value || 'sell',
+            category: document.getElementById('category')?.value || '💍 Аксессуары и вещи',
+            itemName: document.getElementById('itemName')?.value || '',
+            price: document.getElementById('price')?.value || '',
+            text: document.getElementById('text')?.value || '',
+            image: document.getElementById('itemImage')?.value || '',
+            server: document.getElementById('server')?.value || '🌴 Tucson'
+        };
+
+        // Полностью очищаем секцию и создаём новую разметку БЕЗ эмодзи и лишних крестиков
+        section.innerHTML = `
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding:0 4px;">
+                <h2 style="margin:0;color:var(--accent);font-size:18px;font-weight:800;">Создать объявление</h2>
+                <button class="modal-close btn btn-outline btn-sm" onclick="switchTab('feed')" style="width:32px;height:32px;padding:0;">✕</button>
+            </div>
+
+            <div class="form-group">
+                <label>Тип темы</label>
+                <div class="custom-select-trigger" onclick="openPicker('mode')">
+                    <span id="selectedModeText">${old.mode === 'sell' ? 'Продажа' : 'Покупка'}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="mode" value="${old.mode}">
+            </div>
+
+            <div class="form-group">
+                <label>Раздел бота</label>
+                <div class="custom-select-trigger" onclick="openPicker('category')">
+                    <span id="selectedCategoryText">${old.category}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="category" value="${old.category}">
+            </div>
+
+            <div class="form-group">
+                <label>Название предмета / товара</label>
+                <input type="text" id="itemName" placeholder="Например: Магический шар +12" value="${old.itemName}">
+            </div>
+
+            <div class="form-group">
+                <label>Цена ($)</label>
+                <input type="text" id="price" placeholder="Например: 5к или 5000" value="${old.price}">
+            </div>
+
+            <div class="form-group">
+                <label>Описание / характеристики предмета</label>
+                <textarea id="text" rows="4" placeholder="Опишите состояние предмета или условия...">${old.text}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Ссылка на скриншот предмета (опционально)</label>
+                <input type="url" id="itemImage" placeholder="https://i.imgur.com/..." value="${old.image}">
+            </div>
+
+            <div class="form-group">
+                <label>Игровой сервер</label>
+                <div class="custom-select-trigger" onclick="openPicker('server')">
+                    <span id="selectedServerText">${old.server}</span> <span>▼</span>
+                </div>
+                <input type="hidden" id="server" value="${old.server}">
+            </div>
+
+            <button onclick="submitData()" class="btn" style="margin-top:10px;padding:14px;font-size:16px;font-weight:900;">Отправить на модерацию</button>
+            <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px;">
+                Время отправки объявлений: с 09:00 до 22:00 по МСК (КД 2 минуты)
+            </div>
+        `;
+
+        // Удаляем возможный абсолютный крестик из Части 31 (если он ещё есть)
+        const extraClose = section.querySelector('.section-close-btn');
+        if (extraClose && extraClose !== section.querySelector('.page-header .modal-close')) {
+            extraClose.remove();
+        }
+    }
+
+    // Выполняем пересборку после готовности DOM
+    if (document.readyState === 'complete') {
+        rebuildCreateAdForm();
+    } else {
+        document.addEventListener('DOMContentLoaded', rebuildCreateAdForm);
+    }
+
+    console.log('Форма пересобрана без эмодзи, поле цены настроено, дубликаты крестиков удалены.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 34: Улучшенная админ-панель.');
+
+    // ==================== ЕДИНЫЙ СТИЛЬ ДЛЯ АДМИНКИ ====================
+    const style = document.createElement('style');
+    style.textContent = `
+        #tabAdmin .admin-section-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 16px 0 8px 0;
+            border-bottom: 1px solid var(--border, #e5e5ea);
+            padding-bottom: 5px;
+            letter-spacing: 0.3px;
+        }
+        #tabAdmin .ad-card {
+            margin-bottom: 14px;
+            padding: 12px;
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--border, #e5e5ea);
+            border-radius: 12px;
+        }
+        #tabAdmin .ad-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        #tabAdmin .ad-actions button {
+            flex: 1 1 auto;
+            min-width: 100px;
+            margin: 0;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        #tabAdmin .admin-controls-card {
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--border, #e5e5ea);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        #tabAdmin input, #tabAdmin textarea {
+            margin-bottom: 8px;
+            padding: 10px;
+            font-size: 13px;
+        }
+        #tabAdmin .owner-section {
+            margin-top: 16px;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // ==================== ПЕРЕОПРЕДЕЛЕНИЕ РЕНДЕРА ОЖИДАЮЩИХ ОБЪЯВЛЕНИЙ ====================
+    window.renderPendingAds = function() {
+        const container = document.getElementById('pendingAdsContainer');
+        if (!container) return;
+
+        const isAdminUser = (typeof isAdmin === 'function') ? isAdmin() : false;
+        if (!isAdminUser) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">Доступно только администраторам</div>';
+            if (document.getElementById('ownerSection')) document.getElementById('ownerSection').style.display = 'none';
+            return;
+        }
+
+        // Показываем панель владельца, если текущий пользователь владелец
+        const isOwner = currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase();
+        const ownerSection = document.getElementById('ownerSection');
+        if (ownerSection) ownerSection.style.display = isOwner ? 'block' : 'none';
+
+        if (pendingAdsList.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">Нет объявлений, ожидающих проверки</div>';
+            return;
+        }
+
+        container.innerHTML = pendingAdsList.map(ad => `
+            <div class="ad-card" style="border-color: var(--accent, #7c3aed);">
+                <div style="font-weight:800; font-size:14px; color:var(--text, #1c1c1e); margin-bottom:4px;">${ad.itemName} (${ad.price})</div>
+                <div style="font-size:11px; color:var(--muted); margin-bottom:6px;">От: ${ad.author} | Сервер: ${ad.server}</div>
+                <div style="font-size:12px; color:var(--text); margin-bottom:10px;">${ad.text}</div>
+                <div class="ad-actions">
+                    <button onclick="openEditAdModal(${ad.id})" class="btn btn-outline btn-sm">Редактировать</button>
+                    <button onclick="approvePendingAd(${ad.id})" class="btn btn-success btn-sm">Одобрить</button>
+                    <button onclick="rejectPendingAd(${ad.id})" class="btn btn-danger btn-sm">Отклонить</button>
+                </div>
+            </div>
+        `).join('');
+    };
+
+    // ==================== ПОШАГОВЫЙ РЕДАКТОР (УЛУЧШЕННЫЙ) ====================
+    window.openEditAdModal = function(id) {
+        const ad = pendingAdsList.find(a => a.id === id);
+        if (!ad) return;
+
+        const steps = [
+            { title: 'Название', field: 'itemName', placeholder: 'Введите название' },
+            { title: 'Цена', field: 'price', placeholder: 'Введите цену (например, 5к или 5000)' },
+            { title: 'Описание', field: 'text', placeholder: 'Опишите предмет' },
+            { title: 'Ссылка на скриншот', field: 'image', placeholder: 'https://...' },
+            { title: 'Сервер', field: 'server', placeholder: 'Выберите сервер' }
+        ];
+
+        let currentStep = 0;
+        const editedValues = {
+            itemName: ad.itemName,
+            price: ad.price,
+            text: ad.text,
+            image: ad.image || '',
+            server: ad.server
+        };
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.id = 'stepEditModal';
+        modal.style.zIndex = '1500';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+        function renderStep() {
+            const step = steps[currentStep];
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 400px; width: 100%; text-align: left;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h3 style="margin:0; font-size:16px; color:var(--text);">Редактирование (шаг ${currentStep+1} из ${steps.length})</h3>
+                        <button class="modal-close btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()" style="width:32px;height:32px;padding:0;">✕</button>
+                    </div>
+                    <label style="display:block; font-weight:700; margin-bottom:4px; font-size:12px; color:var(--muted);">${step.title}</label>
+                    ${
+                        step.field === 'text'
+                            ? `<textarea id="editField" rows="3" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text); font-size:13px;">${editedValues[step.field]}</textarea>`
+                            : step.field === 'server'
+                                ? `<select id="editField" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text); font-size:13px;">${ALL_SERVERS.map(s => `<option value="${s}" ${s === editedValues.server ? 'selected' : ''}>${s}</option>`).join('')}</select>`
+                                : `<input id="editField" type="text" value="${editedValues[step.field]}" placeholder="${step.placeholder}" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text); font-size:13px;">`
+                    }
+                    <div style="display: flex; gap: 6px; margin-top: 16px;">
+                        ${currentStep > 0 ? `<button class="btn btn-outline btn-sm" onclick="prevEditStep()">Назад</button>` : `<button class="btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()">Отмена</button>`}
+                        ${currentStep < steps.length - 1 
+                            ? `<button class="btn btn-sm" onclick="nextEditStep()">Далее</button>`
+                            : `<button class="btn btn-success btn-sm" onclick="finishEditApproval(${ad.id})">Одобрить</button>`
+                        }
+                    </div>
+                </div>
+            `;
+
+            const field = document.getElementById('editField');
+            if (field) {
+                field.oninput = () => { editedValues[step.field] = field.value; };
+                // Для поля цены применяем фильтр цифр и точек
+                if (step.field === 'price') {
+                    field.addEventListener('input', function(e) {
+                        let val = e.target.value.replace(/[^\d.]/g, '');
+                        let parts = val.split('.');
+                        if (parts.length > 6) val = parts.slice(0, 6).join('.') + parts.slice(6).join('');
+                        e.target.value = val;
+                    });
+                }
+            }
+
+            window.prevEditStep = function() {
+                if (currentStep > 0) { currentStep--; renderStep(); }
+            };
+            window.nextEditStep = function() {
+                const val = document.getElementById('editField').value;
+                editedValues[steps[currentStep].field] = val;
+                if (currentStep < steps.length - 1) { currentStep++; renderStep(); }
+            };
+            window.finishEditApproval = function(adId) {
+                const val = document.getElementById('editField').value;
+                editedValues[steps[currentStep].field] = val;
+                const targetAd = pendingAdsList.find(a => a.id === adId);
+                if (targetAd) {
+                    targetAd.itemName = editedValues.itemName;
+                    targetAd.price = editedValues.price;
+                    targetAd.text = editedValues.text;
+                    targetAd.image = editedValues.image;
+                    targetAd.server = editedValues.server;
+                    approvePendingAd(adId);
+                }
+                modal.remove();
+            };
+        }
+
+        renderStep();
+        document.body.appendChild(modal);
+    };
+
+    // ==================== ПЕРЕОПРЕДЕЛЕНИЕ ФУНКЦИЙ МОДЕРАЦИИ ====================
+    window.approvePendingAd = function(id) {
+        const idx = pendingAdsList.findIndex(a => a.id === id);
+        if (idx > -1) {
+            const ad = pendingAdsList.splice(idx, 1)[0];
+            ad.status = 'approved';
+            globalAdsFeed.unshift(ad);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            renderPendingAds();
+            renderFeed();
+            playSfx && playSfx('success');
+        }
+    };
+
+    window.rejectPendingAd = function(id) {
+        pendingAdsList = pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+        renderPendingAds();
+        playSfx && playSfx('success');
+    };
+
+    window.clearGlobalFeedAdmin = function() {
+        if (confirm('Очистить всю ленту объявлений?')) {
+            globalAdsFeed = [];
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            renderFeed();
+            playSfx && playSfx('success');
+        }
+    };
+
+    // ==================== ПЕРЕОПРЕДЕЛЕНИЕ sendTargetAction ====================
+    window.sendTargetAction = function(action) {
+        const targetInput = document.getElementById('targetUser');
+        const target = targetInput ? targetInput.value.trim().replace('@','').toLowerCase() : '';
+        if (!target) { alert('Укажите целевого игрока'); return; }
+
+        let banned = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
+        let admins = JSON.parse(localStorage.getItem('arizona_admin_list') || '[]');
+
+        if (action === 'ban') {
+            if (!banned.includes(target)) {
+                banned.push(target);
+                localStorage.setItem('arizona_banned_users', JSON.stringify(banned));
+                alert(`Игрок @${target} забанен.`);
+            } else alert('Игрок уже забанен.');
+        } else if (action === 'unban') {
+            const idx = banned.indexOf(target);
+            if (idx > -1) {
+                banned.splice(idx, 1);
+                localStorage.setItem('arizona_banned_users', JSON.stringify(banned));
+                alert(`Игрок @${target} разбанен.`);
+                if (currentUserUsername.replace('@','').toLowerCase() === target) {
+                    if (typeof showUnbanScreen === 'function') showUnbanScreen();
+                }
+            } else alert('Игрок не был забанен.');
+        } else if (action === 'make_admin') {
+            if (!admins.includes(target)) {
+                admins.push(target);
+                localStorage.setItem('arizona_admin_list', JSON.stringify(admins));
+                ADMIN_USERNAMES = admins;
+                alert(`Игрок @${target} назначен админом.`);
+            } else alert('Игрок уже админ.');
+        } else if (action === 'remove_admin') {
+            const idx = admins.indexOf(target);
+            if (idx > -1) {
+                admins.splice(idx, 1);
+                localStorage.setItem('arizona_admin_list', JSON.stringify(admins));
+                ADMIN_USERNAMES = admins;
+                alert(`Игрок @${target} снят с админа.`);
+            } else alert('Игрок не был админом.');
+        }
+    };
+
+    // ==================== ПЕРЕОПРЕДЕЛЕНИЕ РАССЫЛКИ ====================
+    window.updateBroadcastMessage = function() {
+        const input = document.getElementById('newBroadcastInput');
+        const text = input ? input.value.trim() : '';
+        if (!text) { alert('Введите текст рассылки'); return; }
+
+        let history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        history.unshift(`📢 ${new Date().toLocaleString()}: ${text}`);
+        localStorage.setItem('arizona_broadcast_history', JSON.stringify(history));
+
+        // Показываем SMS справа
+        if (typeof showSmsNotification === 'function') showSmsNotification(text);
+
+        if (input) input.value = '';
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    console.log('Админ-панель улучшена.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 35: Финальная навигация и крестики.');
+
+    // ==================== УДАЛЕНИЕ ЛИШНИХ КРЕСТИКОВ В ФОРМЕ ====================
+    function cleanExtraCloseButtons() {
+        // В форме создания объявления оставляем только крестик в .page-header
+        const tabApp = document.getElementById('tabApp');
+        if (tabApp) {
+            const headerClose = tabApp.querySelector('.page-header .modal-close');
+            if (headerClose) {
+                // Удаляем все другие кнопки с классом .section-close-btn
+                tabApp.querySelectorAll('.section-close-btn').forEach(btn => {
+                    if (btn !== headerClose) btn.remove();
+                });
+            }
+        }
+
+        // Для остальных секций убеждаемся, что крестик один и не перекрывает контент
+        ['tabMyAds', 'tabFavorites', 'tabAdmin', 'tabProfile'].forEach(id => {
+            const section = document.getElementById(id);
+            if (!section) return;
+            const existing = section.querySelectorAll('.section-close-btn');
+            // Оставляем только один, если их несколько
+            if (existing.length > 1) {
+                for (let i = 1; i < existing.length; i++) existing[i].remove();
+            }
+            if (existing.length === 1) {
+                // Убеждаемся, что крестик не перекрывает важный контент: позиционируем его аккуратно
+                existing[0].style.top = '8px';
+                existing[0].style.right = '8px';
+                existing[0].style.zIndex = '10';
+                // Добавляем padding-top к секции, чтобы крестик не наезжал на заголовки
+                if (section.firstElementChild !== existing[0]) {
+                    section.style.paddingTop = '40px';
+                }
+            }
+        });
+    }
+
+    // ==================== АНИМАЦИЯ ПРИ ПЕРЕКЛЮЧЕНИИ ВКЛАДОК ====================
+    const animationStyle = document.createElement('style');
+    animationStyle.textContent = `
+        .section {
+            animation: none !important;
+        }
+        .section.active {
+            animation: pageFadeIn 0.25s ease !important;
+        }
+        @keyframes pageFadeIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .modal-close, .section-close-btn {
+            transition: background 0.2s, color 0.2s;
+        }
+        .modal-close:hover, .section-close-btn:hover {
+            background: var(--accent, #7c3aed);
+            color: #fff;
+        }
+    `;
+    document.head.appendChild(animationStyle);
+
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    function initPart35() {
+        cleanExtraCloseButtons();
+    }
+
+    if (document.readyState === 'complete') {
+        initPart35();
+    } else {
+        document.addEventListener('DOMContentLoaded', initPart35);
+    }
+
+    console.log('Навигация и крестики оптимизированы.');
+})();
+</script>

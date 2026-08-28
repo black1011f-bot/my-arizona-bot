@@ -6082,3 +6082,567 @@
     console.log('Шапка скрыта на вкладках, кнопки ⋮ добавлены в разделы.');
 })();
 </script>
+<script>
+(function() {
+    console.log('Часть 46: Крестики и кнопки ⋮ в разделах.');
+
+    // ==================== 1. УДАЛЕНИЕ ВСЕХ ЛИШНИХ КРЕСТИКОВ ====================
+    function cleanCloseButtons() {
+        // Собираем все секции, кроме главной
+        const sections = ['tabApp', 'tabMyAds', 'tabFavorites', 'tabAdmin', 'tabProfile'];
+
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+
+            // Удаляем все существующие .section-close-btn
+            section.querySelectorAll('.section-close-btn').forEach(btn => btn.remove());
+
+            // Создаём один крестик
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'section-close-btn';
+            closeBtn.innerHTML = '✕';
+            closeBtn.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                background: var(--card-bg, #fff);
+                border: 1px solid var(--border, #e5e5ea);
+                border-radius: 50%;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                color: var(--text, #1c1c1e);
+                z-index: 20;
+                transition: background 0.2s, color 0.2s;
+            `;
+            closeBtn.onclick = function() {
+                switchTab('feed');
+            };
+            section.prepend(closeBtn);
+
+            // Убеждаемся, что у секции position relative
+            if (getComputedStyle(section).position === 'static') {
+                section.style.position = 'relative';
+            }
+            // Добавляем padding-top, чтобы крестик не перекрывал заголовок
+            section.style.paddingTop = '40px';
+        });
+    }
+
+    // ==================== 2. ДОБАВЛЕНИЕ КНОПКИ ⋮ В СЕКЦИИ ====================
+    function addSectionMenuButtons() {
+        const sections = ['tabApp', 'tabMyAds', 'tabFavorites', 'tabAdmin', 'tabProfile'];
+
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+
+            // Удаляем старые .section-menu-btn, если были
+            section.querySelectorAll('.section-menu-btn').forEach(btn => btn.remove());
+
+            // Создаём кнопку ⋮
+            const menuBtn = document.createElement('button');
+            menuBtn.className = 'section-menu-btn icon-btn';
+            menuBtn.innerHTML = '⋮';
+            menuBtn.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 48px; /* чтобы не перекрывала крестик */
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                background: var(--card-bg, #fff);
+                border: 1px solid var(--border, #e5e5ea);
+                border-radius: 50%;
+                font-size: 18px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                color: var(--text, #1c1c1e);
+                z-index: 20;
+                transition: background 0.2s, color 0.2s;
+            `;
+            menuBtn.onclick = function(e) {
+                e.stopPropagation();
+                toggleDropdownMenuFor(e, menuBtn);
+            };
+            section.prepend(menuBtn);
+        });
+    }
+
+    // ==================== 3. ФУНКЦИЯ ОТКРЫТИЯ МЕНЮ ОТ ПРОИЗВОЛЬНОЙ КНОПКИ ====================
+    window.toggleDropdownMenuFor = function(event, anchorBtn) {
+        event.stopPropagation();
+        let menu = document.getElementById('dropdownMenu');
+        if (!menu) return;
+
+        // Если меню не построено, строим
+        if (typeof buildDropdownMenu === 'function' && menu.children.length === 0) {
+            buildDropdownMenu();
+        }
+
+        const visible = menu.style.display === 'block';
+        if (visible) {
+            menu.style.display = 'none';
+        } else {
+            const rect = anchorBtn.getBoundingClientRect();
+            menu.style.position = 'fixed';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.right = (window.innerWidth - rect.right) + 'px';
+            menu.style.display = 'block';
+        }
+    };
+
+    // ==================== 4. ПЕРЕОПРЕДЕЛЯЕМ switchTab ====================
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+        if (typeof originalSwitchTab === 'function') originalSwitchTab(tabId);
+        // Скрываем меню при переключении
+        const menu = document.getElementById('dropdownMenu');
+        if (menu) menu.style.display = 'none';
+        // Управляем видимостью шапки, если функция есть
+        if (typeof updateHeaderVisibility === 'function') updateHeaderVisibility(tabId);
+    };
+
+    // ==================== 5. ИНИЦИАЛИЗАЦИЯ ====================
+    function initPart46() {
+        cleanCloseButtons();
+        addSectionMenuButtons();
+    }
+
+    if (document.readyState === 'complete') {
+        initPart46();
+    } else {
+        document.addEventListener('DOMContentLoaded', initPart46);
+    }
+
+    console.log('Крестики и кнопки ⋮ исправлены.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 47: Исправление одобрения, редактирования и ленты.');
+
+    // ==================== 1. ГАРАНТИРУЕМ ГЛОБАЛЬНЫЕ МАССИВЫ ====================
+    // Используем window, чтобы не было рассинхрона
+    if (!window.pendingAdsList) window.pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+    if (!window.globalAdsFeed) window.globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+    if (!window.myAdsList) window.myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+    if (!window.favoritesList) window.favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+
+    // ==================== 2. РЕНДЕР ЛЕНТЫ (КАК В СТАРОМ СКРИПТЕ) ====================
+    window.renderFeed = function() {
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+
+        const approved = window.globalAdsFeed.filter(ad => ad.status === 'approved');
+        if (approved.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px; font-size:12px;">Лента пуста</div>';
+            return;
+        }
+
+        const admin = (typeof isAdmin === 'function') ? isAdmin() : false;
+
+        container.innerHTML = approved.slice(0, feedDisplayLimit || 20).map(ad => {
+            const isFav = window.favoritesList.some(f => f.id === ad.id);
+            const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
+            const imageHtml = firstImage ? `<img src="${firstImage}" style="width:100%; height:130px; object-fit:cover; border-radius:10px; margin-bottom:8px;" onerror="this.style.display='none';">` : '';
+
+            return `
+                <div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div class="ad-header">
+                        <div>
+                            <span class="forum-badge ${ad.mode === 'sell' ? 'badge-success' : 'badge-auction'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                            <span style="font-size:11px;color:var(--muted);">${ad.server}</span>
+                        </div>
+                        <span style="color:var(--accent-secondary); font-weight:700; cursor:pointer;" onclick="event.stopPropagation(); inspectUserProfile('${ad.author}')">${ad.author}</span>
+                    </div>
+                    ${imageHtml}
+                    <div style="font-weight:900; font-size:14px; color:var(--text, #1c1c1e); margin-bottom:4px;">${ad.itemName}</div>
+                    <div style="font-weight:800; color:var(--gold); margin-bottom:6px;">💰 ${ad.price}</div>
+                    <div style="color:var(--muted); font-size:11px; margin-bottom:8px; line-height:1.4;">${ad.text}</div>
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button onclick="toggleFavorite(${ad.id})" class="btn-outline btn-sm" style="flex:1;">${isFav ? '❤️' : '🤍'}</button>
+                        <button onclick="openChatWithUser('${ad.author}')" class="btn-sm" style="flex:1;">💬 Написать</button>
+                        ${admin ? `<button onclick="deleteApprovedAd(${ad.id})" class="btn-danger btn-sm" style="flex:0 0 auto;">🗑</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // ==================== 3. ПЕРЕКЛЮЧЕНИЕ ВИДА (СПИСОК/ПЛИТКА) ====================
+    window.setViewMode = function(mode) {
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+
+        if (mode === 'grid') {
+            container.classList.add('grid-view');
+            const btnGrid = document.getElementById('btnGridView');
+            const btnList = document.getElementById('btnListView');
+            if (btnGrid) btnGrid.classList.add('active');
+            if (btnList) btnList.classList.remove('active');
+        } else {
+            container.classList.remove('grid-view');
+            const btnGrid = document.getElementById('btnGridView');
+            const btnList = document.getElementById('btnListView');
+            if (btnList) btnList.classList.add('active');
+            if (btnGrid) btnGrid.classList.remove('active');
+        }
+        currentViewMode = mode;
+        renderFeed(); // перерисовываем
+        if (typeof playSfx === 'function') playSfx('click');
+    };
+
+    // ==================== 4. ОДОБРЕНИЕ ОБЪЯВЛЕНИЯ ====================
+    window.approvePendingAd = function(id) {
+        const idx = window.pendingAdsList.findIndex(a => a.id === id);
+        if (idx > -1) {
+            const ad = window.pendingAdsList.splice(idx, 1)[0];
+            ad.status = 'approved';
+            window.globalAdsFeed.unshift(ad);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(window.globalAdsFeed));
+            renderPendingAds();
+            renderFeed();
+            if (typeof playSfx === 'function') playSfx('success');
+        } else {
+            console.warn('Объявление с id', id, 'не найдено в pendingAdsList');
+        }
+    };
+
+    // ==================== 5. ОТКЛОНЕНИЕ ОБЪЯВЛЕНИЯ ====================
+    window.rejectPendingAd = function(id) {
+        window.pendingAdsList = window.pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+        renderPendingAds();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // ==================== 6. РЕДАКТИРОВАНИЕ ОБЪЯВЛЕНИЯ ====================
+    window.openEditAdModal = function(id) {
+        const ad = window.pendingAdsList.find(a => a.id === id);
+        if (!ad) {
+            alert('Объявление не найдено');
+            return;
+        }
+
+        // Удаляем старые модалки
+        document.querySelectorAll('#editAdModal').forEach(el => el.remove());
+
+        const modal = document.createElement('div');
+        modal.id = 'editAdModal';
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.style.zIndex = '1500';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 420px; width: 100%; text-align: left; background: var(--card-bg, #fff); border-radius: 16px; padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="margin:0; font-size:18px; color:var(--text);">✏️ Редактирование</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="this.closest('.modal-overlay').remove()" style="width:32px;height:32px;padding:0;border-radius:50%;">✕</button>
+                </div>
+                <div class="form-group">
+                    <label>🏷 Название</label>
+                    <input type="text" id="editItemName" value="${ad.itemName}">
+                </div>
+                <div class="form-group">
+                    <label>💰 Цена</label>
+                    <input type="text" id="editPrice" value="${ad.price}">
+                </div>
+                <div class="form-group">
+                    <label>📄 Описание</label>
+                    <textarea id="editText" rows="3">${ad.text}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>🖼 Ссылки на скриншоты (через запятую, до 20)</label>
+                    <input type="text" id="editImage" value="${ad.image || ''}">
+                </div>
+                <div class="form-group">
+                    <label>🌐 Сервер</label>
+                    <select id="editServer">
+                        ${ALL_SERVERS.map(s => `<option value="${s}" ${s === ad.server ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()" style="flex:1;">🔙 Отмена</button>
+                    <button class="btn btn-success" onclick="saveEditedAd(${ad.id})" style="flex:2;">✅ Сохранить и одобрить</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Фильтр цены
+        const priceInput = document.getElementById('editPrice');
+        if (priceInput) {
+            priceInput.addEventListener('input', function(e) {
+                let val = e.target.value.replace(/[^\d.]/g, '');
+                let parts = val.split('.');
+                if (parts.length > 6) val = parts.slice(0, 6).join('.') + parts.slice(6).join('');
+                e.target.value = val;
+            });
+        }
+    };
+
+    window.saveEditedAd = function(id) {
+        const ad = window.pendingAdsList.find(a => a.id === id);
+        if (!ad) {
+            alert('Объявление не найдено');
+            return;
+        }
+
+        const itemName = document.getElementById('editItemName')?.value.trim();
+        const price = document.getElementById('editPrice')?.value.trim();
+        const text = document.getElementById('editText')?.value.trim();
+        const image = document.getElementById('editImage')?.value.trim();
+        const server = document.getElementById('editServer')?.value;
+
+        if (!itemName || !price || !text) {
+            alert('Заполните обязательные поля');
+            return;
+        }
+
+        ad.itemName = itemName;
+        ad.price = price;
+        ad.text = text;
+        ad.image = image;
+        ad.server = server;
+
+        // Одобряем
+        window.approvePendingAd(id);
+
+        // Закрываем модалку
+        document.querySelectorAll('#editAdModal').forEach(el => el.remove());
+        renderFeed();
+    };
+
+    // ==================== 7. УДАЛЕНИЕ ОБЪЯВЛЕНИЯ ИЗ ЛЕНТЫ (АДМИН) ====================
+    window.deleteApprovedAd = function(id) {
+        if (!confirm('Удалить объявление из ленты?')) return;
+
+        const adIndex = window.globalAdsFeed.findIndex(a => a.id === id);
+        if (adIndex > -1) {
+            const ad = window.globalAdsFeed[adIndex];
+            // Помечаем в myAdsList как удалённое, если принадлежит текущему пользователю
+            const myAdIndex = window.myAdsList.findIndex(a => a.id === id);
+            if (myAdIndex > -1) {
+                window.myAdsList[myAdIndex].status = 'deleted';
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+            }
+            // Удаляем из глобальной ленты
+            window.globalAdsFeed.splice(adIndex, 1);
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(window.globalAdsFeed));
+
+            // Удаляем из избранного
+            window.favoritesList = window.favoritesList.filter(f => f.id !== id);
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(window.favoritesList));
+
+            renderFeed();
+            renderMyAds();
+            renderFavorites();
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    // ==================== 8. РЕНДЕР МОИХ ОБЪЯВЛЕНИЙ С УДАЛЁННЫМИ ====================
+    window.renderMyAds = function() {
+        const container = document.getElementById('myAdsContainer');
+        if (!container) return;
+        if (window.myAdsList.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">Вы ещё не создавали объявлений</div>';
+            return;
+        }
+        container.innerHTML = window.myAdsList.map(ad => {
+            const isDeleted = ad.status === 'deleted';
+            const statusText = isDeleted ? '❌ Удалено' : (ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации');
+            return `
+                <div class="ad-card" style="${isDeleted ? 'opacity:0.6; border-color:#dc3545;' : ''}">
+                    <div style="font-weight:900; font-size:14px; color:var(--text); margin-bottom:4px;">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:11px; color:${isDeleted ? '#dc3545' : 'var(--muted)'}; margin-bottom:6px;">Статус: ${statusText}</div>
+                    ${isDeleted ? '<div style="color:#dc3545; font-weight:700; margin-bottom:6px;">Это объявление было удалено модерацией</div>' : ''}
+                    <div style="color:var(--muted); font-size:11px; margin-bottom:6px;">${ad.text}</div>
+                    <button onclick="deleteMyAdPermanently(${ad.id})" class="btn-danger btn-sm" style="margin-top:6px;">🗑 Удалить навсегда</button>
+                </div>
+            `;
+        }).join('');
+    };
+
+    window.deleteMyAdPermanently = function(id) {
+        if (!confirm('Удалить это объявление навсегда?')) return;
+        window.myAdsList = window.myAdsList.filter(a => a.id !== id);
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+        window.pendingAdsList = window.pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+        window.favoritesList = window.favoritesList.filter(f => f.id !== id);
+        localStorage.setItem(getUserKey('favorites'), JSON.stringify(window.favoritesList));
+        renderMyAds();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // ==================== 9. ИНИЦИАЛИЗАЦИЯ ====================
+    function initPart47() {
+        renderFeed();
+        renderPendingAds();
+        renderMyAds();
+        renderFavorites();
+    }
+
+    if (document.readyState === 'complete') {
+        initPart47();
+    } else {
+        document.addEventListener('DOMContentLoaded', initPart47);
+    }
+
+    console.log('Одобрение, редактирование и лента исправлены.');
+})();
+</script>
+<style>
+    /* ========== ЕДИНЫЙ СТИЛЬ ДЛЯ МОДАЛОК, ПИКЕРОВ И РЕДАКТОРА ========== */
+    .modal-overlay .modal-content,
+    #editAdModal .modal-content,
+    #pickerModal .modal-content,
+    #searchModal .modal-content,
+    #profileInspectModal .modal-content,
+    #themeModal .modal-content,
+    #musicModal .modal-content,
+    #fashionModal .modal-content,
+    #travelModal .modal-content,
+    #chatsModal .modal-content,
+    #chatDetailModal .modal-content,
+    #barygaModal .modal-content,
+    #broadcastsModal .modal-content {
+        background: var(--card-bg, #ffffff) !important;
+        color: var(--text, #1c1c1e) !important;
+        border-radius: 16px !important;
+        padding: 20px !important;
+        border: 1px solid var(--border, #e5e5ea) !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1) !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        text-align: left !important;
+    }
+
+    /* Заголовки в модалках */
+    .modal-overlay .modal-content h3,
+    .modal-overlay .modal-content h4 {
+        font-weight: 800 !important;
+        color: var(--text, #1c1c1e) !important;
+        margin: 0 0 12px 0 !important;
+        font-size: 16px !important;
+    }
+
+    /* Поля ввода и селекты внутри модалок */
+    .modal-overlay input,
+    .modal-overlay textarea,
+    .modal-overlay select,
+    #editAdModal input,
+    #editAdModal textarea,
+    #editAdModal select,
+    #pickerModal .picker-list .picker-item {
+        width: 100% !important;
+        padding: 12px 14px !important;
+        border-radius: 10px !important;
+        border: 1px solid var(--border, #e5e5ea) !important;
+        background: var(--app-bg, #f7f7fa) !important;
+        color: var(--text, #1c1c1e) !important;
+        font-size: 13px !important;
+        font-family: inherit !important;
+        outline: none !important;
+        transition: border-color 0.2s !important;
+        margin-bottom: 10px !important;
+    }
+
+    .modal-overlay input:focus,
+    .modal-overlay textarea:focus,
+    .modal-overlay select:focus,
+    #editAdModal input:focus,
+    #editAdModal textarea:focus,
+    #editAdModal select:focus {
+        border-color: var(--accent, #7c3aed) !important;
+    }
+
+    /* Кнопки в модалках */
+    .modal-overlay .btn,
+    #editAdModal .btn {
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        background: var(--btn-bg, #7c3aed) !important;
+        color: #fff !important;
+        border: none !important;
+        margin: 6px 0 !important;
+        width: auto !important;
+        flex: 1 1 auto !important;
+    }
+    .modal-overlay .btn-outline,
+    #editAdModal .btn-outline {
+        background: transparent !important;
+        color: var(--accent, #7c3aed) !important;
+        border: 1px solid var(--accent, #7c3aed) !important;
+    }
+
+    /* Пикер-элементы */
+    .picker-item {
+        cursor: pointer !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 12px 14px !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--border, #e5e5ea) !important;
+        background: var(--card-bg, #fff) !important;
+        color: var(--text, #1c1c1e) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        margin-bottom: 6px !important;
+        transition: background 0.15s, border-color 0.15s !important;
+    }
+    .picker-item:hover {
+        background: var(--app-bg, #f7f7fa) !important;
+        border-color: var(--accent, #7c3aed) !important;
+    }
+
+    /* Кнопки админ-редактора */
+    #editAdModal .btn-success {
+        background: #28a745 !important;
+        color: #fff !important;
+    }
+    #editAdModal .btn-outline {
+        background: transparent !important;
+        color: var(--accent, #7c3aed) !important;
+        border: 1px solid var(--accent, #7c3aed) !important;
+    }
+</style>
+
+<script>
+(function() {
+    console.log('Часть 48: Единый интерфейс применён.');
+
+    // Никаких JS-изменений не требуется, кроме возможной подстройки высоты селектов.
+    // Убеждаемся, что кастомные селекты (custom-select-trigger) тоже имеют стиль.
+    const style = document.createElement('style');
+    style.textContent = `
+        .custom-select-trigger {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 12px 14px !important;
+            border-radius: 10px !important;
+            border: 1px solid var(--border, #e5e5ea) !important;
+            background: var(--app-bg, #f7f7fa) !important;
+            color: var(--text, #1c1c1e) !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            margin-bottom: 10px !important;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+</script>

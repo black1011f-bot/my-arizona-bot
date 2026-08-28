@@ -1858,3 +1858,775 @@
                         ? `<textarea id="editField" rows="3" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text);">${editedValues[step.field]}</textarea>`
                         : step.field === 'server'
                             ? `<select id="editField" style="width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--app-bg); color:var(--text);">${ALL_SERVERS.map(s => `<option value="${s}" ${s === editedValues.server ? '
+<script>
+(function() {
+    console.log('Часть 8: Поиск и Профиль восстановлены.');
+
+    // ==================== ПОИСК ====================
+    // Убедимся, что модалка поиска существует
+    if (!document.getElementById('searchModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'searchModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3>🔍 Поиск предметов / Профилей</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="closeSearchModal()">✕</button>
+                </div>
+                <div class="form-group" style="text-align:left;">
+                    <label>🏷 Введите название предмета или ник игрока (@user):</label>
+                    <input type="text" id="modalSearchInput" placeholder="Например: Шар или @player">
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button onclick="executeAdvancedSearch('item')" class="btn btn-sm" style="flex:1;">📦 Поиск предмета</button>
+                    <button onclick="executeAdvancedSearch('profile')" class="btn btn-sm btn-outline" style="flex:1;">👤 Найти профиль</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    window.openSearchModal = function() {
+        document.getElementById('searchModal').style.display = 'flex';
+    };
+    window.closeSearchModal = function() {
+        document.getElementById('searchModal').style.display = 'none';
+    };
+
+    // ==================== ПРОФИЛЬ ИГРОКА (ПРОСМОТР) ====================
+    if (!document.getElementById('profileInspectModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'profileInspectModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="text-align:center;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3>👤 Профиль игрока</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="closeProfileInspect()">✕</button>
+                </div>
+                <img id="inspectAvatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><circle cx='50' cy='50' r='50' fill='%23161616'/><text x='50%' y='58%' dominant-baseline='middle' text-anchor='middle' font-size='35'>👤</text></svg>" style="width:60px;height:60px;border-radius:50%;margin:0 auto;">
+                <h4 id="inspectUsername">@player</h4>
+                <div id="inspectStatus">✨ В поиске</div>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                    <button class="btn btn-sm" onclick="inspectSubscribeUser()">❤️ Подписаться</button>
+                    <button class="btn btn-sm btn-outline" onclick="inspectOpenChat()">💬 Написать</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    window.inspectUserProfile = function(username) {
+        activeInspectedUser = username.startsWith('@') ? username : '@' + username;
+        document.getElementById('inspectUsername').innerText = activeInspectedUser;
+        document.getElementById('inspectStatus').innerText = '✨ Активный игрок Arizona RP';
+        document.getElementById('profileInspectModal').style.display = 'flex';
+    };
+    window.inspectSubscribeUser = function() {
+        alert(`❤️ Вы подписались на игрока ${activeInspectedUser}`);
+        closeProfileInspect();
+    };
+    window.inspectOpenChat = function() {
+        closeProfileInspect();
+        if (typeof openChatWithUser === 'function') openChatWithUser(activeInspectedUser);
+        else alert('Чаты временно недоступны');
+    };
+    window.closeProfileInspect = function() {
+        document.getElementById('profileInspectModal').style.display = 'none';
+    };
+
+    // ==================== ПЕРЕОПРЕДЕЛЯЕМ ФУНКЦИИ ПОИСКА ====================
+    window.executeAdvancedSearch = function(type) {
+        let query = document.getElementById('modalSearchInput').value.trim();
+        closeSearchModal();
+        if (!query) return;
+        if (type === 'profile') {
+            inspectUserProfile(query);
+        } else {
+            switchTab('feed');
+            alert(`🔍 Поиск предметов по запросу "${query}" выполнен в ленте объявлений.`);
+        }
+    };
+
+    console.log('Поиск и просмотр профиля готовы.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 9: Чаты восстановлены.');
+
+    // ==================== СОЗДАНИЕ МОДАЛОК ЧАТОВ (ЕСЛИ ИХ НЕТ) ====================
+    if (!document.getElementById('chatsModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'chatsModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="text-align:left;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3>💬 Переписки с игроками</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="closeChatsModal()">✕</button>
+                </div>
+                <div style="margin-bottom:10px;display:flex;gap:6px;">
+                    <input type="text" id="findUserChatInput" placeholder="🔍 Найти игрока по нику или @username..." style="margin-bottom:0;font-size:11px;">
+                    <button onclick="startChatByUsername()" style="width:70px;margin:0;padding:10px;font-size:11px;">🔍 Найти</button>
+                </div>
+                <div id="chatsList" style="max-height:240px;overflow-y:auto;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    if (!document.getElementById('chatDetailModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'chatDetailModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="text-align:left;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 id="chatTitle" style="color:#fff;margin:0;font-size:14px;">💬 Чат</h3>
+                    <div style="display:flex;gap:4px;">
+                        <button class="btn-secondary" onclick="clearActiveChatHistory()" style="width:auto;margin:0;padding:4px 8px;font-size:11px;">🧹</button>
+                        <button class="btn-secondary" onclick="closeChatDetail()" style="width:auto;margin:0;padding:4px 8px;font-size:11px;">✕</button>
+                    </div>
+                </div>
+                <div id="chatMessages" style="background:var(--forum-bg);padding:12px;border-radius:12px;height:220px;overflow-y:auto;font-size:12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;border:1px solid var(--forum-card-border);"></div>
+                <div style="display:flex;gap:6px;">
+                    <input type="text" id="chatInputMessage" placeholder="✍️ Написать сообщение..." style="margin-bottom:0;" onkeypress="if(event.key==='Enter') sendChatMessage()">
+                    <button onclick="sendChatMessage()" style="width:70px;margin-top:0;padding:10px;">🚀 Отпр</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // ==================== ПЕРЕМЕННЫЕ ЧАТОВ ====================
+    if (typeof window.chatsDatabase === 'undefined') {
+        window.chatsDatabase = JSON.parse(localStorage.getItem(getUserKey('chats_db')) || '{}');
+    }
+    if (typeof window.activeChatUser === 'undefined') {
+        window.activeChatUser = '';
+    }
+
+    // ==================== ФУНКЦИИ ЧАТОВ ====================
+    window.openChatsModal = function() {
+        document.getElementById('chatsModal').style.display = 'flex';
+        renderChatsList();
+    };
+    window.closeChatsModal = function() {
+        document.getElementById('chatsModal').style.display = 'none';
+    };
+    window.closeChatDetail = function() {
+        document.getElementById('chatDetailModal').style.display = 'none';
+    };
+
+    window.openChatWithUser = function(targetUser) {
+        if (!targetUser) return;
+        activeChatUser = targetUser.startsWith('@') ? targetUser : '@' + targetUser;
+        document.getElementById('chatTitle').innerText = '💬 Чат с ' + activeChatUser;
+        closeChatsModal();
+        closeProfileInspect && closeProfileInspect();
+        document.getElementById('chatDetailModal').style.display = 'flex';
+        renderActiveChatMessages();
+    };
+
+    window.renderActiveChatMessages = function() {
+        let container = document.getElementById('chatMessages');
+        if (!container) return;
+        if (!chatsDatabase[activeChatUser] || chatsDatabase[activeChatUser].length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted);text-align:center;margin:auto;font-size:11px;">История пуста. Напишите первое сообщение!</div>';
+            return;
+        }
+        container.innerHTML = chatsDatabase[activeChatUser].map(msg => `
+            <div style="display:flex;flex-direction:column;align-items:${msg.sender === currentUserUsername ? 'flex-end' : 'flex-start'};">
+                <div style="max-width:85%;background:${msg.sender === currentUserUsername ? 'var(--btn-gradient)' : 'var(--forum-card-bg)'};border:1px solid var(--forum-card-border);padding:8px 10px;border-radius:10px;font-size:11px;color:#fff;">
+                    ${msg.text}
+                </div>
+                <span style="font-size:8px;color:var(--text-muted);margin-top:2px;">${msg.time}</span>
+            </div>
+        `).join('');
+        container.scrollTop = container.scrollHeight;
+    };
+
+    window.sendChatMessage = function() {
+        let input = document.getElementById('chatInputMessage');
+        let text = input.value.trim();
+        if (!text || !activeChatUser) return;
+        if (!chatsDatabase[activeChatUser]) chatsDatabase[activeChatUser] = [];
+        let timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        chatsDatabase[activeChatUser].push({
+            sender: currentUserUsername,
+            text: text,
+            time: timeStr
+        });
+        localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+        input.value = '';
+        renderActiveChatMessages();
+        playSfx('success');
+    };
+
+    window.clearActiveChatHistory = function() {
+        if (activeChatUser && chatsDatabase[activeChatUser]) {
+            chatsDatabase[activeChatUser] = [];
+            localStorage.setItem(getUserKey('chats_db'), JSON.stringify(chatsDatabase));
+            renderActiveChatMessages();
+        }
+    };
+
+    window.renderChatsList = function() {
+        let listEl = document.getElementById('chatsList');
+        if (!listEl) return;
+        let keys = Object.keys(chatsDatabase);
+        if (keys.length === 0) {
+            listEl.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:12px;">У вас пока нет активных переписок.</div>';
+            return;
+        }
+        listEl.innerHTML = keys.map(user => {
+            let lastMsg = chatsDatabase[user][chatsDatabase[user].length - 1] || { text: 'Нет сообщений', time: '' };
+            return `
+                <div onclick="openChatWithUser('${user}')" class="picker-item" style="margin-bottom:6px;">
+                    <div>
+                        <div style="color:var(--accent-secondary);font-weight:800;">${user}</div>
+                        <div style="font-size:10px;color:var(--text-muted);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${lastMsg.text}</div>
+                    </div>
+                    <span style="font-size:9px;color:var(--text-muted);">${lastMsg.time}</span>
+                </div>
+            `;
+        }).join('');
+    };
+
+    window.startChatByUsername = function() {
+        let inputVal = document.getElementById('findUserChatInput').value.trim();
+        if (!inputVal) return;
+        openChatWithUser(inputVal);
+    };
+
+    // ==================== ПРИВЯЗКА КНОПКИ "НАПИСАТЬ" В ОБЪЯВЛЕНИЯХ К ЧАТУ ====================
+    // Переопределяем, чтобы использовался внутренний чат, а не window.open
+    const originalOpenChat = window.openChatWithUser;
+    window.openChatWithUser = function(user) {
+        // Если user передан, открываем чат
+        if (user) {
+            activeChatUser = user.startsWith('@') ? user : '@' + user;
+            document.getElementById('chatTitle').innerText = '💬 Чат с ' + activeChatUser;
+            closeChatsModal && closeChatsModal();
+            closeProfileInspect && closeProfileInspect();
+            document.getElementById('chatDetailModal').style.display = 'flex';
+            renderActiveChatMessages();
+            return;
+        }
+    };
+
+    console.log('Чаты полностью восстановлены.');
+})();
+</script>
+<style>
+    /* ========== СТИЛИ ПОЛЕЙ ВВОДА ИЗ СТАРОГО СКРИПТА ========== */
+    input, textarea, select, .custom-select-trigger {
+        width: 100%;
+        padding: 11px 13px;
+        border-radius: 10px;
+        border: 1px solid var(--forum-card-border, var(--border, #e5e5ea));
+        background: var(--forum-bg, var(--app-bg, #f7f7fa));
+        color: var(--text-main, var(--text, #1c1c1e));
+        box-sizing: border-box;
+        font-size: 13px;
+        outline: none;
+        transition: border-color 0.2s;
+        font-family: inherit;
+    }
+    input:focus, textarea:focus, select:focus {
+        border-color: var(--accent-red, var(--accent, #7c3aed));
+    }
+    .custom-select-trigger {
+        display: flex;
+        justify-content: space-between;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* ========== КНОПКИ ПЕРЕКЛЮЧЕНИЯ ВИДА (СПИСОК/ПЛИТКА) ========== */
+    .view-mode-btns {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
+    }
+    .view-mode-btn {
+        flex: 1;
+        padding: 6px;
+        background: var(--forum-card-bg, var(--card-bg, #fff));
+        border: 1px solid var(--forum-card-border, var(--border, #e5e5ea));
+        color: var(--text-muted, var(--muted, #8e8e93));
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        margin: 0;
+        transition: all 0.2s ease;
+        box-shadow: none;
+    }
+    .view-mode-btn.active {
+        background: var(--btn-gradient, linear-gradient(135deg, #7c3aed, #5b21b6));
+        color: #ffffff;
+        border-color: var(--accent-red, var(--accent, #7c3aed));
+    }
+
+    /* ========== УВЕЛИЧИВАЕМ ОТСТУПЫ В АДМИН-ПАНЕЛИ ========== */
+    #tabAdmin .ad-card,
+    #tabAdmin .admin-controls-card {
+        margin-bottom: 12px;
+    }
+    #tabAdmin .ad-actions button,
+    #tabAdmin .admin-controls-card button {
+        margin: 4px 4px 4px 0;
+    }
+    #tabAdmin .admin-actions-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 8px 0;
+    }
+    #tabAdmin .admin-actions-grid button {
+        flex: 1 1 auto;
+        margin: 0;
+        min-width: 120px;
+    }
+    #tabAdmin input {
+        margin-bottom: 6px;
+    }
+</style>
+
+<script>
+(function() {
+    console.log('Часть 10: Музыка, Лента Луков, Попутчики, Настройки, Рассылки и стили.');
+
+    // ==================== МУЗЫКА ====================
+    if (!document.getElementById('musicModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'musicModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="text-align:left;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3>🎵 Своя фоновая музыка</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="closeMusicModal()">✕</button>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Загрузите аудиофайл (.mp3, .wav), чтобы он играл фоново пока вы находитесь в приложении.</div>
+                <div class="form-group">
+                    <input type="file" id="customAudioFile" accept="audio/*" onchange="loadCustomBackgroundMusic(event)">
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button onclick="toggleMusicPlayback()" class="btn btn-sm" style="margin:0;flex:1;" id="musicPlayToggleBtn">⏸ Пауза</button>
+                    <button onclick="resetDefaultMusic()" class="btn btn-sm btn-outline" style="margin:0;flex:1;">🔄 Сбросить</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    window.openMusicModal = function() { document.getElementById('musicModal').style.display = 'flex'; };
+    window.closeMusicModal = function() { document.getElementById('musicModal').style.display = 'none'; };
+
+    // Функции музыки уже могут существовать, но на всякий случай переопределим
+    window.toggleMusicPlayback = function() {
+        const audio = document.getElementById('bgMusic');
+        if (!audio) return;
+        if (audio.paused) {
+            audio.play();
+            document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+        } else {
+            audio.pause();
+            document.getElementById('musicPlayToggleBtn').innerText = '▶ Играть';
+        }
+        playSfx && playSfx('click');
+    };
+    window.loadCustomBackgroundMusic = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        const audio = document.getElementById('bgMusic');
+        if (audio) {
+            audio.src = url;
+            audio.play();
+            document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+            playSfx && playSfx('success');
+            alert('🎵 Фоновая музыка успешно загружена!');
+        }
+    };
+    window.resetDefaultMusic = function() {
+        const audio = document.getElementById('bgMusic');
+        if (audio) {
+            audio.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
+            audio.play();
+            document.getElementById('musicPlayToggleBtn').innerText = '⏸ Пауза';
+            playSfx && playSfx('success');
+        }
+    };
+
+    // ==================== ЛЕНТА «ЛУКОВ» ====================
+    if (!document.getElementById('fashionModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'fashionModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="text-align:left;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3>📸 Лента "Луков" (Модный приговор)</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="closeFashionModal()">✕</button>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Поделитесь скриншотом своего сета аксессуаров (Шар, Крылья, Бронежилет)!</div>
+                <div class="form-group">
+                    <input type="text" id="fashionSetTitle" placeholder="Название сета (например: Ангел)">
+                </div>
+                <div class="form-group">
+                    <input type="url" id="fashionSetImage" placeholder="Ссылка на скриншот (Imgur / Postimages)">
+                </div>
+                <button onclick="postFashionLook()" class="btn btn-sm">🚀 Выложить сет</button>
+                <div id="fashionContainer" style="margin-top:12px;max-height:200px;overflow-y:auto;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    window.openFashionModal = function() { renderFashionLooks(); document.getElementById('fashionModal').style.display = 'flex'; };
+    window.closeFashionModal = function() { document.getElementById('fashionModal').style.display = 'none'; };
+
+    // Переопределяем, если необходимо
+    if (typeof window.fashionLooks === 'undefined') {
+        window.fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
+    }
+    window.postFashionLook = function() {
+        const title = document.getElementById('fashionSetTitle').value.trim();
+        const image = document.getElementById('fashionSetImage').value.trim();
+        if (!title || !image) { alert('⚠️ Заполните название сета и ссылку на скриншот!'); return; }
+        fashionLooks.unshift({ author: currentUserUsername, title, image, time: new Date().toLocaleDateString() });
+        localStorage.setItem('arizona_fashion_looks', JSON.stringify(fashionLooks));
+        renderFashionLooks();
+        document.getElementById('fashionSetTitle').value = '';
+        document.getElementById('fashionSetImage').value = '';
+        alert('📸 Ваш лук успешно опубликован в ленте!');
+        playSfx && playSfx('success');
+    };
+    window.renderFashionLooks = function() {
+        const container = document.getElementById('fashionContainer');
+        if (!container) return;
+        if (fashionLooks.length === 0) {
+            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;">Лента пуста. Выложите первый лук!</div>';
+            return;
+        }
+        container.innerHTML = fashionLooks.map(l => `
+            <div style="background:var(--forum-bg, var(--app-bg));border:1px solid var(--forum-card-border, var(--border));padding:8px;border-radius:10px;margin-bottom:8px;">
+                <div style="font-weight:800;color:var(--accent-secondary, var(--accent2));font-size:11px;margin-bottom:4px;">${l.author}: ${l.title}</div>
+                <img src="${l.image}" style="width:100%;height:100px;object-fit:cover;border-radius:6px;" onerror="this.style.display='none';">
+            </div>
+        `).join('');
+    };
+    renderFashionLooks();
+
+    // ==================== ПОПУТЧИКИ ====================
+    if (!document.getElementById('travelModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'travelModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content" style="text-align:left;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3>🤝 Поиск попутчиков (Шахта / Завод)</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="closeTravelModal()">✕</button>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Найдите напарника на шахту, ферму, завод или для ловли деталей тюнинга!</div>
+                <div class="form-group">
+                    <input type="text" id="travelActivity" placeholder="Куда идем? (Шахта, Завод, Ловля тюнинга)">
+                </div>
+                <div class="form-group">
+                    <textarea id="travelDesc" rows="2" placeholder="Условия / Сервер..."></textarea>
+                </div>
+                <button onclick="postTravelAd()" class="btn btn-sm">📢 Найти напарника</button>
+                <div id="travelContainer" style="margin-top:12px;max-height:200px;overflow-y:auto;"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    window.openTravelModal = function() { renderTravelAds(); document.getElementById('travelModal').style.display = 'flex'; };
+    window.openTravelBuddiesModal = window.openTravelModal; // совместимость
+    window.closeTravelModal = function() { document.getElementById('travelModal').style.display = 'none'; };
+
+    if (typeof window.travelAds === 'undefined') {
+        window.travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
+    }
+    window.postTravelAd = function() {
+        const activity = document.getElementById('travelActivity').value.trim();
+        const desc = document.getElementById('travelDesc').value.trim();
+        if (!activity) { alert('⚠️ Укажите активность!'); return; }
+        travelAds.unshift({ author: currentUserUsername, activity, desc, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+        localStorage.setItem('arizona_travel_ads', JSON.stringify(travelAds));
+        renderTravelAds();
+        document.getElementById('travelActivity').value = '';
+        document.getElementById('travelDesc').value = '';
+        alert('🤝 Заявка на поиск попутчиков опубликована!');
+        playSfx && playSfx('success');
+    };
+    window.renderTravelAds = function() {
+        const container = document.getElementById('travelContainer');
+        if (!container) return;
+        if (travelAds.length === 0) {
+            container.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;">Нет активных заявок.</div>';
+            return;
+        }
+        container.innerHTML = travelAds.map(t => `
+            <div style="background:var(--forum-bg, var(--app-bg));border:1px solid var(--forum-card-border, var(--border));padding:8px;border-radius:10px;margin-bottom:8px;font-size:11px;">
+                <div style="display:flex;justify-content:space-between;color:var(--accent-gold, var(--gold));font-weight:800;margin-bottom:2px;">
+                    <span>${t.activity} (${t.author})</span>
+                    <span style="font-size:9px;color:var(--text-muted);">${t.time}</span>
+                </div>
+                <div style="color:var(--text-main);">${t.desc || 'Без описания'}</div>
+            </div>
+        `).join('');
+    };
+    renderTravelAds();
+
+    // ==================== НАСТРОЙКИ ====================
+    if (!document.getElementById('settingsModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'settingsModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3>⚙️ Настройки</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="closeModal('settingsModal')">✕</button>
+                </div>
+                <div class="form-group">
+                    <label>🔊 Звуковые эффекты</label>
+                    <button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">Включены</button>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-danger btn-sm" onclick="resetAllData()">🗑 Сбросить все данные</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    window.openSettingsModal = function() { document.getElementById('settingsModal').style.display = 'flex'; };
+    window.toggleSfx = function() {
+        sfxEnabled = !sfxEnabled;
+        localStorage.setItem(getUserKey('sfx_enabled'), sfxEnabled ? '1' : '0');
+        const btn = document.getElementById('toggleSfxBtn');
+        if (btn) btn.innerText = sfxEnabled ? 'Включены' : 'Выключены';
+    };
+    window.resetAllData = function() {
+        if (confirm('Сбросить все данные?')) {
+            localStorage.clear();
+            location.reload();
+        }
+    };
+
+    // ==================== РАССЫЛКИ ====================
+    if (!document.getElementById('broadcastsModal')) {
+        const modal = document.createElement('div');
+        modal.id = 'broadcastsModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3>📩 Рассылки</h3>
+                    <button class="modal-close btn btn-outline btn-sm" onclick="closeModal('broadcastsModal')">✕</button>
+                </div>
+                <div id="broadcastHistoryList"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    window.openBroadcastsModal = function() {
+        renderBroadcastHistory();
+        document.getElementById('broadcastsModal').style.display = 'flex';
+    };
+    window.renderBroadcastHistory = function() {
+        const container = document.getElementById('broadcastHistoryList');
+        if (!container) return;
+        const history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        if (history.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted);">Нет уведомлений</div>';
+            return;
+        }
+        container.innerHTML = history.map((item, i) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid var(--border);">
+                <span style="flex:1;font-size:13px;">${item}</span>
+                <button class="btn btn-outline btn-sm" onclick="deleteBroadcastItem(${i})">🗑</button>
+            </div>
+        `).join('');
+    };
+    window.deleteBroadcastItem = function(index) {
+        let history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        history.splice(index, 1);
+        localStorage.setItem('arizona_broadcast_history', JSON.stringify(history));
+        renderBroadcastHistory();
+    };
+
+    // Переопределяем updateBroadcastMessage, чтобы добавлять в историю
+    window.updateBroadcastMessage = function() {
+        const text = document.getElementById('newBroadcastInput')?.value.trim();
+        if (!text) { alert('Введите текст рассылки'); return; }
+        let history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        history.unshift(`📢 ${new Date().toLocaleString()}: ${text}`);
+        localStorage.setItem('arizona_broadcast_history', JSON.stringify(history));
+        // Показываем баннер
+        localStorage.setItem('arizona_broadcast_msg', text);
+        const banner = document.getElementById('broadcastBanner');
+        if (banner) {
+            banner.style.display = 'block';
+            document.getElementById('broadcastText').innerHTML = `<b>Уведомление от администрации!</b> ${text}`;
+        }
+        alert('📢 Рассылка отправлена');
+        if (document.getElementById('newBroadcastInput')) document.getElementById('newBroadcastInput').value = '';
+    };
+
+    console.log('Часть 10 успешно добавлена.');
+})();
+            </script>
+            <script>
+(function() {
+    console.log('Часть 11: Финальная инициализация и проверка.');
+
+    // ==================== АВТОСОХРАНЕНИЕ ЧЕРНОВИКА ОБЪЯВЛЕНИЯ ====================
+    function saveDraftSilently() {
+        try {
+            const draft = {
+                itemName: document.getElementById('itemName')?.value || '',
+                price: document.getElementById('price')?.value || '',
+                text: document.getElementById('text')?.value || '',
+                image: document.getElementById('itemImage')?.value || '',
+                server: document.getElementById('server')?.value || '🌴 Tucson',
+                mode: document.getElementById('mode')?.value || 'sell',
+                category: document.getElementById('category')?.value || '💍 Аксессуары и вещи'
+            };
+            localStorage.setItem(getUserKey('ad_draft'), JSON.stringify(draft));
+        } catch(e) {}
+    }
+
+    function restoreDraftSilently() {
+        try {
+            const draft = localStorage.getItem(getUserKey('ad_draft'));
+            if (!draft) return;
+            const data = JSON.parse(draft);
+            if (data.itemName) document.getElementById('itemName').value = data.itemName;
+            if (data.price) document.getElementById('price').value = data.price;
+            if (data.text) document.getElementById('text').value = data.text;
+            if (data.image) document.getElementById('itemImage').value = data.image;
+            if (data.server) {
+                document.getElementById('server').value = data.server;
+                document.getElementById('selectedServerText').innerText = data.server;
+            }
+            if (data.mode) {
+                document.getElementById('mode').value = data.mode;
+                document.getElementById('selectedModeText').innerText = data.mode === 'sell' ? 'Продажа' : 'Покупка';
+            }
+            if (data.category) {
+                document.getElementById('category').value = data.category;
+                document.getElementById('selectedCategoryText').innerText = data.category;
+            }
+        } catch(e) {}
+    }
+
+    // Сохраняем черновик при вводе (с задержкой)
+    document.addEventListener('input', function(e) {
+        if (e.target.closest('#tabApp')) {
+            clearTimeout(window._draftTimer);
+            window._draftTimer = setTimeout(saveDraftSilently, 500);
+        }
+    });
+
+    // Восстанавливаем при загрузке
+    restoreDraftSilently();
+
+    // ==================== ПРОВЕРКА НАЛИЧИЯ ВСЕХ КЛЮЧЕВЫХ ФУНКЦИЙ ====================
+    const requiredFunctions = [
+        'switchTab', 'renderFeed', 'renderMyAds', 'renderFavorites', 'renderPendingAds',
+        'submitData', 'setViewMode', 'toggleFavorite', 'formatPrice',
+        'openChatWithUser', 'sendChatMessage', 'renderChatsList',
+        'openSearchModal', 'executeAdvancedSearch', 'inspectUserProfile',
+        'openBarygaModal', 'barygaClick',
+        'openMusicModal', 'toggleMusicPlayback',
+        'openFashionModal', 'postFashionLook',
+        'openTravelModal', 'postTravelAd',
+        'openSettingsModal', 'toggleSfx',
+        'openBroadcastsModal', 'updateBroadcastMessage',
+        'sendTargetAction', 'clearGlobalFeedAdmin'
+    ];
+
+    let missing = [];
+    requiredFunctions.forEach(fn => {
+        if (typeof window[fn] !== 'function') {
+            missing.push(fn);
+        }
+    });
+
+    if (missing.length > 0) {
+        console.warn('Отсутствуют функции:', missing);
+        // Попытка восстановить простые заглушки для недостающих
+        missing.forEach(fn => {
+            window[fn] = function() {
+                console.warn(`Функция ${fn} не реализована, вызвана заглушка.`);
+                alert(`⚠️ Функция "${fn}" временно недоступна.`);
+            };
+        });
+    } else {
+        console.log('✅ Все ключевые функции на месте.');
+    }
+
+    // ==================== ГЛОБАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ====================
+    function finalInit() {
+        // Вызываем рендеры, если они есть
+        try {
+            if (typeof renderFeed === 'function') renderFeed();
+            if (typeof renderMyAds === 'function') renderMyAds();
+            if (typeof renderFavorites === 'function') renderFavorites();
+            if (typeof renderPendingAds === 'function') renderPendingAds();
+            if (typeof updateBarygaUI === 'function') updateBarygaUI();
+            if (typeof initProfileUI === 'function') initProfileUI();
+            if (typeof renderFashionLooks === 'function') renderFashionLooks();
+            if (typeof renderTravelAds === 'function') renderTravelAds();
+            if (typeof renderChatsList === 'function') renderChatsList();
+            if (typeof updateMskClock === 'function') updateMskClock();
+
+            // Применяем тему, если есть
+            if (typeof applyThemeFromStorage === 'function') applyThemeFromStorage();
+            if (typeof loadThemeFromCloud === 'function') loadThemeFromCloud();
+
+            // Показываем баннер рассылки, если есть
+            const savedBroadcast = localStorage.getItem('arizona_broadcast_msg');
+            if (savedBroadcast) {
+                const banner = document.getElementById('broadcastBanner');
+                if (banner) {
+                    banner.style.display = 'block';
+                    const textEl = document.getElementById('broadcastText');
+                    if (textEl) textEl.innerHTML = `<b>Уведомление от администрации!</b> ${savedBroadcast}`;
+                }
+            }
+
+            // Проверяем бан
+            if (typeof checkBan === 'function') checkBan();
+
+            // Запускаем мониторинг сети, если есть
+            if (typeof startNetworkMonitor === 'function') startNetworkMonitor();
+
+            console.log('✅ Финальная инициализация завершена.');
+        } catch(e) {
+            console.error('Ошибка при финальной инициализации:', e);
+        }
+    }
+
+    // Запускаем, когда DOM готов
+    if (document.readyState === 'complete') {
+        finalInit();
+    } else {
+        document.addEventListener('DOMContentLoaded', finalInit);
+    }
+
+    console.log('Часть 11 добавлена.');
+})();
+            </script>

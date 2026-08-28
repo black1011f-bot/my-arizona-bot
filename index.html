@@ -2630,3 +2630,505 @@
     console.log('Часть 11 добавлена.');
 })();
             </script>
+<script>
+(function() {
+    console.log('Часть 12: проверка username, переходы в Telegram, возврат баннера.');
+
+    // ==================== ПРОВЕРКА НАЛИЧИЯ TELEGRAM USERNAME ====================
+    function checkUsername() {
+        if (!tgUser || !tgUser.username) {
+            // Показываем блокирующий оверлей
+            const overlay = document.createElement('div');
+            overlay.id = 'noUsernameOverlay';
+            overlay.style.cssText = `
+                position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+                z-index: 100000; display: flex; flex-direction: column;
+                align-items: center; justify-content: center; text-align: center;
+                padding: 20px; color: #fff;
+            `;
+            overlay.innerHTML = `
+                <h2 style="color:#ff3b30;font-size:22px;margin-bottom:12px;">⚠️ ТРЕБУЕТСЯ USERNAME</h2>
+                <p style="font-size:14px;max-width:300px;line-height:1.5;color:#ccc;">
+                    Для использования приложения необходимо установить username в Telegram.
+                    <br><br>
+                    Откройте <b>Настройки Telegram</b> → <b>Имя пользователя</b> и задайте свой @username.
+                    <br><br>
+                    После этого перезапустите приложение.
+                </p>
+            `;
+            document.body.appendChild(overlay);
+            // Блокируем все клики
+            document.addEventListener('click', function(e) {
+                if (!tgUser || !tgUser.username) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+            return false;
+        }
+        return true;
+    }
+    checkUsername();
+
+    // ==================== ПЕРЕХОД В TELEGRAM ПРИ ПОИСКЕ И НАПИСАТЬ ====================
+    // Переопределяем inspectUserProfile, чтобы открывался профиль в Telegram
+    const originalInspectUserProfile = window.inspectUserProfile;
+    window.inspectUserProfile = function(username) {
+        if (username) {
+            const clean = username.startsWith('@') ? username.slice(1) : username;
+            window.open('https://t.me/' + clean, '_blank');
+        }
+        // Если была модалка профиля, закрываем её (если открыта)
+        const modal = document.getElementById('profileInspectModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    // Переопределяем openChatWithUser, чтобы открывался чат в Telegram
+    const originalOpenChatWithUser = window.openChatWithUser;
+    window.openChatWithUser = function(user) {
+        if (user) {
+            const clean = user.startsWith('@') ? user.slice(1) : user;
+            window.open('https://t.me/' + clean, '_blank');
+        }
+        // Закрываем модалки, если они открыты
+        const chatModal = document.getElementById('chatDetailModal');
+        if (chatModal) chatModal.style.display = 'none';
+        const inspectModal = document.getElementById('profileInspectModal');
+        if (inspectModal) inspectModal.style.display = 'none';
+    };
+
+    // ==================== ВОЗВРАТ БАННЕРА ====================
+    function restoreBanner() {
+        let banner = document.getElementById('broadcastBanner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'broadcastBanner';
+            banner.className = 'broadcast-banner';
+            banner.style.display = 'none';
+            banner.style.background = '#7c3aed';
+            banner.style.color = '#fff';
+            banner.style.padding = '10px 14px';
+            banner.style.borderRadius = '10px';
+            banner.style.marginBottom = '10px';
+            banner.style.cursor = 'pointer';
+            banner.onclick = function() {
+                if (typeof openBroadcastsModal === 'function') openBroadcastsModal();
+                else alert('📢 ' + (localStorage.getItem('arizona_broadcast_msg') || 'Нет активного уведомления'));
+            };
+            const header = document.querySelector('.app-header');
+            if (header && header.parentNode) {
+                header.parentNode.insertBefore(banner, header.nextSibling);
+            } else {
+                const container = document.querySelector('.container');
+                if (container) container.prepend(banner);
+            }
+        }
+        const savedMsg = localStorage.getItem('arizona_broadcast_msg');
+        if (savedMsg) {
+            banner.innerHTML = `<b>Уведомление от администрации!</b> ${savedMsg}`;
+            banner.style.display = 'block';
+        }
+    }
+    restoreBanner();
+
+    console.log('Часть 12 применена.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 13: SMS-уведомления справа и управление рассылками.');
+
+    // ==================== КОНТЕЙНЕР ДЛЯ SMS СПРАВА ====================
+    function createSmsContainerRight() {
+        let container = document.getElementById('smsNotificationContainer');
+        if (container) container.remove();
+        container = document.createElement('div');
+        container.id = 'smsNotificationContainer';
+        container.style.cssText = `
+            position: fixed;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 99999;
+            pointer-events: none;
+        `;
+        document.body.appendChild(container);
+        return container;
+    }
+    const smsContainer = createSmsContainerRight();
+
+    // ==================== ФУНКЦИЯ ПОКАЗА SMS ====================
+    window.showSmsNotification = function(text) {
+        const sms = document.createElement('div');
+        sms.style.cssText = `
+            background: #fff;
+            color: #1c1c1e;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            font-size: 13px;
+            max-width: 260px;
+            word-wrap: break-word;
+            pointer-events: auto;
+            animation: slideInRight 0.3s ease;
+            cursor: pointer;
+            border-right: 4px solid #7c3aed;
+        `;
+        sms.innerText = text;
+        sms.addEventListener('click', () => {
+            if (typeof openBroadcastsModal === 'function') {
+                openBroadcastsModal();
+            }
+            sms.remove();
+        });
+        smsContainer.appendChild(sms);
+        setTimeout(() => {
+            if (sms.parentNode) sms.remove();
+        }, 10000);
+    };
+
+    // Добавляем анимацию, если её нет
+    if (!document.getElementById('smsAnimStyle')) {
+        const style = document.createElement('style');
+        style.id = 'smsAnimStyle';
+        style.textContent = `
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // ==================== УЛУЧШЕННЫЙ РЕНДЕР РАССЫЛОК ====================
+    // Переопределяем renderBroadcastHistory, чтобы добавить кнопку "Очистить все"
+    const originalRenderBroadcastHistory = window.renderBroadcastHistory;
+    window.renderBroadcastHistory = function() {
+        const container = document.getElementById('broadcastHistoryList');
+        if (!container) return;
+
+        const history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        if (history.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted, #8e8e93);">Нет уведомлений</div>';
+            return;
+        }
+
+        container.innerHTML = history.map((item, i) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid var(--border, #e5e5ea);">
+                <span style="flex:1;font-size:13px;color:var(--text, #1c1c1e);">${item}</span>
+                <button class="btn btn-outline btn-sm" onclick="deleteBroadcastItem(${i})" style="margin:0;">🗑</button>
+            </div>
+        `).join('');
+
+        // Добавляем кнопку "Очистить все", если её нет
+        if (!document.getElementById('clearAllBroadcastsBtn')) {
+            const clearBtn = document.createElement('button');
+            clearBtn.id = 'clearAllBroadcastsBtn';
+            clearBtn.className = 'btn btn-danger btn-sm';
+            clearBtn.innerText = '🧹 Очистить все';
+            clearBtn.style.marginTop = '10px';
+            clearBtn.onclick = function() {
+                if (confirm('Удалить все уведомления?')) {
+                    localStorage.setItem('arizona_broadcast_history', '[]');
+                    renderBroadcastHistory();
+                }
+            };
+            container.appendChild(clearBtn);
+        }
+    };
+
+    // Переопределяем deleteBroadcastItem, чтобы после удаления обновлялся список
+    const originalDeleteBroadcastItem = window.deleteBroadcastItem;
+    window.deleteBroadcastItem = function(index) {
+        let history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+        history.splice(index, 1);
+        localStorage.setItem('arizona_broadcast_history', JSON.stringify(history));
+        renderBroadcastHistory();
+    };
+
+    // Переопределяем openBroadcastsModal, чтобы вызывать рендер
+    const originalOpenBroadcastsModal = window.openBroadcastsModal;
+    window.openBroadcastsModal = function() {
+        const modal = document.getElementById('broadcastsModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            renderBroadcastHistory();
+        } else {
+            // Если модалки нет, создаём
+            const newModal = document.createElement('div');
+            newModal.id = 'broadcastsModal';
+            newModal.className = 'modal-overlay';
+            newModal.style.display = 'flex';
+            newModal.innerHTML = `
+                <div class="modal-content">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <h3>📩 Рассылки</h3>
+                        <button class="modal-close btn btn-outline btn-sm" onclick="closeModal('broadcastsModal')">✕</button>
+                    </div>
+                    <div id="broadcastHistoryList"></div>
+                </div>
+            `;
+            document.body.appendChild(newModal);
+            renderBroadcastHistory();
+        }
+    };
+
+    // ==================== ПРОВЕРКА ПОСЛЕДНЕЙ РАССЫЛКИ ПРИ ЗАГРУЗКЕ ====================
+    const history = JSON.parse(localStorage.getItem('arizona_broadcast_history') || '[]');
+    if (history.length > 0) {
+        setTimeout(() => showSmsNotification(history[0]), 500);
+    }
+
+    console.log('Часть 13 успешно применена.');
+})();
+</script>
+<style>
+    /* ========== УВЕЛИЧЕННЫЕ ОТСТУПЫ МЕЖДУ КНОПКАМИ ========== */
+    .header-actions {
+        gap: 12px !important;
+    }
+    .header-actions .icon-btn {
+        margin: 0 4px !important;
+    }
+    .nav-tabs {
+        gap: 8px !important;
+        padding: 8px 6px !important;
+    }
+    .nav-tab {
+        margin: 0 4px !important;
+    }
+    .view-mode-btns {
+        gap: 10px !important;
+        margin-bottom: 12px !important;
+    }
+    .view-mode-btn {
+        margin: 0 4px !important;
+    }
+    .ad-actions {
+        gap: 10px !important;
+        margin-top: 10px !important;
+    }
+    .ad-actions .btn {
+        margin: 0 !important;
+    }
+    .dropdown-menu .dropdown-item {
+        margin: 6px 0 !important;
+        padding: 10px 12px !important;
+    }
+    .picker-list .picker-item {
+        margin: 6px 0 !important;
+        padding: 10px 12px !important;
+    }
+    .upgrade-row {
+        margin-bottom: 10px !important;
+        padding: 10px 12px !important;
+    }
+    .form-group {
+        margin-bottom: 14px !important;
+    }
+    .btn {
+        margin: 6px 0 !important;
+    }
+    .btn-sm {
+        margin: 4px 0 !important;
+    }
+    /* Админ-панель */
+    #tabAdmin .ad-card,
+    #tabAdmin .admin-controls-card {
+        margin-bottom: 14px !important;
+    }
+    #tabAdmin .ad-actions button,
+    #tabAdmin .admin-controls-card button {
+        margin: 4px 4px 4px 0 !important;
+    }
+    #tabAdmin .admin-actions-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px !important;
+        margin: 8px 0 !important;
+    }
+    #tabAdmin .admin-actions-grid button {
+        flex: 1 1 auto;
+        margin: 0 !important;
+        min-width: 120px;
+    }
+    #tabAdmin input {
+        margin-bottom: 8px !important;
+    }
+
+    /* ========== ЦВЕТОВАЯ СХЕМА ========== */
+    /* Светлая тема (по умолчанию) */
+    :root {
+        --app-bg: #f7f7fa;
+        --card-bg: #ffffff;
+        --header-bg: #ffffff;
+        --border: #e5e5ea;
+        --accent: #7c3aed;
+        --accent2: #a78bfa;
+        --text: #1c1c1e;
+        --muted: #8e8e93;
+        --btn-bg: #7c3aed;
+        --btn-text: #ffffff;
+        --gold: #ffb800;
+    }
+
+    /* Тёмная тема */
+    body.dark {
+        --app-bg: #1a1a2e;
+        --card-bg: #16213e;
+        --header-bg: #0f3460;
+        --border: #2c2c3e;
+        --accent: #bb86fc;
+        --accent2: #c792ea;
+        --text: #ffffff;
+        --muted: #a0a0b0;
+        --btn-bg: #533483;
+        --btn-text: #ffffff;
+        --gold: #ffd700;
+    }
+
+    /* Применяем переменные к элементам */
+    body {
+        background: var(--app-bg);
+        color: var(--text);
+    }
+    .app-header, .nav-tabs, .card, .modal-content, .dropdown-menu {
+        background: var(--header-bg);
+        border-color: var(--border);
+    }
+    .btn, .nav-tab.active, .view-mode-btn.active, .picker-item:hover, .dropdown-item:hover {
+        background: var(--btn-bg);
+        color: var(--btn-text);
+    }
+    .btn-outline {
+        background: transparent;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+    }
+    .ad-card, .upgrade-row, .admin-controls-card {
+        background: var(--card-bg);
+        border-color: var(--border);
+    }
+    .ad-price {
+        color: var(--gold);
+    }
+    .ad-text, .text-muted {
+        color: var(--muted);
+    }
+
+    /* ========== КВАДРАТНЫЕ КРЕСТИКИ НОРМАЛЬНОГО РАЗМЕРА ========== */
+    .modal-close,
+    button[onclick*="close"],
+    button[onclick*="Close"] {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 16px !important;
+        line-height: 1 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 4px !important; /* квадратные */
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--border, #e5e5ea);
+        color: var(--text, #1c1c1e);
+        cursor: pointer;
+    }
+</style>
+<script>
+    // Применяем тему при загрузке, если ещё не применена
+    (function() {
+        function applyThemeFromStorageNow() {
+            const savedTheme = localStorage.getItem(getUserKey('theme')) || 'light';
+            document.body.classList.toggle('dark', savedTheme === 'dark');
+        }
+        if (document.readyState === 'complete') {
+            applyThemeFromStorageNow();
+        } else {
+            document.addEventListener('DOMContentLoaded', applyThemeFromStorageNow);
+        }
+    })();
+</script>
+<script>
+(function() {
+    console.log('Часть 15: Старый бан-оверлей с картинками.');
+
+    // ==================== СОЗДАНИЕ/ВОССТАНОВЛЕНИЕ banOverlay ====================
+    function ensureBanOverlay() {
+        let overlay = document.getElementById('banOverlay');
+        if (overlay) overlay.remove(); // удаляем старый, если есть
+
+        overlay = document.createElement('div');
+        overlay.id = 'banOverlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; background: rgba(0,0,0,0.97);
+            z-index: 100000; display: none; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            padding: 20px; color: #fff;
+        `;
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    // ==================== ПОКАЗ ЭКРАНА БАНА ====================
+    window.showBanScreen = function() {
+        const overlay = ensureBanOverlay();
+        overlay.innerHTML = `
+            <img src="https://i.postimg.cc/HLkMtJdg/fcf6efb0789c809c22b2b4c7cfe229a8.jpg" alt="Забанен" style="max-width: 200px; border-radius: 16px; margin-bottom: 20px;">
+            <h2 style="color: #ff3b30; font-size: 24px; margin-bottom: 8px;">🚫 ВЫ ЗАБЛОКИРОВАНЫ</h2>
+            <p style="font-size: 16px; max-width: 400px; line-height: 1.5; color: #ccc;">
+                Доступ к приложению ограничен администрацией.<br>
+                Если вы считаете, что это ошибка, обратитесь к владельцу.
+            </p>
+        `;
+        overlay.style.display = 'flex';
+    };
+
+    // ==================== ПОКАЗ ЭКРАНА РАЗБАНА ====================
+    window.showUnbanScreen = function() {
+        const overlay = ensureBanOverlay();
+        overlay.innerHTML = `
+            <img src="https://i.postimg.cc/vH76F7m4/b99270d8df0135112b68ebbd5057f965.jpg" alt="Разбанен" style="max-width: 200px; border-radius: 16px; margin-bottom: 20px;">
+            <h2 style="color: #4ade80; font-size: 24px; margin-bottom: 8px;">✅ ВЫ РАЗБЛОКИРОВАНЫ</h2>
+            <p style="font-size: 16px; max-width: 400px; line-height: 1.5; color: #ccc;">
+                Доступ восстановлен. Нажмите «Далее», чтобы продолжить.
+            </p>
+            <button id="unbanContinueBtn" style="margin-top: 20px; padding: 12px 24px; background: #4ade80; color: #000; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 16px;">Далее ➡️</button>
+        `;
+        overlay.style.display = 'flex';
+        document.getElementById('unbanContinueBtn').addEventListener('click', function() {
+            overlay.style.display = 'none';
+        });
+    };
+
+    // ==================== ПРОВЕРКА БАНА ПРИ ЗАГРУЗКЕ ====================
+    let bannedUsers = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
+    function isCurrentUserBanned() {
+        return bannedUsers.includes(currentUserUsername.replace('@','').toLowerCase());
+    }
+
+    window.checkBan = function() {
+        if (isCurrentUserBanned()) {
+            showBanScreen();
+            document.addEventListener('click', function(e) {
+                if (isCurrentUserBanned()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, true);
+        } else {
+            // Скрываем оверлей, если он остался от прошлого раза
+            const overlay = document.getElementById('banOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+    };
+
+    // Вызываем проверку сразу
+    checkBan();
+
+    console.log('Бан-система с картинками восстановлена.');
+})();
+</script>

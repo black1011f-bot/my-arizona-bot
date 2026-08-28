@@ -5625,3 +5625,460 @@
     console.log('Галерея изображений добавлена.');
 })();
     </script>
+<style>
+    /* Бренд в одну строку */
+    .brand span, .brand {
+        white-space: nowrap !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
+    }
+
+    /* Скрываем крестик в шапке, оставляем только ⋮ */
+    .header-close-btn {
+        display: none !important;
+    }
+
+    /* Увеличиваем жирность основных текстов */
+    body {
+        font-weight: 500;
+    }
+    .btn, .btn-sm, .nav-tab, .dropdown-item, .picker-item,
+    .ad-title, .ad-price, label, .admin-section-title, .profile-subtab,
+    .view-mode-btn, .upgrade-name, .clicker-upgrade-row {
+        font-weight: 700 !important;
+    }
+    .ad-text, .ad-header, .forum-subtitle, .forum-time-msk {
+        font-weight: 600 !important;
+    }
+    .form-group label {
+        font-weight: 700 !important;
+    }
+</style>
+
+<script>
+(function() {
+    console.log('Часть 42: Исправление крестиков и текста.');
+
+    // Удаляем все крестики из шапки (header-close-btn)
+    document.querySelectorAll('.header-close-btn').forEach(btn => btn.remove());
+
+    // Убираем лишние крестики в секции создания объявления
+    const tabApp = document.getElementById('tabApp');
+    if (tabApp) {
+        // Находим крестик в page-header (если есть)
+        const pageHeaderClose = tabApp.querySelector('.page-header .modal-close');
+        // Удаляем все .section-close-btn, кроме pageHeaderClose (если он есть)
+        tabApp.querySelectorAll('.section-close-btn').forEach(btn => {
+            if (!pageHeaderClose || btn !== pageHeaderClose) {
+                btn.remove();
+            }
+        });
+        // Если нет page-header крестика, оставляем один .section-close-btn
+        if (!pageHeaderClose) {
+            const btns = tabApp.querySelectorAll('.section-close-btn');
+            for (let i = 1; i < btns.length; i++) btns[i].remove();
+        }
+    }
+
+    // Для остальных секций оставляем только один крестик
+    ['tabMyAds', 'tabFavorites', 'tabAdmin', 'tabProfile'].forEach(id => {
+        const section = document.getElementById(id);
+        if (section) {
+            const btns = section.querySelectorAll('.section-close-btn');
+            for (let i = 1; i < btns.length; i++) btns[i].remove();
+        }
+    });
+
+    console.log('Крестики и текст исправлены.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 43: Исправление ленты, редактора, туториала, удаления.');
+
+    // ==================== 1. ГАРАНТИРУЕМ АКТУАЛЬНЫЕ ДАННЫЕ ====================
+    // Перезагружаем из localStorage, чтобы не было рассинхрона
+    window.globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
+    window.pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
+    window.myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
+    window.favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
+
+    // ==================== 2. КНОПКА "СОХРАНИТЬ И ОДОБРИТЬ" В РЕДАКТОРЕ ====================
+    window.saveEditedAd = function(id) {
+        const ad = window.pendingAdsList.find(a => a.id === id);
+        if (!ad) {
+            alert('Объявление не найдено');
+            return;
+        }
+
+        const itemName = document.getElementById('editItemName')?.value.trim();
+        const price = document.getElementById('editPrice')?.value.trim();
+        const text = document.getElementById('editText')?.value.trim();
+        const image = document.getElementById('editImage')?.value.trim();
+        const server = document.getElementById('editServer')?.value;
+
+        if (!itemName || !price || !text) {
+            alert('Заполните обязательные поля');
+            return;
+        }
+
+        ad.itemName = itemName;
+        ad.price = price;
+        ad.text = text;
+        ad.image = image;
+        ad.server = server;
+
+        // Одобряем
+        window.approvePendingAd(id);
+
+        // Закрываем модалку
+        const modal = document.getElementById('editAdModal');
+        if (modal) modal.remove();
+        // Дополнительно удаляем все возможные модалки
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+            if (m.querySelector('#editItemName')) m.remove();
+        });
+
+        // Обновляем ленту и мои объявления
+        if (typeof renderFeed === 'function') renderFeed();
+        if (typeof renderMyAds === 'function') renderMyAds();
+    };
+
+    // ==================== 3. ИСПРАВЛЕНИЕ ЛЕНТЫ (КАК В СТАРОМ СКРИПТЕ) ====================
+    window.renderFeed = function() {
+        const container = document.getElementById('feedContainer');
+        if (!container) return;
+
+        const approved = window.globalAdsFeed.filter(ad => ad.status === 'approved');
+        if (approved.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">Лента пуста</div>';
+            return;
+        }
+
+        const admin = (typeof isAdmin === 'function') ? isAdmin() : false;
+
+        container.innerHTML = approved.slice(0, feedDisplayLimit || 20).map(ad => {
+            const isFav = window.favoritesList.some(f => f.id === ad.id);
+            const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
+            const imageHtml = firstImage ? `<img src="${firstImage}" style="width:100%;height:130px;object-fit:cover;border-radius:10px;margin-bottom:8px;" onerror="this.style.display='none';">` : '';
+
+            return `
+                <div class="ad-card" onclick="openAdDetail(${ad.id})">
+                    <div class="ad-header">
+                        <div>
+                            <span class="forum-badge ${ad.mode === 'sell' ? 'badge-success' : 'badge-auction'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                            <span>${ad.server}</span>
+                        </div>
+                        <span style="color:var(--accent-secondary);font-weight:700;cursor:pointer;" onclick="event.stopPropagation();inspectUserProfile('${ad.author}')">${ad.author}</span>
+                    </div>
+                    ${imageHtml}
+                    <div style="font-weight:900;font-size:14px;color:var(--text);margin-bottom:4px;">${ad.itemName}</div>
+                    <div style="font-weight:800;color:var(--gold);margin-bottom:6px;">💰 ${ad.price}</div>
+                    <div style="color:var(--muted);font-size:11px;margin-bottom:8px;line-height:1.4;">${ad.text}</div>
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button onclick="toggleFavorite(${ad.id})" class="btn-outline btn-sm" style="flex:1;">${isFav ? '❤️' : '🤍'}</button>
+                        <button onclick="openChatWithUser('${ad.author}')" class="btn-sm" style="flex:1;">💬 Написать</button>
+                        ${admin ? `<button onclick="deleteApprovedAd(${ad.id})" class="btn-danger btn-sm" style="flex:0 0 auto;">🗑</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // ==================== 4. ОДОБРЕНИЕ ОБЪЯВЛЕНИЯ ====================
+    window.approvePendingAd = function(id) {
+        const idx = window.pendingAdsList.findIndex(a => a.id === id);
+        if (idx > -1) {
+            const ad = window.pendingAdsList.splice(idx, 1)[0];
+            ad.status = 'approved';
+            window.globalAdsFeed.unshift(ad);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(window.globalAdsFeed));
+            if (typeof renderPendingAds === 'function') renderPendingAds();
+            if (typeof renderFeed === 'function') renderFeed();
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    // ==================== 5. УДАЛЕНИЕ ОБЪЯВЛЕНИЯ АДМИНОМ (ПОМЕТКА "УДАЛЕНО") ====================
+    window.deleteApprovedAd = function(id) {
+        if (!confirm('Удалить объявление из ленты?')) return;
+
+        // Находим объявление в глобальной ленте
+        const adIndex = window.globalAdsFeed.findIndex(a => a.id === id);
+        if (adIndex > -1) {
+            const ad = window.globalAdsFeed[adIndex];
+            // Помечаем в myAdsList как удалённое (если принадлежит текущему пользователю)
+            const myAdIndex = window.myAdsList.findIndex(a => a.id === id);
+            if (myAdIndex > -1) {
+                window.myAdsList[myAdIndex].status = 'deleted';
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+            }
+            // Удаляем из глобальной ленты
+            window.globalAdsFeed.splice(adIndex, 1);
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(window.globalAdsFeed));
+
+            // Удаляем из избранного
+            window.favoritesList = window.favoritesList.filter(f => f.id !== id);
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(window.favoritesList));
+
+            if (typeof renderFeed === 'function') renderFeed();
+            if (typeof renderMyAds === 'function') renderMyAds();
+            if (typeof renderFavorites === 'function') renderFavorites();
+            if (typeof playSfx === 'function') playSfx('success');
+        }
+    };
+
+    // ==================== 6. РЕНДЕР МОИХ ОБЪЯВЛЕНИЙ С УДАЛЁННЫМИ ====================
+    window.renderMyAds = function() {
+        const container = document.getElementById('myAdsContainer');
+        if (!container) return;
+        if (window.myAdsList.length === 0) {
+            container.innerHTML = '<div style="color:var(--muted); text-align:center; padding:20px;">Вы ещё не создавали объявлений</div>';
+            return;
+        }
+        container.innerHTML = window.myAdsList.map(ad => {
+            const isDeleted = ad.status === 'deleted';
+            const statusText = isDeleted ? '❌ Удалено' : (ad.status === 'approved' ? '🟢 Одобрено' : '⏳ На модерации');
+            return `
+                <div class="ad-card" style="${isDeleted ? 'opacity:0.6; border-color:#dc3545;' : ''}">
+                    <div style="font-weight:900; font-size:14px; color:var(--text); margin-bottom:4px;">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:11px; color:${isDeleted ? '#dc3545' : 'var(--muted)'}; margin-bottom:6px;">Статус: ${statusText}</div>
+                    ${isDeleted ? '<div style="color:#dc3545; font-weight:700; margin-bottom:6px;">Это объявление было удалено модерацией</div>' : ''}
+                    <div style="color:var(--muted); font-size:11px; margin-bottom:6px;">${ad.text}</div>
+                    <button onclick="deleteMyAdPermanently(${ad.id})" class="btn-danger btn-sm" style="margin-top:6px;">🗑 Удалить навсегда</button>
+                </div>
+            `;
+        }).join('');
+    };
+
+    // ==================== 7. ПОЛНОЕ УДАЛЕНИЕ СВОЕГО ОБЪЯВЛЕНИЯ ====================
+    window.deleteMyAdPermanently = function(id) {
+        if (!confirm('Удалить это объявление навсегда?')) return;
+        window.myAdsList = window.myAdsList.filter(a => a.id !== id);
+        localStorage.setItem(getUserKey('my_ads'), JSON.stringify(window.myAdsList));
+        window.pendingAdsList = window.pendingAdsList.filter(a => a.id !== id);
+        localStorage.setItem('arizona_pending_ads', JSON.stringify(window.pendingAdsList));
+        window.favoritesList = window.favoritesList.filter(f => f.id !== id);
+        localStorage.setItem(getUserKey('favorites'), JSON.stringify(window.favoritesList));
+        if (typeof renderMyAds === 'function') renderMyAds();
+        if (typeof playSfx === 'function') playSfx('success');
+    };
+
+    // ==================== 8. ПОРЯДОК ТУТОРИАЛОВ ====================
+    // Обычный туториал показывается всегда при первом входе.
+    // Админ-туториал — только когда админ заходит в админ-раздел после обычного.
+    window.showAdminTutorial = function() {
+        if (!(typeof isAdmin === 'function' && isAdmin())) return;
+        const adminTutorialCompleted = localStorage.getItem(getUserKey('admin_tutorial_completed')) === '1';
+        if (!adminTutorialCompleted) {
+            // Создаём или используем существующий оверлей админ-туториала
+            let overlay = document.getElementById('adminTutorialOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'adminTutorialOverlay';
+                overlay.className = 'tutorial-overlay';
+                overlay.style.display = 'none';
+                overlay.innerHTML = `
+                    <div class="tutorial-slider">
+                        <div class="tutorial-slide active">
+                            <div class="tutorial-icon"><img src="https://i.postimg.cc/VsH2hDLg/c28add596e266ac42b4c9a72bf38d4b6.jpg" alt=""></div>
+                            <div class="tutorial-title">🛡️ Админ-панель</div>
+                            <div class="tutorial-text">Добро пожаловать в панель модерации. Здесь вы можете одобрять или отклонять объявления игроков.</div>
+                        </div>
+                        <div class="tutorial-slide">
+                            <div class="tutorial-icon"><img src="https://i.postimg.cc/Mp14vw0s/1a26c1f5f2a1f11486097cd77c558f00.jpg" alt=""></div>
+                            <div class="tutorial-title">🛡️ Модерация</div>
+                            <div class="tutorial-text">В разделе «Модерация» вы увидите список ожидающих объявлений. Нажмите «✅ Одобрить», чтобы опубликовать, или «❌ Отклонить», чтобы отклонить.</div>
+                        </div>
+                        <div class="tutorial-slide">
+                            <div class="tutorial-icon"><img src="https://i.postimg.cc/zfjcFkP9/29da69006be6cf57cbb98a3cf8d1f139.jpg" alt=""></div>
+                            <div class="tutorial-title">👑 Панель владельца</div>
+                            <div class="tutorial-text">Если вы владелец, вам доступны дополнительные функции: назначение/снятие админов, бан/разбан игроков, очистка ленты, рассылка.</div>
+                        </div>
+                        <div class="tutorial-slide">
+                            <div class="tutorial-icon"><img src="https://i.postimg.cc/7LVWnNWg/4a5c19016e2158276b87fce22d178910.jpg" alt=""></div>
+                            <div class="tutorial-title">📩 Рассылки</div>
+                            <div class="tutorial-text">Вы можете отправлять уведомления всем пользователям через SMS. Они появятся в разделе «Рассылки».</div>
+                        </div>
+                        <div class="tutorial-nav">
+                            <button class="btn btn-outline btn-sm" onclick="skipAdminTutorial()">Пропустить</button>
+                            <button class="btn btn-outline btn-sm" onclick="prevAdminTutorialSlide()">Назад</button>
+                            <button class="btn btn-sm" onclick="nextAdminTutorialSlide()">Далее</button>
+                        </div>
+                        <div class="tutorial-dots" id="adminTutorialDots">
+                            <span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+            }
+            overlay.style.display = 'flex';
+            // Сбрасываем счётчик
+            window.adminTutorialSlide = 0;
+            updateAdminTutorial();
+        }
+    };
+
+    // Переопределяем switchTab, чтобы при входе в админку показывать админ-туториал
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+        if (tabId === 'admin') {
+            // Сначала показываем обычный туториал, если ещё не пройден
+            if (localStorage.getItem('tutorial_completed') !== '1') {
+                if (typeof showTutorial === 'function') showTutorial();
+                return; // не переключаем, пока обычный не пройден
+            }
+            // Иначе показываем админ-туториал при первом заходе
+            showAdminTutorial();
+        }
+        if (typeof originalSwitchTab === 'function') originalSwitchTab(tabId);
+    };
+
+    // ==================== 9. УНИФИКАЦИЯ ПИКЕРОВ ====================
+    // Стилизуем picker-item одинаково
+    const pickerStyle = document.createElement('style');
+    pickerStyle.textContent = `
+        .picker-item {
+            background: var(--card-bg, #fff);
+            border: 1px solid var(--border, #e5e5ea);
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text, #1c1c1e);
+            transition: background 0.15s, border-color 0.15s;
+            margin-bottom: 6px;
+        }
+        .picker-item:hover {
+            background: var(--app-bg, #f7f7fa);
+            border-color: var(--accent, #7c3aed);
+        }
+    `;
+    document.head.appendChild(pickerStyle);
+
+    console.log('Часть 43 применена.');
+})();
+</script>
+<script>
+(function() {
+    console.log('Часть 45: Шапка только на главной, крестик и ⋮ в разделах.');
+
+    // ==================== СКРЫТИЕ/ПОКАЗ ШАПКИ ====================
+    const header = document.querySelector('.app-header') || document.querySelector('.forum-topbar');
+    if (header) {
+        header.style.transition = 'opacity 0.2s';
+        // Функция управления видимостью шапки
+        window.updateHeaderVisibility = function(tabId) {
+            if (tabId === 'feed') {
+                header.style.display = 'flex';
+            } else {
+                header.style.display = 'none';
+            }
+        };
+    }
+
+    // ==================== ДОБАВЛЕНИЕ КНОПКИ ⋮ В СЕКЦИИ ====================
+    function addSectionMenuButtons() {
+        const sections = ['tabApp', 'tabMyAds', 'tabFavorites', 'tabAdmin', 'tabProfile'];
+
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+
+            // Проверяем, есть ли уже кнопка ⋮
+            if (section.querySelector('.section-menu-btn')) return;
+
+            // Создаём кнопку ⋮
+            const menuBtn = document.createElement('button');
+            menuBtn.className = 'section-menu-btn icon-btn';
+            menuBtn.innerHTML = '⋮';
+            menuBtn.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 48px; /* справа от крестика */
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                background: var(--card-bg, #fff);
+                border: 1px solid var(--border, #e5e5ea);
+                border-radius: 50%;
+                font-size: 18px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                color: var(--text, #1c1c1e);
+                z-index: 20;
+                transition: background 0.2s, color 0.2s;
+            `;
+            menuBtn.onclick = function(e) {
+                e.stopPropagation();
+                // Используем глобальное меню, но позиционируем относительно этой кнопки
+                toggleDropdownMenuFor(e, menuBtn);
+            };
+            section.prepend(menuBtn);
+
+            // Убеждаемся, что крестик находится на правильном месте (правый верхний угол)
+            const closeBtn = section.querySelector('.section-close-btn');
+            if (closeBtn) {
+                closeBtn.style.right = '10px';
+                closeBtn.style.top = '10px';
+            }
+        });
+    }
+
+    // ==================== ФУНКЦИЯ ОТКРЫТИЯ МЕНЮ ОТ ПРОИЗВОЛЬНОЙ КНОПКИ ====================
+    window.toggleDropdownMenuFor = function(event, anchorBtn) {
+        event.stopPropagation();
+        let menu = document.getElementById('dropdownMenu');
+        if (!menu) return;
+
+        // Если меню ещё не построено, строим
+        if (typeof buildDropdownMenu === 'function' && menu.children.length === 0) {
+            buildDropdownMenu();
+        }
+
+        const visible = menu.style.display === 'block';
+        if (visible) {
+            menu.style.display = 'none';
+        } else {
+            // Позиционируем меню относительно якоря
+            const rect = anchorBtn.getBoundingClientRect();
+            menu.style.position = 'fixed';
+            menu.style.top = (rect.bottom + 5) + 'px';
+            menu.style.right = (window.innerWidth - rect.right) + 'px';
+            menu.style.display = 'block';
+        }
+    };
+
+    // ==================== ПЕРЕОПРЕДЕЛЯЕМ switchTab ДЛЯ УПРАВЛЕНИЯ ШАПКОЙ ====================
+    const originalSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+        if (typeof originalSwitchTab === 'function') originalSwitchTab(tabId);
+        if (typeof updateHeaderVisibility === 'function') updateHeaderVisibility(tabId);
+        // При переключении скрываем меню
+        const menu = document.getElementById('dropdownMenu');
+        if (menu) menu.style.display = 'none';
+    };
+
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    function initPart45() {
+        addSectionMenuButtons();
+        // Сразу применяем видимость шапки для текущей активной вкладки (feed)
+        if (typeof updateHeaderVisibility === 'function') updateHeaderVisibility('feed');
+    }
+
+    if (document.readyState === 'complete') {
+        initPart45();
+    } else {
+        document.addEventListener('DOMContentLoaded', initPart45);
+    }
+
+    console.log('Шапка скрыта на вкладках, кнопки ⋮ добавлены в разделы.');
+})();
+</script>

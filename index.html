@@ -638,9 +638,16 @@
             'Нарушения нет',
             'Модератор ошибся',
             'Товар был удалён по ошибке',
-            'Аккаунт не продаётся',
-            'Виртуальный предмет не запрещён',
-            'Другое'
+            'Аккаунт не продаётся'
+        ];
+
+        // Разрешённые домены для ссылок
+        const ALLOWED_DOMAINS = [
+            'youtube.com', 'youtu.be',
+            'radikal.cloud',
+            'allwebs.ru',
+            'postimages.org',
+            'ru.imgbb.com'
         ];
 
         let tg = window.Telegram?.WebApp || null;
@@ -880,9 +887,36 @@
         }
         document.getElementById('adminTutorialCloseBtn')?.addEventListener('click', function() { if (!this.disabled) closeAdminTutorial(); });
 
-        // ==================== РЕНДЕР КАРТОЧЕК (с кнопками) ====================
+        // ==================== ФУНКЦИЯ ПРОВЕРКИ ССЫЛОК ====================
+        function isAllowedLink(url) {
+            const lower = url.toLowerCase().trim();
+            if (!lower.startsWith('http://') && !lower.startsWith('https://')) return false;
+            try {
+                const parsed = new URL(lower);
+                const host = parsed.hostname.replace('www.', '');
+                return ALLOWED_DOMAINS.some(domain => host === domain || host.endsWith('.' + domain));
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function checkLinksString(linksString) {
+            if (!linksString) return { valid: true, message: '' };
+            const links = linksString.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            const invalid = links.filter(link => !isAllowedLink(link));
+            if (invalid.length > 0) {
+                const allowedList = ALLOWED_DOMAINS.join(', ');
+                return {
+                    valid: false,
+                    message: `Недопустимые ссылки: ${invalid.join(', ')}.\nРазрешены только: ${allowedList}`
+                };
+            }
+            return { valid: true, message: '' };
+        }
+
+        // ==================== РЕНДЕР КАРТОЧЕК (БЕЗ КНОПОК) ====================
         function createAdCard(ad, options = {}) {
-            const { showAuthor = true, disableClick = false, isCart = false, showDeleteForAdmin = false } = options;
+            const { showAuthor = true, disableClick = false, isCart = false } = options;
             const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
             const imageHtml = firstImage
                 ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" onerror="this.style.display='none'">`
@@ -897,20 +931,6 @@
             } else {
                 statusBadge = ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : ad.status === 'deleted' ? '<span class="badge badge-danger">Удалено</span>' : '';
             }
-            
-            // Кнопки действий
-            let actionsHtml = '';
-            if (!disableClick) {
-                actionsHtml = `
-                    <div class="ad-actions" onclick="event.stopPropagation();">
-                        <button class="btn btn-sm" onclick="openChatWithUser('${ad.author}')">💬</button>
-                        <button class="btn btn-sm btn-outline" onclick="openReviewModal(${ad.id})">⭐</button>
-                        <button class="btn btn-sm" onclick="toggleCart(${ad.id})">🛒</button>
-                        ${showDeleteForAdmin && isAdmin() ? `<button class="btn btn-sm btn-danger" onclick="deleteApprovedAd(${ad.id})">🗑</button>` : ''}
-                    </div>
-                `;
-            }
-
             return `
                 <div class="ad-card ${disableClick ? 'no-click' : ''}" ${clickAttr}>
                     <div class="ad-image-wrap">${imageHtml}</div>
@@ -924,7 +944,6 @@
                         <div class="ad-title">${ad.itemName}</div>
                         <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
                         ${showAuthor ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">👤 ${ad.author}</div>` : ''}
-                        ${actionsHtml}
                     </div>
                 </div>
             `;
@@ -943,7 +962,7 @@
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Объявлений пока нет</div>';
                 return;
             }
-            container.innerHTML = approved.map(ad => createAdCard(ad, { showDeleteForAdmin: true })).join('');
+            container.innerHTML = approved.map(ad => createAdCard(ad)).join('');
         }
 
         // ==================== КОРЗИНА ====================
@@ -966,7 +985,6 @@
             localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
             renderFeed();
             renderCart();
-            // обновить кнопку корзины на детальной странице
             const detailCartBtn = document.getElementById('cartButton');
             if (detailCartBtn) {
                 const inCart = favoritesList.some(f => f.id === id);
@@ -1012,6 +1030,7 @@
                             <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
                             <div class="ad-actions" onclick="event.stopPropagation();">
                                 <button class="btn btn-sm btn-danger" onclick="deleteMyAdPermanently(${ad.id})">🗑 Удалить навсегда</button>
+                                ${isDeleted ? `<button class="btn btn-sm btn-outline" onclick="openAppealModal(${ad.id})">📨 Апелляция</button>` : ''}
                             </div>
                         </div>
                     </div>
@@ -1080,7 +1099,7 @@
             switchTab('feed');
         }
 
-        // ==================== ФОРМА ПОДАЧИ ОБЪЯВЛЕНИЯ (с автоформатированием цены) ====================
+        // ==================== ФОРМА ПОДАЧИ ОБЪЯВЛЕНИЯ ====================
         function rebuildCreateAdForm() {
             const section = document.getElementById('tabApp');
             section.innerHTML = `
@@ -1096,7 +1115,7 @@
                 <div class="form-group"><label>Название</label><input id="itemName" placeholder="Название"></div>
                 <div class="form-group"><label>Цена</label><input id="price" placeholder="5000 или 5к"></div>
                 <div class="form-group"><label>Описание</label><textarea id="text" rows="3"></textarea></div>
-                <div class="form-group"><label>Скриншот URL (необязательно)</label><input id="itemImage"></div>
+                <div class="form-group"><label>Скриншот URL (необязательно)</label><input id="itemImage" placeholder="Только разрешённые сайты"></div>
                 <div class="form-group"><label>Сервер</label>
                     <div class="custom-select-trigger" onclick="openPicker('server')"><span id="selectedServerText">${currentUserServer || ALL_SERVERS[0]}</span> ▼</div>
                     <input type="hidden" id="server" value="${currentUserServer || ALL_SERVERS[0]}">
@@ -1104,22 +1123,18 @@
                 <button type="button" class="btn" onclick="submitData()">Отправить на модерацию</button>
                 <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px;">Приём объявлений с 09:00 до 22:00 МСК, КД 2 минуты</div>
             `;
-            // Обработчик для цены: автоформатирование
             document.getElementById('price').addEventListener('input', function() {
                 this.value = formatPriceInput(this.value);
             });
         }
 
-        // Функция форматирования ввода цены (преобразует 5000 -> 5к и т.п.)
         function formatPriceInput(raw) {
             if (!raw) return raw;
-            // Если уже содержит "к", просто возвращаем
             if (/[кk]/i.test(raw)) return raw;
-            // Оставляем только цифры (и точку)
             let cleaned = raw.replace(/[^\d.]/g, '');
             if (!cleaned) return raw;
             const num = parseFloat(cleaned);
-            if (isNaN(num) || num < 1000) return cleaned; // меньше 1000 не сокращаем
+            if (isNaN(num) || num < 1000) return cleaned;
             if (num >= 1e9) return (num/1e9).toFixed(1).replace(/\.0$/,'') + 'ккк';
             if (num >= 1e6) return (num/1e6).toFixed(1).replace(/\.0$/,'') + 'кк';
             if (num >= 1e3) return (num/1e3).toFixed(1).replace(/\.0$/,'') + 'к';
@@ -1156,6 +1171,15 @@
                 return;
             }
 
+            // Проверка ссылок
+            if (image) {
+                const check = checkLinksString(image);
+                if (!check.valid) {
+                    alert(check.message);
+                    return;
+                }
+            }
+
             let newAd = {
                 id: Date.now(),
                 mode, category, itemName, price, text, image, server,
@@ -1182,7 +1206,7 @@
             document.getElementById('itemImage').value = '';
         }
 
-        // ==================== PICKER (ОБЩИЙ) ====================
+        // ==================== PICKER ====================
         function openPicker(type, callback) {
             const list = document.getElementById('pickerList');
             const title = document.getElementById('pickerTitle');
@@ -1330,6 +1354,12 @@
             if (!mediaLinks) { alert('Добавьте хотя бы одну ссылку на фото или видео'); return; }
             const links = mediaLinks.split(',').map(s => s.trim()).filter(s => s.length > 0);
             if (links.length > 20) { alert('Максимум 20 ссылок'); return; }
+            // Проверка ссылок в отзыве тоже (можно не проверять? Но по логике разрешены те же)
+            const check = checkLinksString(mediaLinks);
+            if (!check.valid) {
+                alert(check.message);
+                return;
+            }
             const adId = activeReviewAdId;
             const reviews = getReviewsForAd(adId);
             const newReview = {
@@ -1460,6 +1490,7 @@
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
                         <button class="btn btn-sm" onclick="openChatWithUser('${ad.author}')">💬 Написать</button>
                         <button id="cartButton" class="btn btn-sm ${isInCart ? 'btn-outline' : ''}" onclick="toggleCart(${ad.id})">${isInCart ? '🛒 Убрать из корзины' : '🛒 Корзина'}</button>
+                        <button class="btn btn-sm btn-outline" onclick="openReviewModal(${ad.id})">⭐ Отзывы</button>
                     </div>
                 `;
                 if (isAuthor && isApproved) {
@@ -1568,7 +1599,7 @@
             const results = globalAdsFeed.filter(ad => ad.status === 'approved' && (ad.itemName.toLowerCase().includes(query.toLowerCase()) || ad.text.toLowerCase().includes(query.toLowerCase())));
             const resultsContainer = document.getElementById('searchResultsContainer');
             if (results.length > 0) {
-                resultsContainer.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Результаты (${results.length})</div>` + results.map(ad => createAdCard(ad, { showAuthor: false })).join('');
+                resultsContainer.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Результаты (${results.length})</div>` + results.map(ad => createAdCard(ad)).join('');
             } else {
                 resultsContainer.innerHTML = '<div style="color:var(--muted);padding:8px 0;">Ничего не найдено</div>';
             }
@@ -1674,6 +1705,12 @@
             if (!reason) { alert('Выберите причину апелляции'); return; }
             if (!evidence) { alert('Добавьте хотя бы одну ссылку'); return; }
             if (!currentAppealAdId) { alert('Ошибка'); return; }
+            // Проверка ссылок
+            const check = checkLinksString(evidence);
+            if (!check.valid) {
+                alert(check.message);
+                return;
+            }
             const links = evidence.split(',').map(s => s.trim()).filter(s => s.length > 0);
             if (links.length > 20) { alert('Максимум 20 ссылок'); return; }
             appealsList.push({ adId: currentAppealAdId, author: currentUserUsername, reason, links, date: new Date().toISOString(), status: 'pending' });
@@ -1759,7 +1796,7 @@
                     <div>Объявление ID: ${ap.adId}</div>
                     <div>Автор: ${ap.author}</div>
                     <div>Причина: ${ap.reason}</div>
-                    <div>Доказательства: ${ap.links.join(', ')}</div>
+                    <div>Доказательства: ${ap.links.map(link => `<a href="${escapeHtml(link)}" target="_blank" style="color:var(--accent); text-decoration:underline;">${escapeHtml(link)}</a>`).join(', ')}</div>
                     <div class="ad-actions">
                         <button class="btn btn-sm btn-success" onclick="approveAppeal(${i})">Одобрить</button>
                         <button class="btn btn-sm btn-danger" onclick="rejectAppeal(${i})">Отклонить</button>
@@ -1866,6 +1903,13 @@
             priceInput.addEventListener('input', function() {
                 this.value = formatPriceInput(this.value);
             });
+            const imageInput = document.getElementById('editImage');
+            imageInput.addEventListener('blur', function() {
+                const check = checkLinksString(this.value);
+                if (!check.valid) {
+                    alert(check.message);
+                }
+            });
         }
 
         function saveEditedAd(id) {
@@ -1878,6 +1922,13 @@
             const image = document.getElementById('editImage')?.value.trim();
             const server = document.getElementById('editServer')?.value;
             if (!itemName || !price || !text) { alert('Заполните обязательные поля'); return; }
+            if (image) {
+                const check = checkLinksString(image);
+                if (!check.valid) {
+                    alert(check.message);
+                    return;
+                }
+            }
             ad.itemName = itemName;
             ad.price = price;
             ad.text = text;
@@ -1962,4 +2013,4 @@
         };
     </script>
 </body>
-                </html>
+    </html>

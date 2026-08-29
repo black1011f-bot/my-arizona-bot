@@ -616,7 +616,8 @@
             <button class="btn btn-outline" onclick="window.open('https://t.me/Bounty_Squad31')">📢 Канал</button>
         </div>
     </div>
-        <script>
+
+    <script>
     // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
     const OWNER_USERNAME = 'bounqy';
     const ALL_SERVERS = [
@@ -652,7 +653,10 @@
     let pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
     let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
     let travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
+    // Гарантируем наличие scrapCost
     let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || '{"money":0,"clickPower":1,"clickCost":50,"autoIncome":0,"autoCost":200,"proCost":800,"shopCost":3000,"eliteCost":10000,"oilCost":35000,"cryptoCost":150000,"scrapCost":500}');
+    if (!barygaData.scrapCost || barygaData.scrapCost <= 0) barygaData.scrapCost = 500;
+    localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
     let appealsList = JSON.parse(localStorage.getItem('arizona_appeals') || '[]');
     let bannedUsers = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
     let adminTutorialCompleted = localStorage.getItem(getUserKey('admin_tutorial_completed')) === '1';
@@ -727,8 +731,8 @@
         closeModal('themeModal');
     }
 
+    // Переключение вкладок с задержкой 2 секунды
     function switchTab(tabId) {
-        // Показать оверлей загрузки
         document.getElementById('tabLoadingOverlay').style.display = 'flex';
         setTimeout(() => {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -749,9 +753,8 @@
             if (tabId === 'more') renderMoreSection();
             if (tabId === 'myAds') renderMyAds();
             playSfx('click');
-            // Скрыть оверлей загрузки после рендера
             document.getElementById('tabLoadingOverlay').style.display = 'none';
-        }, 2000); // задержка 2 секунды
+        }, 2000);
     }
 
     function showHeaderLinks() { openModal('headerLinksModal'); }
@@ -976,23 +979,8 @@
         });
     }
 
-    // ИСПРАВЛЕННАЯ ФУНКЦИЯ submitData: для всех одинаковое ограничение
+    // ИСПРАВЛЕННАЯ ФУНКЦИЯ submitData: БЕЗ ограничений по времени и кулдауна
     function submitData() {
-        const now = new Date();
-        const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
-        const hour = msk.getHours();
-
-        if (hour < 9 || hour >= 22) {
-            alert('Объявления принимаются с 09:00 до 22:00 МСК');
-            return;
-        }
-
-        const last = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
-        if (Date.now() - last < 120000) {
-            alert('Подождите 2 минуты');
-            return;
-        }
-
         const mode = document.getElementById('mode').value;
         const category = document.getElementById('category').value;
         const itemName = document.getElementById('itemName').value.trim();
@@ -1025,7 +1013,6 @@
         myAdsList.push(newAd);
         localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
         localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
-        localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
 
         alert('Объявление отправлено на модерацию');
         switchTab('feed');
@@ -1056,7 +1043,7 @@
         closeModal('pickerModal');
     }
 
-    // ==================== ИГРА БАРЫГА (исправлен множитель) ====================
+    // ==================== ИГРА БАРЫГА (исправлены цена и кнопки) ====================
     function updateBarygaUI() {
         document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString();
         document.getElementById('autoIncomeLabel').innerText = barygaData.autoIncome.toLocaleString() + ' $ / сек';
@@ -1069,7 +1056,7 @@
             { name: 'Элита: клик +10', cost: barygaData.eliteCost, actionName: 'buyEliteUpgrade' },
             { name: 'Нефть +200/сек', cost: barygaData.oilCost, actionName: 'buyOilRigUpgrade' },
             { name: 'Крипта +1000/сек', cost: barygaData.cryptoCost, actionName: 'buyCryptoUpgrade' },
-            { name: 'Скупка лома +500/сек', cost: barygaData.scrapCost || 500, actionName: 'buyScrapUpgrade' }
+            { name: 'Скупка лома +500/сек', cost: barygaData.scrapCost, actionName: 'buyScrapUpgrade' }
         ];
         container.innerHTML = upgrades.map(u => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--app-bg); border-radius:8px; margin-bottom:6px;">
@@ -1089,13 +1076,13 @@
         setTimeout(() => img.src = 'https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg', 1000);
     }
 
-    // Все покупки теперь увеличивают стоимость в 2 раза
+    // Все покупки увеличивают стоимость в 2 раза
     function makeBarygaPurchase(costKey, valueKey, increment) {
         const cost = barygaData[costKey] || 0;
         if (barygaData.money >= cost) {
             barygaData.money -= cost;
             barygaData[valueKey] += increment;
-            barygaData[costKey] = Math.floor(cost * 2); // Изменено с 1.5 на 2
+            barygaData[costKey] = Math.floor(cost * 2);
             localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
             updateBarygaUI();
             playSfx('success');
@@ -1113,11 +1100,11 @@
     function buyCryptoUpgrade() { makeBarygaPurchase('cryptoCost','autoIncome',1000); }
     function buyScrapUpgrade() {
         const costKey = 'scrapCost';
-        const cost = barygaData[costKey] || 0;
+        const cost = barygaData[costKey] || 500;
         if (barygaData.money >= cost) {
             barygaData.money -= cost;
             barygaData.autoIncome += 500;
-            barygaData[costKey] = Math.floor(cost * 2); // Изменено с 3 на 2
+            barygaData[costKey] = Math.floor(cost * 2);
             localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
             updateBarygaUI();
             playSfx('success');
@@ -1742,4 +1729,4 @@
     };
     </script>
 </body>
-</html>
+                </html>

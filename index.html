@@ -375,9 +375,15 @@
         <button class="btn btn-outline" onclick="window.open('https://vk.com/bountyarz')">Написать в ВК</button>
     </div>
 
-    <!-- ОБЫЧНЫЙ ТУТОРИАЛ (расширен) -->
+    <!-- ОБЫЧНЫЙ ТУТОРИАЛ С ПРЕДУПРЕЖДЕНИЕМ И ТАЙМЕРОМ 60 СЕК -->
     <div id="tutorialOverlay" class="tutorial-overlay">
         <div class="tutorial-slide active">
+            <h3>⚠️ Внимание!</h3>
+            <p>Мы не несём ответственности за возможный скам и не редактируем информацию о продаже/покупке аккаунтов или виртуальных предметов.</p>
+            <p>Продолжение будет доступно через <span id="tutorialTimer">60</span> сек.</p>
+            <button class="btn" id="tutorialNextBtn" disabled onclick="nextTutorialSlide()">Продолжить</button>
+        </div>
+        <div class="tutorial-slide">
             <h3>Добро пожаловать!</h3>
             <p>Это приложение для размещения объявлений. Нажмите «Далее», чтобы узнать об основных разделах.</p>
             <button class="btn" onclick="nextTutorialSlide()">Далее</button>
@@ -605,21 +611,20 @@
         </div>
     </div>
 
+    <!-- МОДАЛЬНОЕ ОКНО АПЕЛЛЯЦИИ (УЛУЧШЕННЫЙ ИНТЕРФЕЙС) -->
     <div id="appealModal" class="modal-overlay" onclick="if(event.target===this) closeModal('appealModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('appealModal')">✕</button>
             <h3>📨 Апелляция</h3>
             <div class="form-group">
                 <label>Причина</label>
-                <select id="appealReason">
-                    <option value="Товар не нарушает правила">Товар не нарушает правила</option>
-                    <option value="Ошибка модерации">Ошибка модерации</option>
-                    <option value="Продавец не виноват">Продавец не виноват</option>
-                    <option value="Другое">Другое</option>
-                </select>
+                <div class="custom-select-trigger" onclick="openAppealReasonPicker()">
+                    <span id="appealReasonText">Выберите причину</span> ▼
+                </div>
+                <input type="hidden" id="appealReason" value="">
             </div>
             <div class="form-group">
-                <label>Доказательства (ссылки на фото/видео, до 20, через запятую)</label>
+                <label>Доказательства (ссылки до 20, через запятую)</label>
                 <textarea id="appealEvidence" rows="3" placeholder="https://..."></textarea>
             </div>
             <button class="btn" onclick="submitAppeal()">Отправить</button>
@@ -649,6 +654,12 @@
         const ALL_CATEGORIES = [
             '💍 Аксессуары и вещи','🚗 Транспорт','🏠 Недвижимость','💼 Бизнесы','🔫 Оружие и материалы','👕 Одежда','📱 Электроника'
         ];
+        const APPEAL_REASONS = [
+            'Товар не нарушает правила',
+            'Ошибка модерации',
+            'Продавец не виноват',
+            'Другое'
+        ];
 
         let tg = window.Telegram?.WebApp || null;
         if (tg) { tg.expand?.(); tg.ready?.(); }
@@ -665,6 +676,8 @@
         let reviewStars = 5;
         let currentUserServer = localStorage.getItem(getUserKey('user_server')) || null;
         let currentAppealAdId = null;
+        let tutorialTimerInterval = null;
+        let adminTutorialTimerInterval = null;
 
         // ИЗМЕНЕНО: список админов инициализируем как ['admin', 'arizona_admin', OWNER_USERNAME]
         let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') 
@@ -818,6 +831,86 @@
         }
         if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
 
+        // ==================== ТУТОРИАЛ (ОБЫЧНЫЙ) ====================
+        let tutorialSlide = 0;
+        function showTutorial() {
+            if (localStorage.getItem(getUserKey('tutorial_completed')) === '1') return;
+            document.getElementById('tutorialOverlay').style.display = 'flex';
+            tutorialSlide = 0;
+            updateTutorial();
+            startTutorialTimer(60);
+        }
+        function startTutorialTimer(seconds) {
+            const timerSpan = document.getElementById('tutorialTimer');
+            const btn = document.getElementById('tutorialNextBtn');
+            if (!timerSpan || !btn) return;
+            let sec = seconds;
+            btn.disabled = true;
+            timerSpan.innerText = sec;
+            if (tutorialTimerInterval) clearInterval(tutorialTimerInterval);
+            tutorialTimerInterval = setInterval(() => {
+                sec--;
+                timerSpan.innerText = sec;
+                if (sec <= 0) {
+                    clearInterval(tutorialTimerInterval);
+                    btn.disabled = false;
+                    btn.innerText = 'Продолжить';
+                }
+            }, 1000);
+        }
+        function hideTutorial() { document.getElementById('tutorialOverlay').style.display = 'none'; }
+        function nextTutorialSlide() {
+            const slides = document.querySelectorAll('#tutorialOverlay .tutorial-slide');
+            if (tutorialSlide < slides.length - 1) { tutorialSlide++; updateTutorial(); } else { completeTutorial(); }
+        }
+        function updateTutorial() { document.querySelectorAll('#tutorialOverlay .tutorial-slide').forEach((slide, index) => { slide.classList.toggle('active', index === tutorialSlide); }); }
+        function completeTutorial() { hideTutorial(); localStorage.setItem(getUserKey('tutorial_completed'), '1'); }
+
+        // ==================== АДМИН ТУТОРИАЛ ====================
+        function showAdminTutorial() {
+            const overlay = document.getElementById('adminTutorialOverlay');
+            if (!overlay) return;
+            overlay.style.display = 'flex';
+            adminTutorialSlide = 0;
+            updateAdminTutorial();
+            const btn = document.getElementById('adminTutorialCloseBtn');
+            if (btn) {
+                btn.disabled = true;
+                let secondsLeft = 60;
+                btn.innerText = `Закрыть (${secondsLeft} сек)`;
+                if (adminTutorialTimerInterval) clearInterval(adminTutorialTimerInterval);
+                adminTutorialTimerInterval = setInterval(() => {
+                    secondsLeft--;
+                    btn.innerText = `Закрыть (${secondsLeft} сек)`;
+                    if (secondsLeft <= 0) {
+                        clearInterval(adminTutorialTimerInterval);
+                        btn.disabled = false;
+                        btn.innerText = 'Закрыть';
+                    }
+                }, 1000);
+            }
+        }
+        function nextAdminTutorialSlide() {
+            const slides = document.querySelectorAll('#adminTutorialOverlay .tutorial-slide');
+            if (adminTutorialSlide < slides.length - 1) {
+                adminTutorialSlide++;
+                updateAdminTutorial();
+            }
+        }
+        function updateAdminTutorial() {
+            document.querySelectorAll('#adminTutorialOverlay .tutorial-slide').forEach((slide, index) => {
+                slide.classList.toggle('active', index === adminTutorialSlide);
+            });
+        }
+        function closeAdminTutorial() {
+            document.getElementById('adminTutorialOverlay').style.display = 'none';
+            adminTutorialCompleted = true;
+            localStorage.setItem(getUserKey('admin_tutorial_completed'), '1');
+        }
+        document.getElementById('adminTutorialCloseBtn')?.addEventListener('click', function() {
+            if (!this.disabled) closeAdminTutorial();
+        });
+
         // ==================== РЕНДЕР КАРТОЧЕК ====================
         function createAdCard(ad, options = {}) {
             const { showActions = true, showAuthor = true, disableClick = false, isCart = false } = options;
@@ -872,7 +965,7 @@
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Объявлений пока нет</div>';
                 return;
             }
-            container.innerHTML = approved.map(ad => createAdCard(ad)).join('');
+            container.innerHTML = approved.map(ad => createAdCard(ad, {showAuthor:false})).join('');
         }
 
         function renderCart() {
@@ -1017,8 +1110,7 @@
             });
         }
 
-        // ИЗМЕНЕННАЯ ФУНКЦИЯ submitData: с проверкой времени и кулдауна
-        function submitData() {
+        // ИЗМЕНЕННАЯ ФУНКЦИЯ submitData: с проверкой времени и кулдауна        function submitData() {
             // Проверка времени (09:00–22:00 МСК)
             let now = new Date();
             let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
@@ -1097,9 +1189,22 @@
             } else if (type === 'server') {
                 list.innerHTML = ALL_SERVERS.map(s => `<div class="picker-item" onclick="selectPicker('server','${s}','${s}')">${s}</div>`).join('');
                 title.innerText = 'Сервер';
+            } else if (type === 'appeal_reason') {
+                list.innerHTML = APPEAL_REASONS.map(r => `<div class="picker-item" onclick="selectAppealReason('${r}')">${r}</div>`).join('');
+                title.innerText = 'Причина апелляции';
             }
             openModal('pickerModal');
             window.pickerCallback = callback;
+        }
+
+        function selectAppealReason(reason) {
+            document.getElementById('appealReason').value = reason;
+            document.getElementById('appealReasonText').innerText = reason;
+            closeModal('pickerModal');
+        }
+
+        function openAppealReasonPicker() {
+            openPicker('appeal_reason');
         }
 
         function selectPicker(type, val, text) {
@@ -1417,7 +1522,11 @@
         function resetMusic() { document.getElementById('bgMusic').src='https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3'; document.getElementById('bgMusic').play(); musicPlaying=true; }
         function loadCustomMusic(e) { const f=e.target.files[0]; if(!f)return; const url=URL.createObjectURL(f); document.getElementById('bgMusic').src=url; document.getElementById('bgMusic').play(); musicPlaying=true; }
         function toggleSfx() { sfxEnabled=!sfxEnabled; localStorage.setItem(getUserKey('sfx_enabled'), sfxEnabled?'1':'0'); document.getElementById('toggleSfxBtn').innerText = sfxEnabled?'Включены':'Выключены'; }
-        function resetAllData() { if(confirm('Сбросить все данные?')){ localStorage.clear(); location.reload(); } }
+        function resetAllData() {
+            if (!confirm('Сбросить все данные?')) return;
+            localStorage.clear();
+            location.reload();
+        }
 
         function toggleFavorite(id) {
             const ad = globalAdsFeed.find(a => a.id === id);
@@ -1497,11 +1606,14 @@
             if (!ad) return;
             currentAppealAdId = adId;
             document.getElementById('appealEvidence').value = '';
+            document.getElementById('appealReason').value = '';
+            document.getElementById('appealReasonText').innerText = 'Выберите причину';
             openModal('appealModal');
         }
         function submitAppeal() {
             const reason = document.getElementById('appealReason').value;
             const evidence = document.getElementById('appealEvidence').value.trim();
+            if (!reason) { alert('Выберите причину апелляции'); return; }
             if (!evidence) { alert('Добавьте хотя бы одну ссылку'); return; }
             if (!currentAppealAdId) { alert('Ошибка'); return; }
             const links = evidence.split(',').map(s => s.trim()).filter(s => s.length > 0);
@@ -1517,52 +1629,10 @@
             return ADMIN_USERNAMES.includes(currentUserUsername.replace('@','').toLowerCase()) || currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME;
         }
 
-        function showAdminTutorial() {
-            const overlay = document.getElementById('adminTutorialOverlay');
-            overlay.style.display = 'flex';
-            adminTutorialSlide = 0;
-            updateAdminTutorial();
-            const btn = document.getElementById('adminTutorialCloseBtn');
-            btn.disabled = true;
-            let secondsLeft = 60;
-            btn.innerText = `Закрыть (${secondsLeft} сек)`;
-            const timer = setInterval(() => {
-                secondsLeft--;
-                btn.innerText = `Закрыть (${secondsLeft} сек)`;
-                if (secondsLeft <= 0) {
-                    clearInterval(timer);
-                    btn.disabled = false;
-                    btn.innerText = 'Закрыть';
-                }
-            }, 1000);
-        }
-        function nextAdminTutorialSlide() {
-            const slides = document.querySelectorAll('#adminTutorialOverlay .tutorial-slide');
-            if (adminTutorialSlide < slides.length - 1) {
-                adminTutorialSlide++;
-                updateAdminTutorial();
-            }
-        }
-        function updateAdminTutorial() {
-            document.querySelectorAll('#adminTutorialOverlay .tutorial-slide').forEach((slide, index) => {
-                slide.classList.toggle('active', index === adminTutorialSlide);
-            });
-        }
-        function closeAdminTutorial() {
-            document.getElementById('adminTutorialOverlay').style.display = 'none';
-            adminTutorialCompleted = true;
-            localStorage.setItem(getUserKey('admin_tutorial_completed'), '1');
-        }
-        document.getElementById('adminTutorialCloseBtn').addEventListener('click', function() {
-            if (!this.disabled) closeAdminTutorial();
-        });
-
-        // ИЗМЕНЕННАЯ ФУНКЦИЯ renderPendingAds (фрагмент 2)
         function renderPendingAds() {
             let container = document.getElementById('pendingAdsContainer');
             if (!container) return;
 
-            // Проверка прав – текущий пользователь должен быть в списке ADMIN_USERNAMES или владельцем
             let isOwnerOrAdmin = ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase())
                                       .includes(currentUserUsername.replace('@', '').toLowerCase()) 
                                       || (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase());
@@ -1577,7 +1647,6 @@
                 return;
             }
 
-            // Выводим каждое объявление с кнопками "Одобрить" и "Отклонить"
             container.innerHTML = pendingAdsList.map((ad, idx) => `
                 <div class="ad-card" style="display:block; padding:12px; border-left:4px solid var(--accent);">
                     <div class="ad-badges">
@@ -1589,13 +1658,14 @@
                     <div style="font-size:12px;color:var(--muted);">От: ${ad.author}</div>
                     <p>${escapeHtml(ad.text)}</p>
                     <div class="ad-actions">
-                        <button class="btn btn-sm btn-success" onclick="approvePendingAd(${ad.id})">✅ Одобрить</button>
-                        <button class="btn btn-sm btn-danger" onclick="rejectPendingAd(${ad.id})">❌ Отклонить</button>
+                        <button class="btn btn-sm btn-outline" onclick="openEditAdModal(${ad.id})">✏️</button>
+                        <button class="btn btn-sm btn-success" onclick="approvePendingAd(${ad.id})">✅</button>
+                        <button class="btn btn-sm btn-danger" onclick="rejectPendingAd(${ad.id})">❌</button>
                     </div>
                 </div>
             `).join('');
 
-            // Панель владельца (оставляем, если ownerSection нужен)
+            // Панель владельца
             if (document.getElementById('ownerSection') && currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase()) {
                 document.getElementById('ownerSection').style.display = 'block';
                 document.getElementById('ownerSection').innerHTML = `
@@ -1649,7 +1719,6 @@
             renderPendingAds();
         }
 
-        // НОВЫЕ ФУНКЦИИ ДЛЯ МОДЕРАЦИИ (фрагменты 3 и 4)
         function approvePendingAd(id) {
             let idx = pendingAdsList.findIndex(a => a.id === id);
             if (idx > -1) {
@@ -1674,7 +1743,6 @@
             }
         }
 
-        // Оставляем старые функции, но они не используются (или можно удалить)
         function approveAd(id) { approvePendingAd(id); }
         function rejectAd(id) { rejectPendingAd(id); }
 
@@ -1701,9 +1769,9 @@
                         </div>
                         <input type="hidden" id="editServer" value="${ad.server}">
                     </div>
-                    <div style="display:flex;gap:10px;margin-top:20px;">
-                        <button class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">Отмена</button>
-                        <button class="btn btn-success" onclick="saveEditedAd(${ad.id})">Сохранить и одобрить</button>
+                    <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+                        <button class="btn btn-outline" style="flex:1;" onclick="this.closest('.modal-overlay').remove()">Отмена</button>
+                        <button class="btn btn-success" style="flex:1;" onclick="saveEditedAd(${ad.id})">Сохранить и одобрить</button>
                     </div>
                 </div>
             `;
@@ -1727,7 +1795,7 @@
             ad.text = text;
             ad.image = image;
             ad.server = server;
-            approvePendingAd(id); // Используем новую функцию одобрения
+            approvePendingAd(id);
             document.querySelectorAll('#editAdModal').forEach(el => el.remove());
             renderFeed();
         }
@@ -1773,22 +1841,7 @@
             }
         }
 
-        // ==================== ТУТОРИАЛ ОБЫЧНЫЙ (расширен) ====================
-        let tutorialSlide = 0;
-        function showTutorial() {
-            if (localStorage.getItem(getUserKey('tutorial_completed')) === '1') return;
-            document.getElementById('tutorialOverlay').style.display = 'flex';
-            tutorialSlide = 0;
-            updateTutorial();
-        }
-        function hideTutorial() { document.getElementById('tutorialOverlay').style.display = 'none'; }
-        function nextTutorialSlide() {
-            const slides = document.querySelectorAll('#tutorialOverlay .tutorial-slide');
-            if (tutorialSlide < slides.length - 1) { tutorialSlide++; updateTutorial(); } else { completeTutorial(); }
-        }
-        function updateTutorial() { document.querySelectorAll('#tutorialOverlay .tutorial-slide').forEach((slide, index) => { slide.classList.toggle('active', index === tutorialSlide); }); }
-        function completeTutorial() { hideTutorial(); localStorage.setItem(getUserKey('tutorial_completed'), '1'); }
-
+        // Экспорт функций, если потребуется
         window.App = {
             renderFeed,
             createAdCard,
@@ -1815,4 +1868,4 @@
         };
     </script>
 </body>
-</html>
+    </html>

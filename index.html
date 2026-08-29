@@ -350,25 +350,41 @@
         <button class="btn btn-outline" onclick="window.open('https://vk.com/bountyarz')">Написать в ВК</button>
     </div>
 
+    <!-- ОБЫЧНЫЙ ТУТОРИАЛ (расширен) -->
     <div id="tutorialOverlay" class="tutorial-overlay">
         <div class="tutorial-slide active">
             <h3>Добро пожаловать!</h3>
-            <p>Это приложение для размещения объявлений.</p>
+            <p>Это приложение для размещения объявлений. Нажмите «Далее», чтобы узнать об основных разделах.</p>
             <button class="btn" onclick="nextTutorialSlide()">Далее</button>
         </div>
         <div class="tutorial-slide">
-            <h3>Главная</h3>
-            <p>Лента объявлений. Нажмите на карточку для деталей.</p>
+            <h3>🏠 Главная</h3>
+            <p>Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности, отзывы и написать продавцу.</p>
             <button class="btn" onclick="nextTutorialSlide()">Далее</button>
         </div>
         <div class="tutorial-slide">
-            <h3>Отправка</h3>
-            <p>Вкладка «Отправка» – создайте объявление.</p>
+            <h3>🛒 Корзина</h3>
+            <p>Сохраняйте понравившиеся объявления, нажимая на значок корзины. Они будут храниться здесь.</p>
+            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>➕ Отправка</h3>
+            <p>Создавайте свои объявления: выберите тип, категорию, укажите название, цену, описание и сервер. После отправки оно попадёт на модерацию.</p>
+            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>☰ Все разделы</h3>
+            <p>Здесь находятся дополнительные возможности: «Мои объявления», «Каталог», игра «Барыга», «Лента луков», «Попутчики», музыка, настройки и связь с менеджером.</p>
+            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>🔍 Поиск</h3>
+            <p>Используйте строку поиска вверху, чтобы быстро находить товары или профили игроков.</p>
             <button class="btn" onclick="completeTutorial()">Понятно</button>
         </div>
     </div>
 
-    <!-- РАСШИРЕННЫЙ ТУТОРИАЛ ДЛЯ АДМИНОВ -->
+    <!-- РАСШИРЕННЫЙ ТУТОРИАЛ ДЛЯ АДМИНОВ (добавлены слайды) -->
     <div id="adminTutorialOverlay" class="tutorial-overlay" style="display:none;">
         <div class="tutorial-slide active">
             <h3>🔧 Админ-панель: обзор</h3>
@@ -393,6 +409,11 @@
         <div class="tutorial-slide">
             <h3>📨 Апелляции</h3>
             <p>Продавцы могут подавать апелляции на отклонённые объявления. Вы можете их одобрить или отклонить. Также доступна очистка всей ленты.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>🛡️ Дополнительно</h3>
+            <p>Вы можете редактировать любое объявление перед публикацией, а также полностью очистить ленту. Все изменения сохраняются автоматически.</p>
             <button class="btn btn-sm btn-outline" id="adminTutorialCloseBtn" disabled>Закрыть (60 сек)</button>
         </div>
     </div>
@@ -1023,7 +1044,7 @@
         closeModal('pickerModal');
     }
 
-    // ==================== ИГРА БАРЫГА ====================
+    // ==================== ИГРА БАРЫГА (исправлен множитель) ====================
     function updateBarygaUI() {
         document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString();
         document.getElementById('autoIncomeLabel').innerText = barygaData.autoIncome.toLocaleString() + ' $ / сек';
@@ -1056,6 +1077,21 @@
         setTimeout(() => img.src = 'https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg', 1000);
     }
 
+    // Все покупки теперь увеличивают стоимость в 2 раза
+    function makeBarygaPurchase(costKey, valueKey, increment) {
+        const cost = barygaData[costKey] || 0;
+        if (barygaData.money >= cost) {
+            barygaData.money -= cost;
+            barygaData[valueKey] += increment;
+            barygaData[costKey] = Math.floor(cost * 2); // Изменено с 1.5 на 2
+            localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
+            updateBarygaUI();
+            playSfx('success');
+        } else {
+            alert('Недостаточно средств');
+        }
+    }
+
     function buyClickUpgrade() { makeBarygaPurchase('clickCost','clickPower',1); }
     function buyAutoUpgrade() { makeBarygaPurchase('autoCost','autoIncome',5); }
     function buyProUpgrade() { makeBarygaPurchase('proCost','autoIncome',20); }
@@ -1069,21 +1105,7 @@
         if (barygaData.money >= cost) {
             barygaData.money -= cost;
             barygaData.autoIncome += 500;
-            barygaData[costKey] = cost * 3;
-            localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
-            updateBarygaUI();
-            playSfx('success');
-        } else {
-            alert('Недостаточно средств');
-        }
-    }
-
-    function makeBarygaPurchase(costKey, valueKey, increment) {
-        const cost = barygaData[costKey] || 0;
-        if (barygaData.money >= cost) {
-            barygaData.money -= cost;
-            barygaData[valueKey] += increment;
-            barygaData[costKey] = Math.floor(cost * 1.5);
+            barygaData[costKey] = Math.floor(cost * 2); // Изменено с 3 на 2
             localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
             updateBarygaUI();
             playSfx('success');
@@ -1666,7 +1688,7 @@
         }
     }
 
-    // ==================== ТУТОРИАЛ ОБЫЧНЫЙ ====================
+    // ==================== ТУТОРИАЛ ОБЫЧНЫЙ (расширен) ====================
     let tutorialSlide = 0;
     function showTutorial() {
         if (localStorage.getItem(getUserKey('tutorial_completed')) === '1') return;

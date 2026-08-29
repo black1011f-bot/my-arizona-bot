@@ -636,6 +636,7 @@
         </div>
     </div>
 
+    <!-- ==================== JAVASCRIPT ==================== -->
     <script>
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
         const OWNER_USERNAME = 'bounqy';
@@ -665,7 +666,10 @@
         let currentUserServer = localStorage.getItem(getUserKey('user_server')) || null;
         let currentAppealAdId = null;
 
-        let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || '["admin","bounqy"]');
+        // ИЗМЕНЕНО: список админов инициализируем как ['admin', 'arizona_admin', OWNER_USERNAME]
+        let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') 
+                              || JSON.stringify(['admin', 'arizona_admin', OWNER_USERNAME]));
+
         let globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
         let myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
         let favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
@@ -784,12 +788,23 @@
         function openModal(id) { document.getElementById(id).style.display = 'flex'; playSfx('success'); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
+        function checkUserPermissions() {
+            let isOwner = (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase());
+            let isAdmin = isOwner || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase())
+                           .includes(currentUserUsername.replace('@', '').toLowerCase());
+            let adminTabBtn = document.getElementById('adminTabBtn');
+            let ownerSection = document.getElementById('ownerSection');
+            if (adminTabBtn) adminTabBtn.style.display = isAdmin ? 'flex' : 'none';
+            if (ownerSection) ownerSection.style.display = isOwner ? 'block' : 'none';
+        }
+
         function init() {
             if (!checkUsername()) {
                 document.getElementById('loadingScreen').style.display = 'none';
                 return;
             }
             applyThemeFromStorage();
+            checkUserPermissions();
             document.getElementById('loadingScreen').style.display = 'flex';
             setTimeout(() => {
                 document.getElementById('loadingScreen').style.display = 'none';
@@ -988,8 +1003,8 @@
                     <div class="custom-select-trigger" onclick="openPicker('server')"><span id="selectedServerText">${currentUserServer || ALL_SERVERS[0]}</span> ▼</div>
                     <input type="hidden" id="server" value="${currentUserServer || ALL_SERVERS[0]}">
                 </div>
-                <button class="btn" onclick="submitData()">Отправить на модерацию</button>
-                <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px;">Время отправки: круглосуточно</div>
+                <button type="button" class="btn" onclick="submitData()">Отправить на модерацию</button>
+                <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px;">Приём объявлений с 09:00 до 22:00 МСК, КД 2 минуты</div>
             `;
             document.getElementById('price').addEventListener('input', function(){
                 let val = this.value.replace(/[^\d.]/g, '');
@@ -1002,43 +1017,72 @@
             });
         }
 
-        // ИСПРАВЛЕННАЯ ФУНКЦИЯ submitData: БЕЗ ограничений по времени и кулдауна
+        // ИЗМЕНЕННАЯ ФУНКЦИЯ submitData: с проверкой времени и кулдауна
         function submitData() {
-            const mode = document.getElementById('mode').value;
-            const category = document.getElementById('category').value;
-            const itemName = document.getElementById('itemName').value.trim();
-            let price = document.getElementById('price').value.trim();
-            const numericPrice = parseInt(price.replace(/\./g, ''), 10);
-            if (!isNaN(numericPrice)) price = formatPrice(numericPrice);
-            const text = document.getElementById('text').value.trim();
-            const image = document.getElementById('itemImage').value.trim();
-            const server = document.getElementById('server').value;
-
-            if (!itemName || !price || !text) {
-                alert('Заполните обязательные поля');
+            // Проверка времени (09:00–22:00 МСК)
+            let now = new Date();
+            let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            let mskHour = mskTime.getHours();
+            if (mskHour < 9 || mskHour >= 22) {
+                alert('🕒 Создание объявлений доступно только с 09:00:00 до 22:00:00 по МСК!');
                 return;
             }
 
-            const newAd = {
+            // Проверка кулдауна (2 минуты)
+            let lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
+            let currentTime = Date.now();
+            if (currentTime - lastAdTime < 120000) {
+                let leftSec = Math.ceil((120000 - (currentTime - lastAdTime)) / 1000);
+                alert(`⏳ Подождите еще ${leftSec} сек. перед созданием нового объявления (КД 2 минуты).`);
+                return;
+            }
+
+            // Сбор данных из формы
+            let mode = document.getElementById('mode').value;
+            let category = document.getElementById('category').value;
+            let itemName = document.getElementById('itemName').value.trim();
+            let price = document.getElementById('price').value.trim();
+            let text = document.getElementById('text').value.trim();
+            let image = document.getElementById('itemImage').value.trim();
+            let server = document.getElementById('server').value;
+
+            if (!itemName || !price || !text) {
+                alert('⚠️ Заполните все обязательные поля объявления!');
+                return;
+            }
+
+            // Создаём объект объявления со статусом "pending"
+            let newAd = {
                 id: Date.now(),
-                mode,
-                category,
-                itemName,
-                price,
-                text,
-                image,
-                server,
+                mode, category, itemName, price, text, image, server,
                 author: currentUserUsername,
                 status: 'pending'
             };
 
+            // Добавляем в глобальный список ожидающих и в личный список пользователя
             pendingAdsList.push(newAd);
             myAdsList.push(newAd);
             localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
             localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            localStorage.setItem(getUserKey('last_ad_time'), currentTime.toString());
 
-            alert('Объявление отправлено на модерацию');
+            // (Опционально) отметка для владельца
+            if (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) {
+                localStorage.setItem(getUserKey('owner_has_posted_ad'), 'true');
+            }
+
+            alert('🚀 Ваше объявление отправлено на модерацию администрации!');
+            playSfx('success');
             switchTab('feed');
+            renderFeed();
+            renderPendingAds();
+            renderMyAds();
+            
+            // Очистка полей
+            document.getElementById('itemName').value = '';
+            document.getElementById('price').value = '';
+            document.getElementById('text').value = '';
+            document.getElementById('itemImage').value = '';
         }
 
         function openPicker(type, callback) {
@@ -1513,38 +1557,47 @@
             if (!this.disabled) closeAdminTutorial();
         });
 
+        // ИЗМЕНЕННАЯ ФУНКЦИЯ renderPendingAds (фрагмент 2)
         function renderPendingAds() {
-            const container = document.getElementById('pendingAdsContainer');
-            if (!isAdmin()) {
-                container.innerHTML = 'Доступно администраторам';
-                if(document.getElementById('ownerSection')) document.getElementById('ownerSection').style.display = 'none';
+            let container = document.getElementById('pendingAdsContainer');
+            if (!container) return;
+
+            // Проверка прав – текущий пользователь должен быть в списке ADMIN_USERNAMES или владельцем
+            let isOwnerOrAdmin = ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase())
+                                      .includes(currentUserUsername.replace('@', '').toLowerCase()) 
+                                      || (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase());
+            
+            if (!isOwnerOrAdmin) {
+                container.innerHTML = '<div style="font-size:11px; color:var(--muted);">Раздел модерации доступен только администраторам.</div>';
                 return;
             }
-            if(document.getElementById('ownerSection')) {
-                document.getElementById('ownerSection').style.display = currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME ? 'block' : 'none';
-            }
+
             if (pendingAdsList.length === 0) {
-                container.innerHTML = 'Нет ожидающих проверки';
-            } else {
-                container.innerHTML = pendingAdsList.map(ad => `
-                    <div class="ad-card" style="display:block; padding:12px; border-left:4px solid var(--accent);">
-                        <div class="ad-badges">
-                            <span class="badge">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
-                            <span class="badge">${ad.server}</span>
-                            <span class="badge">${ad.category}</span>
-                        </div>
-                        <div class="ad-title">${ad.itemName} (${ad.price})</div>
-                        <div style="font-size:12px;color:var(--muted);">От: ${ad.author}</div>
-                        <p>${escapeHtml(ad.text)}</p>
-                        <div class="ad-actions">
-                            <button class="btn btn-sm btn-outline" onclick="openEditAdModal(${ad.id})">✏️</button>
-                            <button class="btn btn-sm btn-success" onclick="approveAd(${ad.id})">✅</button>
-                            <button class="btn btn-sm btn-danger" onclick="rejectAd(${ad.id})">❌</button>
-                        </div>
-                    </div>
-                `).join('');
+                container.innerHTML = '<div style="font-size:11px; color:var(--muted);">Нет объявлений, ожидающих проверки.</div>';
+                return;
             }
-            if (document.getElementById('ownerSection').style.display === 'block') {
+
+            // Выводим каждое объявление с кнопками "Одобрить" и "Отклонить"
+            container.innerHTML = pendingAdsList.map((ad, idx) => `
+                <div class="ad-card" style="display:block; padding:12px; border-left:4px solid var(--accent);">
+                    <div class="ad-badges">
+                        <span class="badge">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                        <span class="badge">${ad.server}</span>
+                        <span class="badge">${ad.category}</span>
+                    </div>
+                    <div class="ad-title">${ad.itemName} (${ad.price})</div>
+                    <div style="font-size:12px;color:var(--muted);">От: ${ad.author}</div>
+                    <p>${escapeHtml(ad.text)}</p>
+                    <div class="ad-actions">
+                        <button class="btn btn-sm btn-success" onclick="approvePendingAd(${ad.id})">✅ Одобрить</button>
+                        <button class="btn btn-sm btn-danger" onclick="rejectPendingAd(${ad.id})">❌ Отклонить</button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Панель владельца (оставляем, если ownerSection нужен)
+            if (document.getElementById('ownerSection') && currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase()) {
+                document.getElementById('ownerSection').style.display = 'block';
                 document.getElementById('ownerSection').innerHTML = `
                     <h3>Апелляции</h3>
                     <div id="appealsContainer"></div>
@@ -1563,6 +1616,7 @@
                 renderAppealsForAdmin();
             }
         }
+
         function renderAppealsForAdmin() {
             const container = document.getElementById('appealsContainer');
             if (!container) return;
@@ -1580,6 +1634,7 @@
                 </div>
             `).join('');
         }
+
         function approveAppeal(index) {
             const ap = appealsList[index];
             const ad = myAdsList.find(a => a.id === ap.adId);
@@ -1593,28 +1648,36 @@
             localStorage.setItem('arizona_appeals', JSON.stringify(appealsList));
             renderPendingAds();
         }
-        function approveAd(id) {
-            const idx = pendingAdsList.findIndex(a => a.id === id);
+
+        // НОВЫЕ ФУНКЦИИ ДЛЯ МОДЕРАЦИИ (фрагменты 3 и 4)
+        function approvePendingAd(id) {
+            let idx = pendingAdsList.findIndex(a => a.id === id);
             if (idx > -1) {
-                const ad = pendingAdsList.splice(idx, 1)[0];
+                let ad = pendingAdsList.splice(idx, 1)[0];
                 ad.status = 'approved';
                 globalAdsFeed.unshift(ad);
                 localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
                 localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-                renderPendingAds(); renderFeed();
+                renderPendingAds();
+                renderFeed();
+                playSfx('success');
             }
         }
-        function rejectAd(id) {
-            const ad = pendingAdsList.find(a => a.id === id);
-            if (ad) {
-                const myAd = myAdsList.find(a => a.id === id);
-                if (myAd) myAd.status = 'deleted';
-                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+
+        function rejectPendingAd(id) {
+            let idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx > -1) {
+                pendingAdsList.splice(idx, 1);
+                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+                renderPendingAds();
+                playSfx('success');
             }
-            pendingAdsList = pendingAdsList.filter(a => a.id !== id);
-            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-            renderPendingAds();
         }
+
+        // Оставляем старые функции, но они не используются (или можно удалить)
+        function approveAd(id) { approvePendingAd(id); }
+        function rejectAd(id) { rejectPendingAd(id); }
+
         function openEditAdModal(id) {
             const ad = pendingAdsList.find(a => a.id === id);
             if (!ad) return;
@@ -1664,7 +1727,7 @@
             ad.text = text;
             ad.image = image;
             ad.server = server;
-            approveAd(id);
+            approvePendingAd(id); // Используем новую функцию одобрения
             document.querySelectorAll('#editAdModal').forEach(el => el.remove());
             renderFeed();
         }
@@ -1752,4 +1815,4 @@
         };
     </script>
 </body>
-    </html>
+</html>

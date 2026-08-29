@@ -111,7 +111,7 @@
         .nav-tab .tab-icon { font-size:22px; }
         .nav-tab.active { color:var(--accent); }
 
-        /* ==================== КАРТОЧКИ (уменьшенные) ==================== */
+        /* ==================== КАРТОЧКИ ==================== */
         .ad-card {
             display:flex; background:var(--card-bg); border-radius:var(--radius);
             box-shadow:var(--shadow); margin-bottom:8px; overflow:hidden;
@@ -119,6 +119,7 @@
         }
         .ad-card:active { transform:scale(0.98); }
         .ad-card.no-click { cursor:default; }
+        .ad-card.deleted { background: #2a2a2a; opacity: 0.7; }
         .ad-card .ad-image-wrap {
             width:80px; min-width:80px; height:80px;
             position:relative; background:var(--app-bg);
@@ -141,7 +142,8 @@
         .badge-warning { background:#FFF3E0; color:#FF9800; }
         .badge-danger { background:#FFEBEE; color:var(--danger); }
         .badge-success { background:#E8F5E9; color:var(--success); }
-        .ad-actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; } /* больше не используется в карточках */
+        .ad-actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+        .ad-actions .btn { flex:1; min-width:60px; padding:6px 8px; font-size:10px; }
 
         /* ==================== КНОПКИ ==================== */
         .btn {
@@ -192,7 +194,6 @@
             display:none; align-items:center; justify-content:center;
             padding:16px; z-index:1100; backdrop-filter:blur(4px);
         }
-        /* Picker должен быть поверх всех модалок */
         #pickerModal {
             z-index: 3000 !important;
         }
@@ -271,7 +272,7 @@
             margin: 0;
         }
 
-        /* ==================== АДАПТАЦИЯ ПОД УСТРОЙСТВА ==================== */
+        /* ==================== АДАПТАЦИЯ ==================== */
         @media (max-width: 480px) {
             .container { padding: 0 8px; }
             .btn { padding: 10px 14px; font-size: 13px; }
@@ -344,7 +345,7 @@
         <button class="btn btn-outline" onclick="window.open('https://vk.com/bountyarz')">Написать в ВК</button>
     </div>
 
-    <!-- ОБЫЧНЫЙ ТУТОРИАЛ С ПРЕДУПРЕЖДЕНИЕМ И ТАЙМЕРОМ 60 СЕК -->
+    <!-- ОБЫЧНЫЙ ТУТОРИАЛ -->
     <div id="tutorialOverlay" class="tutorial-overlay">
         <div class="tutorial-slide active">
             <h3>⚠️ Внимание!</h3>
@@ -388,7 +389,7 @@
         </div>
     </div>
 
-    <!-- РАСШИРЕННЫЙ ТУТОРИАЛ ДЛЯ АДМИНОВ (добавлены слайды) -->
+    <!-- РАСШИРЕННЫЙ ТУТОРИАЛ ДЛЯ АДМИНОВ -->
     <div id="adminTutorialOverlay" class="tutorial-overlay" style="display:none;">
         <div class="tutorial-slide active">
             <h3>🔧 Админ-панель: обзор</h3>
@@ -584,7 +585,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО АПЕЛЛЯЦИИ (УЛУЧШЕННЫЙ ИНТЕРФЕЙС) -->
+    <!-- МОДАЛЬНОЕ ОКНО АПЕЛЛЯЦИИ -->
     <div id="appealModal" class="modal-overlay" onclick="if(event.target===this) closeModal('appealModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('appealModal')">✕</button>
@@ -614,7 +615,7 @@
         </div>
     </div>
 
-    <!-- ==================== JAVASCRIPT ЧАСТЬ 1 ==================== -->
+    <!-- ==================== JAVASCRIPT ==================== -->
     <script>
         // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
         const OWNER_USERNAME = 'bounqy';
@@ -879,9 +880,9 @@
         }
         document.getElementById('adminTutorialCloseBtn')?.addEventListener('click', function() { if (!this.disabled) closeAdminTutorial(); });
 
-        // ==================== РЕНДЕР КАРТОЧЕК (БЕЗ КНОПОК) ====================
+        // ==================== РЕНДЕР КАРТОЧЕК (с кнопками) ====================
         function createAdCard(ad, options = {}) {
-            const { showAuthor = true, disableClick = false, isCart = false } = options;
+            const { showAuthor = true, disableClick = false, isCart = false, showDeleteForAdmin = false } = options;
             const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
             const imageHtml = firstImage
                 ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" onerror="this.style.display='none'">`
@@ -896,6 +897,20 @@
             } else {
                 statusBadge = ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : ad.status === 'deleted' ? '<span class="badge badge-danger">Удалено</span>' : '';
             }
+            
+            // Кнопки действий
+            let actionsHtml = '';
+            if (!disableClick) {
+                actionsHtml = `
+                    <div class="ad-actions" onclick="event.stopPropagation();">
+                        <button class="btn btn-sm" onclick="openChatWithUser('${ad.author}')">💬</button>
+                        <button class="btn btn-sm btn-outline" onclick="openReviewModal(${ad.id})">⭐</button>
+                        <button class="btn btn-sm" onclick="toggleCart(${ad.id})">🛒</button>
+                        ${showDeleteForAdmin && isAdmin() ? `<button class="btn btn-sm btn-danger" onclick="deleteApprovedAd(${ad.id})">🗑</button>` : ''}
+                    </div>
+                `;
+            }
+
             return `
                 <div class="ad-card ${disableClick ? 'no-click' : ''}" ${clickAttr}>
                     <div class="ad-image-wrap">${imageHtml}</div>
@@ -907,18 +922,15 @@
                             ${statusBadge}
                         </div>
                         <div class="ad-title">${ad.itemName}</div>
-                        <div class="ad-price">💰 ${ad.price} $</div>
+                        <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
                         ${showAuthor ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">👤 ${ad.author}</div>` : ''}
+                        ${actionsHtml}
                     </div>
                 </div>
             `;
         }
-    </script>
 
-    <!-- ==================== JAVASCRIPT ЧАСТЬ 2 ==================== -->
-    <script>
-        // ==================== ПРОДОЛЖЕНИЕ СКРИПТА ====================
-        // (переменные и createAdCard уже определены в первой части)
+        // ==================== ЧАСТЬ 2: ОСНОВНЫЕ ФУНКЦИИ ====================
 
         // ==================== РЕНДЕР ЛЕНТЫ ====================
         function renderFeed() {
@@ -931,7 +943,7 @@
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Объявлений пока нет</div>';
                 return;
             }
-            container.innerHTML = approved.map(ad => createAdCard(ad)).join('');
+            container.innerHTML = approved.map(ad => createAdCard(ad, { showDeleteForAdmin: true })).join('');
         }
 
         // ==================== КОРЗИНА ====================
@@ -954,7 +966,7 @@
             localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
             renderFeed();
             renderCart();
-            // если открыта детальная страница, обновить кнопку корзины
+            // обновить кнопку корзины на детальной странице
             const detailCartBtn = document.getElementById('cartButton');
             if (detailCartBtn) {
                 const inCart = favoritesList.some(f => f.id === id);
@@ -978,7 +990,33 @@
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">У вас нет объявлений</div>';
                 return;
             }
-            container.innerHTML = myAdsList.map(ad => createAdCard(ad, { showAuthor: false })).join('');
+            container.innerHTML = myAdsList.map(ad => {
+                const isDeleted = ad.status === 'deleted';
+                const cardClass = isDeleted ? 'ad-card deleted' : 'ad-card';
+                const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
+                const imageHtml = firstImage
+                    ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" onerror="this.style.display='none'">`
+                    : `<div class="ad-image-placeholder"></div>`;
+                const statusBadge = isDeleted ? '<span class="badge badge-danger">Удалено</span>' : (ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : '<span class="badge badge-success">🟢 Висит</span>');
+                return `
+                    <div class="${cardClass}" onclick="openAdDetail(${ad.id})">
+                        <div class="ad-image-wrap">${imageHtml}</div>
+                        <div class="ad-info">
+                            <div class="ad-badges">
+                                <span class="badge ${ad.mode === 'sell' ? '' : 'badge-warning'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                                <span class="badge">${ad.server}</span>
+                                ${ad.category ? `<span class="badge">${ad.category}</span>` : ''}
+                                ${statusBadge}
+                            </div>
+                            <div class="ad-title">${ad.itemName}</div>
+                            <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
+                            <div class="ad-actions" onclick="event.stopPropagation();">
+                                <button class="btn btn-sm btn-danger" onclick="deleteMyAdPermanently(${ad.id})">🗑 Удалить навсегда</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function deleteMyAdPermanently(id) {
@@ -1042,7 +1080,7 @@
             switchTab('feed');
         }
 
-        // ==================== ФОРМА ПОДАЧИ ОБЪЯВЛЕНИЯ ====================
+        // ==================== ФОРМА ПОДАЧИ ОБЪЯВЛЕНИЯ (с автоформатированием цены) ====================
         function rebuildCreateAdForm() {
             const section = document.getElementById('tabApp');
             section.innerHTML = `
@@ -1066,13 +1104,26 @@
                 <button type="button" class="btn" onclick="submitData()">Отправить на модерацию</button>
                 <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px;">Приём объявлений с 09:00 до 22:00 МСК, КД 2 минуты</div>
             `;
-            document.getElementById('price').addEventListener('input', function(){
-                let val = this.value.replace(/[^\d.]/g, '');
-                val = val.replace(/\.{2,}/g, '.');
-                const parts = val.split('.');
-                if (parts.length > 6) val = parts.slice(0, 6).join('.');
-                this.value = val;
+            // Обработчик для цены: автоформатирование
+            document.getElementById('price').addEventListener('input', function() {
+                this.value = formatPriceInput(this.value);
             });
+        }
+
+        // Функция форматирования ввода цены (преобразует 5000 -> 5к и т.п.)
+        function formatPriceInput(raw) {
+            if (!raw) return raw;
+            // Если уже содержит "к", просто возвращаем
+            if (/[кk]/i.test(raw)) return raw;
+            // Оставляем только цифры (и точку)
+            let cleaned = raw.replace(/[^\d.]/g, '');
+            if (!cleaned) return raw;
+            const num = parseFloat(cleaned);
+            if (isNaN(num) || num < 1000) return cleaned; // меньше 1000 не сокращаем
+            if (num >= 1e9) return (num/1e9).toFixed(1).replace(/\.0$/,'') + 'ккк';
+            if (num >= 1e6) return (num/1e6).toFixed(1).replace(/\.0$/,'') + 'кк';
+            if (num >= 1e3) return (num/1e3).toFixed(1).replace(/\.0$/,'') + 'к';
+            return cleaned;
         }
 
         function submitData() {
@@ -1408,11 +1459,8 @@
                 actionButtonsHtml = `
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
                         <button class="btn btn-sm" onclick="openChatWithUser('${ad.author}')">💬 Написать</button>
-                        <button class="btn btn-sm btn-outline" onclick="openReviewModal(${ad.id})">⭐ Отзывы</button>
+                        <button id="cartButton" class="btn btn-sm ${isInCart ? 'btn-outline' : ''}" onclick="toggleCart(${ad.id})">${isInCart ? '🛒 Убрать из корзины' : '🛒 Корзина'}</button>
                     </div>
-                    <button id="cartButton" class="btn ${isInCart ? 'btn-outline' : ''}" style="width:100%;margin-top:8px;" onclick="toggleCartFromDetail(${ad.id})">
-                        ${isInCart ? '🛒 Убрать из корзины' : '🛒 Корзина'}
-                    </button>
                 `;
                 if (isAuthor && isApproved) {
                     actionButtonsHtml += `<button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="deleteApprovedAdFromDetail(${ad.id})">🗑 Удалить объявление</button>`;
@@ -1439,7 +1487,7 @@
                         <span class="badge">${ad.category}</span>
                     </div>
                     <div id="adImageContainer" style="margin-bottom:16px;">${renderGallery()}</div>
-                    <div style="font-size:26px;font-weight:800;color:var(--accent);margin-bottom:16px;">💰 ${ad.price} $</div>
+                    <div style="font-size:26px;font-weight:800;color:var(--accent);margin-bottom:16px;">💰 ${formatPrice(ad.price)} $</div>
                     <div style="font-size:14px;line-height:1.6;margin-bottom:16px;white-space:pre-wrap;">${escapeHtml(ad.text)}</div>
                     <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Продавец: <span style="color:var(--accent);cursor:pointer;font-weight:600;" onclick="inspectUserProfile('${ad.author}')">${ad.author}</span></div>
                     ${actionButtonsHtml}
@@ -1498,7 +1546,7 @@
             if (!query) { container.innerHTML = ''; return; }
             const results = globalAdsFeed.filter(ad => ad.status === 'approved' && (ad.itemName.toLowerCase().includes(query.toLowerCase()) || ad.text.toLowerCase().includes(query.toLowerCase()))).slice(0, 5);
             if (results.length > 0) {
-                container.innerHTML = results.map(ad => `<div style="padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border);" onclick="openAdDetail(${ad.id}); closeModal('searchModal');">${ad.itemName} - ${ad.price}$</div>`).join('');
+                container.innerHTML = results.map(ad => `<div style="padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border);" onclick="openAdDetail(${ad.id}); closeModal('searchModal');">${ad.itemName} - ${formatPrice(ad.price)}$</div>`).join('');
             } else {
                 container.innerHTML = '<div style="color:var(--muted);padding:8px 0;">Ничего не найдено</div>';
             }
@@ -1643,43 +1691,49 @@
             let container = document.getElementById('pendingAdsContainer');
             if (!container) return;
 
-            let isOwnerOrAdmin = ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase())
-                                          .includes(currentUserUsername.replace('@', '').toLowerCase()) 
-                                          || (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase());
-            
-            if (!isOwnerOrAdmin) {
+            const userIsAdmin = isAdmin();
+            const userIsOwner = currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase();
+
+            if (!userIsAdmin) {
                 container.innerHTML = '<div style="font-size:11px; color:var(--muted);">Раздел модерации доступен только администраторам.</div>';
                 return;
             }
 
             if (pendingAdsList.length === 0) {
                 container.innerHTML = '<div style="font-size:11px; color:var(--muted);">Нет объявлений, ожидающих проверки.</div>';
-                return;
+            } else {
+                container.innerHTML = pendingAdsList.map(ad => `
+                    <div class="ad-card" style="display:block; padding:12px; border-left:4px solid var(--accent);">
+                        <div class="ad-badges">
+                            <span class="badge">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                            <span class="badge">${ad.server}</span>
+                            <span class="badge">${ad.category}</span>
+                        </div>
+                        <div class="ad-title">${ad.itemName} (${formatPrice(ad.price)})</div>
+                        <div style="font-size:12px;color:var(--muted);">От: ${ad.author}</div>
+                        <p>${escapeHtml(ad.text)}</p>
+                        <div class="ad-actions">
+                            <button class="btn btn-sm btn-outline" onclick="openEditAdModal(${ad.id})">✏️ Редактировать</button>
+                            <button class="btn btn-sm btn-success" onclick="approvePendingAd(${ad.id})">✅ Одобрить</button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectPendingAd(${ad.id})">❌ Отклонить</button>
+                        </div>
+                    </div>
+                `).join('');
             }
 
-            container.innerHTML = pendingAdsList.map((ad, idx) => `
-                <div class="ad-card" style="display:block; padding:12px; border-left:4px solid var(--accent);">
-                    <div class="ad-badges">
-                        <span class="badge">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
-                        <span class="badge">${ad.server}</span>
-                        <span class="badge">${ad.category}</span>
-                    </div>
-                    <div class="ad-title">${ad.itemName} (${ad.price})</div>
-                    <div style="font-size:12px;color:var(--muted);">От: ${ad.author}</div>
-                    <p>${escapeHtml(ad.text)}</p>
-                    <div class="ad-actions">
-                        <button class="btn btn-sm btn-outline" onclick="openEditAdModal(${ad.id})">✏️ Редактировать</button>
-                        <button class="btn btn-sm btn-success" onclick="approvePendingAd(${ad.id})">✅ Одобрить</button>
-                        <button class="btn btn-sm btn-danger" onclick="rejectPendingAd(${ad.id})">❌ Отклонить</button>
-                    </div>
-                </div>
-            `).join('');
+            // Блок апелляций виден всем админам
+            const appealsSection = document.createElement('div');
+            appealsSection.innerHTML = `
+                <h3>Апелляции</h3>
+                <div id="appealsContainer"></div>
+            `;
+            container.appendChild(appealsSection);
+            renderAppealsForAdmin();
 
-            if (document.getElementById('ownerSection') && currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase()) {
-                document.getElementById('ownerSection').style.display = 'block';
-                document.getElementById('ownerSection').innerHTML = `
-                    <h3>Апелляции</h3>
-                    <div id="appealsContainer"></div>
+            // Дополнительно для владельца: управление пользователями и очистка ленты
+            if (userIsOwner) {
+                const ownerDiv = document.createElement('div');
+                ownerDiv.innerHTML = `
                     <button class="btn btn-danger btn-sm" onclick="clearGlobalFeedAdmin()">🗑 Очистить всю ленту</button>
                     <div style="margin-top:16px;">
                         <h4>Управление пользователями</h4>
@@ -1692,10 +1746,7 @@
                         </div>
                     </div>
                 `;
-                renderAppealsForAdmin();
-            } else {
-                const ownerSection = document.getElementById('ownerSection');
-                if (ownerSection) ownerSection.style.display = 'none';
+                container.appendChild(ownerDiv);
             }
         }
 
@@ -1719,12 +1770,20 @@
 
         function approveAppeal(index) {
             const ap = appealsList[index];
-            const ad = myAdsList.find(a => a.id === ap.adId);
-            if (ad) { ad.status = 'approved'; localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList)); globalAdsFeed.unshift(ad); localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed)); }
+            const ad = myAdsList.find(a => a.id === ap.adId) || globalAdsFeed.find(a => a.id === ap.adId);
+            if (ad) {
+                ad.status = 'approved';
+                localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                if (!globalAdsFeed.some(a => a.id === ad.id)) {
+                    globalAdsFeed.unshift(ad);
+                }
+                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            }
             appealsList.splice(index, 1);
             localStorage.setItem('arizona_appeals', JSON.stringify(appealsList));
             renderPendingAds();
             renderFeed();
+            renderMyAds();
         }
         function rejectAppeal(index) {
             appealsList.splice(index, 1);
@@ -1803,7 +1862,10 @@
             `;
             document.body.appendChild(modal);
             modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
-            document.getElementById('editPrice').addEventListener('input', function(){ this.value = this.value.replace(/[^0-9]/g, ''); });
+            const priceInput = document.getElementById('editPrice');
+            priceInput.addEventListener('input', function() {
+                this.value = formatPriceInput(this.value);
+            });
         }
 
         function saveEditedAd(id) {
@@ -1811,8 +1873,7 @@
             if (!ad) return;
             const itemName = document.getElementById('editItemName')?.value.trim();
             let price = document.getElementById('editPrice')?.value.trim();
-            const numericPrice = parseInt(price, 10);
-            if (!isNaN(numericPrice)) price = formatPrice(numericPrice);
+            price = formatPriceInput(price);
             const text = document.getElementById('editText')?.value.trim();
             const image = document.getElementById('editImage')?.value.trim();
             const server = document.getElementById('editServer')?.value;
@@ -1881,6 +1942,7 @@
             saveEditedAd,
             parsePriceToNumber,
             formatPrice,
+            formatPriceInput,
             switchTab,
             openModal,
             closeModal,
@@ -1900,4 +1962,4 @@
         };
     </script>
 </body>
-    </html>
+                </html>

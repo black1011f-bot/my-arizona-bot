@@ -349,7 +349,7 @@
     </div>
 
     <!-- МОДАЛЬНОЕ ОКНО С ИНСТРУКЦИЕЙ ПО УСТАНОВКЕ USERNAME -->
-    <div id="usernameHelpModal" class="modal-overlay" onclick="if(event.target===this) closeModal('usernameHelpModal')">
+    <div id="usernameHelpModal" class="modal-overlay" style="z-index:10001;" onclick="if(event.target===this) closeModal('usernameHelpModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('usernameHelpModal')">✕</button>
             <h3>Как установить Username в Telegram</h3>
@@ -380,6 +380,10 @@
         <div class="tutorial-slide active">
             <h3>⚠️ Внимание!</h3>
             <p>Мы не несём ответственности за возможный скам и не редактируем информацию о продаже/покупке аккаунтов или виртуальных предметов.</p>
+            <p>Пожалуйста, будьте осторожны при совершении сделок. Проверяйте продавца, используйте гарантов и не переводите деньги заранее.</p>
+            <p>Администрация приложения не является стороной сделок и не может гарантировать их безопасность. Все риски вы принимаете на себя.</p>
+            <p>Запрещена продажа/покупка аккаунтов, виртуальных предметов и любых других цифровых активов, нарушающих правила Telegram.</p>
+            <p>Продолжая использование, вы соглашаетесь с этими условиями.</p>
             <p>Продолжение будет доступно через <span id="tutorialTimer">60</span> сек.</p>
             <button class="btn" id="tutorialNextBtn" disabled onclick="nextTutorialSlide()">Продолжить</button>
         </div>
@@ -678,6 +682,8 @@
         let currentAppealAdId = null;
         let tutorialTimerInterval = null;
         let adminTutorialTimerInterval = null;
+        let lastSfxTime = 0; // для throttle звука
+        let wakeLock = null;
 
         // ИЗМЕНЕНО: список админов инициализируем как ['admin', 'arizona_admin', OWNER_USERNAME]
         let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') 
@@ -723,15 +729,19 @@
         }
         function playSfx(type) {
             if (!sfxEnabled) return;
+            // throttle: не чаще, чем раз в 50 мс
+            const now = Date.now();
+            if (now - lastSfxTime < 50) return;
+            lastSfxTime = now;
             try {
                 if (!window.audioCtx) window.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
                 const ctx = window.audioCtx;
                 const osc = ctx.createOscillator(), gain = ctx.createGain();
                 osc.connect(gain); gain.connect(ctx.destination);
-                const now = ctx.currentTime;
-                if (type === 'cash') { osc.type='triangle'; osc.frequency.setValueAtTime(800,now); osc.frequency.setValueAtTime(1200,now+0.08); gain.gain.setValueAtTime(0.2,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.35); osc.start(now); osc.stop(now+0.35); }
-                else if (type === 'success') { osc.type='sine'; osc.frequency.setValueAtTime(440,now); osc.frequency.setValueAtTime(880,now+0.15); gain.gain.setValueAtTime(0.15,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.3); osc.start(now); osc.stop(now+0.3); }
-                else { osc.type='square'; osc.frequency.setValueAtTime(300,now); gain.gain.setValueAtTime(0.08,now); gain.gain.exponentialRampToValueAtTime(0.001,now+0.05); osc.start(now); osc.stop(now+0.05); }
+                const t = ctx.currentTime;
+                if (type === 'cash') { osc.type='triangle'; osc.frequency.setValueAtTime(800,t); osc.frequency.setValueAtTime(1200,t+0.08); gain.gain.setValueAtTime(0.2,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.35); osc.start(t); osc.stop(t+0.35); }
+                else if (type === 'success') { osc.type='sine'; osc.frequency.setValueAtTime(440,t); osc.frequency.setValueAtTime(880,t+0.15); gain.gain.setValueAtTime(0.15,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.3); osc.start(t); osc.stop(t+0.3); }
+                else { osc.type='square'; osc.frequency.setValueAtTime(300,t); gain.gain.setValueAtTime(0.08,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.05); osc.start(t); osc.stop(t+0.05); }
             } catch(e) {}
         }
 
@@ -753,6 +763,8 @@
         }
 
         function openUsernameHelp() {
+            // Скрываем экран без username, чтобы не перекрывал модалку
+            document.getElementById('noUsernameScreen').style.display = 'none';
             document.getElementById('usernameHelpModal').style.display = 'flex';
         }
 
@@ -798,7 +810,7 @@
         }
 
         function showHeaderLinks() { openModal('headerLinksModal'); }
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; playSfx('success'); }
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function checkUserPermissions() {
@@ -811,6 +823,17 @@
             if (ownerSection) ownerSection.style.display = isOwner ? 'block' : 'none';
         }
 
+        // Запрос на удержание экрана включенным
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {
+                console.log('Wake Lock error:', err);
+            }
+        }
+
         function init() {
             if (!checkUsername()) {
                 document.getElementById('loadingScreen').style.display = 'none';
@@ -818,6 +841,7 @@
             }
             applyThemeFromStorage();
             checkUserPermissions();
+            requestWakeLock();
             document.getElementById('loadingScreen').style.display = 'flex';
             setTimeout(() => {
                 document.getElementById('loadingScreen').style.display = 'none';
@@ -918,7 +942,7 @@
             const admin = isAdmin();
             const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
             const imageHtml = firstImage
-                ? `<img src="${firstImage}" class="ad-image" loading="lazy" onerror="this.style.display='none'">`
+                ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" onerror="this.style.display='none'">`
                 : `<div class="ad-image-placeholder"></div>`;
             const clickAttr = disableClick ? '' : `onclick="openAdDetail(${ad.id})"`;
             const statusBadge = ad.status === 'pending'
@@ -1411,7 +1435,7 @@
                 return `
                     <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
                         ${images.length > 1 ? `<button onclick="changeAdImage(-1)" style="position:absolute;left:0;background:rgba(0,0,0,0.5);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:20px;z-index:10;">‹</button>` : ''}
-                        <img src="${src}" loading="lazy" style="max-width:100%;max-height:350px;object-fit:contain;border-radius:12px;background:var(--card-bg);" onerror="this.style.display='none';">
+                        <img src="${src}" loading="lazy" decoding="async" style="max-width:100%;max-height:350px;object-fit:contain;border-radius:12px;background:var(--card-bg);" onerror="this.style.display='none';">
                         ${images.length > 1 ? `<button onclick="changeAdImage(1)" style="position:absolute;right:0;background:rgba(0,0,0,0.5);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:20px;z-index:10;">›</button>` : ''}
                     </div>
                     ${images.length > 1 ? `<div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:8px;">Фото ${currentImageIndex+1} из ${images.length}</div>` : ''}
@@ -1569,7 +1593,7 @@
         function renderFashionLooks() {
             const c=document.getElementById('fashionContainer'); if(!c)return;
             if(fashionLooks.length===0){c.innerHTML='Лента пуста';return;}
-            c.innerHTML=fashionLooks.map((l,i)=>`<div style="background:var(--card-bg);border:none;padding:12px;border-radius:12px;margin-bottom:10px;box-shadow:var(--shadow);"><b>${l.author}: ${l.title}</b><img src="${l.image}" loading="lazy" style="width:100%;height:180px;object-fit:cover;border-radius:8px;margin-top:8px;"><button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="deleteFashionLook(${i})">🗑</button></div>`).join('');
+            c.innerHTML=fashionLooks.map((l,i)=>`<div style="background:var(--card-bg);border:none;padding:12px;border-radius:12px;margin-bottom:10px;box-shadow:var(--shadow);"><b>${l.author}: ${l.title}</b><img src="${l.image}" loading="lazy" decoding="async" style="width:100%;height:180px;object-fit:cover;border-radius:8px;margin-top:8px;"><button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="deleteFashionLook(${i})">🗑</button></div>`).join('');
         }
         function deleteFashionLook(index){ fashionLooks.splice(index,1); localStorage.setItem('arizona_fashion_looks',JSON.stringify(fashionLooks)); renderFashionLooks(); }
 

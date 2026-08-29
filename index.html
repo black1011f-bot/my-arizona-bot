@@ -2,442 +2,1420 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arizona RP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Arizona RP Marketplace & Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet">
     <style>
-        /* ==================== ОСНОВНЫЕ СТИЛИ ==================== */
+        /* ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И ТЕМАТИЗАЦИЯ ==================== */
         :root {
-            --app-bg: #FFFFFF;
+            --app-bg: #F4F6F9;
             --card-bg: #FFFFFF;
-            --border: #E8E8EC;
+            --card-hover-bg: #FAFAFD;
+            --border: #E2E8F0;
+            --border-hover: #CBD5E1;
             --accent: #005BFF;
-            --accent-light: #E8F0FF;
+            --accent-hover: #0046CC;
+            --accent-light: #EBF2FF;
             --gold: #FF9900;
-            --text: #1A1A1A;
-            --muted: #8A8A8E;
+            --gold-light: #FFF5E6;
+            --text: #0F172A;
+            --muted: #64748B;
             --btn-bg: #005BFF;
             --btn-text: #FFFFFF;
-            --radius: 12px;
+            --radius: 14px;
             --btn-radius: 12px;
-            --danger: #FF3B30;
-            --success: #34C759;
-            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+            --danger: #EF4444;
+            --danger-light: #FEE2E2;
+            --success: #10B981;
+            --success-light: #D1FAE5;
+            --warning: #F59E0B;
+            --warning-light: #FEF3C7;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow: 0 4px 16px rgba(0,0,0,0.06);
+            --shadow-lg: 0 12px 32px rgba(0,0,0,0.12);
             --tab-bar-bg: #FFFFFF;
-            --tab-bar-border: #E5E5EA;
-            --font: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            --tab-bar-border: #E2E8F0;
+            --font: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            --max-width-desktop: 1320px;
         }
+
         body.dark {
-            --app-bg: #1C1C1E;
-            --card-bg: #2C2C2E;
-            --border: #3A3A3C;
-            --accent: #0A84FF;
-            --accent-light: #1A3A5C;
-            --gold: #FFD60A;
-            --text: #FFFFFF;
-            --muted: #A0A0A5;
-            --btn-bg: #0A84FF;
+            --app-bg: #0F172A;
+            --card-bg: #1E293B;
+            --card-hover-bg: #273549;
+            --border: #334155;
+            --border-hover: #475569;
+            --accent: #3B82F6;
+            --accent-hover: #2563EB;
+            --accent-light: #1E3A8A;
+            --gold: #FBBF24;
+            --gold-light: #451A03;
+            --text: #F8FAFC;
+            --muted: #94A3B8;
+            --btn-bg: #3B82F6;
             --btn-text: #FFFFFF;
-            --danger: #FF453A;
-            --success: #32D74B;
-            --tab-bar-bg: #1C1C1E;
-            --tab-bar-border: #3A3A3C;
+            --danger: #F87171;
+            --danger-light: #7F1D1D;
+            --success: #34D399;
+            --success-light: #064E3B;
+            --warning: #FBBF24;
+            --warning-light: #78350F;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow: 0 4px 16px rgba(0,0,0,0.4);
+            --shadow-lg: 0 12px 32px rgba(0,0,0,0.6);
+            --tab-bar-bg: #1E293B;
+            --tab-bar-border: #334155;
             color-scheme: dark;
         }
-        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-        body {
+
+        /* ==================== СБРОС И БАЗОВЫЕ СТИЛИ ==================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
             font-family: var(--font);
             background: var(--app-bg);
             color: var(--text);
-            min-height: 100vh;
-            padding-bottom: 80px;
-            transition: background 0.3s, color 0.3s;
+            transition: background var(--transition-normal), color var(--transition-normal);
             font-weight: 500;
             overflow-x: hidden;
-        }
-        img { max-width:100%; display:block; }
-        button { cursor:pointer; border:none; background:none; color:inherit; font-family:inherit; font-size:14px; }
-        
-        .container { 
-            width: 100%;
-            max-width: 1200px; 
-            margin: 0 auto; 
-            padding: 0 12px; 
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* ==================== АДАПТИВНЫЕ СЕТКИ (GRID) ==================== */
-        #feedContainer, #cartContainer, #myAdsContainer, #pendingAdsContainer {
-            display: grid;
-            grid-template-columns: 1fr;
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 75px;
+        }
+
+        /* Кастомный скроллбар для ПК */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--app-bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-hover);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--muted);
+        }
+
+        img {
+            max-width: 100%;
+            display: block;
+            user-select: none;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            background: none;
+            color: inherit;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all var(--transition-fast);
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* ==================== СЕТКА И АДАПТИВНЫЙ КОНТЕЙНЕР ==================== */
+        .container {
+            width: 100%;
+            max-width: var(--max-width-desktop);
+            margin: 0 auto;
+            padding: 0 16px;
+            transition: padding var(--transition-normal);
+        }
+
+        /* ==================== ШАПКА ПРИЛОЖЕНИЯ ==================== */
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 500;
+            box-shadow: var(--shadow-sm);
+            backdrop-filter: blur(12px);
+            transition: background var(--transition-normal), border var(--transition-normal);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
             gap: 12px;
         }
 
-        @media (min-width: 600px) {
-            #feedContainer, #cartContainer, #myAdsContainer, #pendingAdsContainer {
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform var(--transition-fast);
+        }
+        .header-logo:hover {
+            transform: scale(1.02);
+        }
+        .header-logo img {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            object-fit: cover;
+            box-shadow: var(--shadow-sm);
+        }
+        .header-logo-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .header-logo span {
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-logo sub {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .header-search {
+            flex: 1;
+            max-width: 520px;
+            margin: 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--app-bg);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .header-search:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+        }
+        .header-search span {
+            color: var(--muted);
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--app-bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--text);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            position: relative;
+        }
+        .icon-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Десктопное меню навигации (для больших экранов) */
+        .desktop-nav {
+            display: none;
+            gap: 8px;
+            margin-left: 20px;
+        }
+        .desktop-nav-item {
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all var(--transition-fast);
+        }
+        .desktop-nav-item:hover, .desktop-nav-item.active {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        /* ==================== НИЖНЯЯ НАВИГАЦИЯ (МОБИЛЬНАЯ) ==================== */
+        .nav-tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            background: var(--tab-bar-bg);
+            border-top: 1px solid var(--tab-bar-border);
+            padding: 8px 0 12px;
+            z-index: 1000;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+            backdrop-filter: blur(16px);
+            transition: background var(--transition-normal), border var(--transition-normal);
+        }
+        .nav-tab {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: capitalize;
+            cursor: pointer;
+            position: relative;
+            transition: all var(--transition-fast);
+        }
+        .nav-tab .tab-icon {
+            font-size: 22px;
+            transition: transform var(--transition-fast);
+        }
+        .nav-tab:hover .tab-icon {
+            transform: translateY(-2px);
+        }
+        .nav-tab.active {
+            color: var(--accent);
+        }
+        .nav-tab.active .tab-icon {
+            transform: scale(1.15);
+        }
+
+        /* Индикатор бейджа на кнопке вкладок */
+        .tab-badge {
+            position: absolute;
+            top: 0;
+            right: 25%;
+            background: var(--danger);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            border: 2px solid var(--tab-bar-bg);
+            animation: pulse 2s infinite;
+        }
+
+        /* ==================== КАРТОЧКИ ОБЪЯВЛЕНИЙ ==================== */
+        .ads-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .ad-card {
+            display: flex;
+            flex-direction: row;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            position: relative;
+        }
+        .ad-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--border-hover);
+        }
+        .ad-card:active {
+            transform: scale(0.98);
+        }
+        .ad-card.no-click {
+            cursor: default;
+        }
+        .ad-card.no-click:hover {
+            transform: none;
+            box-shadow: var(--shadow-sm);
+        }
+        .ad-card.deleted {
+            opacity: 0.65;
+            filter: grayscale(0.5);
+            background: var(--card-hover-bg);
+        }
+
+        .ad-card .ad-image-wrap {
+            width: 140px;
+            min-width: 140px;
+            height: 140px;
+            position: relative;
+            background: var(--app-bg);
+            overflow: hidden;
+        }
+        .ad-card .ad-image-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform var(--transition-slow);
+        }
+        .ad-card:hover .ad-image-wrap img {
+            transform: scale(1.08);
+        }
+        .ad-card .ad-image-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://i.postimg.cc/P5yYLQH7/0465dd7cc4f5446e5e908000ec4379bb.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .ad-card .ad-info {
+            flex: 1;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .ad-title {
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 6px;
+            color: var(--text);
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .ad-price {
+            color: var(--accent);
+            font-weight: 800;
+            font-size: 17px;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+        }
+
+        .ad-text-preview {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .ad-badges {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .badge {
+            font-size: 10px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
+        }
+        .badge-warning { background: var(--warning-light); color: var(--warning); }
+        .badge-danger { background: var(--danger-light); color: var(--danger); }
+        .badge-success { background: var(--success-light); color: var(--success); }
+        .badge-gold { background: var(--gold-light); color: var(--gold); }
+
+        .ad-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* ==================== КНОПКИ И УПРАВЛЕНИЕ ==================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: var(--btn-radius);
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0, 91, 255, 0.25);
+            transition: all var(--transition-fast);
+            user-select: none;
+        }
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 91, 255, 0.35);
+        }
+        .btn:active {
+            transform: scale(0.97);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn-sm {
+            padding: 8px 14px;
+            font-size: 12px;
+            border-radius: 8px;
+            box-shadow: none;
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            box-shadow: none;
+        }
+        .btn-outline:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #FFF;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        }
+        .btn-danger:hover {
+            background: #DC2626;
+            box-shadow: 0 6px 18px rgba(239, 68, 68, 0.35);
+        }
+        .btn-success {
+            background: var(--success);
+            color: #FFF;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        /* ==================== СЕКЦИИ И АНИМАЦИИ ВКТАДОК ==================== */
+        .section {
+            display: none;
+            padding: 16px 0 24px;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity var(--transition-normal), transform var(--transition-normal);
+        }
+        .section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+            animation: fadeInSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeInSlide {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .section-title {
+            font-weight: 800;
+            font-size: 22px;
+            margin: 12px 0 18px;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* ==================== ФОРМЫ И ИНПУТЫ ==================== */
+        .form-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        input[type="text"], input[type="url"], input[type="number"], textarea, select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--app-bg);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--transition-fast);
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+            background: var(--card-bg);
+        }
+
+        .custom-select-trigger {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--app-bg);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all var(--transition-fast);
+        }
+        .custom-select-trigger:hover {
+            border-color: var(--accent);
+            background: var(--card-bg);
+        }
+
+        .picker-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .picker-item {
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: var(--app-bg);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all var(--transition-fast);
+        }
+        .picker-item:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        /* ==================== МОДАЛЬНЫЕ ОКНА ==================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1200;
+            backdrop-filter: blur(8px);
+            opacity: 0;
+            transition: opacity var(--transition-normal);
+        }
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            color: var(--text);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 540px;
+            width: 100%;
+            max-height: 88vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            transform: scale(0.95);
+            transition: transform var(--transition-normal);
+            position: relative;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+            animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--app-bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .modal-close:hover {
+            background: var(--danger-light);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        /* ==================== ДЕТАЛЬНАЯ СТРАНИЦА ОБЪЯВЛЕНИЯ ==================== */
+        #adDetailPage {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--app-bg);
+            z-index: 2500;
+            overflow-y: auto;
+            padding: 0 0 40px;
+            box-sizing: border-box;
+            transform: translateY(100%);
+            transition: transform var(--transition-slow);
+        }
+        #adDetailPage.active {
+            transform: translateY(0);
+        }
+
+        .detail-header {
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .gallery-container {
+            width: 100%;
+            background: #000;
+            position: relative;
+            max-height: 480px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .gallery-main-img {
+            max-height: 480px;
+            width: 100%;
+            object-fit: contain;
+            cursor: zoom-in;
+        }
+        .gallery-thumbs {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            overflow-x: auto;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+        }
+        .gallery-thumb {
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid transparent;
+            opacity: 0.7;
+            transition: all var(--transition-fast);
+        }
+        .gallery-thumb.active, .gallery-thumb:hover {
+            border-color: var(--accent);
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        /* ==================== ИГРА «БАРЫГА» ==================== */
+        .baryga-card {
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--accent-light) 100%);
+            border-radius: var(--radius);
+            padding: 24px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .baryga-tap-area {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            margin: 20px auto;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 91, 255, 0.3);
+            transition: transform 0.08s ease;
+            user-select: none;
+            overflow: hidden;
+            border: 4px solid var(--accent);
+        }
+        .baryga-tap-area:active {
+            transform: scale(0.92);
+        }
+        .baryga-tap-area img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* ==================== УВЕДОМЛЕНИЯ (TOASTS) ==================== */
+        #toastContainer {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background: var(--card-bg);
+            color: var(--text);
+            padding: 14px 20px;
+            border-radius: 14px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+            animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            max-width: 360px;
+        }
+        .toast.toast-success { border-left: 5px solid var(--success); }
+        .toast.toast-danger { border-left: 5px solid var(--danger); }
+        .toast.toast-info { border-left: 5px solid var(--accent); }
+
+        @keyframes toastIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ==================== АДАПТИВНОСТЬ ДЛЯ ВСЕХ УСТРОЙСТВ ==================== */
+        /* Мобильные (до 480px) */
+        @media (max-width: 480px) {
+            .container { padding: 0 12px; }
+            .header-logo span { font-size: 16px; }
+            .header-search { margin: 0 8px; padding: 8px 12px; }
+            .ad-card .ad-image-wrap { width: 100px; min-width: 100px; height: 100px; }
+            .ad-title { font-size: 13px; }
+            .ad-price { font-size: 15px; }
+            .btn { padding: 10px 14px; font-size: 13px; }
+        }
+
+        /* Планшеты (481px - 768px) */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .ads-container {
                 grid-template-columns: repeat(2, 1fr);
             }
+            .ad-card {
+                flex-direction: column;
+            }
+            .ad-card .ad-image-wrap {
+                width: 100%;
+                height: 160px;
+            }
         }
-        @media (min-width: 900px) {
-            #feedContainer, #cartContainer, #myAdsContainer, #pendingAdsContainer {
+
+        /* Ноутбуки и ПК (769px - 1024px) */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .ads-container {
                 grid-template-columns: repeat(3, 1fr);
             }
+            .ad-card {
+                flex-direction: column;
+            }
+            .ad-card .ad-image-wrap {
+                width: 100%;
+                height: 180px;
+            }
+            .desktop-nav {
+                display: flex;
+            }
         }
-        @media (min-width: 1200px) {
-            #feedContainer, #cartContainer, #myAdsContainer, #pendingAdsContainer {
+
+        /* Большие ПК и ультраширокие мониторы (>1025px) */
+        @media (min-width: 1025px) {
+            .ads-container {
                 grid-template-columns: repeat(4, 1fr);
             }
-        }
-
-        /* ==================== ШАПКА ==================== */
-        .app-header {
-            display:flex; align-items:center; justify-content:space-between;
-            background: var(--app-bg);
-            border-bottom:1px solid var(--border);
-            padding:10px 16px;
-            position: sticky; top:0; z-index:100;
-        }
-        .header-left { display:flex; align-items:center; gap:8px; }
-        .header-logo { display:flex; align-items:center; gap:8px; cursor:pointer; }
-        .header-logo img { width:32px; height:32px; border-radius:8px; }
-        .header-logo span { font-weight:800; font-size:18px; }
-        .header-search {
-            flex:1; max-width: 500px; margin:0 16px; display:flex; align-items:center;
-            background: var(--app-bg); border:1px solid var(--border);
-            border-radius:20px; padding:8px 14px; cursor:pointer;
-        }
-        .header-search span { color:var(--muted); font-size:14px; }
-        .header-actions { display:flex; gap:8px; align-items:center; }
-        .icon-btn {
-            width:36px; height:36px; border-radius:50%;
-            background: var(--app-bg); border:1px solid var(--border);
-            display:flex; align-items:center; justify-content:center;
-            font-size:18px; color:var(--text); cursor:pointer;
-        }
-
-        /* ==================== НИЖНЯЯ НАВИГАЦИЯ (АДАПТИВНАЯ) ==================== */
-        .nav-tabs {
-            position:fixed; bottom:0; left:0; right:0;
-            display:flex; justify-content:space-around;
-            background: var(--tab-bar-bg);
-            border-top:1px solid var(--tab-bar-border);
-            padding:8px 0 10px; z-index:1000;
-            width: 100%;
-        }
-
-        @media (min-width: 768px) {
+            .ad-card {
+                flex-direction: column;
+            }
+            .ad-card .ad-image-wrap {
+                width: 100%;
+                height: 200px;
+            }
+            .desktop-nav {
+                display: flex;
+            }
+            body {
+                padding-bottom: 20px;
+            }
             .nav-tabs {
-                left: 50%;
-                transform: translateX(-50%);
-                max-width: 800px;
-                border-radius: 16px 16px 0 0;
-                border-left: 1px solid var(--tab-bar-border);
-                border-right: 1px solid var(--tab-bar-border);
-                box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+                display: none; /* Скрываем мобильную нижнюю панель на ПК */
             }
         }
 
-        .nav-tab {
-            flex:1; display:flex; flex-direction:column; align-items:center;
-            gap:3px; font-size:11px; font-weight:600; color:var(--muted);
-            text-transform:uppercase; cursor:pointer; position:relative;
-            transition: color 0.2s;
+        /* Разделы карточек "Все разделы" */
+        .more-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 14px;
+            margin-top: 16px;
         }
-        .nav-tab .tab-icon { font-size:22px; }
-        .nav-tab.active { color:var(--accent); }
-
-        /* ==================== КАРТОЧКИ ==================== */
-        .ad-card {
-            display:flex; background:var(--card-bg); border-radius:var(--radius);
-            box-shadow:var(--shadow); border: 1px solid var(--border); overflow:hidden;
-            cursor:pointer; transition:transform 0.15s, box-shadow 0.15s;
-            height: 100%;
-        }
-        .ad-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
-        .ad-card:active { transform:scale(0.98); }
-        .ad-card.no-click { cursor:default; }
-        .ad-card.deleted { background: #2a2a2a; opacity: 0.7; }
-        .ad-card .ad-image-wrap {
-            width:100px; min-width:100px; height:100%; min-height:100px;
-            position:relative; background:var(--app-bg);
-        }
-        .ad-card .ad-image-wrap img,
-        .ad-card .ad-image-wrap .ad-image-placeholder {
-            position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;
-        }
-        .ad-card .ad-info {
-            flex:1; padding:10px; display:flex; flex-direction:column; justify-content:space-between;
-        }
-        .ad-title { font-weight:700; font-size:14px; margin-bottom:4px; }
-        .ad-price { color:var(--accent); font-weight:800; font-size:15px; margin-bottom:4px; }
-        .ad-text { color:var(--muted); font-size:12px; }
-        .ad-badges { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:6px; }
-        .badge {
-            font-size:10px; padding:3px 7px; border-radius:12px;
-            background:var(--accent-light); color:var(--accent); font-weight:600;
-        }
-        .badge-warning { background:#FFF3E0; color:#FF9800; }
-        .badge-danger { background:#FFEBEE; color:var(--danger); }
-        .badge-success { background:#E8F5E9; color:var(--success); }
-        .badge-admin { background:#E1F5FE; color:#0288D1; border: 1px solid #B3E5FC; }
-        .ad-actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
-        .ad-actions .btn { flex:1; min-width:60px; padding:6px 8px; font-size:11px; }
-
-        /* ==================== КНОПКИ ==================== */
-        .btn {
-            display:inline-flex; align-items:center; justify-content:center; gap:6px;
-            padding:12px 18px; border-radius:var(--btn-radius);
-            background:var(--btn-bg); color:var(--btn-text); font-weight:700;
-            border:none; cursor:pointer; width:100%; font-size:14px;
-            box-shadow:0 2px 8px rgba(0,91,255,0.2); transition: opacity 0.2s, transform 0.1s;
-        }
-        .btn:hover { opacity: 0.95; }
-        .btn:active { transform:scale(0.98); }
-        .btn-sm { padding:8px 12px; font-size:12px; border-radius:8px; box-shadow:none; }
-        .btn-outline { background:transparent; color:var(--accent); border:2px solid var(--accent); box-shadow:none; }
-        .btn-danger { background:var(--danger); box-shadow:0 2px 8px rgba(255,59,48,0.2); }
-        .btn-success { background:var(--success); box-shadow:0 2px 8px rgba(52,199,89,0.2); }
-
-        /* ==================== СЕКЦИИ ==================== */
-        .section { display:none; padding:16px 0; }
-        .section.active { display:block; animation:fadeIn 0.25s; }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
-        .section-title { font-weight:800; font-size:20px; margin-bottom:16px; }
-
-        /* ==================== ФОРМЫ ==================== */
-        .form-group { margin-bottom:16px; }
-        .form-group label {
-            display:block; font-size:12px; font-weight:700; color:var(--muted);
-            margin-bottom:6px; text-transform:uppercase;
-        }
-        input[type="text"], input[type="url"], textarea, select {
-            width:100%; padding:12px 14px; border:1px solid var(--border);
-            border-radius:10px; background:var(--app-bg); color:var(--text);
-            font-family:inherit; font-size:14px; outline:none; transition: border-color 0.2s;
-        }
-        input[type="text"]:focus, input[type="url"]:focus, textarea:focus, select:focus {
-            border-color: var(--accent);
-        }
-        .custom-select-trigger {
-            display:flex; justify-content:space-between; align-items:center;
-            padding:12px 14px; border:1px solid var(--border); border-radius:10px;
-            background:var(--app-bg); cursor:pointer;
-        }
-        .picker-list { display:flex; flex-direction:column; gap:4px; }
-        .picker-item {
-            padding:12px 14px; border-radius:10px; background:var(--app-bg); cursor:pointer;
-        }
-        .picker-item:hover { background:var(--accent-light); color:var(--accent); }
-
-        /* ==================== МОДАЛКИ (АДАПТИВНЫЕ) ==================== */
-        .modal-overlay {
-            position:fixed; inset:0; background:rgba(0,0,0,0.5);
-            display:none; align-items:center; justify-content:center;
-            padding:16px; z-index:1100; backdrop-filter:blur(4px);
-        }
-        #pickerModal { z-index: 3000 !important; }
-        .modal-content {
-            background:var(--card-bg); color:var(--text); border-radius:16px;
-            padding:24px; max-width:480px; width:100%; max-height:85vh;
-            overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,0.2);
-        }
-        .modal-close {
-            width:32px; height:32px; border-radius:50%;
-            background:var(--app-bg); border:none; float:right; font-size:16px;
-            cursor:pointer;
-        }
-
-        /* ==================== ТУТОРИАЛ ==================== */
-        .tutorial-overlay {
-            position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:3000;
-            display:none; flex-direction:column; justify-content:center; align-items:center;
-            color:#fff; padding: 20px;
-        }
-        .tutorial-slide { display:none; text-align:center; max-width:500px; width: 100%; }
-        .tutorial-slide.active { display:block; }
-
-        /* ==================== РАЗДЕЛ "ВСЕ РАЗДЕЛЫ" ==================== */
-        .more-grid { 
-            display:grid; 
-            grid-template-columns:repeat(2, 1fr); 
-            gap:14px; 
-            margin-top:16px; 
-        }
-        @media (min-width: 600px) { .more-grid { grid-template-columns:repeat(3, 1fr); } }
-        @media (min-width: 900px) { .more-grid { grid-template-columns:repeat(5, 1fr); } }
-        
         .more-item {
-            background:var(--card-bg); border-radius:12px; padding:20px 14px;
-            text-align:center; box-shadow:var(--shadow); border: 1px solid var(--border);
-            cursor:pointer; transition: transform 0.15s;
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 20px 14px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all var(--transition-fast);
         }
-        .more-item:hover { transform: translateY(-3px); }
-        .more-icon { font-size:32px; margin-bottom:8px; }
-        .more-label { font-weight:700; font-size:13px; }
+        .more-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+            border-color: var(--accent);
+            background: var(--card-hover-bg);
+        }
+        .more-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .more-label {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        /* Стили отзывов */
+        .review-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+        }
+        .review-author { font-weight: 700; font-size: 14px; }
+        .review-stars { color: var(--gold); font-size: 14px; margin: 4px 0; }
+        .review-text { font-size: 13px; color: var(--text); line-height: 1.4; }
+        .review-date { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+        /* Туториалы */
+        .tutorial-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.85);
+            z-index: 3500;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .tutorial-slide {
+            display: none;
+            text-align: center;
+            max-width: 500px;
+            background: var(--card-bg);
+            color: var(--text);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+        }
+        .tutorial-slide.active {
+            display: block;
+            animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tutorial-slide h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+        .tutorial-slide p {
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+            color: var(--muted);
+        }
 
         .no-username-screen, .banned-screen {
-            position:fixed; inset:0; background:var(--app-bg); z-index:9999;
-            display:flex; flex-direction:column; align-items:center; justify-content:center;
-            text-align:center; padding:20px;
+            position: fixed;
+            inset: 0;
+            background: var(--app-bg);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
         }
     </style>
 </head>
 <body>
     <audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" autoplay loop preload="auto"></audio>
+    <div id="toastContainer"></div>
 
     <!-- ЭКРАН ДЛЯ ПОЛЬЗОВАТЕЛЕЙ БЕЗ USERNAME -->
     <div id="noUsernameScreen" class="no-username-screen" style="display:none;">
-        <div style="font-size:60px;">👤</div>
+        <div style="font-size:72px; margin-bottom:16px;">👤</div>
         <h2>Требуется Telegram Username</h2>
-        <p style="margin: 12px 0 20px; color: var(--muted);">Для использования приложения установите имя пользователя в настройках Telegram.</p>
-        <button class="btn" onclick="openUsernameHelp()">Исправить</button>
+        <p style="color:var(--muted); margin: 12px 0 24px; max-width:400px;">Для безопасности сделок и связи с покупателями необходимо установить имя пользователя в настройках Telegram.</p>
+        <button class="btn" style="max-width:280px;" onclick="openUsernameHelp()">Как установить?</button>
     </div>
 
-    <!-- МОДАЛЬНОЕ ОКНО С ИНСТРУКЦИЕЙ ПО УСТАНОВКЕ USERNAME -->
-    <div id="usernameHelpModal" class="modal-overlay" style="z-index:10001;" onclick="if(event.target===this) closeModal('usernameHelpModal')">
+    <!-- МОДАЛЬНОЕ ОКНО ИНСТРУКЦИИ USERNAME -->
+    <div id="usernameHelpModal" class="modal-overlay" onclick="if(event.target===this) closeModal('usernameHelpModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('usernameHelpModal')">✕</button>
-            <h3>Как установить Username в Telegram</h3>
-            <ol style="text-align:left; margin:16px; line-height:1.6; padding-left: 20px;">
+            <h3>Инструкция по установке Username</h3>
+            <ol style="text-align:left; margin:20px 0; padding-left:20px; line-height:1.8; font-size:14px; color:var(--text);">
                 <li>Откройте Telegram.</li>
                 <li>Перейдите в <b>Настройки</b> (⚙️).</li>
                 <li>Нажмите на свой профиль в верхней части.</li>
-                <li>Выберите пункт <b>Имя пользователя</b>.</li>
-                <li>Введите желаемый username (латинские буквы, цифры и нижнее подчёркивание).</li>
-                <li>Нажмите <b>Готово</b> или <b>Сохранить</b>.</li>
-                <li>Вернитесь в приложение и обновите страницу.</li>
+                <li>Выберите пункт <b>Имя пользователя (Username)</b>.</li>
+                <li>Введите никнейм и нажмите <b>Сохранить</b>.</li>
+                <li>Перезапустите приложение.</li>
             </ol>
             <button class="btn" onclick="closeModal('usernameHelpModal')">Понятно</button>
         </div>
     </div>
 
+    <!-- БАН-ЭКРАН -->
     <div id="bannedScreen" class="banned-screen" style="display:none;">
-        <div style="font-size:60px;">🚫</div>
-        <h2>Вы заблокированы</h2>
-        <p style="margin: 12px 0 20px; color: var(--muted);">Вы не можете использовать приложение. Свяжитесь с менеджером.</p>
-        <button class="btn" onclick="window.open('https://t.me/bounqy31')">Написать менеджеру</button>
-        <div style="height:8px;"></div>
-        <button class="btn btn-outline" onclick="window.open('https://vk.com/bountyarz')">Написать в ВК</button>
+        <div style="font-size:72px; margin-bottom:16px;">🚫</div>
+        <h2>Ваш аккаунт заблокирован</h2>
+        <p style="color:var(--muted); margin: 12px 0 24px; max-width:400px;">Вы были заблокированы администрацией за нарушение правил торговой площадки.</p>
+        <button class="btn" style="max-width:280px;" onclick="window.open('https://t.me/bounqy31')">Связаться с менеджером</button>
     </div>
 
-    <!-- ТУТОРИАЛ -->
+    <!-- ТУТОРИАЛ ДЛЯ ОБЫЧНЫХ ПОЛЬЗОВАТЕЛЕЙ -->
     <div id="tutorialOverlay" class="tutorial-overlay">
         <div class="tutorial-slide active">
-            <h3>⚠️ Внимание!</h3>
-            <p style="margin: 10px 0;">Мы не несём ответственности за возможный скам и не редактируем информацию о продаже/покупке аккаунтов или виртуальных предметов.</p>
-            <p style="margin: 10px 0;">Пожалуйста, будьте осторожны при совершении сделок. Проверяйте продавца, используйте гарантов и не переводите деньги заранее.</p>
-            <p style="margin: 10px 0; font-size: 13px; color: var(--muted);">Продолжение будет доступно через <span id="tutorialTimer">60</span> сек.</p>
+            <h3>⚠️ Важное предупреждение</h3>
+            <p>Мы не несём ответственности за возможный скам и не редактируем информацию о продаже предметов или имущества.</p>
+            <p>Будьте внимательны при сделках, используйте официальных гарантов и проверяйте продавцов.</p>
+            <p>Доступ будет открыт через <span id="tutorialTimer" style="font-weight:800; color:var(--accent);">60</span> сек.</p>
             <button class="btn" id="tutorialNextBtn" disabled onclick="nextTutorialSlide()">Продолжить</button>
         </div>
         <div class="tutorial-slide">
-            <h3>Добро пожаловать!</h3>
-            <p style="margin: 16px 0;">Это приложение для размещения объявлений. Нажмите «Далее», чтобы узнать об основных разделах.</p>
+            <h3>🏠 Главная лента</h3>
+            <p>Здесь собраны все активные объявления серверов Arizona RP. Вы можете фильтровать их по категориям и серверам.</p>
             <button class="btn" onclick="nextTutorialSlide()">Далее</button>
         </div>
         <div class="tutorial-slide">
-            <h3>🏠 Главная</h3>
-            <p style="margin: 16px 0;">Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности, отзывы и написать продавцу.</p>
-            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
-        </div>
-        <div class="tutorial-slide">
-            <h3>🔍 Поиск</h3>
-            <p style="margin: 16px 0;">Используйте строку поиска вверху, чтобы быстро находить товары или профили игроков.</p>
-            <button class="btn" onclick="completeTutorial()">Понятно</button>
+            <h3>➕ Размещение объявлений</h3>
+            <p>Публикуйте свои товары или запросы на покупку. После быстрой проверки они появятся в общей ленте.</p>
+            <button class="btn" onclick="completeTutorial()">Начать работу</button>
         </div>
     </div>
 
-    <!-- АДМИН ТУТОРИАЛ -->
-    <div id="adminTutorialOverlay" class="tutorial-overlay" style="display:none;">
+    <!-- АДМИН-ТУТОРИАЛ -->
+    <div id="adminTutorialOverlay" class="tutorial-overlay">
         <div class="tutorial-slide active">
-            <h3>🔧 Админ-панель: обзор</h3>
-            <p style="margin: 16px 0;">Здесь вы управляете объявлениями. Вы можете просматривать, одобрять, отклонять и редактировать заявки.</p>
-            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+            <h3>🛡️ Панель Модератора</h3>
+            <p>Добро пожаловать в админ-панель. Здесь вы можете одобрять, отклонять и редактировать поступающие объявления.</p>
+            <button class="btn btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
         </div>
         <div class="tutorial-slide">
-            <h3>🛡️ Режим без ограничений</h3>
-            <p style="margin: 16px 0;">Как администратор/владелец вы можете создавать объявления <b>в любое время суток</b> и <b>без задержки (КД)</b>!</p>
-            <button class="btn btn-sm btn-outline" id="adminTutorialCloseBtn" disabled>Закрыть (60 сек)</button>
+            <h3>⚡ Управление и модерация</h3>
+            <p>Одобряйте корректные заявки и отклоняйте нарушающие правила. Запрещенные товары удаляются бесследно.</p>
+            <button class="btn" id="adminTutorialCloseBtn" disabled>Закрыть (60 сек)</button>
         </div>
     </div>
 
-    <div class="container" id="appContainer" style="display:none;">
+    <!-- ОСНОВНОЙ КОНТЕЙНЕР ПРИЛОЖЕНИЯ -->
+    <div id="appContainer" style="display:none; flex-direction:column; min-height:100vh;">
+        <!-- ШАПКА -->
         <header class="app-header">
-            <div class="header-logo" onclick="showHeaderLinks()">
-                <img src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP">
-                <span>Arizona RP</span>
+            <div class="header-left">
+                <div class="header-logo" onclick="showHeaderLinks()">
+                    <img src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Logo">
+                    <div class="header-logo-text">
+                        <span>ARIZONA RP</span>
+                        <sub>MARKETPLACE</sub>
+                    </div>
+                </div>
+                <!-- ДЕСКТОПНОЕ МЕНЮ -->
+                <nav class="desktop-nav">
+                    <div class="desktop-nav-item active" data-tab="feed" onclick="switchTab('feed')">🏠 Главная</div>
+                    <div class="desktop-nav-item" data-tab="cart" onclick="switchTab('cart')">🛒 Корзина</div>
+                    <div class="desktop-nav-item" data-tab="app" onclick="switchTab('app')">➕ Подать</div>
+                    <div class="desktop-nav-item" id="adminDesktopBtn" style="display:none;" data-tab="admin" onclick="switchTab('admin')">🛡️ Админ</div>
+                    <div class="desktop-nav-item" data-tab="more" onclick="switchTab('more')">☰ Все разделы</div>
+                </nav>
             </div>
-            <div class="header-search" onclick="openSearchModal()"><span>🔍 Поиск товаров</span></div>
+
+            <div class="header-search" onclick="openSearchModal()">
+                <span>🔍 Поиск товаров, авто, недвижимости...</span>
+            </div>
+
             <div class="header-actions">
-                <button class="icon-btn" onclick="toggleTheme()">🌓</button>
+                <button class="icon-btn" title="Смена темы" onclick="toggleTheme()">🌓</button>
+                <button class="icon-btn" title="Мои объявления" onclick="switchTab('myAds')">📦</button>
             </div>
         </header>
 
+        <!-- МОБИЛЬНАЯ НИЖНЯЯ НАВИГАЦИЯ -->
         <nav class="nav-tabs">
             <button class="nav-tab active" data-tab="feed" onclick="switchTab('feed')"><span class="tab-icon">🏠</span>Главная</button>
             <button class="nav-tab" data-tab="cart" onclick="switchTab('cart')"><span class="tab-icon">🛒</span>Корзина</button>
             <button class="nav-tab" data-tab="app" onclick="switchTab('app')"><span class="tab-icon">➕</span>Отправка</button>
             <button class="nav-tab" id="adminTabBtn" style="display:none;" data-tab="admin" onclick="switchTab('admin')"><span class="tab-icon">🛡️</span>Админ</button>
-            <button class="nav-tab" data-tab="more" onclick="switchTab('more')"><span class="tab-icon">☰</span>Все разделы</button>
+            <button class="nav-tab" data-tab="more" onclick="switchTab('more')"><span class="tab-icon">☰</span>Разделы</button>
         </nav>
 
-        <main>
-            <section id="tabFeed" class="section active"><div id="feedContainer"></div></section>
-            <section id="tabCart" class="section"><h2 class="section-title">Корзина</h2><div id="cartContainer"></div></section>
+        <!-- ОСНОВНОЙ КОНТЕНТ -->
+        <main class="container" style="flex:1;">
+            <!-- ВКЛАДКА: ЛЕНТА ОБЪЯВЛЕНИЙ -->
+            <section id="tabFeed" class="section active">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn btn-sm btn-outline" onclick="openPicker('server_filter')">🌐 Сервер: <span id="currentServerFilterText">Все</span></button>
+                        <button class="btn btn-sm btn-outline" onclick="openCatalogModal()">📂 Категория: <span id="currentCategoryFilterText">Все</span></button>
+                    </div>
+                    <button class="btn btn-sm btn-outline" onclick="resetFilters()">🔄 Сброс</button>
+                </div>
+                <div id="feedContainer" class="ads-container"></div>
+            </section>
+
+            <!-- ВКЛАДКА: КОРЗИНА -->
+            <section id="tabCart" class="section">
+                <h2 class="section-title">Сохранённые товары</h2>
+                <div id="cartContainer" class="ads-container"></div>
+            </section>
+
+            <!-- ВКЛАДКА: ПОДАЧА ОБЪЯВЛЕНИЯ -->
             <section id="tabApp" class="section"></section>
-            <section id="tabAdmin" class="section"><h2 class="section-title">Админ-панель</h2><div id="pendingAdsContainer"></div><div id="ownerSection" style="display:none;"></div></section>
-            <section id="tabMore" class="section"><h2 class="section-title">Все разделы</h2><div id="moreContainer" class="more-grid"></div></section>
-            <section id="tabMyAds" class="section"><h2 class="section-title">Мои объявления</h2><div id="myAdsContainer"></div></section>
+
+            <!-- ВКЛАДКА: АДМИН-ПАНЕЛЬ -->
+            <section id="tabAdmin" class="section">
+                <h2 class="section-title">Панель модератора</h2>
+                <div id="pendingAdsContainer" class="ads-container"></div>
+                <div id="ownerSection" style="margin-top:30px; display:none;"></div>
+            </section>
+
+            <!-- ВКЛАДКА: ВСЕ РАЗДЕЛЫ -->
+            <section id="tabMore" class="section">
+                <h2 class="section-title">Все разделы и сервисы</h2>
+                <div id="moreContainer" class="more-grid"></div>
+            </section>
+
+            <!-- ВКЛАДКА: МОИ ОБЪЯВЛЕНИЯ -->
+            <section id="tabMyAds" class="section">
+                <h2 class="section-title">Мои объявления</h2>
+                <div id="myAdsContainer" class="ads-container"></div>
+            </section>
         </main>
     </div>
 
-    <!-- Модальные окна -->
+    <!-- ==================== МОДАЛЬНЫЕ ОКНА ==================== -->
+
+    <!-- МОДАЛКА: ПОИСК -->
     <div id="searchModal" class="modal-overlay" onclick="if(event.target===this) closeModal('searchModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('searchModal')">✕</button>
-            <h3>🔍 Поиск</h3>
-            <input type="text" id="modalSearchInput" placeholder="Название или @player" oninput="updateSearchSuggestions(this.value)" style="margin-top: 12px;">
-            <div style="display:flex;gap:8px;margin-top:12px;">
-                <button class="btn" onclick="executeSearch('item')">📦 Предмет</button>
-                <button class="btn btn-outline" onclick="executeSearch('profile')">👤 Профиль</button>
+            <h3 style="margin-bottom:16px;">🔍 Поиск по рынку</h3>
+            <input type="text" id="modalSearchInput" placeholder="Введите название товара или @username..." oninput="updateSearchSuggestions(this.value)">
+            <div style="display:flex; gap:10px; margin-top:12px;">
+                <button class="btn" onclick="executeSearch('item')">📦 Искать предмет</button>
+                <button class="btn btn-outline" onclick="executeSearch('profile')">👤 Искать игрока</button>
             </div>
-            <div id="searchHistoryContainer"></div>
-            <div id="searchSuggestionsContainer" style="margin-top:12px;"></div>
-            <div id="searchResultsContainer" style="margin-top:16px;"></div>
+            <div id="searchResultsContainer" class="ads-container" style="margin-top:20px;"></div>
         </div>
     </div>
 
+    <!-- МОДАЛКА: ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ -->
+    <div id="profileModal" class="modal-overlay" onclick="if(event.target===this) closeModal('profileModal')">
+        <div class="modal-content" style="text-align:center;">
+            <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+            <img id="inspectAvatar" src="https://i.postimg.cc/P5yYLQH7/0465dd7cc4f5446e5e908000ec4379bb.jpg" style="width:90px; height:90px; border-radius:50%; margin:0 auto 12px; object-fit:cover; border:3px solid var(--accent);">
+            <h3 id="inspectUsername">@username</h3>
+            <p id="inspectRole" style="font-size:12px; color:var(--muted); margin-top:4px;">Игрок Arizona RP</p>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn" onclick="openChatWithInspected()">💬 Написать в Telegram</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: ОСТАВИТЬ ОТЗЫВ -->
+    <div id="reviewModal" class="modal-overlay" onclick="if(event.target===this) closeModal('reviewModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('reviewModal')">✕</button>
+            <h3>⭐ Оставить отзыв</h3>
+            <div class="form-group" style="margin-top:14px;">
+                <label>Оценка сделки</label>
+                <div id="starPicker" style="font-size:32px; cursor:pointer;">
+                    <span onclick="setReviewStar(1)">★</span>
+                    <span onclick="setReviewStar(2)">★</span>
+                    <span onclick="setReviewStar(3)">★</span>
+                    <span onclick="setReviewStar(4)">★</span>
+                    <span onclick="setReviewStar(5)">★</span>
+                </div>
+                <input type="hidden" id="reviewStars" value="5">
+            </div>
+            <div class="form-group">
+                <label>Доказательства (ссылки на фото/видео через запятую)</label>
+                <textarea id="reviewMediaLink" rows="2" placeholder="https://youtube.com/..., https://postimages.org/..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Комментарий</label>
+                <textarea id="reviewText" rows="3" placeholder="Опишите как прошла сделка..."></textarea>
+            </div>
+            <button class="btn" onclick="submitReview()">Опубликовать отзыв</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: УНИВЕРСАЛЬНЫЙ PICKER -->
     <div id="pickerModal" class="modal-overlay" onclick="if(event.target===this) closeModal('pickerModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('pickerModal')">✕</button>
-            <h3 id="pickerTitle">Выберите</h3>
-            <div id="pickerList" style="margin-top: 12px;"></div>
+            <h3 id="pickerTitle" style="margin-bottom:16px;">Выберите вариант</h3>
+            <div id="pickerList" class="picker-list"></div>
         </div>
     </div>
 
-    <div id="barygaModal" class="modal-overlay">
-        <div class="modal-content" style="text-align:center;">
+    <!-- МОДАЛКА: ИГРА БАРЫГА -->
+    <div id="barygaModal" class="modal-overlay" onclick="if(event.target===this) closeModal('barygaModal')">
+        <div class="modal-content" style="text-align:center; max-width:480px;">
             <button class="modal-close" onclick="closeModal('barygaModal')">✕</button>
-            <h3>🎮 Игра «Барыга»</h3>
-            <div style="font-size:20px;font-weight:800;color:var(--accent);margin:10px 0;">💰 <span id="clickerMoney">0</span></div>
-            <img id="barygaTapImg" src="https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg" style="width:140px;height:140px;border-radius:20px;margin:10px auto;cursor:pointer;" onclick="barygaClick()">
-            <div style="margin-top:10px;">📈 Пассивный доход: <b id="autoIncomeLabel">0 $ / сек</b></div>
-            <div style="font-weight:700;font-size:16px;margin:16px 0 8px;">⚡ Улучшения:</div>
-            <div id="barygaUpgrades" style="text-align:left;"></div>
+            <h3>🎮 Симулятор «Барыга RP»</h3>
+            <div style="font-size:24px; font-weight:800; color:var(--accent); margin-top:8px;">💰 <span id="clickerMoney">0</span> $</div>
+            <div class="baryga-tap-area" onclick="barygaClick()">
+                <img id="barygaTapImg" src="https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg" alt="Tap">
+            </div>
+            <div style="font-size:13px; color:var(--muted); margin-bottom:14px;">Доход в секунду: <b id="autoIncomeLabel" style="color:var(--text);">0 $</b></div>
+            <div id="barygaUpgrades" style="text-align:left; max-height:220px; overflow-y:auto;"></div>
         </div>
     </div>
 
+    <!-- МОДАЛКА: МУЗЫКА -->
+    <div id="musicModal" class="modal-overlay" onclick="if(event.target===this) closeModal('musicModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('musicModal')">✕</button>
+            <h3>🎵 Фоновая музыка</h3>
+            <p style="font-size:13px; color:var(--muted); margin: 8px 0 16px;">Загрузите свой трек для прослушивания во время работы на рынке.</p>
+            <input type="file" id="customAudioFile" accept="audio/*" onchange="loadCustomMusic(event)">
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button class="btn" id="musicToggleBtn" onclick="toggleMusic()">⏸ Пауза</button>
+                <button class="btn btn-outline" onclick="resetMusic()">🔄 По умолчанию</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: ЛЕНТА ЛУКОВ -->
+    <div id="fashionModal" class="modal-overlay" onclick="if(event.target===this) closeModal('fashionModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('fashionModal')">✕</button>
+            <h3>📸 Лента «Сет & Лук»</h3>
+            <div class="form-group" style="margin-top:12px;">
+                <label>Название сета аксессуаров</label>
+                <input type="text" id="fashionSetTitle" placeholder="Пример: Сет +12 с Шаром">
+            </div>
+            <div class="form-group">
+                <label>Ссылка на скриншот</label>
+                <input type="url" id="fashionSetImage" placeholder="https://postimages.org/...">
+            </div>
+            <button class="btn" onclick="postFashion()">🚀 Опубликовать лук</button>
+            <div id="fashionContainer" style="margin-top:20px; max-height:300px; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: ПОПУТЧИКИ -->
+    <div id="travelModal" class="modal-overlay" onclick="if(event.target===this) closeModal('travelModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('travelModal')">✕</button>
+            <h3>🤝 Напарники & Попутчики</h3>
+            <div class="form-group" style="margin-top:12px;">
+                <label>Цель / Занятие</label>
+                <input type="text" id="travelActivity" placeholder="Ищу напарника на ферму / в грабеж...">
+            </div>
+            <div class="form-group">
+                <label>Описание и связь</label>
+                <textarea id="travelDesc" rows="2" placeholder="Требования к напарнику..."></textarea>
+            </div>
+            <button class="btn" onclick="postTravel()">📢 Подать заявку</button>
+            <div id="travelContainer" style="margin-top:20px; max-height:300px; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: РЕДАКТИРОВАНИЕ ОБЪЯВЛЕНИЯ (АДМИН) -->
+    <div id="editAdModal" class="modal-overlay" onclick="if(event.target===this) closeModal('editAdModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('editAdModal')">✕</button>
+            <h3>✏️ Редактирование объявления</h3>
+            <input type="hidden" id="editAdId">
+            <div class="form-group" style="margin-top:12px;">
+                <label>Название</label>
+                <input type="text" id="editAdTitle">
+            </div>
+            <div class="form-group">
+                <label>Цена</label>
+                <input type="text" id="editAdPrice">
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <textarea id="editAdText" rows="3"></textarea>
+            </div>
+            <button class="btn" onclick="saveAdEdit()">Сохранить изменения</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: НАСТРОЙКИ -->
+    <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this) closeModal('settingsModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
+            <h3>⚙️ Настройки</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--border);">
+                <span>🔊 Звуковые эффекты</span>
+                <button id="toggleSfxBtn" class="btn btn-sm btn-outline" style="width:auto;" onclick="toggleSfx()">Включены</button>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid var(--border);">
+                <span>🌙 Темная тема</span>
+                <button class="btn btn-sm btn-outline" style="width:auto;" onclick="toggleTheme()">Переключить</button>
+            </div>
+            <button class="btn btn-danger btn-sm" style="margin-top:20px;" onclick="resetAllData()">🗑 Сбросить кэш и данные</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: АПЕЛЛЯЦИИ -->
+    <div id="appealModal" class="modal-overlay" onclick="if(event.target===this) closeModal('appealModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('appealModal')">✕</button>
+            <h3>📨 Подача апелляции</h3>
+            <div class="form-group" style="margin-top:12px;">
+                <label>Причина апелляции</label>
+                <div class="custom-select-trigger" onclick="openPicker('appeal_reason')">
+                    <span id="appealReasonText">Выберите причину</span> ▼
+                </div>
+                <input type="hidden" id="appealReason">
+            </div>
+            <div class="form-group">
+                <label>Доказательства (ссылки)</label>
+                <textarea id="appealEvidence" rows="3" placeholder="https://postimages.org/..."></textarea>
+            </div>
+            <button class="btn" onclick="submitAppeal()">Отправить апелляцию</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА: ССЫЛКИ И СВЯЗЬ -->
     <div id="headerLinksModal" class="modal-overlay" onclick="if(event.target===this) closeModal('headerLinksModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('headerLinksModal')">✕</button>
-            <h3>🔗 Перейти</h3>
-            <button class="btn" style="margin-top:12px;" onclick="window.open('https://t.me/arizona_coin_bot')">🤖 Бот</button>
-            <div style="height:8px;"></div>
-            <button class="btn btn-outline" onclick="window.open('https://t.me/Bounty_Squad31')">📢 Канал</button>
+            <h3>🔗 Официальные ресурсы</h3>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
+                <button class="btn" onclick="window.open('https://t.me/arizona_coin_bot')">🤖 Официальный Бот</button>
+                <button class="btn btn-outline" onclick="window.open('https://t.me/Bounty_Squad31')">📢 Telegram Канал</button>
+                <button class="btn btn-outline" onclick="window.open('https://vk.com/bountyarz')">🌐 Группа ВКонтакте</button>
+            </div>
         </div>
     </div>
 
-    <!-- ==================== JAVASCRIPT ==================== -->
+    <!-- ЛАЙТБОКС (ПРОСМОТР ФОТО НА ВЕСЬ ЭКРАН) -->
+    <div id="lightboxModal" class="modal-overlay" style="z-index:4000; background:rgba(0,0,0,0.95);" onclick="closeModal('lightboxModal')">
+        <img id="lightboxImage" src="" style="max-width:95vw; max-height:95vh; object-fit:contain; border-radius:8px;">
+    </div>
+
+    <!-- ==================== JAVASCRIPT ЛОГИКА ПРИЛОЖЕНИЯ ==================== -->
     <script>
+        /* ==================== 1. КОНСТАНТЫ И ИНИЦИАЛИЗАЦИЯ ==================== */
         const OWNER_USERNAME = 'bounqy';
         const ALL_SERVERS = [
             '🔥 Phoenix','🌴 Tucson','🌵 Scottdale','⚜️ Chandler','❄️ Brainburg','✨ Saint Rose','🏛 Mesa','❤️ Red-Rock','🌊 Yuma','🍀 Surprise',
@@ -448,64 +1426,116 @@
         const ALL_CATEGORIES = [
             '💍 Аксессуары и вещи','🚗 Транспорт','🏠 Недвижимость','💼 Бизнесы','🔫 Оружие и материалы','👕 Одежда','📱 Электроника'
         ];
+        const APPEAL_REASONS = [
+            'Товар не нарушает правила',
+            'Ошибка модерации',
+            'Продавец не виноват',
+            'Цена указана верно',
+            'Фото соответствует товару',
+            'Описание полное',
+            'Нарушения нет',
+            'Модератор ошибся'
+        ];
+        const ALLOWED_DOMAINS = [
+            'youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com', 'i.postimg.cc'
+        ];
 
+        // Telegram WebApp API
         let tg = window.Telegram?.WebApp || null;
         if (tg) { tg.expand?.(); tg.ready?.(); }
         const tgUser = tg?.initDataUnsafe?.user || null;
         const currentUserId = tgUser?.id?.toString() || 'default_user';
         const currentUserUsername = tgUser?.username ? '@' + tgUser.username : null;
 
+        // Состояние приложения
         let sfxEnabled = true;
+        let musicPlaying = true;
         let currentCategoryFilter = null;
+        let currentServerFilter = null;
+        let activeInspectedUser = '';
+        let activeReviewAdId = null;
+        let reviewStars = 5;
         let currentUserServer = localStorage.getItem(getUserKey('user_server')) || null;
+        let currentAppealAdId = null;
         let tutorialTimerInterval = null;
         let adminTutorialTimerInterval = null;
+        let lastSfxTime = 0;
 
-        let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') 
-                              || JSON.stringify(['admin', 'arizona_admin', OWNER_USERNAME]));
-
+        let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') || JSON.stringify(['admin', 'arizona_admin', OWNER_USERNAME]));
         let globalAdsFeed = JSON.parse(localStorage.getItem('arizona_ads_feed') || '[]');
         let myAdsList = JSON.parse(localStorage.getItem(getUserKey('my_ads')) || '[]');
         let favoritesList = JSON.parse(localStorage.getItem(getUserKey('favorites')) || '[]');
         let pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
-        let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || '{"money":0,"clickPower":1,"clickCost":50,"autoIncome":0,"autoCost":200,"proCost":800,"shopCost":3000,"eliteCost":10000,"oilCost":35000,"cryptoCost":150000,"scrapCost":500}');
+        let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
+        let travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
+        let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || '{"money":0,"clickPower":1,"clickCost":50,"autoIncome":0,"autoCost":200,"proCost":800,"shopCost":3000,"eliteCost":10000}');
+        let appealsList = JSON.parse(localStorage.getItem('arizona_appeals') || '[]');
         let bannedUsers = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
         let adminTutorialCompleted = localStorage.getItem(getUserKey('admin_tutorial_completed')) === '1';
 
-        function getUserKey(key) { return `arizona_${currentUserId}_${key}`; }
+        /* Инициализация тестовых данных если список пуст */
+        if (globalAdsFeed.length === 0) {
+            globalAdsFeed = [
+                { id: 101, mode: 'sell', category: '🚗 Транспорт', itemName: 'Bugatti Divo', price: '150кк', text: 'Полный тюнинг twin turbo, состояние идеальное. Торг уместен.', image: 'https://i.postimg.cc/P5yYLQH7/0465dd7cc4f5446e5e908000ec4379bb.jpg', server: '🔥 Phoenix', author: '@seller_pro', status: 'approved' },
+                { id: 102, mode: 'buy', category: '💍 Аксессуары и вещи', itemName: 'Воздушный шар красного цвета +12', price: '320кк', text: 'Срочно куплю шар +12. Звоните в игре или пишите в ТГ!', image: '', server: '🏛 Mesa', author: '@buyer_king', status: 'approved' }
+            ];
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+        }
 
-        // ПРОВЕРКА НА АДМИНА / ВЛАДЕЛЬЦА
-        function isAdmin() {
-            if (!currentUserUsername) return false;
-            const cleanUser = currentUserUsername.replace('@', '').toLowerCase();
-            const isOwner = cleanUser === OWNER_USERNAME.toLowerCase();
-            const isListedAdmin = ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(cleanUser);
-            return isOwner || isListedAdmin;
+        /* ==================== 2. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==================== */
+        function getUserKey(key) { return `arizona_${currentUserId}_${key}`; }
+        function escapeHtml(t) { return t ? t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            let icon = 'ℹ️';
+            if (type === 'success') icon = '✅';
+            if (type === 'danger') icon = '⚠️';
+            toast.innerHTML = `<span>${icon}</span> <div>${escapeHtml(message)}</div>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         function formatPrice(p) {
-            if (!p) return '';
+            if (!p) return '0';
             if (/[кk]/i.test(p)) return p;
-            const n = parseFloat(p.replace(/[^0-9.]/g, ''));
+            const n = parseFloat(p.toString().replace(/[^0-9.]/g, ''));
             if (isNaN(n)) return p;
-            if (n >= 1e9) return (n/1e9).toFixed(1).replace(/\.0$/,'')+'ккк';
-            if (n >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'')+'кк';
-            if (n >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'')+'к';
-            return n.toString();
+            if (n >= 1e9) return (n/1e9).toFixed(1).replace(/\.0$/,'') + 'ккк';
+            if (n >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'') + 'кк';
+            if (n >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'') + 'к';
+            return n.toLocaleString();
         }
 
         function playSfx(type) {
             if (!sfxEnabled) return;
+            const now = Date.now();
+            if (now - lastSfxTime < 60) return;
+            lastSfxTime = now;
             try {
                 if (!window.audioCtx) window.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
                 const ctx = window.audioCtx;
                 const osc = ctx.createOscillator(), gain = ctx.createGain();
                 osc.connect(gain); gain.connect(ctx.destination);
                 const t = ctx.currentTime;
-                if (type === 'cash') { osc.type='triangle'; osc.frequency.setValueAtTime(800,t); osc.frequency.setValueAtTime(1200,t+0.08); gain.gain.setValueAtTime(0.2,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.35); osc.start(t); osc.stop(t+0.35); }
-                else if (type === 'success') { osc.type='sine'; osc.frequency.setValueAtTime(440,t); osc.frequency.setValueAtTime(880,t+0.15); gain.gain.setValueAtTime(0.15,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.3); osc.start(t); osc.stop(t+0.3); }
-                else { osc.type='square'; osc.frequency.setValueAtTime(300,t); gain.gain.setValueAtTime(0.08,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.05); osc.start(t); osc.stop(t+0.05); }
+                if (type === 'cash') { osc.type='triangle'; osc.frequency.setValueAtTime(600,t); osc.frequency.setValueAtTime(1200,t+0.08); gain.gain.setValueAtTime(0.2,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.3); osc.start(t); osc.stop(t+0.3); }
+                else if (type === 'success') { osc.type='sine'; osc.frequency.setValueAtTime(523.25,t); osc.frequency.setValueAtTime(659.25,t+0.1); gain.gain.setValueAtTime(0.15,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.25); osc.start(t); osc.stop(t+0.25); }
+                else { osc.type='square'; osc.frequency.setValueAtTime(220,t); gain.gain.setValueAtTime(0.05,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.05); osc.start(t); osc.stop(t+0.05); }
             } catch(e) {}
+        }
+
+        function isAdmin() {
+            if (!currentUserUsername) return false;
+            const cleanUser = currentUserUsername.replace('@', '').toLowerCase();
+            return cleanUser === OWNER_USERNAME.toLowerCase() || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(cleanUser);
         }
 
         function checkUsername() {
@@ -521,33 +1551,36 @@
             }
             document.getElementById('noUsernameScreen').style.display = 'none';
             document.getElementById('bannedScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
+            document.getElementById('appContainer').style.display = 'flex';
             return true;
         }
 
-        function openUsernameHelp() {
-            document.getElementById('noUsernameScreen').style.display = 'none';
-            document.getElementById('usernameHelpModal').style.display = 'flex';
-        }
-
+        /* ==================== 3. ТЕМЫ И НАВИГАЦИЯ ==================== */
         function applyThemeFromStorage() {
             const saved = localStorage.getItem(getUserKey('theme')) || 'light';
             document.body.classList.toggle('dark', saved === 'dark');
         }
-
         function toggleTheme() {
             const isDark = document.body.classList.contains('dark');
             document.body.classList.toggle('dark', !isDark);
             localStorage.setItem(getUserKey('theme'), isDark ? 'light' : 'dark');
+            showToast(isDark ? 'Включена светлая тема' : 'Включена темная тема', 'info');
         }
 
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-            const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-            if (target) target.classList.add('active');
-            const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
-            if (activeTab) activeTab.classList.add('active');
+            document.querySelectorAll('.desktop-nav-item').forEach(t => t.classList.remove('active'));
+
+            const targetSection = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (targetSection) targetSection.classList.add('active');
+
+            const activeMobileTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+            if (activeMobileTab) activeMobileTab.classList.add('active');
+
+            const activeDesktopTab = document.querySelector(`.desktop-nav-item[data-tab="${tabId}"]`);
+            if (activeDesktopTab) activeDesktopTab.classList.add('active');
+
             if (tabId === 'feed') renderFeed();
             if (tabId === 'cart') renderCart();
             if (tabId === 'app') rebuildCreateAdForm();
@@ -560,241 +1593,300 @@
             playSfx('click');
         }
 
-        function showHeaderLinks() { openModal('headerLinksModal'); }
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-        function checkUserPermissions() {
-            let adminTabBtn = document.getElementById('adminTabBtn');
-            let ownerSection = document.getElementById('ownerSection');
-            let userIsAdmin = isAdmin();
-            let isOwner = currentUserUsername && (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase());
-            if (adminTabBtn) adminTabBtn.style.display = userIsAdmin ? 'flex' : 'none';
-            if (ownerSection) ownerSection.style.display = isOwner ? 'block' : 'none';
+        function openModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.classList.add('active');
+        }
+        function closeModal(id) {
+            const m = document.getElementById(id);
+            if (m) m.classList.remove('active');
         }
 
-        function init() {
-            if (!checkUsername()) return;
-            applyThemeFromStorage();
-            checkUserPermissions();
-            renderFeed();
-            renderCart();
-            renderMoreSection();
-            updateBarygaUI();
-            showTutorial();
-        }
-        if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
-
-        /* ==================== ТУТОРИАЛЫ ==================== */
-        let tutorialSlide = 0;
-        function showTutorial() {
-            if (localStorage.getItem(getUserKey('tutorial_completed')) === '1') return;
-            document.getElementById('tutorialOverlay').style.display = 'flex';
-            tutorialSlide = 0;
-            updateTutorial();
-            startTutorialTimer(60);
-        }
-        function startTutorialTimer(seconds) {
-            const timerSpan = document.getElementById('tutorialTimer');
-            const btn = document.getElementById('tutorialNextBtn');
-            if (!timerSpan || !btn) return;
-            let sec = seconds;
-            btn.disabled = true;
-            timerSpan.innerText = sec;
-            if (tutorialTimerInterval) clearInterval(tutorialTimerInterval);
-            tutorialTimerInterval = setInterval(() => {
-                sec--;
-                timerSpan.innerText = sec;
-                if (sec <= 0) {
-                    clearInterval(tutorialTimerInterval);
-                    btn.disabled = false;
-                    btn.innerText = 'Продолжить';
-                }
-            }, 1000);
-        }
-        function nextTutorialSlide() {
-            const slides = document.querySelectorAll('#tutorialOverlay .tutorial-slide');
-            if (tutorialSlide < slides.length - 1) { tutorialSlide++; updateTutorial(); } else { completeTutorial(); }
-        }
-        function updateTutorial() { document.querySelectorAll('#tutorialOverlay .tutorial-slide').forEach((slide, index) => { slide.classList.toggle('active', index === tutorialSlide); }); }
-        function completeTutorial() { document.getElementById('tutorialOverlay').style.display = 'none'; localStorage.setItem(getUserKey('tutorial_completed'), '1'); }
-
-        function showAdminTutorial() {
-            const overlay = document.getElementById('adminTutorialOverlay');
-            if (!overlay) return;
-            overlay.style.display = 'flex';
-            const btn = document.getElementById('adminTutorialCloseBtn');
-            if (btn) {
-                btn.disabled = true;
-                let secondsLeft = 60;
-                btn.innerText = `Закрыть (${secondsLeft} сек)`;
-                if (adminTutorialTimerInterval) clearInterval(adminTutorialTimerInterval);
-                adminTutorialTimerInterval = setInterval(() => {
-                    secondsLeft--;
-                    btn.innerText = `Закрыть (${secondsLeft} сек)`;
-                    if (secondsLeft <= 0) {
-                        clearInterval(adminTutorialTimerInterval);
-                        btn.disabled = false;
-                        btn.innerText = 'Закрыть';
-                    }
-                }, 1000);
-            }
-        }
-        function nextAdminTutorialSlide() {
-            const slides = document.querySelectorAll('#adminTutorialOverlay .tutorial-slide');
-            slides.forEach((s, i) => s.classList.toggle('active', i === 1));
-        }
-        document.getElementById('adminTutorialCloseBtn')?.addEventListener('click', function() {
-            if (!this.disabled) {
-                document.getElementById('adminTutorialOverlay').style.display = 'none';
-                adminTutorialCompleted = true;
-                localStorage.setItem(getUserKey('admin_tutorial_completed'), '1');
-            }
-        });
-
-        /* ==================== КАРТОЧКИ ОБЪЯВЛЕНИЙ ==================== */
-        function createAdCard(ad, options = {}) {
+        /* ==================== 4. ЛЕНТА И КАРТОЧКИ ==================== */
+        function createAdCardHtml(ad, options = {}) {
             const { showAuthor = true, isCart = false } = options;
             const firstImage = ad.image ? ad.image.split(',')[0].trim() : '';
             const imageHtml = firstImage
-                ? `<img src="${firstImage}" class="ad-image" loading="lazy" onerror="this.style.display='none'">`
-                : `<div class="ad-image-placeholder" style="background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:24px;">📦</div>`;
+                ? `<img src="${escapeHtml(firstImage)}" loading="lazy" decoding="async" onerror="this.src='https://i.postimg.cc/P5yYLQH7/0465dd7cc4f5446e5e908000ec4379bb.jpg'">`
+                : `<div class="ad-image-placeholder"></div>`;
             
             let statusBadge = '';
             if (isCart) {
                 const stillExists = globalAdsFeed.some(a => a.id === ad.id && a.status === 'approved');
-                statusBadge = stillExists
-                    ? '<span class="badge badge-success">🟢 Висит</span>'
-                    : '<span class="badge badge-danger">🔴 Удалена</span>';
-            } else {
-                statusBadge = ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : ad.status === 'deleted' ? '<span class="badge badge-danger">Удалено</span>' : '';
+                statusBadge = stillExists ? '<span class="badge badge-success">🟢 В наличии</span>' : '<span class="badge badge-danger">🔴 Продано</span>';
+            } else if (ad.status === 'pending') {
+                statusBadge = '<span class="badge badge-warning">На модерации</span>';
+            } else if (ad.status === 'deleted') {
+                statusBadge = '<span class="badge badge-danger">Удалено</span>';
             }
 
-            const isAdminAd = ad.isAdminAd ? '<span class="badge badge-admin">👑 Объявление АДМИНА</span>' : '';
-
             return `
-                <div class="ad-card">
-                    <div class="ad-image-wrap">${imageHtml}</div>
+                <div class="ad-card ${ad.status === 'deleted' ? 'deleted' : ''}" onclick="openAdDetail(${ad.id})">
+                    <div class="ad-image-wrap">
+                        ${imageHtml}
+                    </div>
                     <div class="ad-info">
                         <div>
                             <div class="ad-badges">
                                 <span class="badge ${ad.mode === 'sell' ? '' : 'badge-warning'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
-                                <span class="badge">${ad.server}</span>
-                                ${isAdminAd}
+                                <span class="badge">${escapeHtml(ad.server)}</span>
                                 ${statusBadge}
                             </div>
-                            <div class="ad-title">${ad.itemName}</div>
+                            <div class="ad-title">${escapeHtml(ad.itemName)}</div>
                             <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
-                            <div class="ad-text">${ad.text ? ad.text.substring(0, 60) + '...' : ''}</div>
+                            <div class="ad-text-preview">${escapeHtml(ad.text)}</div>
                         </div>
-                        ${showAuthor ? `<div style="font-size:11px;color:var(--muted);margin-top:6px;">👤 ${ad.author}</div>` : ''}
+                        ${showAuthor ? `<div style="font-size:11px; color:var(--muted);">Продавец: <b>${escapeHtml(ad.author)}</b></div>` : ''}
                     </div>
                 </div>
             `;
         }
 
-        /* ==================== ЛЕНТА И КОРЗИНА ==================== */
         function renderFeed() {
             const container = document.getElementById('feedContainer');
             if (!container) return;
-            let approved = globalAdsFeed.filter(ad => ad.status === 'approved');
-            if (currentCategoryFilter) approved = approved.filter(ad => ad.category === currentCategoryFilter);
-            if (currentUserServer) approved = approved.filter(ad => ad.server === currentUserServer);
-            if (approved.length === 0) {
-                container.innerHTML = '<div style="text-align:center;grid-column:1/-1;padding:40px;color:var(--muted);">Объявлений пока нет</div>';
+            let list = globalAdsFeed.filter(ad => ad.status === 'approved');
+            if (currentCategoryFilter) list = list.filter(ad => ad.category === currentCategoryFilter);
+            if (currentServerFilter) list = list.filter(ad => ad.server === currentServerFilter);
+
+            if (list.length === 0) {
+                container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--muted); font-size:15px;">🔍 Объявлений по данным фильтрам пока нет</div>';
                 return;
             }
-            container.innerHTML = approved.map(ad => createAdCard(ad)).join('');
+            container.innerHTML = list.map(ad => createAdCardHtml(ad)).join('');
         }
 
         function renderCart() {
             const container = document.getElementById('cartContainer');
             if (!container) return;
             if (favoritesList.length === 0) {
-                container.innerHTML = '<div style="text-align:center;grid-column:1/-1;padding:40px;color:var(--muted);">Корзина пуста</div>';
+                container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--muted); font-size:15px;">🛒 В вашей корзине пока пусто</div>';
                 return;
             }
-            container.innerHTML = favoritesList.map(ad => createAdCard(ad, { showAuthor: false, isCart: true })).join('');
+            container.innerHTML = favoritesList.map(ad => createAdCardHtml(ad, { isCart: true })).join('');
         }
 
         function renderMyAds() {
             const container = document.getElementById('myAdsContainer');
             if (!container) return;
             if (myAdsList.length === 0) {
-                container.innerHTML = '<div style="text-align:center;grid-column:1/-1;padding:40px;color:var(--muted);">У вас нет объявлений</div>';
+                container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--muted); font-size:15px;">📦 Вы еще не подавали объявлений</div>';
                 return;
             }
-            container.innerHTML = myAdsList.map(ad => createAdCard(ad)).join('');
+            container.innerHTML = myAdsList.map(ad => {
+                const isDeleted = ad.status === 'deleted';
+                return `
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        ${createAdCardHtml(ad, { showAuthor: false })}
+                        <div style="display:flex; gap:8px; margin-bottom:8px;">
+                            <button class="btn btn-sm btn-danger" onclick="deleteMyAdPermanently(${ad.id})">🗑 Удалить</button>
+                            ${isDeleted ? `<button class="btn btn-sm btn-outline" onclick="openAppealModal(${ad.id})">📨 Апелляция</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
-        function renderMoreSection() {
-            const container = document.getElementById('moreContainer');
-            if (!container) return;
-            const items = [
-                { icon: '📦', label: 'Мои объявления', onclick: "switchTab('myAds')" },
-                { icon: '🎮', label: 'Игра «Барыга»', onclick: "openModal('barygaModal')" },
-                { icon: '🔍', label: 'Поиск', onclick: "openModal('searchModal')" },
-                { icon: '⚙️', label: 'Настройки', onclick: "toggleTheme()" },
-                { icon: '📩', label: 'Менеджер', onclick: "window.open('https://t.me/bounqy31')" }
-            ];
-            container.innerHTML = items.map(item => `
-                <div class="more-item" onclick="${item.onclick}">
-                    <div class="more-icon">${item.icon}</div>
-                    <div class="more-label">${item.label}</div>
+        function toggleCart(id) {
+            const ad = globalAdsFeed.find(a => a.id === id) || myAdsList.find(a => a.id === id);
+            if (!ad) return;
+            const idx = favoritesList.findIndex(f => f.id === id);
+            if (idx > -1) {
+                favoritesList.splice(idx, 1);
+                showToast('Товар удален из корзины', 'info');
+            } else {
+                favoritesList.push(ad);
+                showToast('Товар добавлен в корзину', 'success');
+                playSfx('cash');
+            }
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
+            renderCart();
+            const btn = document.getElementById('cartDetailBtn');
+            if (btn) btn.innerHTML = favoritesList.some(f => f.id === id) ? '🛒 В корзине' : '🛒 Добавить в корзину';
+        }
+
+        function deleteMyAdPermanently(id) {
+            if (!confirm('Вы действительно хотите полностью удалить объявление?')) return;
+            myAdsList = myAdsList.filter(a => a.id !== id);
+            globalAdsFeed = globalAdsFeed.filter(a => a.id !== id);
+            favoritesList = favoritesList.filter(a => a.id !== id);
+            localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
+            renderMyAds();
+            renderFeed();
+            showToast('Объявление удалено', 'success');
+        }
+
+        /* ==================== 5. ДЕТАЛИЗАЦИЯ И ГАЛЕРЕЯ (ИСПРАВЛЕНО И РАСШИРЕНО) ==================== */
+        function openAdDetail(id) {
+            let ad = globalAdsFeed.find(a => a.id === id) 
+                     || myAdsList.find(a => a.id === id) 
+                     || pendingAdsList.find(a => a.id === id) 
+                     || favoritesList.find(a => a.id === id);
+            if (!ad) return;
+
+            document.querySelectorAll('#adDetailPage').forEach(el => el.remove());
+
+            const page = document.createElement('div');
+            page.id = 'adDetailPage';
+            
+            const isInCart = favoritesList.some(f => f.id === id);
+            let images = ad.image ? ad.image.split(',').map(s=>s.trim()).filter(s=>s.length>0) : [];
+            if (images.length === 0) images = ['https://i.postimg.cc/P5yYLQH7/0465dd7cc4f5446e5e908000ec4379bb.jpg'];
+
+            page.innerHTML = `
+                <div class="detail-header">
+                    <button class="btn btn-sm btn-outline" style="width:auto;" onclick="closeAdDetail()">← Назад</button>
+                    <span style="font-weight:700; font-size:14px;">Объявление #${ad.id}</span>
+                    <button class="btn btn-sm btn-outline" style="width:auto;" onclick="shareAd(${ad.id})">🔗 Поделиться</button>
                 </div>
-            `).join('');
+
+                <div class="gallery-container">
+                    <img id="mainGalleryImg" class="gallery-main-img" src="${escapeHtml(images[0])}" onclick="openLightbox('${escapeHtml(images[0])}')">
+                </div>
+                ${images.length > 1 ? `
+                    <div class="gallery-thumbs">
+                        ${images.map((img, idx) => `
+                            <img class="gallery-thumb ${idx===0?'active':''}" src="${escapeHtml(img)}" onclick="switchGalleryImg('${escapeHtml(img)}', this)">
+                        `).join('')}
+                    </div>
+                ` : ''}
+
+                <div class="container" style="padding-top:20px;">
+                    <div class="form-card">
+                        <div class="ad-badges" style="margin-bottom:12px;">
+                            <span class="badge ${ad.mode==='sell'?'':'badge-warning'}">${ad.mode==='sell'?'Продажа':'Покупка'}</span>
+                            <span class="badge badge-gold">${escapeHtml(ad.server)}</span>
+                            <span class="badge">${escapeHtml(ad.category || 'Общее')}</span>
+                        </div>
+                        <h1 style="font-size:22px; font-weight:800; margin-bottom:8px;">${escapeHtml(ad.itemName)}</h1>
+                        <div style="font-size:24px; font-weight:900; color:var(--accent); margin-bottom:16px;">💰 ${formatPrice(ad.price)} $</div>
+                        
+                        <div style="border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:16px 0; margin-bottom:20px;">
+                            <h3 style="font-size:14px; color:var(--muted); text-transform:uppercase; margin-bottom:8px;">Описание:</h3>
+                            <p style="font-size:14px; line-height:1.6; white-space:pre-line;">${escapeHtml(ad.text)}</p>
+                        </div>
+
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; background:var(--app-bg); padding:12px 16px; border-radius:12px;">
+                            <div>
+                                <div style="font-size:11px; color:var(--muted);">Продавец</div>
+                                <div style="font-weight:700; font-size:15px;">${escapeHtml(ad.author)}</div>
+                            </div>
+                            <button class="btn btn-sm" style="width:auto;" onclick="openProfileModal('${escapeHtml(ad.author)}')">Профиль игрока</button>
+                        </div>
+
+                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <button class="btn" style="flex:2;" onclick="window.open('https://t.me/${escapeHtml(ad.author.replace('@',''))}')">💬 Написать продавцу</button>
+                            <button id="cartDetailBtn" class="btn btn-outline" style="flex:1;" onclick="toggleCart(${ad.id})">${isInCart ? '🛒 В корзине' : '🛒 В корзину'}</button>
+                        </div>
+                    </div>
+
+                    <!-- СЕКЦИЯ ОТЗЫВОВ -->
+                    <div class="form-card" style="margin-top:20px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3>Отзывы о продавце</h3>
+                            <button class="btn btn-sm btn-outline" style="width:auto;" onclick="openReviewModal(${ad.id})">★ Оставить отзыв</button>
+                        </div>
+                        <div id="reviewsListContainer">${renderReviewsForAd(ad.id)}</div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(page);
+            setTimeout(() => page.classList.add('active'), 10);
         }
 
-        /* ==================== ФОРМА СОЗДАНИЯ ОБЪЯВЛЕНИЯ ==================== */
+        function closeAdDetail() {
+            const page = document.getElementById('adDetailPage');
+            if (page) {
+                page.classList.remove('active');
+                setTimeout(() => page.remove(), 300);
+            }
+        }
+
+        function switchGalleryImg(src, thumbEl) {
+            document.getElementById('mainGalleryImg').src = src;
+            document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+            thumbEl.classList.add('active');
+        }
+
+        function openLightbox(src) {
+            document.getElementById('lightboxImage').src = src;
+            openModal('lightboxModal');
+        }
+
+        function shareAd(id) {
+            if (navigator.share) {
+                navigator.share({ title: 'Arizona RP Marketplace', text: `Посмотри объявление #${id}`, url: window.location.href });
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                showToast('Ссылка скопирована в буфер обмена', 'success');
+            }
+        }
+
+        /* ==================== 6. ПОДАЧА ОБЪЯВЛЕНИЙ (ОБХОД ДЛЯ АДМИНА) ==================== */
         function rebuildCreateAdForm() {
-            const userIsAdmin = isAdmin();
             const section = document.getElementById('tabApp');
             section.innerHTML = `
-                <h2 class="section-title">Подать объявление</h2>
-                <div class="form-group"><label>Тип</label>
-                    <div class="custom-select-trigger" onclick="openPicker('mode')"><span id="selectedModeText">Продажа</span> ▼</div>
-                    <input type="hidden" id="mode" value="sell">
-                </div>
-                <div class="form-group"><label>Категория</label>
-                    <div class="custom-select-trigger" onclick="openPicker('category')"><span id="selectedCategoryText">${ALL_CATEGORIES[0]}</span> ▼</div>
-                    <input type="hidden" id="category" value="${ALL_CATEGORIES[0]}">
-                </div>
-                <div class="form-group"><label>Название</label><input id="itemName" placeholder="Название предмета/имущества"></div>
-                <div class="form-group"><label>Цена</label><input id="price" placeholder="например: 5000 или 5к"></div>
-                <div class="form-group"><label>Описание</label><textarea id="text" rows="3" placeholder="Укажите контакты, торг и подробности"></textarea></div>
-                <div class="form-group"><label>Скриншот URL (необязательно)</label><input id="itemImage" placeholder="https://..."></div>
-                <div class="form-group"><label>Сервер</label>
-                    <div class="custom-select-trigger" onclick="openPicker('server')"><span id="selectedServerText">${currentUserServer || ALL_SERVERS[0]}</span> ▼</div>
-                    <input type="hidden" id="server" value="${currentUserServer || ALL_SERVERS[0]}">
-                </div>
-                <button type="button" class="btn" onclick="submitData()">${userIsAdmin ? '🚀 Опубликовать (Админ/Владелец)' : 'Отправить на модерацию'}</button>
-                <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px;">
-                    ${userIsAdmin 
-                        ? '👑 <b>Admin/Owner Access:</b> Доступ в любое время суток и без КД!' 
-                        : '🕒 Приём объявлений обычным игрокам с 09:00 до 22:00 МСК, КД 2 минуты'}
+                <div class="form-card">
+                    <h2 class="section-title" style="margin-top:0;">Подать объявление</h2>
+                    <div class="form-group">
+                        <label>Тип сделки</label>
+                        <div class="custom-select-trigger" onclick="openPicker('mode')"><span id="selectedModeText">Продажа</span> ▼</div>
+                        <input type="hidden" id="mode" value="sell">
+                    </div>
+                    <div class="form-group">
+                        <label>Категория</label>
+                        <div class="custom-select-trigger" onclick="openPicker('category')"><span id="selectedCategoryText">${ALL_CATEGORIES[0]}</span> ▼</div>
+                        <input type="hidden" id="category" value="${ALL_CATEGORIES[0]}">
+                    </div>
+                    <div class="form-group">
+                        <label>Название предмета / имущества</label>
+                        <input id="itemName" type="text" placeholder="Например: Машинка на пульте управления +12">
+                    </div>
+                    <div class="form-group">
+                        <label>Цена ($)</label>
+                        <input id="price" type="text" placeholder="5000000 или 5кк">
+                    </div>
+                    <div class="form-group">
+                        <label>Подробное описание</label>
+                        <textarea id="text" rows="4" placeholder="Укажите заточку, гравировку, состояние, торг..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Ссылка на фото / скриншот (необязательно)</label>
+                        <input id="itemImage" type="url" placeholder="https://postimages.org/...">
+                    </div>
+                    <div class="form-group">
+                        <label>Сервер Arizona RP</label>
+                        <div class="custom-select-trigger" onclick="openPicker('server')"><span id="selectedServerText">${currentUserServer || ALL_SERVERS[0]}</span> ▼</div>
+                        <input type="hidden" id="server" value="${currentUserServer || ALL_SERVERS[0]}">
+                    </div>
+                    <button type="button" class="btn" onclick="submitData()">🚀 Отправить на модерацию</button>
+                    <div style="font-size:11px; color:var(--muted); text-align:center; margin-top:12px;">Приём объявлений с 09:00 до 22:00 МСК, КД 2 минуты</div>
                 </div>
             `;
         }
 
-        /* ==================== ОТПРАВКА ДАННЫХ (ОБНОВЛЕННАЯ С АДМИН-ПРАВАМИ) ==================== */
         function submitData() {
+            // ТИХАЯ ПРОВЕРКА ПРАВ: Администраторы и Владелец обходят временные лимиты и КД
             const userIsAdmin = isAdmin();
 
-            // ПРОВЕРКА ВРЕМЕНИ И КД ТОЛЬКО ДЛЯ ОБЫЧНЫХ ИГРОКОВ
             if (!userIsAdmin) {
+                // Проверка времени 09:00 - 22:00 МСК только для обычных игроков
                 let now = new Date();
-                let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
-                let mskHour = mskTime.getHours();
+                let mskHour = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000).getHours();
                 if (mskHour < 9 || mskHour >= 22) {
-                    alert('🕒 Создание объявлений для обычных игроков доступно только с 09:00:00 до 22:00:00 по МСК!');
+                    showToast('🕒 Создание объявлений доступно только с 09:00:00 до 22:00:00 по МСК!', 'danger');
                     return;
                 }
 
+                // Проверка КД 2 минуты только для обычных игроков
                 let lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
                 let currentTime = Date.now();
                 if (currentTime - lastAdTime < 120000) {
                     let leftSec = Math.ceil((120000 - (currentTime - lastAdTime)) / 1000);
-                    alert(`⏳ Подождите еще ${leftSec} сек. перед созданием нового объявления (КД 2 минуты).`);
+                    showToast(`⏳ Подождите еще ${leftSec} сек. перед созданием нового объявления.`, 'danger');
                     return;
                 }
             }
@@ -808,7 +1900,7 @@
             let server = document.getElementById('server').value;
 
             if (!itemName || !price || !text) {
-                alert('⚠️ Заполните все обязательные поля!');
+                showToast('⚠️ Заполните все обязательные поля!', 'danger');
                 return;
             }
 
@@ -816,72 +1908,21 @@
                 id: Date.now(),
                 mode, category, itemName, price, text, image, server,
                 author: currentUserUsername,
-                status: userIsAdmin ? 'approved' : 'pending',
-                isAdminAd: userIsAdmin
+                status: 'pending'
             };
 
-            if (userIsAdmin) {
-                globalAdsFeed.unshift(newAd);
-                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-            } else {
-                pendingAdsList.push(newAd);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-                localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
-            }
-
-            myAdsList.unshift(newAd);
+            pendingAdsList.push(newAd);
+            myAdsList.push(newAd);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
             localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+            localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
 
-            alert(userIsAdmin 
-                ? '✅ Объявление моментально опубликовано в ленту!' 
-                : '🚀 Ваше объявление отправлено на модерацию!');
-            
+            showToast('🚀 Объявление успешно отправлено на модерацию!', 'success');
             playSfx('success');
-            switchTab('feed');
+            switchTab('myAds');
         }
 
-        /* ==================== PICKER МОДАЛКА ==================== */
-        function openPicker(type) {
-            const list = document.getElementById('pickerList');
-            const title = document.getElementById('pickerTitle');
-            if (type === 'mode') {
-                list.innerHTML = `<div class="picker-item" onclick="selectPicker('mode','sell','Продажа')">Продажа</div><div class="picker-item" onclick="selectPicker('mode','buy','Покупка')">Покупка</div>`;
-                title.innerText = 'Тип';
-            } else if (type === 'category') {
-                list.innerHTML = ALL_CATEGORIES.map(cat => `<div class="picker-item" onclick="selectPicker('category','${cat}','${cat}')">${cat}</div>`).join('');
-                title.innerText = 'Категория';
-            } else if (type === 'server') {
-                list.innerHTML = ALL_SERVERS.map(s => `<div class="picker-item" onclick="selectPicker('server','${s}','${s}')">${s}</div>`).join('');
-                title.innerText = 'Сервер';
-            }
-            openModal('pickerModal');
-        }
-
-        function selectPicker(type, val, text) {
-            if (type === 'mode') { document.getElementById('selectedModeText').innerText = text; document.getElementById('mode').value = val; }
-            else if (type === 'category') { document.getElementById('selectedCategoryText').innerText = text; document.getElementById('category').value = val; }
-            else if (type === 'server') { document.getElementById('selectedServerText').innerText = text; document.getElementById('server').value = val; }
-            closeModal('pickerModal');
-        }
-
-        /* ==================== ИГРА БАРЫГА ==================== */
-        function updateBarygaUI() {
-            document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString();
-            document.getElementById('autoIncomeLabel').innerText = barygaData.autoIncome.toLocaleString() + ' $ / сек';
-            const container = document.getElementById('barygaUpgrades');
-            const upgrades = [
-                { name: 'Клик +1', cost: barygaData.clickCost, actionName: 'buyClickUpgrade' },
-                { name: 'Авто +5/сек', cost: barygaData.autoCost, actionName: 'buyAutoUpgrade' },
-                { name: 'Скупка лома +500/сек', cost: barygaData.scrapCost || 500, actionName: 'buyScrapUpgrade' }
-            ];
-            container.innerHTML = upgrades.map(u => `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--app-bg); border-radius:8px; margin-bottom:6px; border: 1px solid var(--border);">
-                    <div><b>${u.name}</b><br><small>Цена: ${u.cost.toLocaleString()} $</small></div>
-                    <button class="btn btn-sm" onclick="${u.actionName}()">Купить</button>
-                </div>
-            `).join('');
-        }
-
+        /* ==================== 7. ИГРА БАРЫГА И ВСПОМОГАТЕЛЬНЫЕ РАЗДЕЛЫ ==================== */
         function barygaClick() {
             barygaData.money += barygaData.clickPower;
             localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
@@ -889,97 +1930,284 @@
             playSfx('cash');
         }
 
-        function buyClickUpgrade() {
-            if (barygaData.money >= barygaData.clickCost) {
-                barygaData.money -= barygaData.clickCost;
-                barygaData.clickPower += 1;
-                barygaData.clickCost = Math.floor(barygaData.clickCost * 2);
-                localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
-                updateBarygaUI();
-                playSfx('success');
-            }
+        function updateBarygaUI() {
+            document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString();
+            document.getElementById('autoIncomeLabel').innerText = barygaData.autoIncome.toLocaleString() + ' $';
+            const container = document.getElementById('barygaUpgrades');
+            const upgrades = [
+                { name: 'Клик +1', cost: barygaData.clickCost, fn: 'buyUpgrade("clickCost","clickPower",1)' },
+                { name: 'Автопродажа +5/сек', cost: barygaData.autoCost, fn: 'buyUpgrade("autoCost","autoIncome",5)' },
+                { name: 'Лавка на ЦР +50/сек', cost: barygaData.shopCost, fn: 'buyUpgrade("shopCost","autoIncome",50)' }
+            ];
+            container.innerHTML = upgrades.map(u => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--app-bg); border-radius:10px; margin-bottom:6px;">
+                    <div><b>${u.name}</b><br><small style="color:var(--muted);">Цена: ${u.cost.toLocaleString()} $</small></div>
+                    <button class="btn btn-sm" style="width:auto;" onclick="${u.fn}">Купить</button>
+                </div>
+            `).join('');
         }
 
-        function buyAutoUpgrade() {
-            if (barygaData.money >= barygaData.autoCost) {
-                barygaData.money -= barygaData.autoCost;
-                barygaData.autoIncome += 5;
-                barygaData.autoCost = Math.floor(barygaData.autoCost * 2);
-                localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
-                updateBarygaUI();
-                playSfx('success');
-            }
-        }
-
-        function buyScrapUpgrade() {
-            const cost = barygaData.scrapCost || 500;
-            if (barygaData.money >= cost) {
-                barygaData.money -= cost;
-                barygaData.autoIncome += 500;
-                barygaData.scrapCost = Math.floor(cost * 2);
+        function buyUpgrade(costKey, valKey, inc) {
+            if (barygaData.money >= barygaData[costKey]) {
+                barygaData.money -= barygaData[costKey];
+                barygaData[valKey] += inc;
+                barygaData[costKey] = Math.floor(barygaData[costKey] * 1.8);
                 localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
                 updateBarygaUI();
                 playSfx('success');
             } else {
-                alert('Недостаточно средств');
+                showToast('Недостаточно денег!', 'danger');
             }
         }
 
         setInterval(() => {
             if (barygaData.autoIncome > 0) {
-                barygaData.money += barygaData.autoIncome;
+                barygaData.money += Math.floor(barygaData.autoIncome / 10);
                 localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
-                const moneyEl = document.getElementById('clickerMoney');
-                if (moneyEl) moneyEl.innerText = barygaData.money.toLocaleString();
+                const el = document.getElementById('clickerMoney');
+                if (el && document.getElementById('barygaModal').classList.contains('active')) {
+                    el.innerText = barygaData.money.toLocaleString();
+                }
             }
-        }, 1000);
+        }, 100);
 
-        /* ==================== АДМИН-ПАНЕЛЬ ==================== */
+        /* ==================== 8. АДМИНИСТРИРОВАНИЕ И МОДЕРАЦИЯ ==================== */
         function renderPendingAds() {
             const container = document.getElementById('pendingAdsContainer');
             if (!container) return;
+            if (!isAdmin()) {
+                container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--muted);">⛔ У вас нет прав администратора</div>';
+                return;
+            }
             if (pendingAdsList.length === 0) {
-                container.innerHTML = '<div style="text-align:center;grid-column:1/-1;padding:40px;color:var(--muted);">Нет заявок на модерацию</div>';
+                container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--muted);">✅ Заявок на модерацию нет</div>';
                 return;
             }
             container.innerHTML = pendingAdsList.map(ad => `
-                <div class="ad-card no-click">
-                    <div class="ad-info">
-                        <div class="ad-title">${ad.itemName} — ${formatPrice(ad.price)} $</div>
-                        <div class="ad-text">${ad.text}</div>
-                        <div style="font-size:11px;color:var(--muted);margin:4px 0;">Автор: ${ad.author} (${ad.server})</div>
-                        <div class="ad-actions">
-                            <button class="btn btn-sm btn-success" onclick="approveAd(${ad.id})">✅ Одобрить</button>
-                            <button class="btn btn-sm btn-danger" onclick="rejectAd(${ad.id})">✕ Отклонить</button>
-                        </div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    ${createAdCardHtml(ad, { showAuthor: true })}
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-sm btn-success" onclick="approveAd(${ad.id})">✅ Одобрить</button>
+                        <button class="btn btn-sm btn-danger" onclick="rejectAd(${ad.id})">❌ Отклонить</button>
                     </div>
                 </div>
             `).join('');
         }
 
         function approveAd(id) {
-            const index = pendingAdsList.findIndex(a => a.id === id);
-            if (index > -1) {
-                const ad = pendingAdsList.splice(index, 1)[0];
-                ad.status = 'approved';
-                globalAdsFeed.unshift(ad);
-                localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-                renderPendingAds();
-                renderFeed();
-                playSfx('success');
-            }
+            const idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx === -1) return;
+            const ad = pendingAdsList[idx];
+            ad.status = 'approved';
+            globalAdsFeed.unshift(ad);
+            pendingAdsList.splice(idx, 1);
+            localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            renderPendingAds();
+            renderFeed();
+            showToast('Объявление опубликовано!', 'success');
         }
 
         function rejectAd(id) {
-            const index = pendingAdsList.findIndex(a => a.id === id);
-            if (index > -1) {
-                pendingAdsList.splice(index, 1);
-                localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
-                renderPendingAds();
-                playSfx('click');
+            const idx = pendingAdsList.findIndex(a => a.id === id);
+            if (idx === -1) return;
+            pendingAdsList.splice(idx, 1);
+            localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
+            renderPendingAds();
+            showToast('Объявление отклонено', 'info');
+        }
+
+        /* ==================== 9. УНИВЕРСАЛЬНЫЕ ПИКЕРЫ И ПОИСК ==================== */
+        function openPicker(type) {
+            const list = document.getElementById('pickerList');
+            const title = document.getElementById('pickerTitle');
+            if (type === 'mode') {
+                title.innerText = 'Тип сделки';
+                list.innerHTML = `<div class="picker-item" onclick="selectPicker('mode','sell','Продажа')">Продажа</div><div class="picker-item" onclick="selectPicker('mode','buy','Покупка')">Покупка</div>`;
+            } else if (type === 'category') {
+                title.innerText = 'Выберите категорию';
+                list.innerHTML = ALL_CATEGORIES.map(c => `<div class="picker-item" onclick="selectPicker('category','${c}','${c}')">${c}</div>`).join('');
+            } else if (type === 'server' || type === 'server_filter') {
+                title.innerText = 'Выберите сервер';
+                const servers = type==='server_filter' ? ['Все', ...ALL_SERVERS] : ALL_SERVERS;
+                list.innerHTML = servers.map(s => `<div class="picker-item" onclick="selectPicker('${type}','${s}','${s}')">${s}</div>`).join('');
+            }
+            openModal('pickerModal');
+        }
+
+        function selectPicker(type, val, text) {
+            if (type === 'mode') { document.getElementById('selectedModeText').innerText = text; document.getElementById('mode').value = val; }
+            if (type === 'category') { document.getElementById('selectedCategoryText').innerText = text; document.getElementById('category').value = val; }
+            if (type === 'server') { document.getElementById('selectedServerText').innerText = text; document.getElementById('server').value = val; }
+            if (type === 'server_filter') {
+                currentServerFilter = val === 'Все' ? null : val;
+                document.getElementById('currentServerFilterText').innerText = val;
+                renderFeed();
+            }
+            closeModal('pickerModal');
+        }
+
+        function openSearchModal() { openModal('searchModal'); }
+        function executeSearch(type) {
+            const q = document.getElementById('modalSearchInput').value.trim().toLowerCase();
+            const container = document.getElementById('searchResultsContainer');
+            if (!q) return;
+            let results = globalAdsFeed.filter(a => a.status === 'approved' && (a.itemName.toLowerCase().includes(q) || a.text.toLowerCase().includes(q) || a.author.toLowerCase().includes(q)));
+            if (results.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted);">Ничего не найдено</div>';
+                return;
+            }
+            container.innerHTML = results.map(ad => createAdCardHtml(ad)).join('');
+        }
+
+        function openProfileModal(username) {
+            document.getElementById('inspectUsername').innerText = username;
+            openModal('profileModal');
+        }
+        function openChatWithInspected() {
+            const user = document.getElementById('inspectUsername').innerText.replace('@','');
+            window.open(`https://t.me/${user}`);
+        }
+
+        /* ==================== 10. ВСЕ РАЗДЕЛЫ, ТУТОРИАЛЫ И ЗАПУСК ==================== */
+        function renderMoreSection() {
+            const container = document.getElementById('moreContainer');
+            if (!container) return;
+            const items = [
+                { icon: '📦', label: 'Мои объявления', fn: "switchTab('myAds')" },
+                { icon: '🎮', label: 'Игра «Барыга»', fn: "openModal('barygaModal'); updateBarygaUI();" },
+                { icon: '📸', label: 'Лента «Луков»', fn: "openModal('fashionModal')" },
+                { icon: '🤝', label: 'Попутчики', fn: "openModal('travelModal')" },
+                { icon: '🎵', label: 'Музыка', fn: "openModal('musicModal')" },
+                { icon: '⚙️', label: 'Настройки', fn: "openModal('settingsModal')" },
+                { icon: '📩', label: 'Менеджер', fn: "window.open('https://t.me/bounqy31')" }
+            ];
+            container.innerHTML = items.map(i => `
+                <div class="more-item" onclick="${i.fn}">
+                    <div class="more-icon">${i.icon}</div>
+                    <div class="more-label">${i.label}</div>
+                </div>
+            `).join('');
+        }
+
+        function openCatalogModal() {
+            openPicker('category');
+        }
+
+        function resetFilters() {
+            currentCategoryFilter = null;
+            currentServerFilter = null;
+            document.getElementById('currentServerFilterText').innerText = 'Все';
+            document.getElementById('currentCategoryFilterText').innerText = 'Все';
+            renderFeed();
+            showToast('Фильтры сброшены', 'info');
+        }
+
+        function showTutorial() {
+            if (localStorage.getItem(getUserKey('tutorial_completed')) === '1') return;
+            document.getElementById('tutorialOverlay').style.display = 'flex';
+            let sec = 60;
+            const btn = document.getElementById('tutorialNextBtn');
+            const timer = document.getElementById('tutorialTimer');
+            tutorialTimerInterval = setInterval(() => {
+                sec--;
+                if (timer) timer.innerText = sec;
+                if (sec <= 0) {
+                    clearInterval(tutorialTimerInterval);
+                    if (btn) { btn.disabled = false; btn.innerText = 'Продолжить'; }
+                }
+            }, 1000);
+        }
+
+        function nextTutorialSlide() {
+            const slides = document.querySelectorAll('#tutorialOverlay .tutorial-slide');
+            let activeIdx = Array.from(slides).findIndex(s => s.classList.contains('active'));
+            slides[activeIdx].classList.remove('active');
+            if (activeIdx + 1 < slides.length) {
+                slides[activeIdx + 1].classList.add('active');
             }
         }
+
+        function completeTutorial() {
+            document.getElementById('tutorialOverlay').style.display = 'none';
+            localStorage.setItem(getUserKey('tutorial_completed'), '1');
+        }
+
+        function showAdminTutorial() {
+            document.getElementById('adminTutorialOverlay').style.display = 'flex';
+        }
+        function nextAdminTutorialSlide() {
+            const slides = document.querySelectorAll('#adminTutorialOverlay .tutorial-slide');
+            slides[0].classList.remove('active');
+            slides[1].classList.add('active');
+            let sec = 60;
+            const btn = document.getElementById('adminTutorialCloseBtn');
+            adminTutorialTimerInterval = setInterval(() => {
+                sec--;
+                if (btn) btn.innerText = `Закрыть (${sec} сек)`;
+                if (sec <= 0) {
+                    clearInterval(adminTutorialTimerInterval);
+                    if (btn) { btn.disabled = false; btn.innerText = 'Закрыть'; btn.onclick = () => { document.getElementById('adminTutorialOverlay').style.display = 'none'; localStorage.setItem(getUserKey('admin_tutorial_completed'), '1'); }; }
+                }
+            }, 1000);
+        }
+
+        function toggleSfx() {
+            sfxEnabled = !sfxEnabled;
+            document.getElementById('toggleSfxBtn').innerText = sfxEnabled ? 'Включены' : 'Выключены';
+        }
+        function toggleMusic() {
+            const audio = document.getElementById('bgMusic');
+            if (musicPlaying) { audio.pause(); } else { audio.play(); }
+            musicPlaying = !musicPlaying;
+            document.getElementById('musicToggleBtn').innerText = musicPlaying ? '⏸ Пауза' : '▶ Играть';
+        }
+        function resetMusic() {
+            const audio = document.getElementById('bgMusic');
+            audio.src = 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3';
+            audio.play();
+            musicPlaying = true;
+        }
+        function loadCustomMusic(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const audio = document.getElementById('bgMusic');
+                audio.src = URL.createObjectURL(file);
+                audio.play();
+                musicPlaying = true;
+            }
+        }
+
+        function resetAllData() {
+            if (!confirm('Сбросить все сохраненные данные приложений?')) return;
+            localStorage.clear();
+            location.reload();
+        }
+
+        // Поддержка горячих клавиш клавиатуры (ПК)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+                closeAdDetail();
+            }
+        });
+
+        // Запуск приложения
+        function initApp() {
+            if (!checkUsername()) return;
+            applyThemeFromStorage();
+            if (isAdmin()) {
+                document.getElementById('adminTabBtn').style.display = 'flex';
+                document.getElementById('adminDesktopBtn').style.display = 'flex';
+            }
+            renderFeed();
+            renderCart();
+            renderMoreSection();
+            showTutorial();
+        }
+
+        if (document.readyState === 'complete') initApp();
+        else document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>

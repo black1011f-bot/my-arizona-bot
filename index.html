@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -247,7 +246,7 @@
             display:none; flex-direction:column; justify-content:center; align-items:center;
             color:#fff;
         }
-        .tutorial-slide { display:none; text-align:center; padding:20px; }
+        .tutorial-slide { display:none; text-align:center; padding:20px; max-width:90%; }
         .tutorial-slide.active { display:block; }
 
         /* ==================== ПРОЧЕЕ ==================== */
@@ -369,12 +368,32 @@
         </div>
     </div>
 
+    <!-- РАСШИРЕННЫЙ ТУТОРИАЛ ДЛЯ АДМИНОВ -->
     <div id="adminTutorialOverlay" class="tutorial-overlay" style="display:none;">
         <div class="tutorial-slide active">
-            <h3>Админ-панель</h3>
-            <p>Здесь вы можете одобрять, отклонять, редактировать объявления, управлять пользователями и просматривать апелляции.</p>
-            <p>Прочитайте внимательно. Через 60 секунд кнопка станет активной.</p>
-            <button class="btn" id="adminTutorialCloseBtn" disabled>Закрыть (60 сек)</button>
+            <h3>🔧 Админ-панель: обзор</h3>
+            <p>Здесь вы управляете объявлениями. Вы можете просматривать, одобрять, отклонять и редактировать заявки.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>✅ Одобрение и отклонение</h3>
+            <p>Кнопка «Одобрить» публикует объявление в ленте. Кнопка «Отклонить» помечает его как удалённое у продавца.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>✏️ Редактирование</h3>
+            <p>Кнопка «✏️» открывает окно, где вы можете изменить название, цену, описание, скриншоты и сервер перед одобрением.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>⚖️ Управление пользователями</h3>
+            <p>Владелец (@bounqy) может банить, разбанивать, назначать и снимать админов. Забаненные пользователи не могут войти в приложение.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>📨 Апелляции</h3>
+            <p>Продавцы могут подавать апелляции на отклонённые объявления. Вы можете их одобрить или отклонить. Также доступна очистка всей ленты.</p>
+            <button class="btn btn-sm btn-outline" id="adminTutorialCloseBtn" disabled>Закрыть (60 сек)</button>
         </div>
     </div>
 
@@ -610,6 +629,7 @@
     let appealsList = JSON.parse(localStorage.getItem('arizona_appeals') || '[]');
     let bannedUsers = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
     let adminTutorialCompleted = localStorage.getItem(getUserKey('admin_tutorial_completed')) === '1';
+    let adminTutorialSlide = 0;
 
     function getUserKey(key) { return `arizona_${currentUserId}_${key}`; }
     function escapeHtml(t) { return t ? t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
@@ -929,13 +949,11 @@
         const msk = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
         const hour = msk.getHours();
 
-        // Проверка времени для ВСЕХ
         if (hour < 9 || hour >= 22) {
             alert('Объявления принимаются с 09:00 до 22:00 МСК');
             return;
         }
 
-        // Проверка кулдауна для ВСЕХ
         const last = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
         if (Date.now() - last < 120000) {
             alert('Подождите 2 минуты');
@@ -1414,6 +1432,8 @@
     function showAdminTutorial() {
         const overlay = document.getElementById('adminTutorialOverlay');
         overlay.style.display = 'flex';
+        adminTutorialSlide = 0;
+        updateAdminTutorial();
         const btn = document.getElementById('adminTutorialCloseBtn');
         btn.disabled = true;
         let secondsLeft = 60;
@@ -1427,6 +1447,18 @@
                 btn.innerText = 'Закрыть';
             }
         }, 1000);
+    }
+    function nextAdminTutorialSlide() {
+        const slides = document.querySelectorAll('#adminTutorialOverlay .tutorial-slide');
+        if (adminTutorialSlide < slides.length - 1) {
+            adminTutorialSlide++;
+            updateAdminTutorial();
+        }
+    }
+    function updateAdminTutorial() {
+        document.querySelectorAll('#adminTutorialOverlay .tutorial-slide').forEach((slide, index) => {
+            slide.classList.toggle('active', index === adminTutorialSlide);
+        });
     }
     function closeAdminTutorial() {
         document.getElementById('adminTutorialOverlay').style.display = 'none';

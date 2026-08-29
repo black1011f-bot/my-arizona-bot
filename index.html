@@ -640,6 +640,14 @@
             'Товар не нарушает правила',
             'Ошибка модерации',
             'Продавец не виноват',
+            'Цена указана верно',
+            'Фото соответствует товару',
+            'Описание полное',
+            'Нарушения нет',
+            'Модератор ошибся',
+            'Товар был удалён по ошибке',
+            'Аккаунт не продаётся',
+            'Виртуальный предмет не запрещён',
             'Другое'
         ];
 
@@ -890,7 +898,15 @@
                 ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" onerror="this.style.display='none'">`
                 : `<div class="ad-image-placeholder"></div>`;
             const clickAttr = disableClick ? '' : `onclick="openAdDetail(${ad.id})"`;
-            const statusBadge = ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : ad.status === 'deleted' ? '<span class="badge badge-danger">Удалено</span>' : '';
+            let statusBadge = '';
+            if (isCart) {
+                const stillExists = globalAdsFeed.some(a => a.id === ad.id && a.status === 'approved');
+                statusBadge = stillExists
+                    ? '<span class="badge badge-success">🟢 Висит</span>'
+                    : '<span class="badge badge-danger">🔴 Удалена</span>';
+            } else {
+                statusBadge = ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : ad.status === 'deleted' ? '<span class="badge badge-danger">Удалено</span>' : '';
+            }
             return `
                 <div class="ad-card ${disableClick ? 'no-click' : ''}" ${clickAttr}>
                     <div class="ad-image-wrap">${imageHtml}</div>
@@ -907,12 +923,13 @@
                         ${showActions ? `
                         <div class="ad-actions" onclick="event.stopPropagation();">
                             <button class="btn btn-sm btn-outline" onclick="toggleCart(${ad.id})">${isFav ? '🗑' : '🛒'}</button>
+                            <button class="btn btn-sm" onclick="openReviewModal(${ad.id})">⭐</button>
                             <button class="btn btn-sm" onclick="openChatWithUser('${ad.author}')">💬</button>
                             ${admin ? `<button class="btn btn-sm btn-danger" onclick="deleteApprovedAd(${ad.id})">🗑</button>` : ''}
                         </div>` : ''}
                         ${isCart ? `
                         <div class="ad-actions" onclick="event.stopPropagation();">
-                            <button class="btn btn-sm btn-danger" onclick="removeFromCart(${ad.id})">Удалить</button>
+                            <button class="btn btn-sm btn-danger" onclick="removeFromCart(${ad.id})">Удалить из корзины</button>
                         </div>` : ''}
                     </div>
                 </div>
@@ -929,7 +946,7 @@
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Объявлений пока нет</div>';
                 return;
             }
-            container.innerHTML = approved.map(ad => createAdCard(ad, {showAuthor:false})).join('');
+            container.innerHTML = approved.map(ad => createAdCard(ad)).join('');
         }
 
         function renderCart() {
@@ -939,7 +956,7 @@
                 container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Корзина пуста</div>';
                 return;
             }
-            container.innerHTML = favoritesList.map(ad => createAdCard(ad, { showActions:false, disableClick:true, isCart:true })).join('');
+            container.innerHTML = favoritesList.map(ad => createAdCard(ad, { showActions:false, isCart:true })).join('');
         }
 
         function toggleCart(id) {
@@ -1678,10 +1695,19 @@
                 let ad = pendingAdsList.splice(idx, 1)[0];
                 ad.status = 'approved';
                 globalAdsFeed.unshift(ad);
+
+                // Обновляем статус в myAdsList
+                const myAd = myAdsList.find(a => a.id === id);
+                if (myAd) {
+                    myAd.status = 'approved';
+                    localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                }
+
                 localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
                 localStorage.setItem('arizona_ads_feed', JSON.stringify(globalAdsFeed));
                 renderPendingAds();
                 renderFeed();
+                renderMyAds(); // Обновляем "Мои объявления"
                 playSfx('success');
             }
         }
@@ -1690,8 +1716,17 @@
             let idx = pendingAdsList.findIndex(a => a.id === id);
             if (idx > -1) {
                 pendingAdsList.splice(idx, 1);
+
+                // Обновляем статус в myAdsList
+                const myAd = myAdsList.find(a => a.id === id);
+                if (myAd) {
+                    myAd.status = 'deleted';
+                    localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
+                }
+
                 localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
                 renderPendingAds();
+                renderMyAds(); // Обновляем "Мои объявления"
                 playSfx('success');
             }
         }
@@ -1748,9 +1783,10 @@
             ad.text = text;
             ad.image = image;
             ad.server = server;
-            approvePendingAd(id);
+            approvePendingAd(id); // Это одобрит и добавит в ленту
             document.querySelectorAll('#editAdModal').forEach(el => el.remove());
             renderFeed();
+            renderMyAds();
         }
         function clearGlobalFeedAdmin() {
             if (!confirm('Очистить всю ленту?')) return;
@@ -1820,4 +1856,4 @@
         };
     </script>
 </body>
-                                                                                                                         </html>
+    </html>

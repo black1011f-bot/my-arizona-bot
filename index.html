@@ -660,10 +660,9 @@
         let currentAppealAdId = null;
         let tutorialTimerInterval = null;
         let adminTutorialTimerInterval = null;
-        let lastSfxTime = 0; // для throttle звука
+        let lastSfxTime = 0;
         let wakeLock = null;
 
-        // ИЗМЕНЕНО: список админов инициализируем как ['admin', 'arizona_admin', OWNER_USERNAME]
         let ADMIN_USERNAMES = JSON.parse(localStorage.getItem('arizona_admin_list') 
                               || JSON.stringify(['admin', 'arizona_admin', OWNER_USERNAME]));
 
@@ -673,7 +672,6 @@
         let pendingAdsList = JSON.parse(localStorage.getItem('arizona_pending_ads') || '[]');
         let fashionLooks = JSON.parse(localStorage.getItem('arizona_fashion_looks') || '[]');
         let travelAds = JSON.parse(localStorage.getItem('arizona_travel_ads') || '[]');
-        // Гарантируем наличие scrapCost
         let barygaData = JSON.parse(localStorage.getItem(getUserKey('baryga_game')) || '{"money":0,"clickPower":1,"clickCost":50,"autoIncome":0,"autoCost":200,"proCost":800,"shopCost":3000,"eliteCost":10000,"oilCost":35000,"cryptoCost":150000,"scrapCost":500}');
         if (!barygaData.scrapCost || barygaData.scrapCost <= 0) barygaData.scrapCost = 500;
         localStorage.setItem(getUserKey('baryga_game'), JSON.stringify(barygaData));
@@ -707,7 +705,6 @@
         }
         function playSfx(type) {
             if (!sfxEnabled) return;
-            // throttle: не чаще, чем раз в 50 мс
             const now = Date.now();
             if (now - lastSfxTime < 50) return;
             lastSfxTime = now;
@@ -741,7 +738,6 @@
         }
 
         function openUsernameHelp() {
-            // Скрываем экран без username, чтобы не перекрывал модалку
             document.getElementById('noUsernameScreen').style.display = 'none';
             document.getElementById('usernameHelpModal').style.display = 'flex';
         }
@@ -761,7 +757,6 @@
             closeModal('themeModal');
         }
 
-        // Переключение вкладок БЕЗ загрузки
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -774,9 +769,7 @@
             if (tabId === 'app') rebuildCreateAdForm();
             if (tabId === 'admin') {
                 renderPendingAds();
-                if (isAdmin() && !adminTutorialCompleted) {
-                    showAdminTutorial();
-                }
+                if (isAdmin() && !adminTutorialCompleted) showAdminTutorial();
             }
             if (tabId === 'more') renderMoreSection();
             if (tabId === 'myAds') renderMyAds();
@@ -789,23 +782,15 @@
 
         function checkUserPermissions() {
             let isOwner = (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase());
-            let isAdmin = isOwner || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase())
-                           .includes(currentUserUsername.replace('@', '').toLowerCase());
+            let isAdmin = isOwner || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(currentUserUsername.replace('@', '').toLowerCase());
             let adminTabBtn = document.getElementById('adminTabBtn');
             let ownerSection = document.getElementById('ownerSection');
             if (adminTabBtn) adminTabBtn.style.display = isAdmin ? 'flex' : 'none';
             if (ownerSection) ownerSection.style.display = isOwner ? 'block' : 'none';
         }
 
-        // Запрос на удержание экрана включенным
         async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-            } catch (err) {
-                console.log('Wake Lock error:', err);
-            }
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
 
         function init() {
@@ -883,24 +868,17 @@
         }
         function nextAdminTutorialSlide() {
             const slides = document.querySelectorAll('#adminTutorialOverlay .tutorial-slide');
-            if (adminTutorialSlide < slides.length - 1) {
-                adminTutorialSlide++;
-                updateAdminTutorial();
-            }
+            if (adminTutorialSlide < slides.length - 1) { adminTutorialSlide++; updateAdminTutorial(); }
         }
         function updateAdminTutorial() {
-            document.querySelectorAll('#adminTutorialOverlay .tutorial-slide').forEach((slide, index) => {
-                slide.classList.toggle('active', index === adminTutorialSlide);
-            });
+            document.querySelectorAll('#adminTutorialOverlay .tutorial-slide').forEach((slide, index) => { slide.classList.toggle('active', index === adminTutorialSlide); });
         }
         function closeAdminTutorial() {
             document.getElementById('adminTutorialOverlay').style.display = 'none';
             adminTutorialCompleted = true;
             localStorage.setItem(getUserKey('admin_tutorial_completed'), '1');
         }
-        document.getElementById('adminTutorialCloseBtn')?.addEventListener('click', function() {
-            if (!this.disabled) closeAdminTutorial();
-        });
+        document.getElementById('adminTutorialCloseBtn')?.addEventListener('click', function() { if (!this.disabled) closeAdminTutorial(); });
 
         // ==================== РЕНДЕР КАРТОЧЕК ====================
         function createAdCard(ad, options = {}) {
@@ -912,12 +890,7 @@
                 ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" onerror="this.style.display='none'">`
                 : `<div class="ad-image-placeholder"></div>`;
             const clickAttr = disableClick ? '' : `onclick="openAdDetail(${ad.id})"`;
-            const statusBadge = ad.status === 'pending'
-                ? '<span class="badge badge-warning">На модерации</span>'
-                : ad.status === 'deleted'
-                    ? '<span class="badge badge-danger">Удалено</span>'
-                    : '';
-
+            const statusBadge = ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : ad.status === 'deleted' ? '<span class="badge badge-danger">Удалено</span>' : '';
             return `
                 <div class="ad-card ${disableClick ? 'no-click' : ''}" ${clickAttr}>
                     <div class="ad-image-wrap">${imageHtml}</div>
@@ -1094,15 +1067,12 @@
                 let val = this.value.replace(/[^\d.]/g, '');
                 val = val.replace(/\.{2,}/g, '.');
                 const parts = val.split('.');
-                if (parts.length > 6) {
-                    val = parts.slice(0, 6).join('.');
-                }
+                if (parts.length > 6) val = parts.slice(0, 6).join('.');
                 this.value = val;
             });
         }
 
-        // ИЗМЕНЕННАЯ ФУНКЦИЯ submitData: с проверкой времени и кулдауна        function submitData() {
-            // Проверка времени (09:00–22:00 МСК)
+        function submitData() {
             let now = new Date();
             let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
             let mskHour = mskTime.getHours();
@@ -1111,7 +1081,6 @@
                 return;
             }
 
-            // Проверка кулдауна (2 минуты)
             let lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
             let currentTime = Date.now();
             if (currentTime - lastAdTime < 120000) {
@@ -1120,7 +1089,6 @@
                 return;
             }
 
-            // Сбор данных из формы
             let mode = document.getElementById('mode').value;
             let category = document.getElementById('category').value;
             let itemName = document.getElementById('itemName').value.trim();
@@ -1134,7 +1102,6 @@
                 return;
             }
 
-            // Создаём объект объявления со статусом "pending"
             let newAd = {
                 id: Date.now(),
                 mode, category, itemName, price, text, image, server,
@@ -1142,14 +1109,12 @@
                 status: 'pending'
             };
 
-            // Добавляем в глобальный список ожидающих и в личный список пользователя
             pendingAdsList.push(newAd);
             myAdsList.push(newAd);
             localStorage.setItem('arizona_pending_ads', JSON.stringify(pendingAdsList));
             localStorage.setItem(getUserKey('my_ads'), JSON.stringify(myAdsList));
             localStorage.setItem(getUserKey('last_ad_time'), currentTime.toString());
 
-            // (Опционально) отметка для владельца
             if (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase()) {
                 localStorage.setItem(getUserKey('owner_has_posted_ad'), 'true');
             }
@@ -1161,7 +1126,6 @@
             renderPendingAds();
             renderMyAds();
             
-            // Очистка полей
             document.getElementById('itemName').value = '';
             document.getElementById('price').value = '';
             document.getElementById('text').value = '';
@@ -1239,7 +1203,6 @@
             setTimeout(() => img.src = 'https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg', 1000);
         }
 
-        // Все покупки увеличивают стоимость в 2 раза
         function makeBarygaPurchase(costKey, valueKey, increment) {
             const cost = barygaData[costKey] || 0;
             if (barygaData.money >= cost) {
@@ -1656,7 +1619,6 @@
                 </div>
             `).join('');
 
-            // Панель владельца
             if (document.getElementById('ownerSection') && currentUserUsername.replace('@','').toLowerCase() === OWNER_USERNAME.toLowerCase()) {
                 document.getElementById('ownerSection').style.display = 'block';
                 document.getElementById('ownerSection').innerHTML = `
@@ -1832,7 +1794,6 @@
             }
         }
 
-        // Экспорт функций, если потребуется
         window.App = {
             renderFeed,
             createAdCard,
@@ -1859,4 +1820,4 @@
         };
     </script>
 </body>
-    </html>
+                                                                                                                         </html>

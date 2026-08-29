@@ -334,6 +334,12 @@
         <div style="margin-top:16px; color:var(--muted);">Загрузка...</div>
     </div>
 
+    <!-- Оверлей для загрузки при переключении разделов -->
+    <div id="tabLoadingOverlay" class="loading-screen" style="display:none; z-index:2000;">
+        <div class="spinner"></div>
+        <div style="margin-top:16px; color:var(--muted);">Загрузка...</div>
+    </div>
+
     <div id="noUsernameScreen" class="no-username-screen" style="display:none;">
         <div style="font-size:60px;">👤</div>
         <h2>Требуется Telegram Username</h2>
@@ -610,7 +616,7 @@
             <button class="btn btn-outline" onclick="window.open('https://t.me/Bounty_Squad31')">📢 Канал</button>
         </div>
     </div>
-    <script>
+        <script>
     // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
     const OWNER_USERNAME = 'bounqy';
     const ALL_SERVERS = [
@@ -722,24 +728,30 @@
     }
 
     function switchTab(tabId) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-        const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-        if (target) target.classList.add('active');
-        const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
-        if (activeTab) activeTab.classList.add('active');
-        if (tabId === 'feed') renderFeed();
-        if (tabId === 'cart') renderCart();
-        if (tabId === 'app') rebuildCreateAdForm();
-        if (tabId === 'admin') {
-            renderPendingAds();
-            if (isAdmin() && !adminTutorialCompleted) {
-                showAdminTutorial();
+        // Показать оверлей загрузки
+        document.getElementById('tabLoadingOverlay').style.display = 'flex';
+        setTimeout(() => {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            const target = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (target) target.classList.add('active');
+            const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
+            if (activeTab) activeTab.classList.add('active');
+            if (tabId === 'feed') renderFeed();
+            if (tabId === 'cart') renderCart();
+            if (tabId === 'app') rebuildCreateAdForm();
+            if (tabId === 'admin') {
+                renderPendingAds();
+                if (isAdmin() && !adminTutorialCompleted) {
+                    showAdminTutorial();
+                }
             }
-        }
-        if (tabId === 'more') renderMoreSection();
-        if (tabId === 'myAds') renderMyAds();
-        playSfx('click');
+            if (tabId === 'more') renderMoreSection();
+            if (tabId === 'myAds') renderMyAds();
+            playSfx('click');
+            // Скрыть оверлей загрузки после рендера
+            document.getElementById('tabLoadingOverlay').style.display = 'none';
+        }, 2000); // задержка 2 секунды
     }
 
     function showHeaderLinks() { openModal('headerLinksModal'); }

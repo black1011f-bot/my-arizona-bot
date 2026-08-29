@@ -283,7 +283,14 @@
             display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:bold;
             color: var(--accent);
         }
-        /* Кастомное окно подтверждения */
+        /* Кастомные окна */
+        #alertModal .modal-content {
+            text-align: center;
+        }
+        #alertModal .btn {
+            margin: 10px auto;
+            max-width: 200px;
+        }
         #confirmModal .modal-content {
             text-align: center;
             padding: 24px;
@@ -340,6 +347,15 @@
                 <button id="confirmYesBtn" class="btn btn-danger" style="flex:1;">Да</button>
                 <button id="confirmNoBtn" class="btn btn-outline" style="flex:1;" onclick="closeModal('confirmModal')">Отмена</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Кастомное окно уведомления -->
+    <div id="alertModal" class="modal-overlay" style="z-index: 4000;" onclick="if(event.target===this) closeModal('alertModal')">
+        <div class="modal-content" style="text-align:center;">
+            <h3 id="alertTitle">Сообщение</h3>
+            <p id="alertText"></p>
+            <button class="btn btn-primary" style="max-width:200px;" onclick="closeModal('alertModal')">OK</button>
         </div>
     </div>
 
@@ -777,7 +793,12 @@
             } catch(e) {}
         }
 
-        // Функция кастомного подтверждения
+        // Кастомные уведомления
+        function showCustomAlert(message, title = 'Сообщение') {
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertText').innerText = message;
+            document.getElementById('alertModal').style.display = 'flex';
+        }
         function customConfirm(title, text, callback) {
             document.getElementById('confirmTitle').innerText = title;
             document.getElementById('confirmText').innerText = text;
@@ -821,11 +842,6 @@
             document.body.classList.toggle('dark', !isDark);
             localStorage.setItem(getUserKey('theme'), isDark ? 'light' : 'dark');
         }
-        function setTheme(theme) {
-            document.body.classList.toggle('dark', theme === 'dark');
-            localStorage.setItem(getUserKey('theme'), theme);
-            closeModal('themeModal');
-        }
 
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -863,21 +879,6 @@
             try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
 
-        function init() {
-            if (!checkUsername()) return;
-            applyThemeFromStorage();
-            checkUserPermissions();
-            requestWakeLock();
-            // Очистка корзины от устаревших записей
-            cleanFavorites();
-            renderFeed();
-            renderCart();
-            renderMoreSection();
-            updateBarygaUI();
-            showTutorial();
-            if (isAdmin()) document.getElementById('adminTabBtn').style.display = 'flex';
-        }
-
         function cleanFavorites() {
             const validIds = new Set();
             globalAdsFeed.forEach(ad => validIds.add(ad.id));
@@ -887,6 +888,19 @@
             localStorage.setItem(getUserKey('favorites'), JSON.stringify(favoritesList));
         }
 
+        function init() {
+            if (!checkUsername()) return;
+            applyThemeFromStorage();
+            checkUserPermissions();
+            requestWakeLock();
+            cleanFavorites();
+            renderFeed();
+            renderCart();
+            renderMoreSection();
+            updateBarygaUI();
+            showTutorial();
+            if (isAdmin()) document.getElementById('adminTabBtn').style.display = 'flex';
+        }
         if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
 
         // ==================== ТУТОРИАЛ (ОБЫЧНЫЙ) ====================
@@ -906,7 +920,6 @@
             btn.disabled = true;
             timerSpan.innerText = sec;
             if (tutorialTimerInterval) clearInterval(tutorialTimerInterval);
-            // Ускоренный таймер: интервал 200 мс
             tutorialTimerInterval = setInterval(() => {
                 sec--;
                 timerSpan.innerText = sec;
@@ -965,6 +978,8 @@
 
         // ==================== ФУНКЦИЯ ПРОВЕРКИ ССЫЛОК ====================
         function isAllowedLink(url) {
+            // Разрешаем data:image для загруженных с устройства
+            if (url.startsWith('data:image/')) return true;
             const lower = url.toLowerCase().trim();
             if (!lower.startsWith('http://') && !lower.startsWith('https://')) return false;
             try {
@@ -1177,6 +1192,8 @@
         // ==================== ФОРМА ПОДАЧИ ОБЪЯВЛЕНИЯ ====================
         function rebuildCreateAdForm() {
             const section = document.getElementById('tabApp');
+            // Определяем мобильное устройство (ширина <= 768 или наличие touch)
+            const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
             section.innerHTML = `
                 <h2 class="section-title">Подать объявление</h2>
                 <div class="form-group"><label>Тип</label>
@@ -1190,7 +1207,17 @@
                 <div class="form-group"><label>Название</label><input id="itemName" placeholder="Название"></div>
                 <div class="form-group"><label>Цена</label><input id="price" placeholder="5000 или 5к"></div>
                 <div class="form-group"><label>Описание</label><textarea id="text" rows="3"></textarea></div>
-                <div class="form-group"><label>Скриншот URL (необязательно)</label><input id="itemImage" placeholder="Только разрешённые сайты"></div>
+                <div class="form-group">
+                    <label>Скриншот${isMobile ? ' (загрузите файл или вставьте ссылку)' : ' URL'}</label>
+                    <input id="itemImage" placeholder="Только разрешённые сайты">
+                    ${isMobile ? `
+                        <div id="mobileImageUpload" style="margin-top:8px;">
+                            <input type="file" id="mobileFileInput" accept="image/*" multiple style="display:none;" onchange="handleMobileImageUpload(event)">
+                            <button class="btn btn-sm btn-outline" onclick="document.getElementById('mobileFileInput').click()">📷 Загрузить с устройства</button>
+                            <div id="mobileImagePreview" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:8px;"></div>
+                        </div>
+                    ` : ''}
+                </div>
                 <div class="form-group"><label>Сервер</label>
                     <div class="custom-select-trigger" onclick="openPicker('server')"><span id="selectedServerText">${currentUserServer || ALL_SERVERS[0]}</span> ▼</div>
                     <input type="hidden" id="server" value="${currentUserServer || ALL_SERVERS[0]}">
@@ -1205,25 +1232,58 @@
                     this.value = formatPriceInput(this.value);
                 });
             }
+            // Показываем/скрываем загрузку для мобильных
+            const imageInput = document.getElementById('itemImage');
+            if (isMobile && imageInput) {
+                // Скрываем текстовое поле, оставляем только загрузку файла? 
+                // Оставим оба, но добавим возможность загрузки
+            }
         }
+
+        // Обработчик загрузки изображений на мобильных
+        window.handleMobileImageUpload = function(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            const imageInput = document.getElementById('itemImage');
+            const previewContainer = document.getElementById('mobileImagePreview');
+            let currentImages = imageInput.value ? imageInput.value.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
+            for (let file of files) {
+                // Читаем файл как DataURL
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    if (!currentImages.includes(dataUrl)) {
+                        currentImages.push(dataUrl);
+                        imageInput.value = currentImages.join(',');
+                        // Отображаем превью
+                        const img = document.createElement('img');
+                        img.src = dataUrl;
+                        img.style.width = '60px';
+                        img.style.height = '60px';
+                        img.style.objectFit = 'cover';
+                        img.style.borderRadius = '6px';
+                        previewContainer.appendChild(img);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        };
 
         function submitData() {
             let now = new Date();
             let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
             let mskHour = mskTime.getHours();
-            // Ночное ограничение только для не-админов
             if (!isAdmin() && (mskHour < 9 || mskHour >= 22)) {
-                alert('🕒 Создание объявлений доступно только с 09:00:00 до 22:00:00 по МСК!');
+                showCustomAlert('🕒 Создание объявлений доступно только с 09:00:00 до 22:00:00 по МСК!', 'Ошибка');
                 return;
             }
 
-            // Проверка кулдауна только для не-админов
             if (!isAdmin()) {
                 let lastAdTime = parseInt(localStorage.getItem(getUserKey('last_ad_time')) || '0');
                 let currentTime = Date.now();
                 if (currentTime - lastAdTime < 120000) {
                     let leftSec = Math.ceil((120000 - (currentTime - lastAdTime)) / 1000);
-                    alert(`⏳ Подождите еще ${leftSec} сек. перед созданием нового объявления (КД 2 минуты).`);
+                    showCustomAlert(`⏳ Подождите еще ${leftSec} сек. перед созданием нового объявления (КД 2 минуты).`, 'Ошибка');
                     return;
                 }
             }
@@ -1237,15 +1297,14 @@
             let server = document.getElementById('server').value;
 
             if (!itemName || !price || !text) {
-                alert('⚠️ Заполните все обязательные поля объявления!');
+                showCustomAlert('⚠️ Заполните все обязательные поля объявления!', 'Ошибка');
                 return;
             }
 
-            // Проверка ссылок
             if (image) {
                 const check = checkLinksString(image);
                 if (!check.valid) {
-                    alert(check.message);
+                    showCustomAlert(check.message, 'Ошибка');
                     return;
                 }
             }
@@ -1265,7 +1324,7 @@
                 localStorage.setItem(getUserKey('last_ad_time'), Date.now().toString());
             }
 
-            alert('🚀 Ваше объявление отправлено на модерацию администрации!');
+            showCustomAlert('🚀 Ваше объявление отправлено на модерацию администрации!', 'Успех');
             playSfx('success');
             switchTab('feed');
             renderFeed();
@@ -1276,6 +1335,9 @@
             document.getElementById('price').value = '';
             document.getElementById('text').value = '';
             document.getElementById('itemImage').value = '';
+            // Очищаем превью
+            const preview = document.getElementById('mobileImagePreview');
+            if (preview) preview.innerHTML = '';
         }
 
         // ==================== PICKER ====================
@@ -1360,7 +1422,7 @@
                 updateBarygaUI();
                 playSfx('success');
             } else {
-                alert('Недостаточно средств');
+                showCustomAlert('Недостаточно средств', 'Ошибка');
             }
         }
 
@@ -1381,7 +1443,7 @@
                 updateBarygaUI();
                 playSfx('success');
             } else {
-                alert('Недостаточно средств');
+                showCustomAlert('Недостаточно средств', 'Ошибка');
             }
         }
 
@@ -1422,13 +1484,13 @@
         function submitReview() {
             const text = document.getElementById('reviewText').value.trim();
             const mediaLinks = document.getElementById('reviewMediaLink').value.trim();
-            if (!text) { alert('Напишите текст отзыва'); return; }
-            if (!mediaLinks) { alert('Добавьте хотя бы одну ссылку на фото или видео'); return; }
+            if (!text) { showCustomAlert('Напишите текст отзыва', 'Ошибка'); return; }
+            if (!mediaLinks) { showCustomAlert('Добавьте хотя бы одну ссылку на фото или видео', 'Ошибка'); return; }
             const links = mediaLinks.split(',').map(s => s.trim()).filter(s => s.length > 0);
-            if (links.length > 20) { alert('Максимум 20 ссылок'); return; }
+            if (links.length > 20) { showCustomAlert('Максимум 20 ссылок', 'Ошибка'); return; }
             const check = checkLinksString(mediaLinks);
             if (!check.valid) {
-                alert(check.message);
+                showCustomAlert(check.message, 'Ошибка');
                 return;
             }
             const adId = activeReviewAdId;
@@ -1691,7 +1753,7 @@
             openModal('profileModal');
         }
         function openChatWithInspected() { if (activeInspectedUser) window.open('https://t.me/' + activeInspectedUser.replace('@',''), '_blank'); }
-        function inspectSubscribe() { alert('Подписка оформлена'); closeModal('profileModal'); }
+        function inspectSubscribe() { showCustomAlert('Подписка оформлена', 'Успех'); closeModal('profileModal'); }
         function inspectUserProfile(username) { inspectProfile(username); }
 
         // ==================== МУЗЫКА И ЗВУК ====================
@@ -1711,7 +1773,7 @@
         function postFashion() {
             const title = document.getElementById('fashionSetTitle').value.trim();
             const image = document.getElementById('fashionSetImage').value.trim();
-            if(!title||!image){alert('Заполните поля');return;}
+            if(!title||!image){ showCustomAlert('Заполните поля', 'Ошибка'); return; }
             fashionLooks.unshift({author:currentUserUsername,title,image,time:new Date().toLocaleDateString()});
             localStorage.setItem('arizona_fashion_looks',JSON.stringify(fashionLooks));
             renderFashionLooks();
@@ -1729,7 +1791,7 @@
         function postTravel() {
             const activity = document.getElementById('travelActivity').value.trim();
             const desc = document.getElementById('travelDesc').value.trim();
-            if(!activity){alert('Укажите активность');return;}
+            if(!activity){ showCustomAlert('Укажите активность', 'Ошибка'); return; }
             travelAds.unshift({author:currentUserUsername,activity,desc,time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
             localStorage.setItem('arizona_travel_ads',JSON.stringify(travelAds));
             renderTravelAds();
@@ -1761,20 +1823,20 @@
         function submitAppeal() {
             const reason = document.getElementById('appealReason').value;
             const evidence = document.getElementById('appealEvidence').value.trim();
-            if (!reason) { alert('Выберите причину апелляции'); return; }
-            if (!evidence) { alert('Добавьте хотя бы одну ссылку'); return; }
-            if (!currentAppealAdId) { alert('Ошибка'); return; }
+            if (!reason) { showCustomAlert('Выберите причину апелляции', 'Ошибка'); return; }
+            if (!evidence) { showCustomAlert('Добавьте хотя бы одну ссылку', 'Ошибка'); return; }
+            if (!currentAppealAdId) { showCustomAlert('Ошибка', 'Ошибка'); return; }
             const check = checkLinksString(evidence);
             if (!check.valid) {
-                alert(check.message);
+                showCustomAlert(check.message, 'Ошибка');
                 return;
             }
             const links = evidence.split(',').map(s => s.trim()).filter(s => s.length > 0);
-            if (links.length > 20) { alert('Максимум 20 ссылок'); return; }
+            if (links.length > 20) { showCustomAlert('Максимум 20 ссылок', 'Ошибка'); return; }
             appealsList.push({ adId: currentAppealAdId, author: currentUserUsername, reason, links, date: new Date().toISOString(), status: 'pending' });
             localStorage.setItem('arizona_appeals', JSON.stringify(appealsList));
             closeModal('appealModal');
-            alert('Апелляция отправлена');
+            showCustomAlert('Апелляция отправлена', 'Успех');
         }
 
         // ==================== АДМИНКА ====================
@@ -1965,7 +2027,7 @@
             imageInput.addEventListener('blur', function() {
                 const check = checkLinksString(this.value);
                 if (!check.valid) {
-                    alert(check.message);
+                    showCustomAlert(check.message, 'Ошибка');
                 }
             });
         }
@@ -1979,11 +2041,11 @@
             const text = document.getElementById('editText')?.value.trim();
             const image = document.getElementById('editImage')?.value.trim();
             const server = document.getElementById('editServer')?.value;
-            if (!itemName || !price || !text) { alert('Заполните обязательные поля'); return; }
+            if (!itemName || !price || !text) { showCustomAlert('Заполните обязательные поля', 'Ошибка'); return; }
             if (image) {
                 const check = checkLinksString(image);
                 if (!check.valid) {
-                    alert(check.message);
+                    showCustomAlert(check.message, 'Ошибка');
                     return;
                 }
             }
@@ -2008,37 +2070,37 @@
 
         function sendTargetAction(action) {
             const target = document.getElementById('targetUser')?.value.trim().replace('@','').toLowerCase();
-            if (!target) { alert('Укажите игрока'); return; }
+            if (!target) { showCustomAlert('Укажите игрока', 'Ошибка'); return; }
             let banned = JSON.parse(localStorage.getItem('arizona_banned_users') || '[]');
             let admins = JSON.parse(localStorage.getItem('arizona_admin_list') || '[]');
             if (action === 'ban') {
                 if (!banned.includes(target)) {
                     banned.push(target);
                     localStorage.setItem('arizona_banned_users', JSON.stringify(banned));
-                    alert(`Пользователь @${target} забанен`);
-                } else alert('Уже забанен');
+                    showCustomAlert(`Пользователь @${target} забанен`, 'Успех');
+                } else showCustomAlert('Уже забанен', 'Ошибка');
             } else if (action === 'unban') {
                 const idx = banned.indexOf(target);
                 if (idx > -1) {
                     banned.splice(idx, 1);
                     localStorage.setItem('arizona_banned_users', JSON.stringify(banned));
-                    alert(`Пользователь @${target} разбанен`);
-                } else alert('Не был забанен');
+                    showCustomAlert(`Пользователь @${target} разбанен`, 'Успех');
+                } else showCustomAlert('Не был забанен', 'Ошибка');
             } else if (action === 'make_admin') {
                 if (!admins.includes(target)) {
                     admins.push(target);
                     localStorage.setItem('arizona_admin_list', JSON.stringify(admins));
                     ADMIN_USERNAMES = admins;
-                    alert(`@${target} теперь администратор`);
-                } else alert('Уже админ');
+                    showCustomAlert(`@${target} теперь администратор`, 'Успех');
+                } else showCustomAlert('Уже админ', 'Ошибка');
             } else if (action === 'remove_admin') {
                 const idx = admins.indexOf(target);
                 if (idx > -1) {
                     admins.splice(idx, 1);
                     localStorage.setItem('arizona_admin_list', JSON.stringify(admins));
                     ADMIN_USERNAMES = admins;
-                    alert(`@${target} больше не администратор`);
-                } else alert('Не был админом');
+                    showCustomAlert(`@${target} больше не администратор`, 'Успех');
+                } else showCustomAlert('Не был админом', 'Ошибка');
             }
         }
 
@@ -2072,4 +2134,4 @@
         };
     </script>
 </body>
-    </html>
+</html>

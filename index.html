@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arizona RP Market</title>
+    <title>Arizona RP</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* ==================== ОСНОВНЫЕ СТИЛИ И АДАПТИВНОСТЬ ==================== */
+        /* ==================== ОСНОВНЫЕ СТИЛИ ==================== */
         :root {
             --app-bg: #FFFFFF;
             --card-bg: #FFFFFF;
@@ -52,27 +52,21 @@
             background: var(--app-bg);
             color: var(--text);
             min-height: 100vh;
-            padding-bottom: 80px;
+            padding-bottom: 70px;
             transition: background 0.3s, color 0.3s;
             font-weight: 500;
             overflow-x: hidden;
         }
         img { max-width:100%; display:block; }
         button { cursor:pointer; border:none; background:none; color:inherit; font-family:inherit; font-size:14px; }
-        
-        /* Адаптивные контейнеры для телефонов, планшетов, ноутбуков и ПК (Android, iOS, Windows, macOS) */
-        .container { max-width: 480px; margin: 0 auto; padding: 0 8px; width: 100%; }
-        @media (min-width: 481px) and (max-width: 768px) {
-            .container { max-width: 720px; padding: 0 12px; }
-            #feedContainer, #cartContainer, #pendingAdsContainer, #myAdsContainer { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .container { max-width:480px; margin:0 auto; padding:0; }
+        @media (min-width:768px) {
+            .container { max-width:720px; }
+            .ads-container:not(.grid-view) { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
         }
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .container { max-width: 960px; padding: 0 16px; }
-            #feedContainer, #cartContainer, #pendingAdsContainer, #myAdsContainer { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        }
-        @media (min-width: 1025px) {
-            .container { max-width: 1200px; padding: 0 20px; }
-            #feedContainer, #cartContainer, #pendingAdsContainer, #myAdsContainer { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        @media (min-width:1024px) {
+            .container { max-width:1000px; }
+            .ads-container:not(.grid-view) { grid-template-columns:repeat(3,1fr); }
         }
 
         .app-header {
@@ -82,8 +76,9 @@
             padding:10px 12px;
             position: sticky; top:0; z-index:100;
         }
+        .header-left { display:flex; align-items:center; gap:8px; }
         .header-logo { display:flex; align-items:center; gap:8px; cursor:pointer; }
-        .header-logo img { width:32px; height:32px; border-radius:8px; object-fit: cover; }
+        .header-logo img { width:32px; height:32px; border-radius:8px; }
         .header-logo span { font-weight:800; font-size:18px; }
         .header-search {
             flex:1; margin:0 10px; display:flex; align-items:center;
@@ -97,6 +92,7 @@
             background: var(--app-bg); border:1px solid var(--border);
             display:flex; align-items:center; justify-content:center;
             font-size:18px; color:var(--text); cursor:pointer;
+            margin: 2px;
         }
 
         .nav-tabs {
@@ -104,15 +100,11 @@
             display:flex; justify-content:space-around;
             background: var(--tab-bar-bg);
             border-top:1px solid var(--tab-bar-border);
-            padding:8px 0 12px; z-index:1000;
-            max-width: 600px; margin: 0 auto;
-        }
-        @media (min-width: 769px) {
-            .nav-tabs { left: 50%; transform: translateX(-50%); border-radius: 16px 16px 0 0; border: 1px solid var(--tab-bar-border); }
+            padding:6px 0 8px; z-index:1000;
         }
         .nav-tab {
             flex:1; display:flex; flex-direction:column; align-items:center;
-            gap:3px; font-size:11px; font-weight:600; color:var(--muted);
+            gap:3px; font-size:10px; font-weight:600; color:var(--muted);
             text-transform:uppercase; cursor:pointer; position:relative;
         }
         .nav-tab .tab-icon { font-size:22px; }
@@ -120,14 +112,14 @@
 
         .ad-card {
             display:flex; background:var(--card-bg); border-radius:var(--radius);
-            box-shadow:var(--shadow); margin-bottom:10px; overflow:hidden;
-            cursor:pointer; transition:transform 0.15s; width: 100%;
+            box-shadow:var(--shadow); margin-bottom:8px; overflow:hidden;
+            cursor:pointer; transition:transform 0.15s; will-change: transform;
         }
         .ad-card:active { transform:scale(0.98); }
         .ad-card.no-click { cursor:default; }
-        .ad-card.deleted { opacity: 0.7; filter: grayscale(50%); }
+        .ad-card.deleted { background: #2a2a2a; opacity: 0.7; }
         .ad-card .ad-image-wrap {
-            width:90px; min-width:90px; height:90px;
+            width:80px; min-width:80px; height:80px;
             position:relative; background:var(--app-bg);
         }
         .ad-card .ad-image-wrap img,
@@ -139,6 +131,7 @@
         }
         .ad-title { font-weight:700; font-size:13px; margin-bottom:2px; }
         .ad-price { color:var(--accent); font-weight:800; font-size:14px; margin-bottom:2px; }
+        .ad-text { color:var(--muted); font-size:11px; }
         .ad-badges { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px; }
         .badge {
             font-size:9px; padding:2px 6px; border-radius:12px;
@@ -147,7 +140,7 @@
         .badge-warning { background:#FFF3E0; color:#FF9800; }
         .badge-danger { background:#FFEBEE; color:var(--danger); }
         .badge-success { background:#E8F5E9; color:var(--success); }
-        .ad-actions { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+        .ad-actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
         .ad-actions .btn { flex:1; min-width:60px; padding:6px 8px; font-size:10px; }
 
         .btn {
@@ -156,6 +149,7 @@
             background:var(--btn-bg); color:var(--btn-text); font-weight:700;
             border:none; cursor:pointer; width:100%; font-size:14px;
             box-shadow:0 2px 8px rgba(0,91,255,0.2);
+            margin: 2px; will-change: transform;
         }
         .btn:active { transform:scale(0.98); }
         .btn-sm { padding:8px 12px; font-size:12px; border-radius:8px; box-shadow:none; }
@@ -163,12 +157,12 @@
         .btn-danger { background:var(--danger); box-shadow:0 2px 8px rgba(255,59,48,0.2); }
         .btn-success { background:var(--success); box-shadow:0 2px 8px rgba(52,199,89,0.2); }
 
-        .section { display:none; padding:10px 0 20px; }
+        .section { display:none; padding:0 12px 16px; }
         .section.active { display:block; animation:fadeIn 0.25s; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
         .section-title { font-weight:800; font-size:18px; margin:16px 0 10px; }
 
-        .form-group { margin-bottom:14px; }
+        .form-group { margin-bottom:16px; }
         .form-group label {
             display:block; font-size:12px; font-weight:700; color:var(--muted);
             margin-bottom:6px; text-transform:uppercase;
@@ -183,9 +177,9 @@
             padding:12px 14px; border:1px solid var(--border); border-radius:10px;
             background:var(--app-bg); cursor:pointer;
         }
-        .picker-list { display:flex; flex-direction:column; gap:6px; max-height: 60vh; overflow-y: auto; }
+        .picker-list { display:flex; flex-direction:column; gap:4px; }
         .picker-item {
-            padding:12px 14px; border-radius:10px; background:var(--app-bg); cursor:pointer; border: 1px solid var(--border);
+            padding:12px 14px; border-radius:10px; background:var(--app-bg); cursor:pointer;
         }
         .picker-item:hover { background:var(--accent-light); color:var(--accent); }
 
@@ -194,52 +188,64 @@
             display:none; align-items:center; justify-content:center;
             padding:16px; z-index:1100; backdrop-filter:blur(4px);
         }
-        .modal-content {
-            background:var(--card-bg); color:var(--text); border-radius:16px;
-            padding:20px; max-width:480px; width:100%; max-height:85vh;
-            overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,0.15);
+        .modal-overlay > .modal-content {
             animation: modalIn 0.3s ease;
         }
         @keyframes modalIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: none; }
         }
+        #pickerModal {
+            z-index: 3000 !important;
+        }
+        .modal-content {
+            background:var(--card-bg); color:var(--text); border-radius:16px;
+            padding:20px; max-width:420px; width:100%; max-height:85vh;
+            overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,0.15);
+        }
         .modal-close {
             width:32px; height:32px; border-radius:50%;
             background:var(--app-bg); border:none; float:right; font-size:16px;
-            cursor:pointer; display:flex; align-items:center; justify-content:center;
+            margin: 4px;
         }
 
         .review-item {
             background:var(--card-bg); border-radius:10px; padding:10px;
-            margin-bottom:8px; border: 1px solid var(--border);
+            margin-bottom:8px; box-shadow:0 1px 4px rgba(0,0,0,0.05);
         }
         .review-author { font-weight:700; font-size:13px; }
         .review-stars { color:var(--gold); font-size:14px; }
         .review-text { font-size:13px; margin-top:4px; }
         .review-date { font-size:11px; color:var(--muted); margin-top:4px; }
-        .rating-bar { display:flex; align-items:center; gap:8px; margin:4px 0; font-size: 12px; }
-        .bar-bg { flex:1; height:8px; background:var(--border); border-radius:4px; overflow: hidden; }
+        .rating-bar { display:flex; align-items:center; gap:8px; margin:4px 0; }
+        .bar-bg { flex:1; height:8px; background:var(--border); border-radius:4px; }
         .bar-fill { height:100%; background:var(--gold); border-radius:4px; }
 
         .tutorial-overlay {
-            position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:3000;
+            position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:3000;
             display:none; flex-direction:column; justify-content:center; align-items:center;
-            color:#fff; padding: 20px; text-align: center;
+            color:#fff;
         }
-        .tutorial-slide { display:none; max-width: 420px; width: 100%; }
+        .tutorial-slide { display:none; text-align:center; padding:20px; max-width:90%; }
         .tutorial-slide.active { display:block; }
-        .tutorial-slide p { margin: 10px 0; font-size: 14px; line-height: 1.5; color: #ddd; }
 
         .more-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:16px; }
-        @media (min-width: 769px) { .more-grid { grid-template-columns:repeat(3,1fr); } }
         .more-item {
             background:var(--card-bg); border-radius:12px; padding:16px;
-            text-align:center; box-shadow:var(--shadow); cursor:pointer; border: 1px solid var(--border);
+            text-align:center; box-shadow:var(--shadow); cursor:pointer;
         }
         .more-icon { font-size:28px; margin-bottom:8px; }
         .more-label { font-weight:700; font-size:12px; }
-
+        .profile-header { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+        .profile-avatar {
+            width:60px; height:60px; border-radius:50%; background:var(--accent-light);
+            display:flex; align-items:center; justify-content:center; font-size:28px;
+        }
+        .settings-list { display:flex; flex-direction:column; gap:8px; }
+        .settings-item {
+            display:flex; align-items:center; gap:12px; padding:14px;
+            background:var(--card-bg); border-radius:12px; box-shadow:var(--shadow); cursor:pointer;
+        }
         .ad-image-placeholder {
             position:absolute; top:0; left:0; width:100%; height:100%;
             background-image:url('https://i.postimg.cc/P5yYLQH7/0465dd7cc4f5446e5e908000ec4379bb.jpg');
@@ -250,84 +256,212 @@
             display:flex; flex-direction:column; align-items:center; justify-content:center;
             text-align:center; padding:20px;
         }
+        .owner-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .owner-actions .btn {
+            flex: 0 0 auto;
+            width: auto;
+            padding: 6px 10px;
+            font-size: 11px;
+            margin: 0;
+        }
+        #alertModal .modal-content {
+            text-align: center;
+        }
+        #alertModal .btn {
+            margin: 10px auto;
+            max-width: 200px;
+        }
+        #confirmModal .modal-content {
+            text-align: center;
+            padding: 24px;
+        }
+        #confirmModal .btn {
+            margin: 5px;
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 0 8px; }
+            .btn { padding: 10px 14px; font-size: 13px; }
+            .btn-sm { padding: 6px 10px; font-size: 11px; }
+            .nav-tab .tab-icon { font-size: 20px; }
+            .nav-tab { font-size: 9px; }
+            .ad-card .ad-image-wrap { width: 60px; min-width: 60px; height: 60px; }
+            .ad-title { font-size: 12px; }
+            .ad-price { font-size: 13px; }
+            .section-title { font-size: 16px; }
+        }
+        @media (min-width: 481px) and (max-width: 768px) {
+            .container { max-width: 100%; padding: 0 16px; }
+            .btn { font-size: 15px; }
+            .nav-tab { font-size: 11px; }
+            .ad-card .ad-image-wrap { width: 80px; min-width: 80px; height: 80px; }
+            .section-title { font-size: 20px; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container { max-width: 900px; }
+            .nav-tab { font-size: 12px; }
+            .ad-card .ad-image-wrap { width: 100px; min-width: 100px; height: 100px; }
+            .btn { font-size: 16px; }
+            .section-title { font-size: 22px; }
+        }
+        @media (min-width: 1025px) {
+            .container { max-width: 1200px; }
+            .nav-tab { font-size: 13px; }
+            .ad-card .ad-image-wrap { width: 120px; min-width: 120px; height: 120px; }
+            .btn { font-size: 16px; }
+            .section-title { font-size: 24px; }
+        }
     </style>
 </head>
 <body>
-    <!-- Модальные окна уведомлений и подтверждений -->
+    <!-- Кастомное окно подтверждения -->
     <div id="confirmModal" class="modal-overlay" style="z-index: 4000;" onclick="if(event.target===this) closeModal('confirmModal')">
         <div class="modal-content" style="text-align:center;">
             <h3 id="confirmTitle">Подтверждение</h3>
-            <p id="confirmText" style="margin: 12px 0;">Вы уверены?</p>
+            <p id="confirmText">Вы уверены?</p>
             <div style="display:flex; gap:10px; justify-content:center; margin-top:20px;">
                 <button id="confirmYesBtn" class="btn btn-danger" style="flex:1;">Да</button>
-                <button class="btn btn-outline" style="flex:1;" onclick="closeModal('confirmModal')">Отмена</button>
+                <button id="confirmNoBtn" class="btn btn-outline" style="flex:1;" onclick="closeModal('confirmModal')">Отмена</button>
             </div>
         </div>
     </div>
 
+    <!-- Кастомное окно уведомления -->
     <div id="alertModal" class="modal-overlay" style="z-index: 4000;" onclick="if(event.target===this) closeModal('alertModal')">
         <div class="modal-content" style="text-align:center;">
             <h3 id="alertTitle">Сообщение</h3>
-            <p id="alertText" style="margin: 12px 0;"></p>
-            <button class="btn" style="max-width:200px; margin: 10px auto 0;" onclick="closeModal('alertModal')">OK</button>
+            <p id="alertText"></p>
+            <button class="btn btn-primary" style="max-width:200px;" onclick="closeModal('alertModal')">OK</button>
         </div>
     </div>
 
-    <!-- Экран без Username -->
+    <audio id="bgMusic" src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3" autoplay loop preload="auto"></audio>
+
+    <!-- ЭКРАН ДЛЯ ПОЛЬЗОВАТЕЛЕЙ БЕЗ USERNAME -->
     <div id="noUsernameScreen" class="no-username-screen" style="display:none;">
-        <div style="font-size:60px; margin-bottom: 10px;">👤</div>
+        <div style="font-size:60px;">👤</div>
         <h2>Требуется Telegram Username</h2>
-        <p style="margin: 10px 0; color: var(--muted);">Для использования приложения установите имя пользователя в настройках Telegram.</p>
-        <button class="btn" style="max-width: 250px; margin-top: 15px;" onclick="openModal('usernameHelpModal')">Как установить?</button>
+        <p>Для использования приложения установите имя пользователя в настройках Telegram.</p>
+        <button class="btn" onclick="openUsernameHelp()">Исправить</button>
     </div>
 
-    <!-- Модальное окно помощи по Username -->
+    <!-- МОДАЛЬНОЕ ОКНО С ИНСТРУКЦИЕЙ ПО УСТАНОВКЕ USERNAME -->
     <div id="usernameHelpModal" class="modal-overlay" style="z-index:10001;" onclick="if(event.target===this) closeModal('usernameHelpModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('usernameHelpModal')">✕</button>
-            <h3>Как установить Username</h3>
-            <ol style="text-align:left; margin:16px; line-height:1.6; font-size: 14px;">
+            <h3>Как установить Username в Telegram</h3>
+            <ol style="text-align:left; margin:16px; line-height:1.6;">
                 <li>Откройте Telegram.</li>
                 <li>Перейдите в <b>Настройки</b> (⚙️).</li>
-                <li>Нажмите на свой профиль.</li>
-                <li>Выберите <b>Имя пользователя</b>.</li>
-                <li>Введите желаемый username и сохраните.</li>
+                <li>Нажмите на свой профиль в верхней части.</li>
+                <li>Выберите пункт <b>Имя пользователя</b>.</li>
+                <li>Введите желаемый username (латинские буквы, цифры и нижнее подчёркивание).</li>
+                <li>Нажмите <b>Готово</b> или <b>Сохранить</b>.</li>
+                <li>Вернитесь в приложение и обновите страницу.</li>
             </ol>
             <button class="btn" onclick="closeModal('usernameHelpModal')">Понятно</button>
         </div>
     </div>
 
-    <!-- Экран бана -->
     <div id="bannedScreen" class="banned-screen" style="display:none;">
         <div style="font-size:60px;">🚫</div>
         <h2>Вы заблокированы</h2>
-        <p style="margin: 10px 0; color: var(--muted);">Вы не можете использовать приложение. Свяжитесь с менеджером.</p>
-        <button class="btn" style="max-width: 250px;" onclick="window.open('https://t.me/bounqy31')">Написать менеджеру</button>
+        <p>Вы не можете использовать приложение. Свяжитесь с менеджером.</p>
+        <button class="btn" onclick="window.open('https://t.me/bounqy31')">Написать менеджеру</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-outline" onclick="window.open('https://vk.com/bountyarz')">Написать в ВК</button>
     </div>
 
-    <!-- Туториал -->
+    <!-- ОБЫЧНЫЙ ТУТОРИАЛ -->
     <div id="tutorialOverlay" class="tutorial-overlay">
         <div class="tutorial-slide active">
-            <h3 style="margin-bottom:10px;">⚠️ Внимание!</h3>
-            <p>Мы не несём ответственности за возможный скам. Будьте осторожны при совершении сделок, проверяйте продавцов и используйте гарантов.</p>
-            <p>Продолжение будет доступно через <span id="tutorialTimer">10</span> сек.</p>
-            <button class="btn" id="tutorialNextBtn" disabled style="margin-top:15px;" onclick="nextTutorialSlide()">Продолжить</button>
+            <h3>⚠️ Внимание!</h3>
+            <p>Мы не несём ответственности за возможный скам и не редактируем информацию о продаже/покупке аккаунтов или виртуальных предметов.</p>
+            <p>Пожалуйста, будьте осторожны при совершении сделок. Проверяйте продавца, используйте гарантов и не переводите деньги заранее.</p>
+            <p>Администрация приложения не является стороной сделок и не может гарантировать их безопасность. Все риски вы принимаете на себя.</p>
+            <p>Запрещена продажа/покупка аккаунтов, виртуальных предметов и любых других цифровых активов, нарушающих правила Telegram.</p>
+            <p>Продолжая использование, вы соглашаетесь с этими условиями.</p>
+            <p>Продолжение будет доступно через <span id="tutorialTimer">60</span> сек.</p>
+            <button class="btn" id="tutorialNextBtn" disabled onclick="nextTutorialSlide()">Продолжить</button>
         </div>
         <div class="tutorial-slide">
-            <h3>🏠 Добро пожаловать!</h3>
-            <p>Это маркетплейс Arizona RP. Здесь вы можете покупать и продавать виртуальное имущество и предметы.</p>
-            <button class="btn" style="margin-top:15px;" onclick="completeTutorial()">Начать</button>
+            <h3>Добро пожаловать!</h3>
+            <p>Это приложение для размещения объявлений. Нажмите «Далее», чтобы узнать об основных разделах.</p>
+            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>🏠 Главная</h3>
+            <p>Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности, отзывы и написать продавцу.</p>
+            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>🛒 Корзина</h3>
+            <p>Сохраняйте понравившиеся объявления, нажимая на значок корзины. Они будут храниться здесь.</p>
+            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>➕ Отправка</h3>
+            <p>Создавайте свои объявления: выберите тип, категорию, укажите название, цену, описание и сервер. После отправки оно попадёт на модерацию.</p>
+            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>☰ Все разделы</h3>
+            <p>Здесь находятся дополнительные возможности: «Мои объявления», «Каталог», игра «Барыга», «Лента луков», «Попутчики», музыка, настройки и связь с менеджером.</p>
+            <button class="btn" onclick="nextTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>🔍 Поиск</h3>
+            <p>Используйте строку поиска вверху, чтобы быстро находить товары или профили игроков.</p>
+            <button class="btn" onclick="completeTutorial()">Понятно</button>
         </div>
     </div>
 
-    <!-- Основной контейнер приложения -->
+    <!-- РАСШИРЕННЫЙ ТУТОРИАЛ ДЛЯ АДМИНОВ -->
+    <div id="adminTutorialOverlay" class="tutorial-overlay" style="display:none;">
+        <div class="tutorial-slide active">
+            <h3>🔧 Админ-панель: обзор</h3>
+            <p>Здесь вы управляете объявлениями. Вы можете просматривать, одобрять, отклонять и редактировать заявки.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>✅ Одобрение и отклонение</h3>
+            <p>Кнопка «Одобрить» публикует объявление в ленте. Кнопка «Отклонить» помечает его как удалённое у продавца.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>✏️ Редактирование</h3>
+            <p>Кнопка «✏️» открывает окно, где вы можете изменить название, цену, описание, скриншоты и сервер перед одобрением.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>⚖️ Управление пользователями</h3>
+            <p>Владелец (@bounqy) может банить, разбанивать, назначать и снимать админов. Забаненные пользователи не могут войти в приложение.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>📨 Апелляции</h3>
+            <p>Продавцы могут подавать апелляции на отклонённые объявления. Вы можете их одобрить или отклонить. Также доступна очистка всей ленты.</p>
+            <button class="btn btn-sm btn-outline" onclick="nextAdminTutorialSlide()">Далее</button>
+        </div>
+        <div class="tutorial-slide">
+            <h3>🛡️ Дополнительно</h3>
+            <p>Вы можете редактировать любое объявление перед публикацией, а также полностью очистить ленту. Все изменения сохраняются автоматически.</p>
+            <button class="btn btn-sm btn-outline" id="adminTutorialCloseBtn" disabled>Закрыть (60 сек)</button>
+        </div>
+    </div>
+
     <div class="container" id="appContainer" style="display:none;">
         <header class="app-header">
-            <div class="header-logo" onclick="openModal('headerLinksModal')">
-                <img src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Logo">
+            <div class="header-logo" onclick="showHeaderLinks()">
+                <img src="https://i.postimg.cc/63ZPKJ0V/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP">
                 <span>Arizona RP</span>
             </div>
-            <div class="header-search" onclick="openSearchModal()"><span>🔍 Поиск товаров...</span></div>
+            <div class="header-search" onclick="openSearchModal()"><span>🔍 Поиск товаров</span></div>
             <div class="header-actions">
                 <button class="icon-btn" onclick="toggleTheme()">🌓</button>
             </div>
@@ -338,18 +472,14 @@
             <button class="nav-tab" data-tab="cart" onclick="switchTab('cart')"><span class="tab-icon">🛒</span>Корзина</button>
             <button class="nav-tab" data-tab="app" onclick="switchTab('app')"><span class="tab-icon">➕</span>Отправка</button>
             <button class="nav-tab" id="adminTabBtn" style="display:none;" data-tab="admin" onclick="switchTab('admin')"><span class="tab-icon">🛡️</span>Админ</button>
-            <button class="nav-tab" data-tab="more" onclick="switchTab('more')"><span class="tab-icon">☰</span>Разделы</button>
+            <button class="nav-tab" data-tab="more" onclick="switchTab('more')"><span class="tab-icon">☰</span>Все разделы</button>
         </nav>
 
         <main>
             <section id="tabFeed" class="section active"><div id="feedContainer"></div></section>
             <section id="tabCart" class="section"><h2 class="section-title">Корзина</h2><div id="cartContainer"></div></section>
             <section id="tabApp" class="section"></section>
-            <section id="tabAdmin" class="section">
-                <h2 class="section-title">Админ-панель (Модерация)</h2>
-                <div id="pendingAdsContainer"></div>
-                <div id="ownerSection" style="display:none; margin-top: 20px;"></div>
-            </section>
+            <section id="tabAdmin" class="section"><h2 class="section-title">Админ-панель</h2><div id="pendingAdsContainer"></div><div id="ownerSection" style="display:none;"></div></section>
             <section id="tabMore" class="section"><h2 class="section-title">Все разделы</h2><div id="moreContainer" class="more-grid"></div></section>
             <section id="tabMyAds" class="section"><h2 class="section-title">Мои объявления</h2><div id="myAdsContainer"></div></section>
         </main>
@@ -360,66 +490,170 @@
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('searchModal')">✕</button>
             <h3>🔍 Поиск</h3>
-            <input type="text" id="modalSearchInput" placeholder="Название предмета..." oninput="executeSearch(this.value)" style="margin-top: 10px;">
+            <input type="text" id="modalSearchInput" placeholder="Название или @player" oninput="updateSearchSuggestions(this.value)">
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button class="btn" onclick="executeSearch('item')">📦 Предмет</button>
+                <button class="btn btn-outline" onclick="executeSearch('profile')">👤 Профиль</button>
+            </div>
+            <div id="searchHistoryContainer"></div>
+            <div id="searchSuggestionsContainer" style="margin-top:12px;"></div>
             <div id="searchResultsContainer" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <div id="profileModal" class="modal-overlay" onclick="if(event.target===this) closeModal('profileModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+            <h3>👤 Профиль</h3>
+            <img id="inspectAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23ccc'/%3E%3C/svg%3E" style="width:80px;height:80px;border-radius:50%;margin:0 auto;">
+            <h4 id="inspectUsername" style="text-align:center;"></h4>
+            <div style="display:flex;gap:8px;margin-top:16px;">
+                <button class="btn" onclick="inspectSubscribe()">❤️ Подписаться</button>
+                <button class="btn btn-outline" onclick="openChatWithInspected()">💬 Написать</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reviewModal" class="modal-overlay" style="z-index: 3500;" onclick="if(event.target===this) closeModal('reviewModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('reviewModal')">✕</button>
+            <h3>⭐ Оставить отзыв</h3>
+            <div class="form-group">
+                <label>Оценка</label>
+                <div id="starPicker" style="font-size:28px;">
+                    <span onclick="setReviewStar(1)">★</span>
+                    <span onclick="setReviewStar(2)">★</span>
+                    <span onclick="setReviewStar(3)">★</span>
+                    <span onclick="setReviewStar(4)">★</span>
+                    <span onclick="setReviewStar(5)">★</span>
+                </div>
+                <input type="hidden" id="reviewStars" value="5">
+            </div>
+            <div class="form-group"><label>Ссылки на видео/фото (до 20, через запятую)</label><textarea id="reviewMediaLink" rows="2" placeholder="https://..."></textarea></div>
+            <div class="form-group"><label>Текст отзыва</label><textarea id="reviewText" rows="3" placeholder="Ваши впечатления"></textarea></div>
+            <button class="btn" onclick="submitReview()">Отправить отзыв</button>
         </div>
     </div>
 
     <div id="pickerModal" class="modal-overlay" onclick="if(event.target===this) closeModal('pickerModal')">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('pickerModal')">✕</button>
-            <h3 id="pickerTitle" style="margin-bottom: 12px;">Выберите</h3>
-            <div id="pickerList" class="picker-list"></div>
+            <h3 id="pickerTitle">Выберите</h3>
+            <div id="pickerList"></div>
         </div>
     </div>
 
-    <div id="barygaModal" class="modal-overlay" onclick="if(event.target===this) closeModal('barygaModal')">
+    <div id="barygaModal" class="modal-overlay">
         <div class="modal-content" style="text-align:center;">
             <button class="modal-close" onclick="closeModal('barygaModal')">✕</button>
             <h3>🎮 Игра «Барыга»</h3>
-            <div style="font-size:22px;font-weight:800;color:var(--accent); margin: 15px 0;">💰 <span id="clickerMoney">0</span> $</div>
-            <img id="barygaTapImg" src="https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg" style="width:130px;height:130px;border-radius:20px;margin:0 auto;cursor:pointer;object-fit:cover;" onclick="barygaClick()">
-            <div style="margin: 15px 0;">📈 Доход: <b id="autoIncomeLabel">0 $ / сек</b></div>
-            <div style="font-weight:700;font-size:15px;margin:15px 0 8px;text-align:left;">⚡ Улучшения:</div>
-            <div id="barygaUpgrades" style="text-align:left; display: flex; flex-direction: column; gap: 8px;"></div>
+            <div style="font-size:20px;font-weight:800;color:var(--accent);">💰 <span id="clickerMoney">0</span></div>
+            <img id="barygaTapImg" src="https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg" style="width:140px;height:140px;border-radius:20px;margin:10px auto;" onclick="barygaClick()">
+            <div>📈 Пассивный доход: <b id="autoIncomeLabel">0 $ / сек</b></div>
+            <div style="font-weight:700;font-size:16px;margin:16px 0 8px;">⚡ Улучшения:</div>
+            <div id="barygaUpgrades" style="text-align:left;"></div>
         </div>
     </div>
 
-    <div id="reviewModal" class="modal-overlay" onclick="if(event.target===this) closeModal('reviewModal')">
+    <div id="musicModal" class="modal-overlay" onclick="if(event.target===this) closeModal('musicModal')">
         <div class="modal-content">
-            <button class="modal-close" onclick="closeModal('reviewModal')">✕</button>
-            <h3>⭐ Оставить отзыв</h3>
-            <div class="form-group" style="margin-top: 10px;">
-                <label>Оценка</label>
-                <div id="starPicker" style="font-size:30px; cursor:pointer; color: var(--gold);">
-                    <span onclick="setReviewStar(1)">★</span><span onclick="setReviewStar(2)">★</span><span onclick="setReviewStar(3)">★</span><span onclick="setReviewStar(4)">★</span><span onclick="setReviewStar(5)">★</span>
-                </div>
-                <input type="hidden" id="reviewStars" value="5">
+            <button class="modal-close" onclick="closeModal('musicModal')">✕</button>
+            <h3>🎵 Музыка</h3>
+            <input type="file" id="customAudioFile" accept="audio/*" onchange="loadCustomMusic(event)">
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button class="btn" onclick="toggleMusic()" id="musicToggleBtn">⏸ Пауза</button>
+                <button class="btn btn-outline" onclick="resetMusic()">🔄 Сбросить</button>
             </div>
-            <div class="form-group"><label>Ссылки на медиа (через запятую)</label><textarea id="reviewMediaLink" rows="2" placeholder="https://..."></textarea></div>
-            <div class="form-group"><label>Текст отзыва</label><textarea id="reviewText" rows="3" placeholder="Ваши впечатления..."></textarea></div>
-            <button class="btn" onclick="submitReview()">Отправить отзыв</button>
+        </div>
+    </div>
+
+    <div id="fashionModal" class="modal-overlay" onclick="if(event.target===this) closeModal('fashionModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('fashionModal')">✕</button>
+            <h3>📸 Лента «Луков»</h3>
+            <div class="form-group"><label>Название сета</label><input type="text" id="fashionSetTitle" placeholder="Название"></div>
+            <div class="form-group"><label>Ссылка на скриншот</label><input type="url" id="fashionSetImage" placeholder="https://..."></div>
+            <button class="btn" onclick="postFashion()">🚀 Выложить</button>
+            <div id="fashionContainer" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <div id="travelModal" class="modal-overlay" onclick="if(event.target===this) closeModal('travelModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('travelModal')">✕</button>
+            <h3>🤝 Попутчики</h3>
+            <div class="form-group"><label>Куда идёте?</label><input type="text" id="travelActivity" placeholder="Куда"></div>
+            <div class="form-group"><label>Условия</label><textarea id="travelDesc" rows="2" placeholder="Условия"></textarea></div>
+            <button class="btn" onclick="postTravel()">📢 Найти напарника</button>
+            <div id="travelContainer" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <div id="chatsModal" class="modal-overlay" onclick="if(event.target===this) closeModal('chatsModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('chatsModal')">✕</button>
+            <h3>💬 Переписки</h3>
+            <p style="text-align:center;color:var(--muted);">🚧 В разработке</p>
+            <button class="btn" onclick="window.open('https://t.me/search')">🔎 Перейти в Telegram</button>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay" onclick="if(event.target===this) closeModal('settingsModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
+            <h3>⚙️ Настройки</h3>
+            <div class="form-group"><label>🔊 Звук</label><button id="toggleSfxBtn" class="btn btn-outline btn-sm" onclick="toggleSfx()">Включены</button></div>
+            <button class="btn btn-danger btn-sm" onclick="resetAllData()">🗑 Сбросить все данные</button>
+        </div>
+    </div>
+
+    <div id="managerModal" class="modal-overlay" onclick="if(event.target===this) closeModal('managerModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('managerModal')">✕</button>
+            <h3>📩 Менеджер</h3>
+            <button class="btn" onclick="window.open('https://t.me/bounqy31')">Написать в Telegram</button>
+            <div style="height:8px;"></div>
+            <button class="btn btn-outline" onclick="window.open('https://vk.com/bountyarz')">Написать в ВК</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО АПЕЛЛЯЦИИ -->
+    <div id="appealModal" class="modal-overlay" onclick="if(event.target===this) closeModal('appealModal')">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('appealModal')">✕</button>
+            <h3>📨 Апелляция</h3>
+            <div class="form-group">
+                <label>Причина</label>
+                <div class="custom-select-trigger" onclick="openAppealReasonPicker()">
+                    <span id="appealReasonText">Выберите причину</span> ▼
+                </div>
+                <input type="hidden" id="appealReason" value="">
+            </div>
+            <div class="form-group">
+                <label>Доказательства (ссылки до 20, через запятую)</label>
+                <textarea id="appealEvidence" rows="3" placeholder="https://..."></textarea>
+            </div>
+            <button class="btn" onclick="submitAppeal()">Отправить</button>
         </div>
     </div>
 
     <div id="headerLinksModal" class="modal-overlay" onclick="if(event.target===this) closeModal('headerLinksModal')">
-        <div class="modal-content" style="text-align: center;">
+        <div class="modal-content">
             <button class="modal-close" onclick="closeModal('headerLinksModal')">✕</button>
-            <h3>🔗 Ссылки проекта</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-                <button class="btn" onclick="window.open('https://t.me/arizona_coin_bot')">🤖 Бот</button>
-                <button class="btn btn-outline" onclick="window.open('https://t.me/Bounty_Squad31')">📢 Канал</button>
-            </div>
+            <h3>🔗 Перейти</h3>
+            <button class="btn" onclick="window.open('https://t.me/arizona_coin_bot')">🤖 Бот</button>
+            <div style="height:8px;"></div>
+            <button class="btn btn-outline" onclick="window.open('https://t.me/Bounty_Squad31')">📢 Канал</button>
         </div>
     </div>
 
     <script>
-        // ==================== SUPABASE ИНИЦИАЛИЗАЦИЯ ====================
+        // ==================== НАСТРОЙКА SUPABASE ====================
         const supabaseUrl = 'https://sbtitlayqkpllnaiyeld.supabase.co';
         const supabaseAnonKey = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-        // ==================== КОНСТАНТЫ И ПЕРЕМЕННЫЕ ====================
+        // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
         const OWNER_USERNAME = 'bounqy';
         const ALL_SERVERS = [
             '🔥 Phoenix','🌴 Tucson','🌵 Scottdale','⚜️ Chandler','❄️ Brainburg','✨ Saint Rose','🏛 Mesa','❤️ Red-Rock','🌊 Yuma','🍀 Surprise',
@@ -427,28 +661,51 @@
             '⚡️ Queen Creek','🧸 Sedona','🎄 Holiday','📅 Wednesday','🚀 Yava','🔮 Faraway','🚀 Bumble Bee','🎄 Christmas','🌟 Mirage','❤️ Love',
             '💎 Drake','🚀 Space','🏠 Home','📱 Mobile 3','📱 Mobile 2','📱 Mobile 1'
         ];
-        const ALL_CATEGORIES = ['💍 Аксессуары и вещи','🚗 Транспорт','🏠 Недвижимость','💼 Бизнесы','🔫 Оружие и материалы','👕 Одежда','📱 Электроника'];
-        const ALLOWED_DOMAINS = ['youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com', 'i.postimg.cc'];
+        const ALL_CATEGORIES = [
+            '💍 Аксессуары и вещи','🚗 Транспорт','🏠 Недвижимость','💼 Бизнесы','🔫 Оружие и материалы','👕 Одежда','📱 Электроника'
+        ];
+        const APPEAL_REASONS = [
+            'Товар не нарушает правила', 'Ошибка модерации', 'Продавец не виноват', 'Цена указана верно',
+            'Фото соответствует товару', 'Описание полное', 'Нарушения нет', 'Модератор ошибся',
+            'Товар был удалён по ошибке', 'Аккаунт не продаётся'
+        ];
+        const ALLOWED_DOMAINS = ['youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com'];
 
         let tg = window.Telegram?.WebApp || null;
-        if (tg) { try { tg.expand?.(); tg.ready?.(); } catch(e){} }
+        if (tg) { tg.expand?.(); tg.ready?.(); }
         const tgUser = tg?.initDataUnsafe?.user || null;
-        
-        // Надежные фоллбеки для стабильной работы без белого экрана
-        const currentUserId = tgUser?.id?.toString() || 'web_user_' + Math.floor(Math.random() * 1000000);
-        const currentUserUsername = tgUser?.username ? '@' + tgUser.username : '@' + OWNER_USERNAME;
+        const currentUserId = tgUser?.id?.toString() || 'default_user';
+        const currentUserUsername = tgUser?.username ? '@' + tgUser.username : null;
         const currentUserNameDisplay = tgUser?.first_name || 'Игрок';
 
+        // Кэши данных
         let globalAdsFeed = [];
         let myAdsList = [];
         let favoritesList = [];
         let pendingAdsList = [];
+        let fashionLooks = [];
+        let travelAds = [];
         let barygaData = { money:0, clickPower:1, clickCost:50, autoIncome:0, autoCost:200, proCost:800, shopCost:3000, eliteCost:10000, oilCost:35000, cryptoCost:150000, scrapCost:500 };
-        let ADMIN_USERNAMES = [OWNER_USERNAME, 'admin'];
+        let appealsList = [];
+        let bannedUsers = [];
+        let ADMIN_USERNAMES = ['admin', 'arizona_admin', OWNER_USERNAME];
+        let adminTutorialCompleted = false;
+
+        // Дополнительные переменные
+        let sfxEnabled = true;
+        let musicPlaying = true;
         let currentCategoryFilter = null;
-        let currentUserServer = null;
+        let activeInspectedUser = '';
         let activeReviewAdId = null;
         let reviewStars = 5;
+        let currentUserServer = null;
+        let currentAppealAdId = null;
+        let tutorialTimerInterval = null;
+        let adminTutorialTimerInterval = null;
+        let lastSfxTime = 0;
+        let wakeLock = null;
+        let tutorialSlide = 0;
+        let adminTutorialSlide = 0;
 
         // Утилиты
         function escapeHtml(t) { return t ? t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : ''; }
@@ -467,10 +724,16 @@
             if (!priceStr) return 0;
             if (typeof priceStr === 'number') return priceStr;
             let str = priceStr.toLowerCase().replace(/\s/g, '');
-            let mult = 1;
-            if (str.endsWith('к')) { mult = 1000; str = str.slice(0, -1); }
+            let multiplier = 1;
+            const matches = str.match(/(к+)$/);
+            if (matches) {
+                const suffix = matches[0];
+                const count = suffix.length;
+                multiplier = Math.pow(10, 3 * count);
+                str = str.slice(0, -count);
+            }
             const num = parseFloat(str);
-            return isNaN(num) ? 0 : num * mult;
+            return isNaN(num) ? 0 : num * multiplier;
         }
         function formatPriceInput(raw) {
             if (!raw) return raw;
@@ -481,6 +744,24 @@
             if (isNaN(num) || num < 1000) return cleaned;
             return formatPrice(num);
         }
+        function playSfx(type) {
+            if (!sfxEnabled) return;
+            const now = Date.now();
+            if (now - lastSfxTime < 50) return;
+            lastSfxTime = now;
+            try {
+                if (!window.audioCtx) window.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+                const ctx = window.audioCtx;
+                const osc = ctx.createOscillator(), gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                const t = ctx.currentTime;
+                if (type === 'cash') { osc.type='triangle'; osc.frequency.setValueAtTime(800,t); osc.frequency.setValueAtTime(1200,t+0.08); gain.gain.setValueAtTime(0.2,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.35); osc.start(t); osc.stop(t+0.35); }
+                else if (type === 'success') { osc.type='sine'; osc.frequency.setValueAtTime(440,t); osc.frequency.setValueAtTime(880,t+0.15); gain.gain.setValueAtTime(0.15,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.3); osc.start(t); osc.stop(t+0.3); }
+                else { osc.type='square'; osc.frequency.setValueAtTime(300,t); gain.gain.setValueAtTime(0.08,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.05); osc.start(t); osc.stop(t+0.05); }
+            } catch(e) {}
+        }
+
+        // Кастомные уведомления
         function showCustomAlert(message, title = 'Сообщение') {
             document.getElementById('alertTitle').innerText = title;
             document.getElementById('alertText').innerText = message;
@@ -490,87 +771,153 @@
             document.getElementById('confirmTitle').innerText = title;
             document.getElementById('confirmText').innerText = text;
             document.getElementById('confirmModal').style.display = 'flex';
-            document.getElementById('confirmYesBtn').onclick = function() {
+            const yesBtn = document.getElementById('confirmYesBtn');
+            yesBtn.onclick = function() {
                 closeModal('confirmModal');
                 callback();
             };
         }
 
-        function playSfx(type) {
-            try {
-                if (!window.audioCtx) window.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-                const ctx = window.audioCtx;
-                const osc = ctx.createOscillator(), gain = ctx.createGain();
-                osc.connect(gain); gain.connect(ctx.destination);
-                const t = ctx.currentTime;
-                if (type === 'success') { osc.frequency.setValueAtTime(440,t); osc.frequency.setValueAtTime(880,t+0.1); gain.gain.setValueAtTime(0.1,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.2); }
-                else { osc.frequency.setValueAtTime(300,t); gain.gain.setValueAtTime(0.05,t); gain.gain.exponentialRampToValueAtTime(0.001,t+0.05); }
-                osc.start(t); osc.stop(t+0.2);
-            } catch(e) {}
-        }
-
-        // ==================== ИНИЦИАЛИЗАЦИЯ И СИНХРОНИЗАЦИЯ ====================
-        async function init() {
-            try {
-                document.getElementById('appContainer').style.display = 'block';
-                applyThemeFromStorage();
-                await loadInitialData();
-                showTutorial();
-            } catch (e) {
-                console.error("Initialization error:", e);
-                document.getElementById('appContainer').style.display = 'block';
-            }
+        // ==================== ФУНКЦИИ ДОСТУПА К SUPABASE (с таймаутами) ====================
+        async function withTimeout(promise, ms = 5000) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+            ]);
         }
 
         async function loadInitialData() {
             try {
-                // Проверка или создание пользователя
-                await supabase.from('users').upsert({
-                    id: currentUserId,
-                    username: currentUserUsername.replace('@',''),
-                    display_name: currentUserNameDisplay,
-                    banned: false
-                }, { onConflict: 'id' });
+                // Загружаем пользователя (или создаём)
+                const { data: user, error: userError } = await withTimeout(
+                    supabase.from('users').select('*').eq('id', currentUserId).single()
+                );
+                if (userError && userError.code === 'PGRST116') {
+                    await withTimeout(supabase.from('users').insert({
+                        id: currentUserId,
+                        username: currentUserUsername ? currentUserUsername.replace('@','') : null,
+                        display_name: currentUserNameDisplay,
+                        banned: false,
+                        is_admin: false
+                    }));
+                }
 
-                // Загружаем одобренные объявления (для ленты)
-                const { data: ads } = await supabase.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false });
+                // Загружаем бан-статус
+                const { data: userData } = await withTimeout(
+                    supabase.from('users').select('banned, is_admin').eq('id', currentUserId).single()
+                );
+                if (userData) {
+                    bannedUsers = userData.banned ? [userData.username] : [];
+                    if (userData.is_admin) ADMIN_USERNAMES.push(userData.username);
+                }
+
+                // Загружаем объявления (одобренные)
+                const { data: ads } = await withTimeout(
+                    supabase.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false })
+                );
                 if (ads) globalAdsFeed = ads;
 
                 // Загружаем мои объявления
-                const { data: myAds } = await supabase.from('ads').select('*').eq('author_id', currentUserId);
+                const { data: myAds } = await withTimeout(
+                    supabase.from('ads').select('*').eq('author_id', currentUserId)
+                );
                 if (myAds) myAdsList = myAds;
 
                 // Загружаем избранное
-                const { data: favs } = await supabase.from('favorites').select('ad_id').eq('user_id', currentUserId);
+                const { data: favs } = await withTimeout(
+                    supabase.from('favorites').select('ad_id').eq('user_id', currentUserId)
+                );
                 if (favs) {
                     favoritesList = [];
-                    for (const f of favs) {
-                        const found = globalAdsFeed.find(a => a.id === f.ad_id) || myAdsList.find(a => a.id === f.ad_id);
-                        if (found) favoritesList.push(found);
+                    for (const fav of favs) {
+                        const ad = globalAdsFeed.find(a => a.id === fav.ad_id) || myAdsList.find(a => a.id === fav.ad_id);
+                        if (ad) favoritesList.push(ad);
                     }
                 }
 
-                // Загружаем pending (ожидающие модерации) объявления для админов
-                const { data: pending } = await supabase.from('ads').select('*').eq('status', 'pending');
+                // Загружаем pending объявления (для админов)
+                const { data: pending } = await withTimeout(
+                    supabase.from('ads').select('*').eq('status', 'pending')
+                );
                 if (pending) pendingAdsList = pending;
 
-                // Барыга
-                const { data: baryga } = await supabase.from('baryga').select('*').eq('user_id', currentUserId).single();
-                if (baryga) barygaData = baryga;
-                else await supabase.from('baryga').insert({ user_id: currentUserId });
+                // Загружаем апелляции
+                const { data: appeals } = await withTimeout(
+                    supabase.from('appeals').select('*')
+                );
+                if (appeals) appealsList = appeals;
 
+                // Загружаем админов
+                const { data: admins } = await withTimeout(
+                    supabase.from('users').select('username').eq('is_admin', true)
+                );
+                if (admins) ADMIN_USERNAMES = admins.map(u => u.username);
+
+                // Загружаем состояние Барыги
+                const { data: baryga, error: barygaError } = await withTimeout(
+                    supabase.from('baryga').select('*').eq('user_id', currentUserId).single()
+                );
+                if (!barygaError && baryga) {
+                    barygaData = baryga;
+                } else {
+                    await withTimeout(supabase.from('baryga').insert({ user_id: currentUserId }));
+                }
+
+                // Загружаем луки и попутчиков
+                const { data: fashion } = await withTimeout(supabase.from('fashion').select('*'));
+                if (fashion) fashionLooks = fashion;
+                const { data: travel } = await withTimeout(supabase.from('travel').select('*'));
+                if (travel) travelAds = travel;
+
+                // После загрузки данных обновляем интерфейс
                 renderFeed();
                 renderCart();
                 renderMoreSection();
+                updateBarygaUI();
                 checkUserPermissions();
+                if (isAdmin()) document.getElementById('adminTabBtn').style.display = 'flex';
             } catch (e) {
-                console.error("Data load error:", e);
+                console.error('Ошибка загрузки данных:', e);
+                showCustomAlert('Не удалось загрузить данные. Проверьте подключение.', 'Ошибка');
             }
+        }
+
+        // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
+        async function init() {
+            const hasUsername = await checkUsername();
+            if (!hasUsername) {
+                return;
+            }
+            document.getElementById('appContainer').style.display = 'block';
+            applyThemeFromStorage();
+            loadInitialData();
+            showTutorial();
         }
 
         if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
 
-        // ==================== ТЕМА И НАВИГАЦИЯ ====================
+        // ==================== ПРОВЕРКА USERNAME (быстрая) ====================
+        async function checkUsername() {
+            if (!currentUserUsername) {
+                document.getElementById('noUsernameScreen').style.display = 'flex';
+                return false;
+            }
+            try {
+                const { data: user } = await withTimeout(
+                    supabase.from('users').select('banned').eq('id', currentUserId).single(),
+                    3000
+                );
+                if (user && user.banned) {
+                    document.getElementById('bannedScreen').style.display = 'flex';
+                    return false;
+                }
+            } catch (e) {
+                // Если ошибка, продолжаем (может быть временная проблема)
+            }
+            return true;
+        }
+
+        // ==================== ТЕМА ====================
         function applyThemeFromStorage() {
             const saved = localStorage.getItem('theme') || 'light';
             document.body.classList.toggle('dark', saved === 'dark');
@@ -581,6 +928,7 @@
             localStorage.setItem('theme', isDark ? 'light' : 'dark');
         }
 
+        // ==================== НАВИГАЦИЯ ====================
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -588,291 +936,196 @@
             if (target) target.classList.add('active');
             const activeTab = document.querySelector(`.nav-tab[data-tab="${tabId}"]`);
             if (activeTab) activeTab.classList.add('active');
-            
             if (tabId === 'feed') renderFeed();
             if (tabId === 'cart') renderCart();
             if (tabId === 'app') rebuildCreateAdForm();
-            if (tabId === 'admin') renderPendingAds();
+            if (tabId === 'admin') {
+                renderPendingAds();
+                if (isAdmin() && !adminTutorialCompleted) showAdminTutorial();
+            }
             if (tabId === 'more') renderMoreSection();
             if (tabId === 'myAds') renderMyAds();
+            playSfx('click');
         }
 
+        function showHeaderLinks() { openModal('headerLinksModal'); }
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        function isAdmin() {
-            const cleanUser = currentUserUsername.replace('@','').toLowerCase();
-            return cleanUser === OWNER_USERNAME.toLowerCase() || ADMIN_USERNAMES.map(u => u.toLowerCase()).includes(cleanUser);
+        function checkUserPermissions() {
+            let isOwner = (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase());
+            let isAdmin = isOwner || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(currentUserUsername.replace('@', '').toLowerCase());
+            let adminTabBtn = document.getElementById('adminTabBtn');
+            let ownerSection = document.getElementById('ownerSection');
+            if (adminTabBtn) adminTabBtn.style.display = isAdmin ? 'flex' : 'none';
+            if (ownerSection) ownerSection.style.display = isOwner ? 'block' : 'none';
         }
 
-        function checkUserPermissions() {
-            const adminTabBtn = document.getElementById('adminTabBtn');
-            if (adminTabBtn) adminTabBtn.style.display = isAdmin() ? 'flex' : 'none';
+        async function requestWakeLock() {
+            try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
 
         // ==================== ТУТОРИАЛ ====================
         function showTutorial() {
             if (localStorage.getItem('tutorial_completed') === '1') return;
             document.getElementById('tutorialOverlay').style.display = 'flex';
-            let sec = 10;
+            tutorialSlide = 0;
+            updateTutorial();
+            startTutorialTimer(60);
+        }
+        function startTutorialTimer(seconds) {
             const timerSpan = document.getElementById('tutorialTimer');
             const btn = document.getElementById('tutorialNextBtn');
-            const interval = setInterval(() => {
+            if (!timerSpan || !btn) return;
+            let sec = seconds;
+            btn.disabled = true;
+            timerSpan.innerText = sec;
+            if (tutorialTimerInterval) clearInterval(tutorialTimerInterval);
+            tutorialTimerInterval = setInterval(() => {
                 sec--;
-                if (timerSpan) timerSpan.innerText = sec;
+                timerSpan.innerText = sec;
                 if (sec <= 0) {
-                    clearInterval(interval);
-                    if (btn) { btn.disabled = false; btn.innerText = 'Продолжить'; }
+                    clearInterval(tutorialTimerInterval);
+                    btn.disabled = false;
+                    btn.innerText = 'Продолжить';
                 }
-            }, 1000);
+            }, 200);
         }
-        function nextTutorialSlide() { completeTutorial(); }
-        function completeTutorial() {
-            document.getElementById('tutorialOverlay').style.display = 'none';
-            localStorage.setItem('tutorial_completed', '1');
+        function hideTutorial() { document.getElementById('tutorialOverlay').style.display = 'none'; }
+        function nextTutorialSlide() {
+            const slides = document.querySelectorAll('#tutorialOverlay .tutorial-slide');
+            if (tutorialSlide < slides.length - 1) { tutorialSlide++; updateTutorial(); } else { completeTutorial(); }
+        }
+        function updateTutorial() { document.querySelectorAll('#tutorialOverlay .tutorial-slide').forEach((slide, index) => { slide.classList.toggle('active', index === tutorialSlide); }); }
+        function completeTutorial() { hideTutorial(); localStorage.setItem('tutorial_completed', '1'); }
+
+        // ==================== АДМИН ТУТОРИАЛ ====================
+        function showAdminTutorial() {
+            const overlay = document.getElementById('adminTutorialOverlay');
+            if (!overlay) return;
+            overlay.style.display = 'flex';
+            adminTutorialSlide = 0;
+            updateAdminTutorial();
+            const btn = document.getElementById('adminTutorialCloseBtn');
+            if (btn) {
+                btn.disabled = true;
+                let secondsLeft = 60;
+                btn.innerText = `Закрыть (${secondsLeft} сек)`;
+                if (adminTutorialTimerInterval) clearInterval(adminTutorialTimerInterval);
+                adminTutorialTimerInterval = setInterval(() => {
+                    secondsLeft--;
+                    btn.innerText = `Закрыть (${secondsLeft} сек)`;
+                    if (secondsLeft <= 0) {
+                        clearInterval(adminTutorialTimerInterval);
+                        btn.disabled = false;
+                        btn.innerText = 'Закрыть';
+                    }
+                }, 200);
+            }
+        }
+        function nextAdminTutorialSlide() {
+            const slides = document.querySelectorAll('#adminTutorialOverlay .tutorial-slide');
+            if (adminTutorialSlide < slides.length - 1) { adminTutorialSlide++; updateAdminTutorial(); }
+        }
+        function updateAdminTutorial() {
+            document.querySelectorAll('#adminTutorialOverlay .tutorial-slide').forEach((slide, index) => { slide.classList.toggle('active', index === adminTutorialSlide); });
+        }
+        function closeAdminTutorial() {
+            document.getElementById('adminTutorialOverlay').style.display = 'none';
+            adminTutorialCompleted = true;
+            localStorage.setItem('admin_tutorial_completed', '1');
+        }
+        document.getElementById('adminTutorialCloseBtn')?.addEventListener('click', function() { if (!this.disabled) closeAdminTutorial(); });
+
+        // ==================== ПРОВЕРКА ССЫЛОК ====================
+        function isAllowedLink(url) {
+            if (url.startsWith('data:image/')) return true;
+            const lower = url.toLowerCase().trim();
+            if (!lower.startsWith('http://') && !lower.startsWith('https://')) return false;
+            try {
+                const parsed = new URL(lower);
+                const host = parsed.hostname.replace('www.', '');
+                return ALLOWED_DOMAINS.some(domain => host === domain || host.endsWith('.' + domain));
+            } catch (e) {
+                return false;
+            }
+        }
+        function checkLinksString(linksString) {
+            if (!linksString) return { valid: true, message: '' };
+            const links = linksString.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            const invalid = links.filter(link => !isAllowedLink(link));
+            if (invalid.length > 0) {
+                const allowedList = ALLOWED_DOMAINS.join(', ');
+                return {
+                    valid: false,
+                    message: `Недопустимые ссылки: ${invalid.join(', ')}.\nРазрешены только: ${allowedList}`
+                };
+            }
+            return { valid: true, message: '' };
         }
 
         // ==================== РЕНДЕР КАРТОЧЕК ====================
         function createAdCard(ad, options = {}) {
-            const { showAuthor = true, isCart = false } = options;
+            const { showAuthor = true, disableClick = false, isCart = false } = options;
             const firstImage = ad.images ? ad.images.split(',')[0].trim() : '';
             const imageHtml = firstImage
-                ? `<img src="${escapeHtml(firstImage)}" class="ad-image" loading="lazy" onerror="this.style.display='none'">`
+                ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" fetchpriority="low" onerror="this.style.display='none'">`
                 : `<div class="ad-image-placeholder"></div>`;
-            
+            const clickAttr = disableClick ? '' : `onclick="openAdDetail(${ad.id})"`;
             let statusBadge = '';
             if (isCart) {
                 const stillExists = globalAdsFeed.some(a => a.id === ad.id && a.status === 'approved');
-                statusBadge = stillExists ? '<span class="badge badge-success">🟢 Активно</span>' : '<span class="badge badge-danger">🔴 Удалено</span>';
-            } else if (ad.status === 'pending') {
-                statusBadge = '<span class="badge badge-warning">На модерации</span>';
+                statusBadge = stillExists
+                    ? '<span class="badge badge-success">🟢 Висит</span>'
+                    : '<span class="badge badge-danger">🔴 Удалена</span>';
+            } else {
+                statusBadge = ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : ad.status === 'deleted' ? '<span class="badge badge-danger">Удалено</span>' : '';
             }
-
             return `
-                <div class="ad-card" onclick="openAdDetail(${ad.id})">
+                <div class="ad-card ${disableClick ? 'no-click' : ''}" ${clickAttr}>
                     <div class="ad-image-wrap">${imageHtml}</div>
                     <div class="ad-info">
                         <div class="ad-badges">
                             <span class="badge ${ad.mode === 'sell' ? '' : 'badge-warning'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
-                            <span class="badge">${escapeHtml(ad.server)}</span>
-                            ${ad.category ? `<span class="badge">${escapeHtml(ad.category)}</span>` : ''}
+                            <span class="badge">${ad.server}</span>
+                            ${ad.category ? `<span class="badge">${ad.category}</span>` : ''}
                             ${statusBadge}
                         </div>
-                        <div class="ad-title">${escapeHtml(ad.item_name)}</div>
+                        <div class="ad-title">${ad.item_name}</div>
                         <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
-                        ${showAuthor ? `<div style="font-size:11px;color:var(--muted);">👤 ${escapeHtml(ad.author_id)}</div>` : ''}
+                        ${showAuthor ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">👤 ${ad.author_id}</div>` : ''}
                     </div>
                 </div>
             `;
         }
 
+        // ==================== ЛЕНТА ====================
         function renderFeed() {
             const container = document.getElementById('feedContainer');
             if (!container) return;
-            let list = globalAdsFeed.filter(ad => ad.status === 'approved');
-            if (currentCategoryFilter) list = list.filter(ad => ad.category === currentCategoryFilter);
-            if (currentUserServer) list = list.filter(ad => ad.server === currentUserServer);
-            
-            if (list.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1;">Объявлений пока нет</div>';
+            let approved = globalAdsFeed.filter(ad => ad.status === 'approved');
+            if (currentCategoryFilter) approved = approved.filter(ad => ad.category === currentCategoryFilter);
+            if (currentUserServer) approved = approved.filter(ad => ad.server === currentUserServer);
+            if (approved.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Объявлений пока нет</div>';
                 return;
             }
-            container.innerHTML = list.map(ad => createAdCard(ad)).join('');
+            container.innerHTML = approved.map(ad => createAdCard(ad)).join('');
         }
 
+        // ==================== КОРЗИНА ====================
         function renderCart() {
             const container = document.getElementById('cartContainer');
             if (!container) return;
             if (favoritesList.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1;">Корзина пуста</div>';
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Корзина пуста</div>';
                 return;
             }
             container.innerHTML = favoritesList.map(ad => createAdCard(ad, { showAuthor: false, isCart: true })).join('');
         }
 
-        function renderMyAds() {
-            const container = document.getElementById('myAdsContainer');
-            if (!container) return;
-            if (myAdsList.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1;">У вас нет объявлений</div>';
-                return;
-            }
-            container.innerHTML = myAdsList.map(ad => {
-                const isDeleted = ad.status === 'deleted';
-                const firstImage = ad.images ? ad.images.split(',')[0].trim() : '';
-                const imageHtml = firstImage ? `<img src="${escapeHtml(firstImage)}" class="ad-image" loading="lazy">` : `<div class="ad-image-placeholder"></div>`;
-                const statusBadge = isDeleted ? '<span class="badge badge-danger">Удалено</span>' : (ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : '<span class="badge badge-success">🟢 Активно</span>');
-                
-                return `
-                    <div class="ad-card ${isDeleted ? 'deleted' : ''}" onclick="openAdDetail(${ad.id})">
-                        <div class="ad-image-wrap">${imageHtml}</div>
-                        <div class="ad-info">
-                            <div class="ad-badges">
-                                <span class="badge">${escapeHtml(ad.server)}</span>
-                                ${statusBadge}
-                            </div>
-                            <div class="ad-title">${escapeHtml(ad.item_name)}</div>
-                            <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
-                            <div class="ad-actions" onclick="event.stopPropagation();">
-                                <button class="btn btn-sm btn-danger" onclick="deleteMyAd(${ad.id})">🗑 Удалить</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // ==================== АДМИН ПАНЕЛЬ И МОДЕРАЦИЯ (СИНХРОНИЗИРОВАННЫЕ ФУНКЦИИ) ====================
-        function renderPendingAds() {
-            const container = document.getElementById('pendingAdsContainer');
-            if (!container) return;
-            if (!isAdmin()) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Доступ запрещен</div>';
-                return;
-            }
-            if (pendingAdsList.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Нет объявлений на модерации</div>';
-                return;
-            }
-            container.innerHTML = pendingAdsList.map(ad => `
-                <div class="ad-card" style="flex-direction: column; padding: 12px; cursor: default;">
-                    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">${escapeHtml(ad.item_name)} (${formatPrice(ad.price)} $)</div>
-                    <div style="font-size:12px; color:var(--muted); margin-bottom:6px;">Сервер: ${escapeHtml(ad.server)} | От: ${escapeHtml(ad.author_id)}</div>
-                    <div style="font-size:13px; margin-bottom:8px;">${escapeHtml(ad.description)}</div>
-                    <div class="ad-actions">
-                        <button onclick="openEditAdModal(${ad.id})" class="btn btn-sm btn-outline">✏️ Редактировать</button>
-                        <button onclick="approvePendingAd(${ad.id})" class="btn btn-sm btn-success">✅ Одобрить</button>
-                        <button onclick="rejectPendingAd(${ad.id})" class="btn btn-sm btn-danger">❌ Отклонить</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function approvePendingAd(id) {
-            const { error } = await supabase.from('ads').update({ status: 'approved' }).eq('id', id);
-            if (error) {
-                showCustomAlert('Ошибка одобрения: ' + error.message, 'Ошибка');
-                return;
-            }
-            await loadInitialData();
-            renderPendingAds();
-            playSfx('success');
-            showCustomAlert('Объявление одобрено и опубликовано!', 'Успех');
-        }
-
-        async function rejectPendingAd(id) {
-            const { error } = await supabase.from('ads').update({ status: 'deleted' }).eq('id', id);
-            if (error) {
-                showCustomAlert('Ошибка отклонения: ' + error.message, 'Ошибка');
-                return;
-            }
-            await loadInitialData();
-            renderPendingAds();
-            playSfx('success');
-            showCustomAlert('Объявление отклонено.', 'Информация');
-        }
-
-        function openEditAdModal(id) {
-            const ad = pendingAdsList.find(a => a.id === id) || globalAdsFeed.find(a => a.id === id);
-            if (!ad) return;
-
-            document.querySelectorAll('#editAdModal').forEach(el => el.remove());
-            const modal = document.createElement('div');
-            modal.id = 'editAdModal';
-            modal.className = 'modal-overlay';
-            modal.style.display = 'flex';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
-                    <h3>✏️ Редактирование</h3>
-                    <div class="form-group" style="margin-top:10px;"><label>Название</label><input type="text" id="editItemName" value="${escapeHtml(ad.item_name)}"></div>
-                    <div class="form-group"><label>Цена</label><input type="text" id="editPrice" value="${parsePriceToNumber(ad.price)}"></div>
-                    <div class="form-group"><label>Описание</label><textarea id="editText" rows="3">${escapeHtml(ad.description)}</textarea></div>
-                    <div class="form-group"><label>Скриншоты (через запятую)</label><input type="text" id="editImage" value="${escapeHtml(ad.images || '')}"></div>
-                    <div class="form-group"><label>Сервер</label>
-                        <div class="custom-select-trigger" onclick="openPicker('server', (val) => { document.getElementById('editServer').value = val; document.getElementById('editServerText').innerText = val; })">
-                            <span id="editServerText">${escapeHtml(ad.server)}</span> ▼
-                        </div>
-                        <input type="hidden" id="editServer" value="${escapeHtml(ad.server)}">
-                    </div>
-                    <button class="btn" style="margin-top:10px;" onclick="saveEditedAd(${ad.id})">Сохранить и одобрить</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-
-        async function saveEditedAd(id) {
-            const itemName = document.getElementById('editItemName')?.value.trim();
-            let price = document.getElementById('editPrice')?.value.trim();
-            price = formatPriceInput(price);
-            const text = document.getElementById('editText')?.value.trim();
-            const image = document.getElementById('editImage')?.value.trim();
-            const server = document.getElementById('editServer')?.value;
-
-            if (!itemName || !price || !text) {
-                showCustomAlert('Заполните обязательные поля', 'Ошибка');
-                return;
-            }
-
-            const { error } = await supabase.from('ads').update({
-                item_name: itemName,
-                price: price,
-                description: text,
-                images: image,
-                server: server,
-                status: 'approved'
-            }).eq('id', id);
-
-            if (error) {
-                showCustomAlert('Ошибка сохранения: ' + error.message, 'Ошибка');
-                return;
-            }
-
-            document.querySelectorAll('#editAdModal').forEach(el => el.remove());
-            await loadInitialData();
-            renderPendingAds();
-            renderFeed();
-            showCustomAlert('Объявление отредактировано и одобрено!', 'Успех');
-            playSfx('success');
-        }
-
-        // ==================== ДЕТАЛЬНАЯ СТРАНИЦА И ОТЗЫВЫ ====================
-        async function openAdDetail(id) {
-            let ad = globalAdsFeed.find(a => a.id === id) || myAdsList.find(a => a.id === id) || pendingAdsList.find(a => a.id === id);
-            if (!ad) return;
-
-            document.querySelectorAll('#adDetailPage').forEach(el => el.remove());
-            const page = document.createElement('div');
-            page.id = 'adDetailPage';
-            page.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--app-bg);z-index:2000;overflow-y:auto;padding:16px;box-sizing:border-box;';
-
-            const isInCart = favoritesList.some(f => f.id === id);
-            const images = ad.images ? ad.images.split(',').map(s=>s.trim()).filter(s=>s.length>0) : [];
-
-            page.innerHTML = `
-                <div class="container" style="max-width:600px;">
-                    <button class="btn btn-outline btn-sm" style="margin-bottom:12px;" onclick="document.getElementById('adDetailPage').remove()">← Назад</button>
-                    ${images.length > 0 ? `<img src="${escapeHtml(images[0])}" style="width:100%;max-height:300px;object-fit:cover;border-radius:12px;margin-bottom:12px;" onerror="this.style.display='none'">` : ''}
-                    <h2>${escapeHtml(ad.item_name)}</h2>
-                    <div style="font-size:20px;font-weight:800;color:var(--accent);margin:8px 0;">💰 ${formatPrice(ad.price)} $</div>
-                    <p style="margin:12px 0;line-height:1.5;">${escapeHtml(ad.description)}</p>
-                    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Сервер: ${escapeHtml(ad.server)} | Продавец: ${escapeHtml(ad.author_id)}</div>
-                    
-                    <div style="display:flex;gap:8px;margin-bottom:20px;">
-                        <button class="btn" onclick="toggleCart(${ad.id})" id="detailCartBtn">${isInCart ? '🛒 Убрать из корзины' : '🛒 В корзину'}</button>
-                        <button class="btn btn-outline" onclick="openReviewModal(${ad.id})">⭐ Отзыв</button>
-                    </div>
-
-                    <h3>Отзывы</h3>
-                    <div id="detailReviewsContainer" style="margin-top:10px;">Загрузка отзывов...</div>
-                </div>
-            `;
-            document.body.appendChild(page);
-            loadReviewsForDetail(id);
-        }
-
         async function toggleCart(id) {
-            const ad = globalAdsFeed.find(a => a.id === id) || myAdsList.find(a => a.id === id);
+            const ad = globalAdsFeed.find(a => a.id === id);
             if (!ad) return;
             const idx = favoritesList.findIndex(f => f.id === id);
             if (idx > -1) {
@@ -882,121 +1135,230 @@
                 await supabase.from('favorites').insert({ user_id: currentUserId, ad_id: id });
                 favoritesList.push(ad);
             }
+            renderFeed();
             renderCart();
-            const btn = document.getElementById('detailCartBtn');
-            if (btn) {
+            const detailCartBtn = document.getElementById('cartButton');
+            if (detailCartBtn) {
                 const inCart = favoritesList.some(f => f.id === id);
-                btn.innerText = inCart ? '🛒 Убрать из корзины' : '🛒 В корзину';
+                detailCartBtn.innerHTML = inCart ? '🛒 Убрать из корзины' : '🛒 Корзина';
+                detailCartBtn.classList.toggle('btn-outline', inCart);
             }
+        }
+
+        async function removeFromCart(id) {
+            await supabase.from('favorites').delete().match({ user_id: currentUserId, ad_id: id });
+            favoritesList = favoritesList.filter(f => f.id !== id);
+            renderCart();
             playSfx('success');
         }
 
-        async function loadReviewsForDetail(adId) {
-            const container = document.getElementById('detailReviewsContainer');
+        // ==================== МОИ ОБЪЯВЛЕНИЯ ====================
+        function renderMyAds() {
+            const container = document.getElementById('myAdsContainer');
             if (!container) return;
-            const { data: reviews } = await supabase.from('reviews').select('*').eq('ad_id', adId).order('created_at', { ascending: false });
-            if (!reviews || reviews.length === 0) {
-                container.innerHTML = '<div style="color:var(--muted);padding:10px 0;">Отзывов пока нет</div>';
+            if (myAdsList.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">У вас нет объявлений</div>';
                 return;
             }
-            container.innerHTML = reviews.map(r => `
-                <div class="review-item">
-                    <div class="review-author">${escapeHtml(r.author_id)}</div>
-                    <div class="review-stars">${'★'.repeat(r.stars)}</div>
-                    <div class="review-text">${escapeHtml(r.text)}</div>
-                    <div class="review-date">${new Date(r.created_at).toLocaleDateString()}</div>
+            container.innerHTML = myAdsList.map(ad => {
+                const isDeleted = ad.status === 'deleted';
+                const cardClass = isDeleted ? 'ad-card deleted' : 'ad-card';
+                const firstImage = ad.images ? ad.images.split(',')[0].trim() : '';
+                const imageHtml = firstImage
+                    ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" fetchpriority="low" onerror="this.style.display='none'">`
+                    : `<div class="ad-image-placeholder"></div>`;
+                const statusBadge = isDeleted ? '<span class="badge badge-danger">Удалено</span>' : (ad.status === 'pending' ? '<span class="badge badge-warning">На модерации</span>' : '<span class="badge badge-success">🟢 Висит</span>');
+                return `
+                    <div class="${cardClass}" onclick="openAdDetail(${ad.id})">
+                        <div class="ad-image-wrap">${imageHtml}</div>
+                        <div class="ad-info">
+                            <div class="ad-badges">
+                                <span class="badge ${ad.mode === 'sell' ? '' : 'badge-warning'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                                <span class="badge">${ad.server}</span>
+                                ${ad.category ? `<span class="badge">${ad.category}</span>` : ''}
+                                ${statusBadge}
+                            </div>
+                            <div class="ad-title">${ad.item_name}</div>
+                            <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
+                            <div class="ad-actions" onclick="event.stopPropagation();">
+                                <button class="btn btn-sm btn-danger" onclick="deleteMyAdPermanently(${ad.id})">🗑 Удалить навсегда</button>
+                                ${isDeleted ? `<button class="btn btn-sm btn-outline" onclick="openAppealModal(${ad.id})">📨 Апелляция</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function deleteMyAdPermanently(id) {
+            customConfirm('Удаление объявления', 'Вы уверены, что хотите удалить объявление навсегда?', async function() {
+                await supabase.from('ads').delete().eq('id', id);
+                myAdsList = myAdsList.filter(a => a.id !== id);
+                renderMyAds();
+                playSfx('success');
+            });
+        }
+
+        // ==================== РАЗДЕЛ "ВСЕ РАЗДЕЛЫ" ====================
+        function renderMoreSection() {
+            const container = document.getElementById('moreContainer');
+            if (!container) return;
+            const items = [
+                { icon: '📦', label: 'Мои объявления', onclick: "switchTab('myAds')" },
+                { icon: '📂', label: 'Каталог', onclick: "openCatalogModal()" },
+                { icon: '🎮', label: 'Игра «Барыга»', onclick: "openBarygaModal()" },
+                { icon: '🔍', label: 'Поиск', onclick: "openSearchModal()" },
+                { icon: '📸', label: 'Лента «Луков»', onclick: "openFashionModal()" },
+                { icon: '🤝', label: 'Попутчики', onclick: "openTravelModal()" },
+                { icon: '🎵', label: 'Музыка', onclick: "openMusicModal()" },
+                { icon: '⚙️', label: 'Настройки', onclick: "openSettingsModal()" },
+                { icon: '📩', label: 'Менеджер', onclick: "openManagerModal()" },
+                { icon: '💬', label: 'Переписки', onclick: "openChatsModal()" }
+            ];
+            container.innerHTML = items.map(item => `
+                <div class="more-item" onclick="${item.onclick}">
+                    <div class="more-icon">${item.icon}</div>
+                    <div class="more-label">${item.label}</div>
                 </div>
             `).join('');
         }
 
-        function openReviewModal(adId) {
-            activeReviewAdId = adId;
-            reviewStars = 5;
-            document.getElementById('reviewStars').value = 5;
-            document.getElementById('reviewText').value = '';
-            document.getElementById('reviewMediaLink').value = '';
-            openModal('reviewModal');
+        // ==================== КАТАЛОГ ====================
+        function openCatalogModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.display = 'flex';
+            modal.style.zIndex = '1200';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                    <h3>📂 Каталог</h3>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                        ${ALL_CATEGORIES.map(cat => `
+                            <div style="display:flex;flex-direction:column;align-items:center;padding:12px;background:var(--card-bg);border-radius:12px;box-shadow:var(--shadow);cursor:pointer;" onclick="filterByCategory('${cat}'); this.closest('.modal-overlay').remove();">
+                                <div style="font-size:24px;">${cat.split(' ')[0]}</div>
+                                <div style="font-size:11px;text-align:center;">${cat.split(' ').slice(1).join(' ')}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
         }
 
-        function setReviewStar(n) {
-            reviewStars = n;
-            document.getElementById('reviewStars').value = n;
-            const spans = document.querySelectorAll('#starPicker span');
-            spans.forEach((span, i) => { span.style.color = i < n ? 'var(--gold)' : 'var(--border)'; });
-        }
-
-        async function submitReview() {
-            const text = document.getElementById('reviewText').value.trim();
-            const media = document.getElementById('reviewMediaLink').value.trim();
-            if (!text) { showCustomAlert('Напишите текст отзыва', 'Ошибка'); return; }
-
-            const { error } = await supabase.from('reviews').insert({
-                id: Date.now(),
-                ad_id: activeReviewAdId,
-                author_id: currentUserId,
-                stars: reviewStars,
-                text: text,
-                media_links: media
-            });
-
-            if (error) {
-                showCustomAlert('Ошибка: ' + error.message, 'Ошибка');
-                return;
-            }
-
-            closeModal('reviewModal');
-            playSfx('success');
-            loadReviewsForDetail(activeReviewAdId);
-            showCustomAlert('Отзыв успешно добавлен!', 'Успех');
+        function filterByCategory(category) {
+            currentCategoryFilter = category;
+            switchTab('feed');
         }
 
         // ==================== ФОРМА ПОДАЧИ ОБЪЯВЛЕНИЯ ====================
         function rebuildCreateAdForm() {
             const section = document.getElementById('tabApp');
+            const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
             section.innerHTML = `
                 <h2 class="section-title">Подать объявление</h2>
                 <div class="form-group"><label>Тип</label>
-                    <div class="custom-select-trigger" onclick="openPicker('mode', (v,t)=>{document.getElementById('mode').value=v;document.getElementById('modeText').innerText=t;})">
-                        <span id="modeText">Продажа</span> ▼
-                    </div>
+                    <div class="custom-select-trigger" onclick="openPicker('mode')"><span id="selectedModeText">Продажа</span> ▼</div>
                     <input type="hidden" id="mode" value="sell">
                 </div>
                 <div class="form-group"><label>Категория</label>
-                    <div class="custom-select-trigger" onclick="openPicker('category', (v,t)=>{document.getElementById('category').value=v;document.getElementById('catText').innerText=t;})">
-                        <span id="catText">${ALL_CATEGORIES[0]}</span> ▼
-                    </div>
+                    <div class="custom-select-trigger" onclick="openPicker('category')"><span id="selectedCategoryText">${ALL_CATEGORIES[0]}</span> ▼</div>
                     <input type="hidden" id="category" value="${ALL_CATEGORIES[0]}">
                 </div>
-                <div class="form-group"><label>Название</label><input id="itemName" placeholder="Например: Шлем Спецназа"></div>
-                <div class="form-group"><label>Цена ($)</label><input id="price" placeholder="500000 или 5кк"></div>
-                <div class="form-group"><label>Описание</label><textarea id="text" rows="3" placeholder="Описание товара..."></textarea></div>
-                <div class="form-group"><label>Скриншот URL</label><input id="itemImage" placeholder="https://i.postimg.cc/..."></div>
+                <div class="form-group"><label>Название</label><input id="itemName" placeholder="Название"></div>
+                <div class="form-group"><label>Цена</label><input id="price" placeholder="5000 или 5к"></div>
+                <div class="form-group"><label>Описание</label><textarea id="text" rows="3"></textarea></div>
+                <div class="form-group">
+                    <label>Скриншот${isMobile ? ' (загрузите файл или вставьте ссылку)' : ' URL'}</label>
+                    <input id="itemImage" placeholder="Только разрешённые сайты">
+                    ${isMobile ? `
+                        <div id="mobileImageUpload" style="margin-top:8px;">
+                            <input type="file" id="mobileFileInput" accept="image/*" multiple style="display:none;" onchange="handleMobileImageUpload(event)">
+                            <button class="btn btn-sm btn-outline" onclick="document.getElementById('mobileFileInput').click()">📷 Загрузить с устройства</button>
+                            <div id="mobileImagePreview" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:8px;"></div>
+                        </div>
+                    ` : ''}
+                </div>
                 <div class="form-group"><label>Сервер</label>
-                    <div class="custom-select-trigger" onclick="openPicker('server', (v,t)=>{document.getElementById('server').value=v;document.getElementById('serverText').innerText=t;})">
-                        <span id="serverText">${ALL_SERVERS[0]}</span> ▼
-                    </div>
-                    <input type="hidden" id="server" value="${ALL_SERVERS[0]}">
+                    <div class="custom-select-trigger" onclick="openPicker('server')"><span id="selectedServerText">${currentUserServer || ALL_SERVERS[0]}</span> ▼</div>
+                    <input type="hidden" id="server" value="${currentUserServer || ALL_SERVERS[0]}">
                 </div>
                 <button type="button" class="btn" onclick="submitData()">Отправить на модерацию</button>
+                <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px;">Приём объявлений с 09:00 до 22:00 МСК, КД 2 минуты</div>
             `;
             const priceInput = document.getElementById('price');
             if (priceInput) {
-                priceInput.addEventListener('input', function() { this.value = formatPriceInput(this.value); });
+                priceInput.addEventListener('input', function() {
+                    this.value = formatPriceInput(this.value);
+                });
             }
         }
 
+        window.handleMobileImageUpload = function(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            const imageInput = document.getElementById('itemImage');
+            const previewContainer = document.getElementById('mobileImagePreview');
+            let currentImages = imageInput.value ? imageInput.value.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
+            for (let file of files) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    if (!currentImages.includes(dataUrl)) {
+                        currentImages.push(dataUrl);
+                        imageInput.value = currentImages.join(',');
+                        const img = document.createElement('img');
+                        img.src = dataUrl;
+                        img.style.width = '60px';
+                        img.style.height = '60px';
+                        img.style.objectFit = 'cover';
+                        img.style.borderRadius = '6px';
+                        previewContainer.appendChild(img);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
         async function submitData() {
-            const mode = document.getElementById('mode').value;
-            const category = document.getElementById('category').value;
-            const itemName = document.getElementById('itemName').value.trim();
-            const price = document.getElementById('price').value.trim();
-            const text = document.getElementById('text').value.trim();
-            const image = document.getElementById('itemImage').value.trim();
-            const server = document.getElementById('server').value;
+            let now = new Date();
+            let mskTime = new Date(now.getTime() + (now.getTimezoneOffset() + 180) * 60000);
+            let mskHour = mskTime.getHours();
+            if (!isAdmin() && (mskHour < 9 || mskHour >= 22)) {
+                showCustomAlert('🕒 Создание объявлений доступно только с 09:00:00 до 22:00:00 по МСК!', 'Ошибка');
+                return;
+            }
+
+            if (!isAdmin()) {
+                let lastAdTime = parseInt(localStorage.getItem('last_ad_time') || '0');
+                let currentTime = Date.now();
+                if (currentTime - lastAdTime < 120000) {
+                    let leftSec = Math.ceil((120000 - (currentTime - lastAdTime)) / 1000);
+                    showCustomAlert(`⏳ Подождите еще ${leftSec} сек. перед созданием нового объявления (КД 2 минуты).`, 'Ошибка');
+                    return;
+                }
+            }
+
+            let mode = document.getElementById('mode').value;
+            let category = document.getElementById('category').value;
+            let itemName = document.getElementById('itemName').value.trim();
+            let price = document.getElementById('price').value.trim();
+            let text = document.getElementById('text').value.trim();
+            let image = document.getElementById('itemImage').value.trim();
+            let server = document.getElementById('server').value;
 
             if (!itemName || !price || !text) {
-                showCustomAlert('Заполните все обязательные поля!', 'Ошибка');
+                showCustomAlert('⚠️ Заполните все обязательные поля объявления!', 'Ошибка');
                 return;
+            }
+
+            if (image) {
+                const check = checkLinksString(image);
+                if (!check.valid) {
+                    showCustomAlert(check.message, 'Ошибка');
+                    return;
+                }
             }
 
             const newAd = {
@@ -1008,119 +1370,752 @@
 
             const { error } = await supabase.from('ads').insert(newAd);
             if (error) {
-                showCustomAlert('Ошибка отправки: ' + error.message, 'Ошибка');
+                showCustomAlert('Ошибка при отправке: ' + error.message, 'Ошибка');
                 return;
             }
 
             pendingAdsList.push(newAd);
             myAdsList.push(newAd);
-            showCustomAlert('Объявление отправлено на модерацию!', 'Успех');
+            if (!isAdmin()) {
+                localStorage.setItem('last_ad_time', Date.now().toString());
+            }
+
+            showCustomAlert('🚀 Ваше объявление отправлено на модерацию администрации!', 'Успех');
             playSfx('success');
             switchTab('feed');
+            renderFeed();
+            renderPendingAds();
+            renderMyAds();
+
+            document.getElementById('itemName').value = '';
+            document.getElementById('price').value = '';
+            document.getElementById('text').value = '';
+            document.getElementById('itemImage').value = '';
+            const preview = document.getElementById('mobileImagePreview');
+            if (preview) preview.innerHTML = '';
         }
 
+        // ==================== PICKER ====================
         function openPicker(type, callback) {
             const list = document.getElementById('pickerList');
             const title = document.getElementById('pickerTitle');
             if (type === 'mode') {
-                list.innerHTML = `<div class="picker-item" onclick="selectPicker('sell','Продажа')">Продажа</div><div class="picker-item" onclick="selectPicker('buy','Покупка')">Покупка</div>`;
+                list.innerHTML = `<div class="picker-item" onclick="selectPicker('mode','sell','Продажа')">Продажа</div><div class="picker-item" onclick="selectPicker('mode','buy','Покупка')">Покупка</div>`;
                 title.innerText = 'Тип';
             } else if (type === 'category') {
-                list.innerHTML = ALL_CATEGORIES.map(cat => `<div class="picker-item" onclick="selectPicker('${cat}','${cat}')">${cat}</div>`).join('');
+                list.innerHTML = ALL_CATEGORIES.map(cat => `<div class="picker-item" onclick="selectPicker('category','${cat}','${cat}')">${cat}</div>`).join('');
                 title.innerText = 'Категория';
             } else if (type === 'server') {
-                list.innerHTML = ALL_SERVERS.map(s => `<div class="picker-item" onclick="selectPicker('${s}','${s}')">${s}</div>`).join('');
+                list.innerHTML = ALL_SERVERS.map(s => `<div class="picker-item" onclick="selectPicker('server','${s}','${s}')">${s}</div>`).join('');
                 title.innerText = 'Сервер';
+            } else if (type === 'appeal_reason') {
+                list.innerHTML = APPEAL_REASONS.map(r => `<div class="picker-item" onclick="selectAppealReason('${r}')">${r}</div>`).join('');
+                title.innerText = 'Причина апелляции';
             }
             openModal('pickerModal');
             window.pickerCallback = callback;
         }
 
-        function selectPicker(val, text) {
+        function selectAppealReason(reason) {
+            document.getElementById('appealReason').value = reason;
+            document.getElementById('appealReasonText').innerText = reason;
+            closeModal('pickerModal');
+        }
+
+        function openAppealReasonPicker() {
+            openPicker('appeal_reason');
+        }
+
+        function selectPicker(type, val, text) {
+            if (type === 'mode') document.getElementById('selectedModeText').innerText = text;
+            else if (type === 'category') document.getElementById('selectedCategoryText').innerText = text;
+            else if (type === 'server') document.getElementById('selectedServerText').innerText = text;
             if (window.pickerCallback) window.pickerCallback(val, text);
             closeModal('pickerModal');
         }
 
         // ==================== ИГРА БАРЫГА ====================
-        function openBarygaModal() { openModal('barygaModal'); updateBarygaUI(); }
         function updateBarygaUI() {
             document.getElementById('clickerMoney').innerText = barygaData.money.toLocaleString();
             document.getElementById('autoIncomeLabel').innerText = barygaData.autoIncome.toLocaleString() + ' $ / сек';
             const container = document.getElementById('barygaUpgrades');
-            container.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--app-bg);border-radius:8px;">
-                    <div><b>Клик +1</b><br><small>${barygaData.clickCost} $</small></div>
-                    <button class="btn btn-sm" onclick="buyClickUpgrade()">Купить</button>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--app-bg);border-radius:8px;">
-                    <div><b>Авто +5/сек</b><br><small>${barygaData.autoCost} $</small></div>
-                    <button class="btn btn-sm" onclick="buyAutoUpgrade()">Купить</button>
-                </div>
-            `;
-        }
-        async function barygaClick() {
-            barygaData.money += barygaData.clickPower;
-            await supabase.from('baryga').update({ money: barygaData.money }).eq('user_id', currentUserId);
-            updateBarygaUI();
-        }
-        async function buyClickUpgrade() {
-            if (barygaData.money >= barygaData.clickCost) {
-                barygaData.money -= barygaData.clickCost;
-                barygaData.clickPower += 1;
-                barygaData.clickCost = Math.floor(barygaData.clickCost * 1.5);
-                await supabase.from('baryga').update({ money: barygaData.money, click_power: barygaData.clickPower, click_cost: barygaData.clickCost }).eq('user_id', currentUserId);
-                updateBarygaUI();
-                playSfx('success');
-            }
-        }
-        async function buyAutoUpgrade() {
-            if (barygaData.money >= barygaData.autoCost) {
-                barygaData.money -= barygaData.autoCost;
-                barygaData.autoIncome += 5;
-                barygaData.autoCost = Math.floor(barygaData.autoCost * 1.5);
-                await supabase.from('baryga').update({ money: barygaData.money, auto_income: barygaData.autoIncome, auto_cost: barygaData.autoCost }).eq('user_id', currentUserId);
-                updateBarygaUI();
-                playSfx('success');
-            }
-        }
-        setInterval(async () => {
-            if (barygaData.autoIncome > 0) {
-                barygaData.money += Math.floor(barygaData.autoIncome / 10);
-                await supabase.from('baryga').update({ money: barygaData.money }).eq('user_id', currentUserId);
-                if (document.getElementById('barygaModal').style.display === 'flex') updateBarygaUI();
-            }
-        }, 100);
-
-        // ==================== РАЗДЕЛ "ВСЕ РАЗДЕЛЫ" ====================
-        function renderMoreSection() {
-            const container = document.getElementById('moreContainer');
-            if (!container) return;
-            const items = [
-                { icon: '📦', label: 'Мои объявления', onclick: "switchTab('myAds')" },
-                { icon: '🎮', label: 'Игра «Барыга»', onclick: "openBarygaModal()" },
-                { icon: '🔍', label: 'Поиск', onclick: "openSearchModal()" },
-                { icon: '⚙️', label: 'Настройки', onclick: "showCustomAlert('Все настройки сохранены автоматически.')" }
+            const upgrades = [
+                { name: 'Клик +1', cost: barygaData.clickCost, actionName: 'buyClickUpgrade' },
+                { name: 'Авто +5/сек', cost: barygaData.autoCost, actionName: 'buyAutoUpgrade' },
+                { name: 'Про +20/сек', cost: barygaData.proCost, actionName: 'buyProUpgrade' },
+                { name: 'Магазин +50/сек', cost: barygaData.shopCost, actionName: 'buyShopUpgrade' },
+                { name: 'Элита: клик +10', cost: barygaData.eliteCost, actionName: 'buyEliteUpgrade' },
+                { name: 'Нефть +200/сек', cost: barygaData.oilCost, actionName: 'buyOilRigUpgrade' },
+                { name: 'Крипта +1000/сек', cost: barygaData.cryptoCost, actionName: 'buyCryptoUpgrade' },
+                { name: 'Скупка лома +500/сек', cost: barygaData.scrapCost, actionName: 'buyScrapUpgrade' }
             ];
-            container.innerHTML = items.map(item => `
-                <div class="more-item" onclick="${item.onclick}">
-                    <div class="more-icon">${item.icon}</div>
-                    <div class="more-label">${item.label}</div>
+            container.innerHTML = upgrades.map(u => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:var(--app-bg); border-radius:8px; margin-bottom:6px;">
+                    <div><b>${u.name}</b><br><small>Цена: ${u.cost.toLocaleString()} $</small></div>
+                    <button class="btn-buy" onclick="${u.actionName}()" style="background:var(--accent); color:#fff; border:none; padding:8px 12px; border-radius:8px;">Купить</button>
                 </div>
             `).join('');
         }
 
-        function openSearchModal() { openModal('searchModal'); }
-        function executeSearch(query) {
-            const container = document.getElementById('searchResultsContainer');
-            if (!query) { container.innerHTML = ''; return; }
-            const q = query.toLowerCase();
-            const results = globalAdsFeed.filter(ad => ad.item_name.toLowerCase().includes(q) || ad.description.toLowerCase().includes(q));
-            if (results.length === 0) {
-                container.innerHTML = '<div style="color:var(--muted);text-align:center;">Ничего не найдено</div>';
+        async function barygaClick() {
+            barygaData.money += barygaData.clickPower;
+            await supabase.from('baryga').update({ money: barygaData.money }).eq('user_id', currentUserId);
+            updateBarygaUI();
+            playSfx('cash');
+            const img = document.getElementById('barygaTapImg');
+            img.src = 'https://i.postimg.cc/Y0Pm3FQR/26dd45bd900d0a8f746895120416f957.jpg';
+            setTimeout(() => img.src = 'https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg', 1000);
+        }
+
+        async function makeBarygaPurchase(costKey, valueKey, increment) {
+            const cost = barygaData[costKey] || 0;
+            if (barygaData.money >= cost) {
+                barygaData.money -= cost;
+                barygaData[valueKey] += increment;
+                barygaData[costKey] = Math.floor(cost * 2);
+                await supabase.from('baryga').update({
+                    money: barygaData.money,
+                    [valueKey]: barygaData[valueKey],
+                    [costKey]: barygaData[costKey]
+                }).eq('user_id', currentUserId);
+                updateBarygaUI();
+                playSfx('success');
+            } else {
+                showCustomAlert('Недостаточно средств', 'Ошибка');
+            }
+        }
+
+        function buyClickUpgrade() { makeBarygaPurchase('clickCost','clickPower',1); }
+        function buyAutoUpgrade() { makeBarygaPurchase('autoCost','autoIncome',5); }
+        function buyProUpgrade() { makeBarygaPurchase('proCost','autoIncome',20); }
+        function buyShopUpgrade() { makeBarygaPurchase('shopCost','autoIncome',50); }
+        function buyEliteUpgrade() { makeBarygaPurchase('eliteCost','clickPower',10); }
+        function buyOilRigUpgrade() { makeBarygaPurchase('oilCost','autoIncome',200); }
+        function buyCryptoUpgrade() { makeBarygaPurchase('cryptoCost','autoIncome',1000); }
+        async function buyScrapUpgrade() {
+            const cost = barygaData.scrapCost || 500;
+            if (barygaData.money >= cost) {
+                barygaData.money -= cost;
+                barygaData.autoIncome += 500;
+                barygaData.scrapCost = Math.floor(cost * 2);
+                await supabase.from('baryga').update({
+                    money: barygaData.money,
+                    auto_income: barygaData.autoIncome,
+                    scrap_cost: barygaData.scrapCost
+                }).eq('user_id', currentUserId);
+                updateBarygaUI();
+                playSfx('success');
+            } else {
+                showCustomAlert('Недостаточно средств', 'Ошибка');
+            }
+        }
+
+        setInterval(async () => {
+            try {
+                if (barygaData.autoIncome > 0) {
+                    barygaData.money += Math.floor(barygaData.autoIncome / 10);
+                    await supabase.from('baryga').update({ money: barygaData.money }).eq('user_id', currentUserId);
+                    if (document.getElementById('barygaModal').style.display === 'flex') updateBarygaUI();
+                }
+            } catch(e) {}
+        }, 100);
+
+        function openBarygaModal() { openModal('barygaModal'); updateBarygaUI(); }
+
+        // ==================== ОТЗЫВЫ ====================
+        async function getReviewsForAd(adId) {
+            const { data, error } = await supabase
+                .from('reviews')
+                .select('*')
+                .eq('ad_id', adId)
+                .order('created_at', { ascending: false });
+            return error ? [] : data;
+        }
+
+        function openReviewModal(adId) {
+            activeReviewAdId = adId;
+            reviewStars = 5;
+            document.getElementById('reviewStars').value = 5;
+            document.getElementById('reviewText').value = '';
+            document.getElementById('reviewMediaLink').value = '';
+            renderStars();
+            openModal('reviewModal');
+        }
+
+        function setReviewStar(n) {
+            reviewStars = n;
+            document.getElementById('reviewStars').value = n;
+            renderStars();
+        }
+
+        function renderStars() {
+            const spans = document.querySelectorAll('#starPicker span');
+            spans.forEach((span, i) => { span.style.color = i < reviewStars ? 'var(--gold)' : 'var(--border)'; });
+        }
+
+        async function submitReview() {
+            const text = document.getElementById('reviewText').value.trim();
+            const mediaLinks = document.getElementById('reviewMediaLink').value.trim();
+            if (!text) { showCustomAlert('Напишите текст отзыва', 'Ошибка'); return; }
+            if (!mediaLinks) { showCustomAlert('Добавьте хотя бы одну ссылку на фото или видео', 'Ошибка'); return; }
+            const links = mediaLinks.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            if (links.length > 20) { showCustomAlert('Максимум 20 ссылок', 'Ошибка'); return; }
+            const check = checkLinksString(mediaLinks);
+            if (!check.valid) {
+                showCustomAlert(check.message, 'Ошибка');
                 return;
             }
-            container.innerHTML = results.map(ad => createAdCard(ad)).join('');
+            const newReview = {
+                id: Date.now(),
+                ad_id: activeReviewAdId,
+                author_id: currentUserId,
+                stars: reviewStars,
+                text: text,
+                media_links: links.join(','),
+                created_at: new Date().toISOString()
+            };
+            const { error } = await supabase.from('reviews').insert(newReview);
+            if (error) {
+                showCustomAlert('Ошибка: ' + error.message, 'Ошибка');
+                return;
+            }
+            closeModal('reviewModal');
+            playSfx('success');
+            const detailPage = document.getElementById('adDetailPage');
+            if (detailPage) openAdDetail(activeReviewAdId);
+        }
+
+        function canEditReview(review) {
+            const created = new Date(review.created_at);
+            const now = new Date();
+            const diffDays = (now - created) / (1000 * 60 * 60 * 24);
+            return diffDays <= 7;
+        }
+
+        async function renderReviewsForAd(adId) {
+            const reviews = await getReviewsForAd(adId);
+            if (reviews.length === 0) return '<div style="text-align:center;padding:20px;color:var(--muted);">Отзывов пока нет</div>';
+            const dist = {1:0,2:0,3:0,4:0,5:0};
+            reviews.forEach(r => dist[r.stars]++);
+            const total = reviews.length;
+            let distHtml = '';
+            for (let i=5; i>=1; i--) {
+                const pct = total ? Math.round((dist[i]/total)*100) : 0;
+                distHtml += `<div class="rating-bar"><span>${i}★</span><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><span>${dist[i]}</span></div>`;
+            }
+            const reviewsHtml = reviews.map(r => `
+                <div class="review-item" data-review-id="${r.id}">
+                    <div class="review-author">${escapeHtml(r.author_id)}</div>
+                    <div class="review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</div>
+                    <div class="review-text">${escapeHtml(r.text)}</div>
+                    <div class="review-date">${new Date(r.created_at).toLocaleDateString()}</div>
+                    ${r.media_links ? `<div>${r.media_links.split(',').map(link => `<a href="${escapeHtml(link)}" target="_blank">Медиа</a>`).join(' ')}</div>` : ''}
+                    ${r.author_id === currentUserId && canEditReview(r) ? `
+                        <div class="ad-actions">
+                            <button class="btn btn-sm btn-outline" onclick="editReview(${adId}, ${r.id})">✏️ Редактировать</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteReview(${adId}, ${r.id})">🗑 Удалить</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+            return `<div class="rating-distribution">${distHtml}</div>${reviewsHtml}`;
+        }
+
+        async function editReview(adId, reviewId) {
+            const newText = prompt('Измените текст отзыва:', '');
+            if (newText === null) return;
+            await supabase.from('reviews').update({
+                text: newText.trim(),
+                updated_at: new Date().toISOString()
+            }).eq('id', reviewId);
+            const detailPage = document.getElementById('adDetailPage');
+            if (detailPage) openAdDetail(adId);
+        }
+
+        async function deleteReview(adId, reviewId) {
+            customConfirm('Удаление отзыва', 'Вы уверены, что хотите удалить отзыв?', async function() {
+                await supabase.from('reviews').delete().eq('id', reviewId);
+                const detailPage = document.getElementById('adDetailPage');
+                if (detailPage) openAdDetail(adId);
+            });
+        }
+
+        // ==================== ДЕТАЛЬНАЯ СТРАНИЦА ====================
+        async function openAdDetail(id) {
+            let ad = globalAdsFeed.find(a => a.id === id) 
+                     || myAdsList.find(a => a.id === id) 
+                     || pendingAdsList.find(a => a.id === id) 
+                     || favoritesList.find(a => a.id === id);
+            if (!ad) return;
+
+            document.querySelectorAll('#adDetailPage').forEach(el => el.remove());
+
+            const page = document.createElement('div');
+            page.id = 'adDetailPage';
+            page.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--app-bg);z-index:2000;overflow-y:auto;padding:16px;box-sizing:border-box;';
+
+            const isAuthor = ad.author_id === currentUserId;
+            const isInCart = favoritesList.some(f => f.id === id);
+            const isApproved = ad.status === 'approved' && globalAdsFeed.some(a => a.id === id && a.status === 'approved');
+            const canReview = ad.status === 'approved';
+
+            let images = ad.images ? ad.images.split(',').map(s=>s.trim()).filter(s=>s.length>0) : [];
+            let currentImageIndex = 0;
+
+            function renderGallery() {
+                if (images.length === 0) return '<div class="ad-image-placeholder" style="position:relative;width:100%;padding-top:133.33%;"></div>';
+                const src = images[currentImageIndex];
+                return `
+                    <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                        ${images.length > 1 ? `<button onclick="changeAdImage(-1)" style="position:absolute;left:0;background:rgba(0,0,0,0.5);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:20px;z-index:10;">‹</button>` : ''}
+                        <img src="${src}" loading="lazy" decoding="async" fetchpriority="low" style="max-width:100%;max-height:350px;object-fit:contain;border-radius:12px;background:var(--card-bg);" onerror="this.style.display='none';">
+                        ${images.length > 1 ? `<button onclick="changeAdImage(1)" style="position:absolute;right:0;background:rgba(0,0,0,0.5);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:20px;z-index:10;">›</button>` : ''}
+                    </div>
+                    ${images.length > 1 ? `<div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:8px;">Фото ${currentImageIndex+1} из ${images.length}</div>` : ''}
+                `;
+            }
+
+            window.changeAdImage = function(delta) {
+                currentImageIndex = (currentImageIndex + delta + images.length) % images.length;
+                document.getElementById('adImageContainer').innerHTML = renderGallery();
+            };
+
+            let actionButtonsHtml = '';
+            if (ad.status === 'pending') {
+                actionButtonsHtml = `<div style="text-align:center;padding:20px;color:var(--muted);">Объявление находится на модерации</div>`;
+            } else if (ad.status === 'deleted') {
+                actionButtonsHtml = `
+                    <div style="text-align:center;padding:20px;color:var(--muted);">Объявление удалено</div>
+                    ${isAuthor ? `<button class="btn btn-outline" onclick="openAppealModal(${ad.id})">📨 Апелляция</button>` : ''}
+                `;
+            } else if (isApproved || (!isApproved && isInCart)) {
+                actionButtonsHtml = `
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+                        <button class="btn btn-sm" onclick="openChatWithUser('${ad.author_id}')">💬 Написать / Вернул</button>
+                        <button id="cartButton" class="btn btn-sm ${isInCart ? 'btn-outline' : ''}" onclick="toggleCart(${ad.id})">${isInCart ? '🛒 Убрать из корзины' : '🛒 Корзина'}</button>
+                        <button class="btn btn-sm btn-outline" onclick="openReviewModal(${ad.id})">⭐ Отзывы</button>
+                    </div>
+                `;
+                if (isAuthor && isApproved) {
+                    actionButtonsHtml += `<button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="deleteApprovedAdFromDetail(${ad.id})">🗑 Удалить объявление</button>`;
+                }
+            }
+
+            let similarAdsHtml = '';
+            if (isApproved) {
+                const similar = globalAdsFeed.filter(a => a.status === 'approved' && a.id !== ad.id && a.category === ad.category).slice(0,3);
+                similarAdsHtml = similar.length > 0 ? `
+                    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+                    <div style="font-weight:700;margin-bottom:8px;">Похожие объявления</div>
+                    ${similar.map(sim => createAdCard(sim)).join('')}
+                ` : '';
+            }
+
+            page.innerHTML = `
+                <div style="max-width:600px;margin:0 auto;position:relative;">
+                    <button class="modal-close btn btn-outline btn-sm" style="position:absolute;top:0;right:0;width:36px;height:36px;padding:0;background:var(--card-bg);border:none;z-index:20;" onclick="this.closest('#adDetailPage').remove(); document.body.style.overflow='';">✕</button>
+                    <h2 style="font-size:22px;font-weight:800;margin-bottom:12px;padding-right:40px;">${ad.item_name}</h2>
+                    <div class="ad-badges" style="margin-bottom:12px;">
+                        <span class="badge ${ad.mode === 'sell' ? '' : 'badge-warning'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                        <span class="badge">${ad.server}</span>
+                        <span class="badge">${ad.category}</span>
+                    </div>
+                    <div id="adImageContainer" style="margin-bottom:16px;">${renderGallery()}</div>
+                    <div style="font-size:26px;font-weight:800;color:var(--accent);margin-bottom:16px;">💰 ${formatPrice(ad.price)} $</div>
+                    <div style="font-size:14px;line-height:1.6;margin-bottom:16px;white-space:pre-wrap;">${escapeHtml(ad.description)}</div>
+                    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;">Продавец: <span style="color:var(--accent);cursor:pointer;font-weight:600;" onclick="inspectUserProfile('${ad.author_id}')">${ad.author_id}</span></div>
+                    ${actionButtonsHtml}
+                    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+                    <div style="font-weight:700;margin-bottom:8px;">Отзывы</div>
+                    <div id="adReviewsContainer">${canReview ? await renderReviewsForAd(ad.id) : 'Отзывы недоступны'}</div>
+                    ${similarAdsHtml}
+                </div>
+            `;
+            document.body.appendChild(page);
+            document.body.style.overflow = 'hidden';
+            const observer = new MutationObserver(() => {
+                if (!document.getElementById('adDetailPage')) {
+                    document.body.style.overflow = '';
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.body, { childList: true });
+        }
+
+        window.deleteApprovedAdFromDetail = function(id) {
+            customConfirm('Удаление объявления', 'Вы уверены, что хотите удалить это объявление?', async function() {
+                await deleteApprovedAd(id);
+                document.getElementById('adDetailPage')?.remove();
+                document.body.style.overflow = '';
+            });
+        };
+
+        async function deleteApprovedAd(id) {
+            const idx = globalAdsFeed.findIndex(a => a.id === id);
+            if (idx > -1) {
+                await supabase.from('ads').update({ status: 'deleted' }).eq('id', id);
+                const myIdx = myAdsList.findIndex(a => a.id === id);
+                if (myIdx > -1) { myAdsList[myIdx].status = 'deleted'; }
+                globalAdsFeed.splice(idx, 1);
+                favoritesList = favoritesList.filter(f => f.id !== id);
+                renderFeed(); renderCart(); renderMyAds();
+            }
+        }
+
+        // ==================== ПОИСК ====================
+        function openSearchModal() {
+            openModal('searchModal');
+            renderSearchHistory();
+            document.getElementById('modalSearchInput').value = '';
+            document.getElementById('searchSuggestionsContainer').innerHTML = '';
+            document.getElementById('searchResultsContainer').innerHTML = '';
+        }
+
+        function renderSearchHistory() {
+            const history = JSON.parse(localStorage.getItem('search_history') || '[]');
+            const container = document.getElementById('searchHistoryContainer');
+            if (!container) return;
+            if (history.length === 0) { container.innerHTML = ''; return; }
+            container.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">История</div>` + history.map(q => `<div style="padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="document.getElementById('modalSearchInput').value='${escapeHtml(q)}'; updateSearchSuggestions('${escapeHtml(q)}');">${escapeHtml(q)}</div>`).join('');
+        }
+
+        function updateSearchSuggestions(query) {
+            const container = document.getElementById('searchSuggestionsContainer');
+            if (!container) return;
+            if (!query) { container.innerHTML = ''; return; }
+            const results = globalAdsFeed.filter(ad => ad.status === 'approved' && (ad.item_name.toLowerCase().includes(query.toLowerCase()) || ad.description.toLowerCase().includes(query.toLowerCase()))).slice(0, 5);
+            if (results.length > 0) {
+                container.innerHTML = results.map(ad => `<div style="padding:8px 0;cursor:pointer;border-bottom:1px solid var(--border);" onclick="openAdDetail(${ad.id}); closeModal('searchModal');">${ad.item_name} - ${formatPrice(ad.price)}$</div>`).join('');
+            } else {
+                container.innerHTML = '<div style="color:var(--muted);padding:8px 0;">Ничего не найдено</div>';
+            }
+        }
+
+        function executeSearch(type) {
+            const query = document.getElementById('modalSearchInput').value.trim();
+            if (!query) return;
+            if (type === 'profile') {
+                closeModal('searchModal');
+                inspectProfile(query);
+                return;
+            }
+            let history = JSON.parse(localStorage.getItem('search_history') || '[]');
+            history = history.filter(h => h !== query);
+            history.unshift(query);
+            history = history.slice(0, 10);
+            localStorage.setItem('search_history', JSON.stringify(history));
+            const results = globalAdsFeed.filter(ad => ad.status === 'approved' && (ad.item_name.toLowerCase().includes(query.toLowerCase()) || ad.description.toLowerCase().includes(query.toLowerCase())));
+            const resultsContainer = document.getElementById('searchResultsContainer');
+            if (results.length > 0) {
+                resultsContainer.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;">Результаты (${results.length})</div>` + results.map(ad => createAdCard(ad)).join('');
+            } else {
+                resultsContainer.innerHTML = '<div style="color:var(--muted);padding:8px 0;">Ничего не найдено</div>';
+            }
+            document.getElementById('searchSuggestionsContainer').innerHTML = '';
+        }
+
+        // ==================== ПРОФИЛЬ ====================
+        function inspectProfile(username) {
+            activeInspectedUser = username.startsWith('@') ? username : '@' + username;
+            document.getElementById('inspectUsername').innerText = activeInspectedUser;
+            openModal('profileModal');
+        }
+        function openChatWithInspected() { if (activeInspectedUser) window.open('https://t.me/' + activeInspectedUser.replace('@',''), '_blank'); }
+        function inspectSubscribe() { showCustomAlert('Подписка оформлена', 'Успех'); closeModal('profileModal'); }
+        function inspectUserProfile(username) { inspectProfile(username); }
+
+        // ==================== МУЗЫКА И ЗВУК ====================
+        function toggleMusic() { const a = document.getElementById('bgMusic'); if (musicPlaying) { a.pause(); musicPlaying=false; document.getElementById('musicToggleBtn').innerText='▶ Играть'; } else { a.play(); musicPlaying=true; document.getElementById('musicToggleBtn').innerText='⏸ Пауза'; } }
+        function resetMusic() { document.getElementById('bgMusic').src='https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3?filename=lofi-study-112191.mp3'; document.getElementById('bgMusic').play(); musicPlaying=true; }
+        function loadCustomMusic(e) { const f=e.target.files[0]; if(!f)return; const url=URL.createObjectURL(f); document.getElementById('bgMusic').src=url; document.getElementById('bgMusic').play(); musicPlaying=true; }
+        function toggleSfx() { sfxEnabled=!sfxEnabled; localStorage.setItem('sfx_enabled', sfxEnabled?'1':'0'); document.getElementById('toggleSfxBtn').innerText = sfxEnabled?'Включены':'Выключены'; }
+        async function resetAllData() {
+            customConfirm('Сброс данных', 'Вы уверены, что хотите сбросить все данные? Это действие необратимо.', async function() {
+                await supabase.from('ads').delete().eq('author_id', currentUserId);
+                await supabase.from('favorites').delete().eq('user_id', currentUserId);
+                await supabase.from('reviews').delete().eq('author_id', currentUserId);
+                await supabase.from('baryga').delete().eq('user_id', currentUserId);
+                localStorage.clear();
+                location.reload();
+            });
+        }
+
+        // ==================== ЛЕНТА ЛУКОВ ====================
+        function openFashionModal() { renderFashionLooks(); openModal('fashionModal'); }
+        async function postFashion() {
+            const title = document.getElementById('fashionSetTitle').value.trim();
+            const image = document.getElementById('fashionSetImage').value.trim();
+            if(!title||!image){ showCustomAlert('Заполните поля', 'Ошибка'); return; }
+            const newItem = { id: Date.now(), author_id: currentUserId, title, image };
+            await supabase.from('fashion').insert(newItem);
+            fashionLooks.unshift(newItem);
+            renderFashionLooks();
+            document.getElementById('fashionSetTitle').value=''; document.getElementById('fashionSetImage').value='';
+        }
+        function renderFashionLooks() {
+            const c=document.getElementById('fashionContainer'); if(!c)return;
+            if(fashionLooks.length===0){c.innerHTML='Лента пуста';return;}
+            c.innerHTML=fashionLooks.map((l,i)=>`<div style="background:var(--card-bg);border:none;padding:12px;border-radius:12px;margin-bottom:10px;box-shadow:var(--shadow);"><b>${l.author_id}: ${l.title}</b><img src="${l.image}" loading="lazy" decoding="async" fetchpriority="low" style="width:100%;height:180px;object-fit:cover;border-radius:8px;margin-top:8px;"><button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="deleteFashionLook(${i})">🗑</button></div>`).join('');
+        }
+        async function deleteFashionLook(index) {
+            const item = fashionLooks[index];
+            await supabase.from('fashion').delete().eq('id', item.id);
+            fashionLooks.splice(index,1);
+            renderFashionLooks();
+        }
+
+        // ==================== ПОПУТЧИКИ ====================
+        function openTravelModal(){ renderTravelAds(); openModal('travelModal'); }
+        async function postTravel() {
+            const activity = document.getElementById('travelActivity').value.trim();
+            const desc = document.getElementById('travelDesc').value.trim();
+            if(!activity){ showCustomAlert('Укажите активность', 'Ошибка'); return; }
+            const newItem = { id: Date.now(), author_id: currentUserId, activity, description: desc };
+            await supabase.from('travel').insert(newItem);
+            travelAds.unshift(newItem);
+            renderTravelAds();
+            document.getElementById('travelActivity').value=''; document.getElementById('travelDesc').value='';
+        }
+        function renderTravelAds(){
+            const c=document.getElementById('travelContainer'); if(!c)return;
+            if(travelAds.length===0){c.innerHTML='Нет заявок';return;}
+            c.innerHTML=travelAds.map((t,i)=>`<div style="background:var(--card-bg);border:none;padding:12px;border-radius:12px;margin-bottom:10px;box-shadow:var(--shadow);"><b>${t.activity} (${t.author_id})</b><br><span style="font-size:12px;color:var(--muted);">${t.description||''}</span><button class="btn btn-danger btn-sm" style="margin-top:8px;" onclick="deleteTravelAd(${i})">🗑</button></div>`).join('');
+        }
+        async function deleteTravelAd(index) {
+            const item = travelAds[index];
+            await supabase.from('travel').delete().eq('id', item.id);
+            travelAds.splice(index,1);
+            renderTravelAds();
+        }
+
+        // ==================== МОДАЛКИ ====================
+        function openSettingsModal(){ openModal('settingsModal'); }
+        function openMusicModal(){ openModal('musicModal'); }
+        function openChatsModal(){ openModal('chatsModal'); }
+        function openManagerModal(){ openModal('managerModal'); }
+
+        // ==================== АПЕЛЛЯЦИИ ====================
+        function openAppealModal(adId) {
+            const ad = myAdsList.find(a => a.id === adId) || globalAdsFeed.find(a => a.id === adId);
+            if (!ad) return;
+            currentAppealAdId = adId;
+            document.getElementById('appealEvidence').value = '';
+            document.getElementById('appealReason').value = '';
+            document.getElementById('appealReasonText').innerText = 'Выберите причину';
+            openModal('appealModal');
+        }
+        async function submitAppeal() {
+            const reason = document.getElementById('appealReason').value;
+            const evidence = document.getElementById('appealEvidence').value.trim();
+            if (!reason) { showCustomAlert('Выберите причину апелляции', 'Ошибка'); return; }
+            if (!evidence) { showCustomAlert('Добавьте хотя бы одну ссылку', 'Ошибка'); return; }
+            if (!currentAppealAdId) { showCustomAlert('Ошибка', 'Ошибка'); return; }
+            const check = checkLinksString(evidence);
+            if (!check.valid) {
+                showCustomAlert(check.message, 'Ошибка');
+                return;
+            }
+            const links = evidence.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            if (links.length > 20) { showCustomAlert('Максимум 20 ссылок', 'Ошибка'); return; }
+            const newAppeal = {
+                id: Date.now(),
+                ad_id: currentAppealAdId,
+                author_id: currentUserId,
+                reason,
+                evidence: links.join(','),
+                status: 'pending'
+            };
+            const { error } = await supabase.from('appeals').insert(newAppeal);
+            if (error) { showCustomAlert('Ошибка: ' + error.message, 'Ошибка'); return; }
+            appealsList.push(newAppeal);
+            closeModal('appealModal');
+            showCustomAlert('Апелляция отправлена', 'Успех');
+        }
+
+        // ==================== АДМИН-ПАНЕЛЬ ====================
+        function isAdmin() {
+            return ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(currentUserUsername.replace('@', '').toLowerCase());
+        }
+
+        function renderPendingAds() {
+            const container = document.getElementById('pendingAdsContainer');
+            if (!container) return;
+            if (!isAdmin()) return;
+            if (pendingAdsList.length === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Нет объявлений на модерации</div>';
+                return;
+            }
+            container.innerHTML = pendingAdsList.map(ad => {
+                const firstImage = ad.images ? ad.images.split(',')[0].trim() : '';
+                const imageHtml = firstImage
+                    ? `<img src="${firstImage}" class="ad-image" loading="lazy" decoding="async" fetchpriority="low" onerror="this.style.display='none'">`
+                    : `<div class="ad-image-placeholder"></div>`;
+                return `
+                    <div class="ad-card no-click">
+                        <div class="ad-image-wrap">${imageHtml}</div>
+                        <div class="ad-info">
+                            <div class="ad-badges">
+                                <span class="badge ${ad.mode === 'sell' ? '' : 'badge-warning'}">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                                <span class="badge">${ad.server}</span>
+                                ${ad.category ? `<span class="badge">${ad.category}</span>` : ''}
+                                <span class="badge badge-warning">На модерации</span>
+                            </div>
+                            <div class="ad-title">${ad.item_name}</div>
+                            <div class="ad-price">💰 ${formatPrice(ad.price)} $</div>
+                            <div class="owner-actions">
+                                <button class="btn btn-sm btn-success" onclick="approveAd(${ad.id})">✅ Одобрить</button>
+                                <button class="btn btn-sm btn-danger" onclick="rejectAd(${ad.id})">❌ Отклонить</button>
+                                <button class="btn btn-sm btn-outline" onclick="editAdForAdmin(${ad.id})">✏️</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (isOwner()) {
+                const ownerSection = document.getElementById('ownerSection');
+                if (ownerSection) {
+                    ownerSection.innerHTML = `
+                        <h3>Управление пользователями</h3>
+                        <input type="text" id="targetUserInput" placeholder="Username без @">
+                        <div style="display:flex;gap:8px;margin-top:8px;">
+                            <button class="btn btn-sm btn-danger" onclick="banUser()">Забанить</button>
+                            <button class="btn btn-sm btn-success" onclick="unbanUser()">Разбанить</button>
+                            <button class="btn btn-sm btn-outline" onclick="makeAdmin()">Сделать админом</button>
+                            <button class="btn btn-sm btn-outline" onclick="removeAdmin()">Снять админа</button>
+                        </div>
+                        <h3>Дополнительно</h3>
+                        <button class="btn btn-sm btn-danger" onclick="clearFeed()">Очистить ленту</button>
+                    `;
+                }
+            }
+        }
+
+        function isOwner() {
+            return currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase();
+        }
+
+        async function approveAd(id) {
+            const ad = pendingAdsList.find(a => a.id === id);
+            if (!ad) return;
+            await supabase.from('ads').update({ status: 'approved' }).eq('id', id);
+            ad.status = 'approved';
+            pendingAdsList = pendingAdsList.filter(a => a.id !== id);
+            globalAdsFeed.unshift(ad);
+            // Обновим myAdsList автора, если он совпадает с текущим пользователем
+            const myAd = myAdsList.find(a => a.id === id);
+            if (myAd) myAd.status = 'approved';
+            renderPendingAds();
+            renderFeed();
+            renderMyAds();
+            showCustomAlert('Объявление одобрено', 'Успех');
+        }
+
+        async function rejectAd(id) {
+            const ad = pendingAdsList.find(a => a.id === id);
+            if (!ad) return;
+            await supabase.from('ads').update({ status: 'deleted' }).eq('id', id);
+            ad.status = 'deleted';
+            pendingAdsList = pendingAdsList.filter(a => a.id !== id);
+            const myAd = myAdsList.find(a => a.id === id);
+            if (myAd) myAd.status = 'deleted';
+            renderPendingAds();
+            renderMyAds();
+            showCustomAlert('Объявление отклонено', 'Успех');
+        }
+
+        async function editAdForAdmin(id) {
+            const ad = pendingAdsList.find(a => a.id === id) || globalAdsFeed.find(a => a.id === id) || myAdsList.find(a => a.id === id);
+            if (!ad) return;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.display = 'flex';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+                    <h3>✏️ Редактировать объявление</h3>
+                    <div class="form-group"><label>Название</label><input id="editItemName" value="${ad.item_name}"></div>
+                    <div class="form-group"><label>Цена</label><input id="editPrice" value="${ad.price}"></div>
+                    <div class="form-group"><label>Описание</label><textarea id="editText">${ad.description}</textarea></div>
+                    <div class="form-group"><label>Скриншоты</label><input id="editImages" value="${ad.images || ''}"></div>
+                    <div class="form-group"><label>Сервер</label><input id="editServer" value="${ad.server}"></div>
+                    <button class="btn" onclick="saveEditedAd(${ad.id})">Сохранить</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+        }
+
+        async function saveEditedAd(id) {
+            const ad = pendingAdsList.find(a => a.id === id) || globalAdsFeed.find(a => a.id === id) || myAdsList.find(a => a.id === id);
+            if (!ad) return;
+            const item_name = document.getElementById('editItemName').value.trim();
+            const price = document.getElementById('editPrice').value.trim();
+            const description = document.getElementById('editText').value.trim();
+            const images = document.getElementById('editImages').value.trim();
+            const server = document.getElementById('editServer').value.trim();
+            const updates = { item_name, price, description, images, server };
+            await supabase.from('ads').update(updates).eq('id', id);
+            Object.assign(ad, updates);
+            renderPendingAds();
+            renderFeed();
+            renderMyAds();
+            document.querySelector('.modal-overlay')?.remove();
+            showCustomAlert('Объявление обновлено', 'Успех');
+        }
+
+        async function banUser() {
+            const username = document.getElementById('targetUserInput').value.trim().replace('@','');
+            if (!username) return;
+            const { data, error } = await supabase.from('users').select('id').eq('username', username).single();
+            if (error || !data) { showCustomAlert('Пользователь не найден', 'Ошибка'); return; }
+            await supabase.from('users').update({ banned: true }).eq('id', data.id);
+            showCustomAlert(`Пользователь @${username} забанен`, 'Успех');
+        }
+
+        async function unbanUser() {
+            const username = document.getElementById('targetUserInput').value.trim().replace('@','');
+            if (!username) return;
+            const { data, error } = await supabase.from('users').select('id').eq('username', username).single();
+            if (error || !data) { showCustomAlert('Пользователь не найден', 'Ошибка'); return; }
+            await supabase.from('users').update({ banned: false }).eq('id', data.id);
+            showCustomAlert(`Пользователь @${username} разбанен`, 'Успех');
+        }
+
+        async function makeAdmin() {
+            const username = document.getElementById('targetUserInput').value.trim().replace('@','');
+            if (!username) return;
+            const { data, error } = await supabase.from('users').select('id').eq('username', username).single();
+            if (error || !data) { showCustomAlert('Пользователь не найден', 'Ошибка'); return; }
+            await supabase.from('users').update({ is_admin: true }).eq('id', data.id);
+            showCustomAlert(`@${username} теперь админ`, 'Успех');
+        }
+
+        async function removeAdmin() {
+            const username = document.getElementById('targetUserInput').value.trim().replace('@','');
+            if (!username) return;
+            const { data, error } = await supabase.from('users').select('id').eq('username', username).single();
+            if (error || !data) { showCustomAlert('Пользователь не найден', 'Ошибка'); return; }
+            await supabase.from('users').update({ is_admin: false }).eq('id', data.id);
+            showCustomAlert(`@${username} больше не админ`, 'Успех');
+        }
+
+        async function clearFeed() {
+            customConfirm('Очистка ленты', 'Вы уверены, что хотите удалить все объявления?', async function() {
+                await supabase.from('ads').delete().neq('id', 0);
+                globalAdsFeed = [];
+                myAdsList = [];
+                pendingAdsList = [];
+                favoritesList = [];
+                renderFeed(); renderCart(); renderMyAds(); renderPendingAds();
+                showCustomAlert('Лента очищена', 'Успех');
+            });
+        }
+
+        // ==================== ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ====================
+        function openChatWithUser(userId) {
+            window.open('https://t.me/' + userId.replace('@',''), '_blank');
         }
     </script>
 </body>
-</html>
+    </html>

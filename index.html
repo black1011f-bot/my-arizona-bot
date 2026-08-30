@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* ==================== ОСНОВНЫЕ СТИЛИ ==================== */
+        /* (весь CSS из твоего кода, без изменений) */
         :root {
             --app-bg: #FFFFFF;
             --card-bg: #FFFFFF;
@@ -648,6 +648,29 @@
     </div>
 
     <script>
+        // Проверка загрузки Supabase
+        if (!window.supabase) {
+            document.body.innerHTML = '<div style="text-align:center;padding:40px;font-size:20px;">Ошибка: библиотека Supabase не загружена. Проверьте подключение к интернету.</div>';
+            throw new Error('Supabase library is not loaded');
+        }
+
+        // ==================== ИМИТАЦИЯ ПОЛЬЗОВАТЕЛЯ ДЛЯ ТЕСТИРОВАНИЯ ВНЕ TELEGRAM ====================
+        if (!window.Telegram?.WebApp) {
+            window.Telegram = {
+                WebApp: {
+                    initDataUnsafe: {
+                        user: {
+                            id: 123456789,
+                            username: 'testuser',
+                            first_name: 'Тест'
+                        }
+                    },
+                    ready: () => {},
+                    expand: () => {}
+                }
+            };
+        }
+
         // ==================== НАСТРОЙКА SUPABASE ====================
         const supabaseUrl = 'https://sbtitlayqkpllnaiyeld.supabase.co';
         const supabaseAnonKey = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
@@ -884,15 +907,27 @@
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
         async function init() {
-            const hasUsername = await checkUsername();
-            if (!hasUsername) {
-                return;
+            try {
+                const hasUsername = await checkUsername();
+                if (!hasUsername) {
+                    return;
+                }
+                document.getElementById('appContainer').style.display = 'block';
+                applyThemeFromStorage();
+                loadInitialData();
+                showTutorial();
+            } catch (e) {
+                console.error('Init error:', e);
+                document.body.innerHTML = '<div style="text-align:center;padding:40px;font-size:20px;">Критическая ошибка: ' + e.message + '</div>';
             }
-            document.getElementById('appContainer').style.display = 'block';
-            applyThemeFromStorage();
-            loadInitialData();
-            showTutorial();
         }
+
+        // Перехват непойманных ошибок
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('Global error:', message, 'at', lineno, ':', colno);
+            // Можно вывести сообщение на экран, но не всегда нужно
+            // document.body.innerHTML = '<div style="text-align:center;padding:40px;">Ошибка: ' + message + '</div>';
+        };
 
         if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
 
@@ -953,6 +988,7 @@
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function checkUserPermissions() {
+            if (!currentUserUsername) return;
             let isOwner = (currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase());
             let isAdmin = isOwner || ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(currentUserUsername.replace('@', '').toLowerCase());
             let adminTabBtn = document.getElementById('adminTabBtn');
@@ -1934,6 +1970,7 @@
 
         // ==================== АДМИН-ПАНЕЛЬ ====================
         function isAdmin() {
+            if (!currentUserUsername) return false;
             return ADMIN_USERNAMES.map(u => u.replace('@', '').toLowerCase()).includes(currentUserUsername.replace('@', '').toLowerCase());
         }
 
@@ -1992,6 +2029,7 @@
         }
 
         function isOwner() {
+            if (!currentUserUsername) return false;
             return currentUserUsername.replace('@', '').toLowerCase() === OWNER_USERNAME.toLowerCase();
         }
 
@@ -2002,7 +2040,6 @@
             ad.status = 'approved';
             pendingAdsList = pendingAdsList.filter(a => a.id !== id);
             globalAdsFeed.unshift(ad);
-            // Обновим myAdsList автора, если он совпадает с текущим пользователем
             const myAd = myAdsList.find(a => a.id === id);
             if (myAd) myAd.status = 'approved';
             renderPendingAds();

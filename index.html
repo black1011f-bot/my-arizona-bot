@@ -269,11 +269,6 @@
             font-size: 11px;
             margin: 0;
         }
-        #preloader {
-            position:fixed; inset:0; background:var(--app-bg); z-index:99999;
-            display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:bold;
-            color: var(--accent);
-        }
         #alertModal .modal-content {
             text-align: center;
         }
@@ -324,9 +319,6 @@
     </style>
 </head>
 <body>
-    <!-- Прелоадер -->
-    <div id="preloader">Загрузка...</div>
-
     <!-- Кастомное окно подтверждения -->
     <div id="confirmModal" class="modal-overlay" style="z-index: 4000;" onclick="if(event.target===this) closeModal('confirmModal')">
         <div class="modal-content" style="text-align:center;">
@@ -886,29 +878,19 @@
                 if (isAdmin()) document.getElementById('adminTabBtn').style.display = 'flex';
             } catch (e) {
                 console.error('Ошибка загрузки данных:', e);
-                // Показываем сообщение, но не блокируем интерфейс
                 showCustomAlert('Не удалось загрузить данные. Проверьте подключение.', 'Ошибка');
             }
         }
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
         async function init() {
-            // Сначала проверяем username и показываем экран, если его нет
             const hasUsername = await checkUsername();
             if (!hasUsername) {
-                document.getElementById('preloader').style.display = 'none';
                 return;
             }
-
-            // Показываем основной интерфейс сразу, скрываем прелоадер
-            document.getElementById('preloader').style.display = 'none';
             document.getElementById('appContainer').style.display = 'block';
             applyThemeFromStorage();
-
-            // Загружаем данные в фоне
             loadInitialData();
-
-            // Показываем туториал (если не завершён)
             showTutorial();
         }
 
@@ -920,7 +902,6 @@
                 document.getElementById('noUsernameScreen').style.display = 'flex';
                 return false;
             }
-            // Проверяем бан (не блокируем отображение интерфейса, но если забанен - скроем)
             try {
                 const { data: user } = await withTimeout(
                     supabase.from('users').select('banned').eq('id', currentUserId).single(),
@@ -2133,4 +2114,4 @@
         }
     </script>
 </body>
-</html>
+    </html>

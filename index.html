@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Arizona RP</title>
+    <title>Arizona RP — Маркетплейс</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -184,6 +184,7 @@
         .btn.secondary { background: var(--border); color: var(--text); }
         .btn.danger { background: #ff3b30; color: #fff; }
         .btn.gold { background: var(--gold); color: #1a1a1a; }
+        .btn.success { background: #34c759; color: #fff; }
         .btn:disabled { opacity: 0.5; pointer-events: none; }
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -277,6 +278,16 @@
         .w-full { width: 100%; }
         .gap-8 { gap: 8px; }
         .gap-12 { gap: 12px; }
+        .auth-container {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg); z-index: 1000; display: flex;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .auth-box {
+            width: 100%; max-width: 400px; background: var(--card);
+            border-radius: var(--radius); border: 1px solid var(--border);
+            padding: 24px; box-shadow: var(--shadow);
+        }
     </style>
 </head>
 <body>
@@ -372,8 +383,10 @@
     </nav>
     <div id="modalContainer"></div>
     <div id="tutorialContainer"></div>
+    <div id="authContainer"></div>
     <script>
         (function() {
+            // ================= КОНСТАНТЫ =================
             const OWNER_USERNAME = 'bounqy';
             const ALL_SERVERS = [
                 'Phoenix', 'Tucson', 'Scottdale', 'Chandler', 'Brainburg', 'Saint-Rose', 'Mesa', 'Red-Rock', 'Yuma',
@@ -402,10 +415,45 @@
             const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
 
+            // ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =================
             let tg = null;
+            let supabase = null;
             let currentAuthUser = JSON.parse(localStorage.getItem('arizona_current_user') || 'null');
-            let currentUser = { id: 123456789, username: 'testuser', first_name: 'Тест' };
+            let currentUser = { id: 123456789, username: 'testuser', first_name: 'Тест' }; // запасной
+            let currentSection = 'home';
+            let currentTheme = localStorage.getItem('theme') || 'light';
+            let sfxEnabled = localStorage.getItem('sfx') !== 'off';
+            let currentFilterCategory = null;
+            let currentUserServer = ALL_SERVERS[0];
+            let currentUserData = null;
+            let isAdmin = false;
+            let isOwner = false;
+            let lastAdSubmitTime = 0;
+            let audioCtx = null;
+            let gameState = {
+                money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800,
+                shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000, scrapCost: 500,
+                elitePurchased: false
+            };
+            let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+            let appealAdId = null;
+            let cartAds = [];
+            let myAds = [];
+            let pendingAds = [];
+            let pendingAppeals = [];
+            let homeAds = [];
+            let saveGameTimeout = null;
 
+            // ================= ИНИЦИАЛИЗАЦИЯ SUPABASE =================
+            try {
+                if (window.supabase && window.supabase.createClient) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                }
+            } catch (e) {
+                console.warn('Supabase init error', e);
+            }
+
+            // ================= TELEGRAM (опционально) =================
             try {
                 if (window.Telegram && window.Telegram.WebApp) {
                     tg = window.Telegram.WebApp;
@@ -422,44 +470,7 @@
                 }
             } catch (e) { console.warn('Telegram WebApp not available', e); }
 
-            let supabase = null;
-            try {
-                if (window.supabase && window.supabase.createClient) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                }
-            } catch (e) { console.warn('Supabase init error', e); }
-
-            let currentSection = 'home';
-            let currentTheme = localStorage.getItem('theme') || 'light';
-            let sfxEnabled = localStorage.getItem('sfx') !== 'off';
-            let currentFilterCategory = null;
-            let currentUserServer = ALL_SERVERS[0];
-            let currentUserData = null;
-            let isAdmin = false;
-            let isOwner = false;
-            let lastAdSubmitTime = 0;
-            let wakeLock = null;
-            let audioCtx = null;
-            let gameState = {
-                money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800,
-                shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000, scrapCost: 500,
-                elitePurchased: false
-            };
-            let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-            let appealAdId = null;
-            let cartAds = [];
-            let myAds = [];
-            let pendingAds = [];
-            let pendingAppeals = [];
-            let homeAds = [];
-
-            function getUserIdentifier() {
-                if (currentAuthUser && currentAuthUser.username) return `@${currentAuthUser.username}`;
-                if (currentUser.username) return `@${currentUser.username}`;
-                return `ID: ${currentUser.id}`;
-            }
-            let userIdentifier = getUserIdentifier();
-
+            // ================= УТИЛИТЫ =================
             function withTimeout(promise, ms = 8000) {
                 return Promise.race([
                     promise,
@@ -489,7 +500,6 @@
                 document.documentElement.setAttribute('data-theme', currentTheme);
             }
             applyTheme();
-
             document.getElementById('themeToggleBtn').addEventListener('click', () => {
                 currentTheme = currentTheme === 'light' ? 'dark' : 'light';
                 localStorage.setItem('theme', currentTheme);
@@ -497,8 +507,10 @@
                 playSfx('click');
             });
 
-            document.getElementById('headerSearchTrigger').addEventListener('click', () => {
-                openSearchModal();
+            document.getElementById('headerSearchTrigger').addEventListener('click', () => openSearchModal());
+            document.getElementById('logoBtn').addEventListener('click', () => {
+                currentFilterCategory = null;
+                switchSection('home');
             });
 
             function formatPrice(value) {
@@ -529,6 +541,7 @@
                 else if (kCount === 3) num *= 1000000000;
                 input.value = formatPrice(num);
             }
+            function formatPriceInputHandler(e) { formatPriceInput(e.target); }
 
             function isAllowedLink(url) {
                 try {
@@ -548,6 +561,17 @@
                 return { valid: true, links };
             }
 
+            function parsePriceToNumber(str) {
+                if (!str) return 0;
+                str = str.toLowerCase().trim();
+                let num = parseInt(str.replace(/[^0-9]/g, '')) || 0;
+                let kCount = (str.match(/к/g) || []).length;
+                if (kCount === 1) num *= 1000;
+                else if (kCount === 2) num *= 1000000;
+                else if (kCount === 3) num *= 1000000000;
+                return num;
+            }
+
             function showModal(html, onClose) {
                 const container = document.getElementById('modalContainer');
                 container.innerHTML = `
@@ -561,7 +585,6 @@
                 const overlay = document.getElementById('modalOverlay');
                 const closeBtn = document.getElementById('modalCloseBtn');
                 setTimeout(() => overlay.classList.add('show'), 10);
-                
                 function closeModal() {
                     overlay.classList.remove('show');
                     setTimeout(() => {
@@ -576,7 +599,7 @@
 
             function showAlert(title, message, type = 'info') {
                 const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
-                showModal(`
+                const { closeModal } = showModal(`
                     <div style="text-align:center;">
                         <div style="font-size:48px;margin-bottom:12px;">${icon}</div>
                         <h3 class="modal-title" style="text-align:center;">${title}</h3>
@@ -584,17 +607,11 @@
                         <button class="btn w-full" id="alertOkBtn">ОК</button>
                     </div>
                 `);
-                document.getElementById('alertOkBtn').addEventListener('click', () => {
-                    const overlay = document.getElementById('modalOverlay');
-                    if (overlay) {
-                        overlay.classList.remove('show');
-                        setTimeout(() => overlay.remove(), 250);
-                    }
-                });
+                document.getElementById('alertOkBtn').addEventListener('click', closeModal);
             }
 
             function showConfirm(title, message, onConfirm) {
-                showModal(`
+                const { closeModal } = showModal(`
                     <div style="text-align:center;">
                         <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
                         <h3 class="modal-title" style="text-align:center;">${title}</h3>
@@ -605,17 +622,10 @@
                         </div>
                     </div>
                 `);
-                const overlay = document.getElementById('modalOverlay');
-                document.getElementById('confirmCancelBtn').addEventListener('click', () => {
-                    overlay.classList.remove('show');
-                    setTimeout(() => overlay.remove(), 250);
-                });
+                document.getElementById('confirmCancelBtn').addEventListener('click', closeModal);
                 document.getElementById('confirmOkBtn').addEventListener('click', () => {
-                    overlay.classList.remove('show');
-                    setTimeout(() => {
-                        overlay.remove();
-                        onConfirm();
-                    }, 250);
+                    closeModal();
+                    onConfirm();
                 });
             }
 
@@ -627,87 +637,115 @@
                 } catch (e) {}
             }
 
-            // ===== Аутентификация и регистрация владельца/пользователей =====
+            // ================= АУТЕНТИФИКАЦИЯ =================
+            function getUserIdentifier() {
+                if (currentAuthUser && currentAuthUser.username) return `@${currentAuthUser.username}`;
+                if (currentUser.username) return `@${currentUser.username}`;
+                return `ID: ${currentUser.id}`;
+            }
+            let userIdentifier = getUserIdentifier();
+
             function checkAuth() {
                 if (!currentAuthUser) {
-                    showAuthModal();
+                    showAuthScreen();
                 } else {
                     userIdentifier = `@${currentAuthUser.username}`;
                     initApp();
                 }
             }
 
-            function showAuthModal() {
-                const container = document.getElementById('tutorialContainer');
-                let mode = 'login'; // 'login' or 'register'
+            function showAuthScreen() {
+                const container = document.getElementById('authContainer');
+                let mode = 'login';
 
                 function renderAuthForm() {
                     container.innerHTML = `
-                        <div class="fullscreen-overlay">
-                            <div class="tutorial-slide" style="background:var(--card); padding:24px; border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow);">
-                                <h2 style="margin-bottom:8px;">${mode === 'login' ? '🔑 Вход в аккаунт' : '✨ Регистрация'}</h2>
-                                <p style="font-size:13px; margin-bottom:16px;">${mode === 'register' && OWNER_USERNAME ? 'Для владельца проекта укажите логин: ' + OWNER_USERNAME : 'Создайте или войдите в свою учетную запись'}</p>
-                                <div class="form-group" style="text-align:left;">
-                                    <label>Имя пользователя (логин)</label>
-                                    <input type="text" id="authUsername" placeholder="Введите логин" autocomplete="off">
+                        <div class="auth-container">
+                            <div class="auth-box">
+                                <h2 style="text-align:center; margin-bottom:8px;">Arizona RP</h2>
+                                <p style="text-align:center; font-size:13px; color:var(--muted); margin-bottom:20px;">
+                                    Это не ваш Telegram-аккаунт, а отдельная учётная запись для использования приложения
+                                </p>
+                                <div style="display:flex; margin-bottom:16px; border-bottom:1px solid var(--border);">
+                                    <button type="button" class="auth-tab ${mode === 'login' ? 'active' : ''}" id="authTabLogin" style="flex:1; padding:8px; background:none; border:none; cursor:pointer; font-weight:700; color:${mode === 'login' ? 'var(--accent)' : 'var(--muted)'}; border-bottom:2px solid ${mode === 'login' ? 'var(--accent)' : 'transparent'};">Вход</button>
+                                    <button type="button" class="auth-tab ${mode === 'register' ? 'active' : ''}" id="authTabRegister" style="flex:1; padding:8px; background:none; border:none; cursor:pointer; font-weight:700; color:${mode === 'register' ? 'var(--accent)' : 'var(--muted)'}; border-bottom:2px solid ${mode === 'register' ? 'var(--accent)' : 'transparent'};">Создать аккаунт</button>
                                 </div>
-                                <div class="form-group" style="text-align:left;">
-                                    <label>Пароль</label>
-                                    <input type="password" id="authPassword" placeholder="Введите пароль">
+                                <div id="authFormFields">
+                                    <div class="form-group">
+                                        <label>Логин</label>
+                                        <input type="text" id="authUsername" placeholder="Введите логин" autocomplete="off">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Пароль</label>
+                                        <input type="password" id="authPassword" placeholder="Введите пароль">
+                                    </div>
                                 </div>
-                                <button class="btn w-full mb-8" id="authSubmitBtn">${mode === 'login' ? 'Войти' : 'Создать аккаунт'}</button>
-                                <button class="btn secondary w-full" id="authSwitchBtn">${mode === 'login' ? 'Создать аккаунт' : 'Уже есть аккаунт? Войти'}</button>
+                                <button type="button" class="btn w-full" id="authSubmitBtn">${mode === 'login' ? 'Войти' : 'Создать аккаунт'}</button>
+                                <p id="authError" style="color:#ff3b30; font-size:12px; margin-top:8px; text-align:center;"></p>
                             </div>
                         </div>
                     `;
 
-                    document.getElementById('authSwitchBtn').addEventListener('click', () => {
-                        mode = mode === 'login' ? 'register' : 'login';
-                        playSfx('click');
-                        renderAuthForm();
+                    const tabLogin = document.getElementById('authTabLogin');
+                    const tabRegister = document.getElementById('authTabRegister');
+                    const submitBtn = document.getElementById('authSubmitBtn');
+                    const errorEl = document.getElementById('authError');
+
+                    tabLogin.addEventListener('click', () => {
+                        if (mode !== 'login') {
+                            mode = 'login';
+                            renderAuthForm();
+                        }
+                    });
+                    tabRegister.addEventListener('click', () => {
+                        if (mode !== 'register') {
+                            mode = 'register';
+                            renderAuthForm();
+                        }
                     });
 
-                    document.getElementById('authSubmitBtn').addEventListener('click', async () => {
-                        const usernameInput = document.getElementById('authUsername').value.trim().toLowerCase().replace('@', '');
-                        const passwordInput = document.getElementById('authPassword').value.trim();
-
-                        if (!usernameInput || !passwordInput) {
-                            showAlert('Ошибка', 'Заполните все поля');
+                    submitBtn.addEventListener('click', async () => {
+                        errorEl.textContent = '';
+                        const username = document.getElementById('authUsername').value.trim().toLowerCase();
+                        const password = document.getElementById('authPassword').value.trim();
+                        if (!username || !password) {
+                            errorEl.textContent = 'Заполните все поля';
                             return;
                         }
-
                         if (!supabase) {
-                            showAlert('Ошибка', 'Нет подключения к базе данных');
+                            errorEl.textContent = 'Нет подключения к серверу';
                             return;
                         }
-
                         try {
                             if (mode === 'login') {
+                                // Вход
                                 const { data, error } = await withTimeout(
-                                    supabase.from('custom_users').select('*').eq('username', usernameInput).maybeSingle()
+                                    supabase.from('custom_users').select('*').eq('username', username).maybeSingle()
                                 );
                                 if (error) throw error;
-                                if (!data || data.password !== passwordInput) {
-                                    showAlert('Ошибка', 'Неверный логин или пароль');
+                                if (!data || data.password !== password) {
+                                    errorEl.textContent = 'Неверный логин или пароль';
                                     return;
                                 }
                                 currentAuthUser = data;
                                 localStorage.setItem('arizona_current_user', JSON.stringify(data));
+                                userIdentifier = `@${currentAuthUser.username}`;
                                 playSfx('success');
                                 container.innerHTML = '';
-                                userIdentifier = `@${currentAuthUser.username}`;
+                                await ensureUserRecord(username);
                                 initApp(true);
                             } else {
+                                // Регистрация
                                 const { data: existing } = await withTimeout(
-                                    supabase.from('custom_users').select('*').eq('username', usernameInput).maybeSingle()
+                                    supabase.from('custom_users').select('*').eq('username', username).maybeSingle()
                                 );
                                 if (existing) {
-                                    showAlert('Ошибка', 'Такой пользователь уже существует');
+                                    errorEl.textContent = 'Такой пользователь уже существует';
                                     return;
                                 }
                                 const newUser = {
-                                    username: usernameInput,
-                                    password: passwordInput,
+                                    username: username,
+                                    password: password,
                                     created_at: new Date().toISOString()
                                 };
                                 const { data: inserted, error: insErr } = await withTimeout(
@@ -716,22 +754,97 @@
                                 if (insErr) throw insErr;
                                 currentAuthUser = inserted || newUser;
                                 localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
+                                userIdentifier = `@${currentAuthUser.username}`;
                                 playSfx('success');
                                 container.innerHTML = '';
-                                userIdentifier = `@${currentAuthUser.username}`;
+                                await ensureUserRecord(username);
                                 initApp(true);
                             }
                         } catch (e) {
-                            showAlert('Ошибка', 'Ошибка соединения с сервером');
+                            console.error('Auth error:', e);
+                            errorEl.textContent = 'Ошибка соединения с сервером';
                         }
                     });
                 }
                 renderAuthForm();
             }
 
-            // ===== Туториалы =====
+            async function ensureUserRecord(username) {
+                if (!supabase) return;
+                const isOwner = username === OWNER_USERNAME;
+                try {
+                    const { data } = await withTimeout(
+                        supabase.from('users').select('*').eq('username', username).maybeSingle()
+                    );
+                    if (!data) {
+                        await withTimeout(supabase.from('users').insert({
+                            id: currentUser.id.toString(),
+                            username: username,
+                            display_name: username,
+                            banned: false,
+                            is_admin: isOwner
+                        }));
+                    } else {
+                        if (isOwner && !data.is_admin) {
+                            await withTimeout(supabase.from('users').update({ is_admin: true }).eq('username', username));
+                        }
+                    }
+                } catch (e) {
+                    console.warn('ensureUserRecord error', e);
+                }
+            }
+
+            // ================= ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =================
+            async function initApp(isFirstLogin = false) {
+                await loadCurrentUserData();
+                checkTutorials(isFirstLogin);
+                switchSection('home');
+            }
+
+            async function loadCurrentUserData() {
+                if (!supabase) return;
+                const identifier = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
+                try {
+                    const { data, error } = await withTimeout(
+                        supabase.from('users').select('*').eq('username', identifier).maybeSingle()
+                    );
+                    if (error) throw error;
+                    if (data) {
+                        currentUserData = data;
+                        isAdmin = data.is_admin || (identifier === OWNER_USERNAME);
+                        isOwner = identifier === OWNER_USERNAME;
+                        if (data.banned) showBanScreen();
+                    } else {
+                        isAdmin = (identifier === OWNER_USERNAME);
+                        isOwner = isAdmin;
+                        // Создаём запись, если её нет
+                        await ensureUserRecord(identifier);
+                    }
+                } catch (e) {
+                    console.warn('loadCurrentUserData error', e);
+                    isAdmin = (identifier === OWNER_USERNAME);
+                    isOwner = isAdmin;
+                }
+                if (isAdmin) {
+                    document.getElementById('adminNavBtn').classList.remove('hidden');
+                } else {
+                    document.getElementById('adminNavBtn').classList.add('hidden');
+                }
+            }
+
+            function showBanScreen() {
+                document.body.innerHTML = `
+                    <div class="fullscreen-overlay">
+                        <h1 style="color:#ff3b30;margin-bottom:12px;">🚫 Вы забанены</h1>
+                        <p style="color:var(--muted);">Ваш аккаунт заблокирован администрацией.</p>
+                    </div>
+                `;
+            }
+
+            // ================= ТУТОРИАЛЫ =================
             function checkTutorials(isFirstLogin = false) {
-                const userKey = currentAuthUser ? currentAuthUser.username : (currentUser.username || currentUser.id);
+                if (!currentAuthUser) return;
+                const userKey = currentAuthUser.username;
                 const tutorialDone = localStorage.getItem(`arizona_${userKey}_tutorial_completed`) === '1';
                 if (isFirstLogin || !tutorialDone) {
                     showUserTutorial(userKey);
@@ -740,39 +853,39 @@
 
             function showUserTutorial(userKey) {
                 const slides = [
-                    { title: '⚠️ Предупреждение', text: 'Мы не несём ответственности за скам… Запрещена продажа/покупка аккаунтов… Продолжая использование, вы соглашаетесь.', btn: 'Продолжить', timer: 10 },
-                    { title: 'Добро пожаловать!', text: 'Общее описание приложения для размещения объявлений.', btn: 'Далее', timer: 5 },
-                    { title: '🏠 Главная', text: 'Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности, отзывы и написать продавцу.', btn: 'Далее', timer: 5 },
-                    { title: '🛒 Корзина', text: 'Сохраняйте понравившиеся объявления, нажимая на значок корзины. Здесь отображаются статусы объявлений («висит» или «удалено»).', btn: 'Далее', timer: 5 },
-                    { title: '➕ Отправка', text: 'Создавайте свои объявления: выберите тип, категорию, укажите название, цену, описание и сервер. В разделе «Мои объявления» вы можете управлять ими.', btn: 'Далее', timer: 5 },
-                    { title: '☰ Все разделы', text: 'Здесь находятся дополнительные возможности: игра «Барыга», «Лента луков», «Попутчики», музыка, настройки и связь с менеджером.', btn: 'Далее', timer: 5 },
-                    { title: '🔍 Поиск', text: 'Используйте строку поиска вверху, чтобы быстро находить товары.', btn: 'Продолжить', timer: 5 }
+                    { title: '⚠️ Предупреждение', text: 'Мы не несём ответственности за скам. Запрещена продажа/покупка аккаунтов. Продолжая использование, вы соглашаетесь с правилами.', timer: 30 },
+                    { title: 'Добро пожаловать!', text: 'Это приложение для размещения объявлений на серверах Arizona RP.', timer: 30 },
+                    { title: '🏠 Главная', text: 'Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности, отзывы и написать продавцу.', timer: 30 },
+                    { title: '🛒 Корзина', text: 'Сохраняйте понравившиеся объявления. Удалённые объявления отмечены серым фоном.', timer: 30 },
+                    { title: '➕ Отправка', text: 'Создавайте свои объявления, после модерации они появятся в ленте.', timer: 30 },
+                    { title: '☰ Все разделы', text: 'Игра «Барыга», лента луков, попутчики, музыка и настройки.', timer: 30 },
+                    { title: '🔍 Поиск', text: 'Используйте строку поиска вверху для быстрого поиска товаров.', timer: 30 }
                 ];
                 let currentSlide = 0;
                 const container = document.getElementById('tutorialContainer');
 
                 function renderSlide() {
                     const slide = slides[currentSlide];
+                    const isLast = currentSlide === slides.length - 1;
                     container.innerHTML = `
                         <div class="tutorial-overlay">
                             <div class="tutorial-slide">
                                 <h2>${slide.title}</h2>
                                 <p>${slide.text}</p>
                                 <div class="tutorial-nav">
-                                    <button class="btn secondary w-full" id="tutorialBackBtn" ${currentSlide === 0 ? 'disabled' : ''}>Назад</button>
-                                    <button class="btn secondary w-full" id="tutorialForwardBtn">Вперёд</button>
+                                    <button class="btn secondary" id="tutBackBtn" ${currentSlide === 0 ? 'disabled' : ''}>← Назад</button>
+                                    <button class="btn" id="tutNextBtn">${isLast ? 'Завершить' : 'Вперёд →'}</button>
                                 </div>
-                                <button class="btn w-full mt-12" id="tutorialContinueBtn" disabled>Продолжить (${slide.timer}с)</button>
+                                <button class="btn w-full mt-12" id="tutContinueBtn" disabled>Продолжить (30с)</button>
                             </div>
                         </div>
                     `;
-                    const continueBtn = document.getElementById('tutorialContinueBtn');
-                    const backBtn = document.getElementById('tutorialBackBtn');
-                    const forwardBtn = document.getElementById('tutorialForwardBtn');
+                    const backBtn = document.getElementById('tutBackBtn');
+                    const nextBtn = document.getElementById('tutNextBtn');
+                    const continueBtn = document.getElementById('tutContinueBtn');
 
                     let timeLeft = slide.timer;
                     let timerFinished = false;
-
                     const interval = setInterval(() => {
                         timeLeft--;
                         if (timeLeft > 0) {
@@ -792,9 +905,8 @@
                             renderSlide();
                         }
                     });
-
-                    forwardBtn.addEventListener('click', () => {
-                        if (currentSlide < slides.length - 1) {
+                    nextBtn.addEventListener('click', () => {
+                        if (!isLast) {
                             clearInterval(interval);
                             currentSlide++;
                             renderSlide();
@@ -808,12 +920,11 @@
                             }
                         }
                     });
-
                     continueBtn.addEventListener('click', () => {
                         if (!timerFinished) return;
                         clearInterval(interval);
-                        currentSlide++;
-                        if (currentSlide < slides.length) {
+                        if (currentSlide < slides.length - 1) {
+                            currentSlide++;
                             renderSlide();
                         } else {
                             localStorage.setItem(`arizona_${userKey}_tutorial_completed`, '1');
@@ -825,31 +936,32 @@
             }
 
             function showAdminTutorial() {
-                const userKey = currentAuthUser ? currentAuthUser.username : (currentUser.username || currentUser.id);
+                if (!currentAuthUser) return;
+                const userKey = currentAuthUser.username;
                 const slides = [
-                    { title: '🔧 Админ-панель: обзор', text: 'Здесь вы управляете объявлениями. Просмотр, одобрение, отклонение, редактирование заявок.', btn: 'Продолжить', timer: 5 },
-                    { title: '✅ Одобрение и отклонение', text: 'Кнопка «Одобрить» публикует в ленте, «Отклонить» помечает как удалённое.', btn: 'Продолжить', timer: 5 },
-                    { title: '⚖️ Управление пользователями', text: `Владелец (@${OWNER_USERNAME}) может банить, разбанивать, назначать и снимать админов.`, btn: 'Продолжить', timer: 5 },
-                    { title: '🛡️ Дополнительно', text: 'Все изменения сохраняются автоматически.', btn: 'Продолжить', timer: 5 }
+                    { title: '🔧 Админ-панель', text: 'Здесь вы управляете объявлениями: одобрение, отклонение, редактирование.', timer: 30 },
+                    { title: '📨 Апелляции', text: 'Вы можете одобрять или отклонять апелляции пользователей.', timer: 30 },
+                    { title: '⚖️ Управление пользователями', text: 'Владелец может банить, разбанивать, назначать админов.', timer: 30 },
+                    { title: '🧹 Дополнительно', text: 'Доступна очистка всей ленты. Все изменения сохраняются автоматически.', timer: 30 }
                 ];
                 let currentSlide = 0;
                 const container = document.getElementById('tutorialContainer');
 
                 function renderSlide() {
                     const slide = slides[currentSlide];
+                    const isLast = currentSlide === slides.length - 1;
                     container.innerHTML = `
                         <div class="tutorial-overlay">
                             <div class="tutorial-slide">
                                 <h2>${slide.title}</h2>
                                 <p>${slide.text}</p>
-                                <button class="btn w-full mt-12" id="adminTutNextBtn" disabled>Продолжить (${slide.timer}с)</button>
+                                <button class="btn w-full mt-12" id="adminTutNextBtn" disabled>Продолжить (30с)</button>
                             </div>
                         </div>
                     `;
                     const btn = document.getElementById('adminTutNextBtn');
                     let timeLeft = slide.timer;
                     let timerFinished = false;
-
                     const interval = setInterval(() => {
                         timeLeft--;
                         if (timeLeft > 0) {
@@ -861,12 +973,11 @@
                             btn.textContent = 'Продолжить';
                         }
                     }, 1000);
-
                     btn.addEventListener('click', () => {
                         if (!timerFinished) return;
                         clearInterval(interval);
-                        currentSlide++;
-                        if (currentSlide < slides.length) {
+                        if (currentSlide < slides.length - 1) {
+                            currentSlide++;
                             renderSlide();
                         } else {
                             localStorage.setItem(`arizona_${userKey}_admin_tutorial_completed`, '1');
@@ -877,38 +988,27 @@
                 renderSlide();
             }
 
-            // ===== Инициализация приложения =====
-            async function initApp(isFirstLogin = false) {
-                await loadCurrentUserData();
-                checkTutorials(isFirstLogin);
-                switchSection('home');
-            }
-
-            // ===== Навигация =====
+            // ================= НАВИГАЦИЯ =================
             function switchSection(section) {
                 currentSection = section;
                 document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-                const targetSec = document.getElementById('section-' + section);
-                if (targetSec) targetSec.classList.add('active');
-
+                const target = document.getElementById('section-' + section);
+                if (target) target.classList.add('active');
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 const navBtn = document.querySelector(`.nav-item[data-section="${section}"]`);
                 if (navBtn) navBtn.classList.add('active');
-
                 if (section === 'home') loadHomeFeed();
                 if (section === 'cart') loadCart();
                 if (section === 'send') { populateSendForm(); loadMyAds(); }
                 if (section === 'admin') {
                     loadAdminPanel();
-                    const userKey = currentAuthUser ? currentAuthUser.username : (currentUser.username || currentUser.id);
-                    const adminTutDone = localStorage.getItem(`arizona_${userKey}_admin_tutorial_completed`) === '1';
+                    const adminTutDone = localStorage.getItem(`arizona_${currentAuthUser.username}_admin_tutorial_completed`) === '1';
                     if (isAdmin && !adminTutDone) showAdminTutorial();
                 }
                 if (section === 'all') loadAllTiles();
                 playSfx('click');
                 requestWakeLock();
             }
-
             document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const sec = btn.dataset.section;
@@ -917,72 +1017,23 @@
                 });
             });
 
-            // ===== Загрузка данных пользователя и проверка бана =====
-            async function loadCurrentUserData() {
-                if (!supabase) return;
-                try {
-                    const identifier = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
-                    const { data, error } = await withTimeout(
-                        supabase.from('users').select('*').eq('username', identifier).maybeSingle()
-                    );
-                    if (error) throw error;
-                    if (data) {
-                        currentUserData = data;
-                    } else {
-                        const newUser = {
-                            id: currentUser.id.toString(),
-                            username: identifier,
-                            display_name: currentAuthUser ? currentAuthUser.username : (currentUser.first_name || ''),
-                            banned: false,
-                            is_admin: identifier === OWNER_USERNAME
-                        };
-                        await withTimeout(supabase.from('users').insert(newUser));
-                        currentUserData = newUser;
-                    }
-                    isAdmin = (currentUserData && currentUserData.is_admin) || (identifier === OWNER_USERNAME);
-                    isOwner = identifier === OWNER_USERNAME;
-                    if (isAdmin) {
-                        document.getElementById('adminNavBtn').classList.remove('hidden');
-                    } else {
-                        document.getElementById('adminNavBtn').classList.add('hidden');
-                    }
-                    if (currentUserData && currentUserData.banned) {
-                        showBanScreen();
-                    }
-                } catch (e) {
-                    console.warn('loadCurrentUserData error', e);
-                    const identifier = currentAuthUser ? currentAuthUser.username : '';
-                    isAdmin = (identifier === OWNER_USERNAME);
-                    isOwner = isAdmin;
-                    if (isAdmin) document.getElementById('adminNavBtn').classList.remove('hidden');
-                }
-            }
-
-            function showBanScreen() {
-                document.body.innerHTML = `
-                    <div class="fullscreen-overlay">
-                        <h1 style="color:#ff3b30;margin-bottom:12px;">🚫 Вы забанены</h1>
-                        <p style="color:var(--muted);">Ваш аккаунт заблокирован администрацией.</p>
-                    </div>
-                `;
-            }
-
-            // ===== Главная лента =====
+            // ================= ГЛАВНАЯ ЛЕНТА =================
             async function loadHomeFeed() {
                 const catContainer = document.getElementById('homeCategories');
-                catContainer.innerHTML = `
-                    <button class="badge category ${!currentFilterCategory ? 'active' : ''}" style="cursor:pointer;padding:6px 12px;" data-cat-filter="">Все</button>
-                    ${ALL_CATEGORIES.map(c => `<button class="badge category ${currentFilterCategory === c.id ? 'active' : ''}" style="cursor:pointer;padding:6px 12px;" data-cat-filter="${c.id}">${c.label}</button>`).join('')}
-                `;
-                catContainer.querySelectorAll('[data-cat-filter]').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        currentFilterCategory = btn.dataset.catFilter || null;
-                        loadHomeFeed();
+                if (catContainer) {
+                    catContainer.innerHTML = `
+                        <button class="badge category ${!currentFilterCategory ? 'active' : ''}" style="cursor:pointer;padding:6px 12px;" data-cat-filter="">Все</button>
+                        ${ALL_CATEGORIES.map(c => `<button class="badge category ${currentFilterCategory === c.id ? 'active' : ''}" style="cursor:pointer;padding:6px 12px;" data-cat-filter="${c.id}">${c.label}</button>`).join('')}
+                    `;
+                    catContainer.querySelectorAll('[data-cat-filter]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            currentFilterCategory = btn.dataset.catFilter || null;
+                            loadHomeFeed();
+                        });
                     });
-                });
-
+                }
                 if (!supabase) {
-                    document.getElementById('homeFeed').innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
+                    document.getElementById('homeFeed').innerHTML = '<div class="empty-state">Нет подключения к серверу</div>';
                     return;
                 }
                 const container = document.getElementById('homeFeed');
@@ -996,7 +1047,7 @@
                     renderHomeFeed();
                 } catch (e) {
                     console.warn('loadHomeFeed error', e);
-                    container.innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
                 }
             }
 
@@ -1038,18 +1089,18 @@
                 });
             }
 
-            // ===== Корзина =====
+            // ================= КОРЗИНА =================
             async function loadCart() {
                 const container = document.getElementById('cartList');
-                if (!supabase) {
+                if (!supabase || !currentAuthUser) {
                     container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
                     return;
                 }
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    const userIdKey = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
+                    const userId = currentAuthUser.username;
                     const { data: favs, error: favErr } = await withTimeout(
-                        supabase.from('favorites').select('ad_id').eq('user_id', userIdKey)
+                        supabase.from('favorites').select('ad_id').eq('user_id', userId)
                     );
                     if (favErr) throw favErr;
                     const adIds = favs.map(f => f.ad_id);
@@ -1080,7 +1131,7 @@
                                         <div style="font-size:13px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
                                         <div style="margin-top:4px;">${statusBadge}</div>
                                     </div>
-                                    <button class="btn danger" data-remove-cart="${ad.id}">Удалить из корзины</button>
+                                    <button class="btn danger" data-remove-cart="${ad.id}">Удалить</button>
                                 </div>
                             </div>
                         `;
@@ -1090,7 +1141,7 @@
                         btn.addEventListener('click', async (e) => {
                             e.stopPropagation();
                             const adId = btn.dataset.removeCart;
-                            await withTimeout(supabase.from('favorites').delete().eq('user_id', userIdKey).eq('ad_id', adId));
+                            await withTimeout(supabase.from('favorites').delete().eq('user_id', userId).eq('ad_id', adId));
                             playSfx('click');
                             loadCart();
                         });
@@ -1105,11 +1156,11 @@
                     });
                 } catch (e) {
                     console.warn('loadCart error', e);
-                    container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
                 }
             }
 
-            // ===== Отправка объявления =====
+            // ================= ОТПРАВКА ОБЪЯВЛЕНИЯ =================
             function populateSendForm() {
                 const catSelect = document.getElementById('sendCategory');
                 catSelect.innerHTML = ALL_CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
@@ -1120,9 +1171,12 @@
                 priceInput.removeEventListener('input', formatPriceInputHandler);
                 priceInput.addEventListener('input', formatPriceInputHandler);
             }
-            function formatPriceInputHandler(e) { formatPriceInput(e.target); }
 
             document.getElementById('sendSubmitBtn').addEventListener('click', async () => {
+                if (!supabase || !currentAuthUser) {
+                    showAlert('Ошибка', 'Вы не авторизованы');
+                    return;
+                }
                 const mode = document.getElementById('sendType').value;
                 const category = document.getElementById('sendCategory').value;
                 const itemName = document.getElementById('sendName').value.trim();
@@ -1131,27 +1185,24 @@
                 const images = document.getElementById('sendImages').value.trim();
                 const server = document.getElementById('sendServer').value;
 
-                if (!itemName) { showAlert('Ошибка', 'Введите название'); return; }
-                if (!priceRaw) { showAlert('Ошибка', 'Введите цену'); return; }
-                if (!description) { showAlert('Ошибка', 'Введите описание'); return; }
-
+                if (!itemName || !priceRaw || !description) {
+                    showAlert('Ошибка', 'Заполните все обязательные поля');
+                    return;
+                }
                 const linkCheck = checkLinksString(images);
                 if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
 
-                const priceNum = parsePriceToNumber(priceRaw);
                 const newAd = {
-                    mode, category, item_name: itemName, price: priceNum,
+                    mode, category, item_name: itemName, price: parsePriceToNumber(priceRaw),
                     description, images, server,
                     author_id: userIdentifier,
                     status: 'pending',
                     created_at: new Date().toISOString()
                 };
-
                 try {
                     await withTimeout(supabase.from('ads').insert(newAd));
-                    lastAdSubmitTime = Date.now();
                     playSfx('success');
-                    showAlert('Успех', 'Ваше объявление отправлено на модерацию', 'success');
+                    showAlert('Успех', 'Объявление отправлено на модерацию', 'success');
                     document.getElementById('sendName').value = '';
                     document.getElementById('sendPrice').value = '';
                     document.getElementById('sendDescription').value = '';
@@ -1162,20 +1213,9 @@
                 }
             });
 
-            function parsePriceToNumber(str) {
-                if (!str) return 0;
-                str = str.toLowerCase().trim();
-                let num = parseInt(str.replace(/[^0-9]/g, '')) || 0;
-                let kCount = (str.match(/к/g) || []).length;
-                if (kCount === 1) num *= 1000;
-                else if (kCount === 2) num *= 1000000;
-                else if (kCount === 3) num *= 1000000000;
-                return num;
-            }
-
             async function loadMyAds() {
                 const container = document.getElementById('myAdsList');
-                if (!supabase) {
+                if (!supabase || !currentAuthUser) {
                     container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>';
                     return;
                 }
@@ -1193,8 +1233,8 @@
                     let html = '';
                     myAds.forEach(ad => {
                         let statusBadge = '';
-                        if (ad.status === 'pending') statusBadge = '<span class="badge status-pending">На модерации</span>';
-                        else if (ad.status === 'deleted') statusBadge = '<span class="badge status-deleted">Удалено</span>';
+                        if (ad.status === 'pending') statusBadge = '<span class="badge status-pending">🟡 На модерации</span>';
+                        else if (ad.status === 'deleted') statusBadge = '<span class="badge status-deleted">🔴 Удалено</span>';
                         else statusBadge = '<span class="badge status-approved">🟢 Висит</span>';
                         const cardClass = ad.status === 'deleted' ? 'card inactive-card' : 'card';
                         html += `
@@ -1207,7 +1247,7 @@
                                     </div>
                                     <div class="flex-between gap-8">
                                         <button class="btn danger" data-permanent-delete="${ad.id}">Удалить навсегда</button>
-                                        ${ad.status === 'deleted' ? `<button class="btn gold" data-appeal-ad="${ad.id}">Подать апелляцию</button>` : ''}
+                                        ${ad.status === 'deleted' ? `<button class="btn gold" data-appeal-ad="${ad.id}">Апелляция</button>` : ''}
                                     </div>
                                 </div>
                             </div>
@@ -1235,11 +1275,11 @@
                     });
                 } catch (e) {
                     console.warn('loadMyAds error', e);
-                    container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>';
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
                 }
             }
 
-            // ===== Админка =====
+            // ================= АДМИН-ПАНЕЛЬ =================
             async function loadAdminPanel() {
                 const container = document.getElementById('adminPanelContent');
                 if (!supabase || !isAdmin) {
@@ -1260,18 +1300,17 @@
                     if (appealsErr) throw appealsErr;
                     pendingAppeals = appealsData || [];
 
-                    let html = '<h3 style="margin-bottom:12px;">Объявления на модерации</h3>';
+                    let html = '<h3>Объявления на модерации</h3>';
                     if (!pendingAds.length) {
-                        html += '<div class="empty-state">Нет объявлений на модерации</div>';
+                        html += '<div class="empty-state">Нет объявлений</div>';
                     } else {
                         pendingAds.forEach(ad => {
                             html += `
-                                <div class="card" style="margin-bottom:8px;">
+                                <div class="card">
                                     <div style="font-weight:700;">${ad.item_name}</div>
                                     <div style="font-size:12px;color:var(--muted);">${ad.server} • ${ad.author_id} • ${formatPrice(ad.price)}</div>
-                                    <div style="font-size:12px;color:var(--muted);">${ad.description || ''}</div>
                                     <div class="flex-between gap-8 mt-8">
-                                        <button class="btn success" data-approve="${ad.id}" style="background:#34c759;">✅ Одобрить</button>
+                                        <button class="btn success" data-approve="${ad.id}">✅ Одобрить</button>
                                         <button class="btn danger" data-reject="${ad.id}">❌ Отклонить</button>
                                         <button class="btn secondary" data-edit-ad="${ad.id}">✏️</button>
                                     </div>
@@ -1280,19 +1319,19 @@
                         });
                     }
 
-                    html += '<h3 style="margin:20px 0 8px;">Апелляции</h3>';
+                    html += '<h3 style="margin-top:20px;">Апелляции</h3>';
                     if (!pendingAppeals.length) {
                         html += '<div class="empty-state">Нет апелляций</div>';
                     } else {
                         pendingAppeals.forEach(appeal => {
                             html += `
-                                <div class="card" style="margin-bottom:8px;">
+                                <div class="card">
                                     <div style="font-weight:700;">Объявление ID: ${appeal.ad_id}</div>
                                     <div style="font-size:12px;color:var(--muted);">Автор: ${appeal.author_id}</div>
                                     <div style="font-size:12px;color:var(--muted);">Причина: ${appeal.reason}</div>
                                     ${appeal.evidence ? `<div style="font-size:11px;color:var(--accent);">Доказательства: ${appeal.evidence}</div>` : ''}
                                     <div class="flex-between gap-8 mt-8">
-                                        <button class="btn success" data-approve-appeal="${appeal.id}" style="background:#34c759;">✅ Одобрить</button>
+                                        <button class="btn success" data-approve-appeal="${appeal.id}">✅ Одобрить</button>
                                         <button class="btn danger" data-reject-appeal="${appeal.id}">❌ Отклонить</button>
                                     </div>
                                 </div>
@@ -1302,13 +1341,13 @@
 
                     if (isOwner) {
                         html += `
-                            <h3 style="margin:20px 0 8px;">Управление пользователями</h3>
+                            <h3 style="margin-top:20px;">Управление пользователями</h3>
                             <div class="form-group">
                                 <input type="text" id="adminUsernameInput" placeholder="username или ID">
                             </div>
                             <div class="flex-between gap-8 mb-8">
                                 <button class="btn danger w-full" id="adminBanBtn">Забанить</button>
-                                <button class="btn success w-full" id="adminUnbanBtn" style="background:#34c759;">Разбанить</button>
+                                <button class="btn success w-full" id="adminUnbanBtn">Разбанить</button>
                             </div>
                             <div class="flex-between gap-8 mb-8">
                                 <button class="btn w-full" id="adminMakeAdminBtn">Сделать админом</button>
@@ -1323,13 +1362,16 @@
                     container.querySelectorAll('[data-approve]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('ads').update({ status: 'approved' }).eq('id', btn.dataset.approve));
-                            playSfx('success'); loadAdminPanel(); loadHomeFeed();
+                            playSfx('success');
+                            loadAdminPanel();
+                            loadHomeFeed();
                         });
                     });
                     container.querySelectorAll('[data-reject]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', btn.dataset.reject));
-                            playSfx('click'); loadAdminPanel();
+                            playSfx('click');
+                            loadAdminPanel();
                         });
                     });
                     container.querySelectorAll('[data-edit-ad]').forEach(btn => {
@@ -1341,31 +1383,30 @@
                     container.querySelectorAll('[data-approve-appeal]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('appeals').update({ status: 'approved' }).eq('id', btn.dataset.approveAppeal));
-                            playSfx('success'); loadAdminPanel();
+                            playSfx('success');
+                            loadAdminPanel();
                         });
                     });
                     container.querySelectorAll('[data-reject-appeal]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('appeals').update({ status: 'rejected' }).eq('id', btn.dataset.rejectAppeal));
-                            playSfx('click'); loadAdminPanel();
+                            playSfx('click');
+                            loadAdminPanel();
                         });
                     });
-                    if (isOwner) {
-                        const banBtn = document.getElementById('adminBanBtn');
-                        const unbanBtn = document.getElementById('adminUnbanBtn');
-                        const makeAdminBtn = document.getElementById('adminMakeAdminBtn');
-                        const removeAdminBtn = document.getElementById('adminRemoveAdminBtn');
-                        const clearFeedBtn = document.getElementById('adminClearFeedBtn');
 
-                        if (banBtn) banBtn.addEventListener('click', () => adminUserAction('ban'));
-                        if (unbanBtn) unbanBtn.addEventListener('click', () => adminUserAction('unban'));
-                        if (makeAdminBtn) makeAdminBtn.addEventListener('click', () => adminUserAction('make_admin'));
-                        if (removeAdminBtn) removeAdminBtn.addEventListener('click', () => adminUserAction('remove_admin'));
-                        if (clearFeedBtn) clearFeedBtn.addEventListener('click', async () => {
+                    if (isOwner) {
+                        document.getElementById('adminBanBtn').addEventListener('click', () => adminUserAction('ban'));
+                        document.getElementById('adminUnbanBtn').addEventListener('click', () => adminUserAction('unban'));
+                        document.getElementById('adminMakeAdminBtn').addEventListener('click', () => adminUserAction('make_admin'));
+                        document.getElementById('adminRemoveAdminBtn').addEventListener('click', () => adminUserAction('remove_admin'));
+                        document.getElementById('adminClearFeedBtn').addEventListener('click', async () => {
                             showConfirm('Очистка', 'Удалить ВСЕ объявления из ленты?', async () => {
                                 await withTimeout(supabase.from('ads').delete().neq('id', 0));
                                 await withTimeout(supabase.from('favorites').delete().neq('user_id', '0'));
-                                playSfx('click'); loadAdminPanel(); loadHomeFeed();
+                                playSfx('click');
+                                loadAdminPanel();
+                                loadHomeFeed();
                             });
                         });
                     }
@@ -1380,31 +1421,26 @@
                 if (!target) { showAlert('Ошибка', 'Введите username или ID'); return; }
                 try {
                     let query = supabase.from('users').select('*');
-                    if (target.startsWith('@')) {
-                        query = query.eq('username', target.replace('@', ''));
-                    } else if (!isNaN(target)) {
-                        query = query.eq('id', target);
-                    } else {
-                        query = query.eq('username', target);
-                    }
+                    if (!isNaN(target)) query = query.eq('id', target);
+                    else query = query.eq('username', target);
                     const { data: user, error } = await withTimeout(query.maybeSingle());
                     if (error) throw error;
                     if (!user) { showAlert('Ошибка', 'Пользователь не найден'); return; }
-
                     let updates = {};
                     if (action === 'ban') updates.banned = true;
                     else if (action === 'unban') updates.banned = false;
                     else if (action === 'make_admin') updates.is_admin = true;
                     else if (action === 'remove_admin') updates.is_admin = false;
-
                     await withTimeout(supabase.from('users').update(updates).eq('id', user.id));
-                    playSfx('success'); showAlert('Успех', 'Действие выполнено'); loadAdminPanel();
+                    playSfx('success');
+                    showAlert('Успех', 'Действие выполнено');
+                    loadAdminPanel();
                 } catch (e) { showAlert('Ошибка', 'Не удалось выполнить'); }
             }
 
             function openAdminEditModal(ad) {
                 showModal(`
-                    <h3 class="modal-title">✏️ Редактирование объявления</h3>
+                    <h3 class="modal-title">✏️ Редактирование</h3>
                     <div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name || ''}"></div>
                     <div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price || ''}"></div>
                     <div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description || ''}</textarea></div>
@@ -1416,32 +1452,23 @@
                     const price = parsePriceToNumber(document.getElementById('editAdminPrice').value);
                     const description = document.getElementById('editAdminDesc').value.trim();
                     const images = document.getElementById('editAdminImgs').value.trim();
-
                     const linkCheck = checkLinksString(images);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-
                     await withTimeout(supabase.from('ads').update({
                         item_name, price, description, images, status: 'approved'
                     }).eq('id', ad.id));
-
                     playSfx('success');
                     const overlay = document.getElementById('modalOverlay');
-                    if (overlay) {
-                        overlay.classList.remove('show');
-                        setTimeout(() => overlay.remove(), 250);
-                    }
+                    if (overlay) overlay.remove();
                     loadAdminPanel();
                     loadHomeFeed();
                 });
             }
 
-            // ===== Детали объявления =====
+            // ================= ДЕТАЛИ ОБЪЯВЛЕНИЯ =================
             async function openAdDetail(ad) {
-                let galleryHtml = '';
                 const images = ad.images ? ad.images.split(',').map(s => s.trim()).filter(s => s) : [];
-                if (images.length) {
-                    galleryHtml = '<div class="image-gallery">' + images.map(img => `<img src="${img}" onerror="this.style.display='none'">`).join('') + '</div>';
-                }
+                const galleryHtml = images.length ? '<div class="image-gallery">' + images.map(img => `<img src="${img}" onerror="this.style.display='none'">`).join('') + '</div>' : '';
                 const catLabel = ALL_CATEGORIES.find(c => c.id === ad.category)?.label || ad.category;
                 const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
                 let statusHtml = '';
@@ -1453,10 +1480,10 @@
                     }
                 } else {
                     statusHtml = `
-                        <button class="btn w-full mb-8" id="detailContactBtn">💬 Написать / Связаться</button>
+                        <button class="btn w-full mb-8" id="detailContactBtn">💬 Написать</button>
                         <button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button>
                         <button class="btn secondary w-full mb-8" id="detailReviewsBtn">⭐ Отзывы</button>
-                        ${ad.author_id === userIdentifier ? '<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить объявление</button>' : ''}
+                        ${ad.author_id === userIdentifier ? '<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить</button>' : ''}
                     `;
                 }
                 const isFav = await checkIfInCart(ad.id);
@@ -1475,25 +1502,22 @@
                 const overlay = document.getElementById('modalOverlay');
                 if (ad.status === 'approved') {
                     document.getElementById('detailContactBtn').addEventListener('click', () => {
-                        let contact = ad.author_id;
-                        if (contact.startsWith('@')) {
-                            window.open(`https://t.me/${contact.replace('@', '')}`, '_blank');
-                        } else {
-                            showAlert('Контакт', `Автор: ${contact}`);
-                        }
+                        let contact = ad.author_id.replace('@', '');
+                        window.open(`https://t.me/${contact}`, '_blank');
                     });
                     const cartBtn = document.getElementById('detailCartToggleBtn');
-                    cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 Корзина';
+                    cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 В корзину';
                     cartBtn.addEventListener('click', async () => {
-                        const userIdKey = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
+                        const userId = currentAuthUser.username;
                         if (isFav) {
-                            await withTimeout(supabase.from('favorites').delete().eq('user_id', userIdKey).eq('ad_id', ad.id));
-                            cartBtn.textContent = '🛒 Корзина';
+                            await withTimeout(supabase.from('favorites').delete().eq('user_id', userId).eq('ad_id', ad.id));
+                            cartBtn.textContent = '🛒 В корзину';
                         } else {
-                            await withTimeout(supabase.from('favorites').insert({ user_id: userIdKey, ad_id: ad.id }));
+                            await withTimeout(supabase.from('favorites').insert({ user_id: userId, ad_id: ad.id }));
                             cartBtn.textContent = '🛒 Убрать из корзины';
                         }
-                        playSfx('click'); loadCart();
+                        playSfx('click');
+                        loadCart();
                     });
                     document.getElementById('detailReviewsBtn').addEventListener('click', () => openReviewsModal(ad.id));
                     if (ad.author_id === userIdentifier) {
@@ -1501,8 +1525,7 @@
                             showConfirm('Удаление', 'Удалить объявление?', async () => {
                                 await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', ad.id));
                                 playSfx('click');
-                                overlay.classList.remove('show');
-                                setTimeout(() => overlay.remove(), 250);
+                                overlay.remove();
                                 loadHomeFeed();
                             });
                         });
@@ -1518,17 +1541,14 @@
             }
 
             async function checkIfInCart(adId) {
-                if (!supabase) return false;
-                try {
-                    const userIdKey = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
-                    const { data } = await withTimeout(
-                        supabase.from('favorites').select('*').eq('user_id', userIdKey).eq('ad_id', adId).maybeSingle()
-                    );
-                    return !!data;
-                } catch (e) { return false; }
+                if (!supabase || !currentAuthUser) return false;
+                const { data } = await withTimeout(
+                    supabase.from('favorites').select('*').eq('user_id', currentAuthUser.username).eq('ad_id', adId).maybeSingle()
+                );
+                return !!data;
             }
 
-            // ===== Отзывы =====
+            // ================= ОТЗЫВЫ =================
             async function loadReviews(adId) {
                 const container = document.getElementById('detailReviewsSection');
                 if (!container) return;
@@ -1546,7 +1566,7 @@
                     let html = `<div style="font-size:20px;font-weight:800;margin-bottom:8px;">⭐ ${avg.toFixed(1)} (${reviewsData.length})</div>`;
                     html += '<div class="progress-bar mb-12"><div class="progress-fill" style="width:' + (avg / 5 * 100) + '%;"></div></div>';
                     reviewsData.forEach(r => {
-                        const canEdit = r.author_id === userIdentifier && (Date.now() - new Date(r.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000;
+                        const canEdit = r.author_id === userIdentifier && (Date.now() - new Date(r.created_at).getTime()) < 7*24*60*60*1000;
                         html += `
                             <div class="review-item">
                                 <div style="font-weight:600;">${r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span></div>
@@ -1567,7 +1587,8 @@
                     container.querySelectorAll('[data-delete-review]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('reviews').delete().eq('id', btn.dataset.deleteReview));
-                            playSfx('click'); loadReviews(adId);
+                            playSfx('click');
+                            loadReviews(adId);
                         });
                     });
                 } catch (e) {
@@ -1588,7 +1609,7 @@
                         return;
                     }
                     container.innerHTML = similar.map(ad => `
-                        <div class="card" style="cursor:pointer;" data-sim="${ad.id}">
+                        <div class="card" data-sim="${ad.id}">
                             <span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}
                         </div>
                     `).join('');
@@ -1597,10 +1618,7 @@
                             const found = similar.find(a => a.id == el.dataset.sim);
                             if (found) {
                                 const overlay = document.getElementById('modalOverlay');
-                                if (overlay) {
-                                    overlay.classList.remove('show');
-                                    setTimeout(() => overlay.remove(), 250);
-                                }
+                                overlay.remove();
                                 openAdDetail(found);
                             }
                         });
@@ -1610,7 +1628,7 @@
 
             function openReviewsModal(adId) {
                 showModal(`
-                    <h3 class="modal-title">⭐ Отзывы</h3>
+                    <h3 class="modal-title">⭐ Оставить отзыв</h3>
                     <div class="form-group">
                         <label>Оценка</label>
                         <div class="star-rating" id="reviewStars">
@@ -1641,17 +1659,14 @@
                     const media = document.getElementById('reviewMedia').value.trim();
                     const linkCheck = checkLinksString(media);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    try {
-                        await withTimeout(supabase.from('reviews').insert({
-                            ad_id: adId, author_id: userIdentifier, stars: selectedStars,
-                            text: text, media_links: media, created_at: new Date().toISOString()
-                        }));
-                        playSfx('success'); showAlert('Успех', 'Отзыв отправлен');
-                        const overlay = document.getElementById('modalOverlay');
-                        overlay.classList.remove('show');
-                        setTimeout(() => overlay.remove(), 250);
-                        loadReviews(adId);
-                    } catch (e) { showAlert('Ошибка', 'Не удалось отправить'); }
+                    await withTimeout(supabase.from('reviews').insert({
+                        ad_id: adId, author_id: userIdentifier, stars: selectedStars,
+                        text, media_links: media, created_at: new Date().toISOString()
+                    }));
+                    playSfx('success');
+                    showAlert('Успех', 'Отзыв отправлен');
+                    document.getElementById('modalOverlay').remove();
+                    loadReviews(adId);
                 });
             }
 
@@ -1671,14 +1686,8 @@
                             ${[1,2,3,4,5].map(i => `<span data-star="${i}" class="${i <= review.stars ? 'active' : ''}">${i <= review.stars ? '★' : '☆'}</span>`).join('')}
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Ссылки</label>
-                        <input type="text" id="editReviewMedia" value="${review.media_links || ''}">
-                    </div>
-                    <div class="form-group">
-                        <label>Текст</label>
-                        <textarea id="editReviewText">${review.text || ''}</textarea>
-                    </div>
+                    <div class="form-group"><label>Ссылки</label><input type="text" id="editReviewMedia" value="${review.media_links || ''}"></div>
+                    <div class="form-group"><label>Текст</label><textarea id="editReviewText">${review.text || ''}</textarea></div>
                     <button class="btn w-full" id="editReviewSubmitBtn">Сохранить</button>
                 `);
                 let selectedStars = review.stars;
@@ -1696,9 +1705,7 @@
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
                     await withTimeout(supabase.from('reviews').update({ stars: selectedStars, text, media_links: media }).eq('id', review.id));
                     playSfx('success');
-                    const overlay = document.getElementById('modalOverlay');
-                    overlay.classList.remove('show');
-                    setTimeout(() => overlay.remove(), 250);
+                    document.getElementById('modalOverlay').remove();
                     loadReviews(review.ad_id);
                 });
             }
@@ -1707,14 +1714,8 @@
                 if (!appealAdId) return;
                 showModal(`
                     <h3 class="modal-title">📨 Апелляция</h3>
-                    <div class="form-group">
-                        <label>Причина</label>
-                        <select id="appealReason">${APPEAL_REASONS.map(r => `<option value="${r}">${r}</option>`).join('')}</select>
-                    </div>
-                    <div class="form-group">
-                        <label>Доказательства (ссылки до 20)</label>
-                        <input type="text" id="appealEvidence" placeholder="https://...">
-                    </div>
+                    <div class="form-group"><label>Причина</label><select id="appealReason">${APPEAL_REASONS.map(r => `<option>${r}</option>`).join('')}</select></div>
+                    <div class="form-group"><label>Доказательства (ссылки)</label><input type="text" id="appealEvidence" placeholder="https://..."></div>
                     <button class="btn w-full" id="appealSubmitBtn">Отправить</button>
                 `);
                 document.getElementById('appealSubmitBtn').addEventListener('click', async () => {
@@ -1722,31 +1723,31 @@
                     const evidence = document.getElementById('appealEvidence').value.trim();
                     const linkCheck = checkLinksString(evidence);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    try {
-                        await withTimeout(supabase.from('appeals').insert({
-                            ad_id: appealAdId, author_id: userIdentifier, reason: reason,
-                            evidence: evidence, status: 'pending', created_at: new Date().toISOString()
-                        }));
-                        playSfx('success'); showAlert('Успех', 'Апелляция отправлена');
-                        const overlay = document.getElementById('modalOverlay');
-                        overlay.classList.remove('show');
-                        setTimeout(() => overlay.remove(), 250);
-                    } catch (e) { showAlert('Ошибка', 'Не удалось отправить'); }
+                    await withTimeout(supabase.from('appeals').insert({
+                        ad_id: appealAdId, author_id: userIdentifier, reason,
+                        evidence, status: 'pending', created_at: new Date().toISOString()
+                    }));
+                    playSfx('success');
+                    showAlert('Успех', 'Апелляция отправлена');
+                    document.getElementById('modalOverlay').remove();
                 });
             }
 
-            // ===== Барыга Игра =====
+            // ================= ИГРА «БАРЫГА» =================
             async function loadGameState() {
-                if (!supabase) return;
+                if (!supabase || !currentAuthUser) return;
                 try {
-                    const userIdKey = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
                     const { data } = await withTimeout(
-                        supabase.from('baryga').select('*').eq('user_id', userIdKey).maybeSingle()
+                        supabase.from('baryga').select('*').eq('user_id', currentAuthUser.username).maybeSingle()
                     );
-                    if (data) {
-                        gameState = { ...gameState, ...data };
-                    } else {
-                        await withTimeout(supabase.from('baryga').insert({ user_id: userIdKey, money: 0, click_power: 1, click_cost: 50, auto_income: 0, auto_cost: 200, pro_cost: 800, shop_cost: 3000, elite_cost: 10000, oil_cost: 35000, crypto_cost: 150000, scrap_cost: 500 }));
+                    if (data) gameState = { ...gameState, ...data };
+                    else {
+                        await withTimeout(supabase.from('baryga').insert({
+                            user_id: currentAuthUser.username,
+                            money: 0, click_power: 1, click_cost: 50, auto_income: 0,
+                            auto_cost: 200, pro_cost: 800, shop_cost: 3000, elite_cost: 10000,
+                            oil_cost: 35000, crypto_cost: 150000, scrap_cost: 500
+                        }));
                     }
                 } catch (e) {}
             }
@@ -1762,7 +1763,6 @@
                         <div style="font-size:12px;color:var(--muted);text-align:center;" id="gameStatsDisplay">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div>
                         <div class="mt-12" id="gameUpgradesContainer"></div>
                     `);
-                    
                     const clickArea = document.getElementById('gameClickArea');
                     const upgradesContainer = document.getElementById('gameUpgradesContainer');
                     upgradesContainer.innerHTML = renderUpgrades();
@@ -1820,7 +1820,7 @@
             function renderUpgrades() {
                 const upgrades = getUpgradesList();
                 return upgrades.map((u, i) => `
-                    <div class="upgrade-card" data-upgrade-card="${i}">
+                    <div class="upgrade-card">
                         <div class="upgrade-info">
                             <div class="upgrade-name">${u.name}</div>
                             <div class="upgrade-cost" data-cost-idx="${i}">💰 ${formatPrice(u.cost)}</div>
@@ -1835,48 +1835,40 @@
                 if (moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money);
                 const statsEl = document.getElementById('gameStatsDisplay');
                 if (statsEl) statsEl.textContent = `Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек`;
-
                 const upgrades = getUpgradesList();
                 upgrades.forEach((u, i) => {
                     const btn = document.querySelector(`[data-upgrade="${i}"]`);
                     const costEl = document.querySelector(`[data-cost-idx="${i}"]`);
                     if (btn && costEl) {
                         costEl.textContent = '💰 ' + formatPrice(u.cost);
-                        if (gameState.money < u.cost) {
-                            if (!btn.hasAttribute('disabled')) btn.setAttribute('disabled', 'true');
-                        } else {
-                            if (btn.hasAttribute('disabled')) btn.removeAttribute('disabled');
-                        }
+                        if (gameState.money < u.cost) btn.setAttribute('disabled', 'true');
+                        else btn.removeAttribute('disabled');
                     }
                 });
             }
 
-            let saveTimeout = null;
             function saveGameStateDebounced() {
-                if (saveTimeout) clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(saveGameState, 1000);
+                if (saveGameTimeout) clearTimeout(saveGameTimeout);
+                saveGameTimeout = setTimeout(saveGameState, 1000);
             }
 
             async function saveGameState() {
-                if (!supabase) return;
+                if (!supabase || !currentAuthUser) return;
                 try {
-                    const userIdKey = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
                     await withTimeout(supabase.from('baryga').update({
                         money: gameState.money, click_power: gameState.clickPower, click_cost: gameState.clickCost,
                         auto_income: gameState.autoIncome, auto_cost: gameState.autoCost, pro_cost: gameState.proCost,
                         shop_cost: gameState.shopCost, elite_cost: gameState.eliteCost, oil_cost: gameState.oilCost,
                         crypto_cost: gameState.cryptoCost, scrap_cost: gameState.scrapCost
-                    }).eq('user_id', userIdKey));
+                    }).eq('user_id', currentAuthUser.username));
                 } catch (e) {}
             }
 
-            // ===== Поиск =====
+            // ================= ПОИСК =================
             function openSearchModal() {
                 showModal(`
                     <h3 class="modal-title">🔍 Поиск</h3>
-                    <div class="form-group">
-                        <input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off">
-                    </div>
+                    <div class="form-group"><input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off"></div>
                     <div class="flex-between gap-8 mb-12">
                         <button class="btn w-full" id="searchItemBtn">📦 Предмет</button>
                         <button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button>
@@ -1886,15 +1878,15 @@
                     <div id="searchResults"></div>
                 `);
                 const input = document.getElementById('searchInput');
+                setTimeout(() => input.focus(), 100);
                 const suggestions = document.getElementById('searchSuggestions');
                 const results = document.getElementById('searchResults');
                 const history = document.getElementById('searchHistory');
 
-                setTimeout(() => input.focus(), 100);
-
                 function renderHistory() {
                     if (!searchHistory.length) { history.innerHTML = ''; return; }
-                    history.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">История:</div>' + searchHistory.map(h => `<span class="badge" style="cursor:pointer;margin:2px;" data-hist="${h}">${h}</span>`).join('');
+                    history.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">История:</div>' +
+                        searchHistory.map(h => `<span class="badge" style="cursor:pointer;margin:2px;" data-hist="${h}">${h}</span>`).join('');
                     history.querySelectorAll('[data-hist]').forEach(el => {
                         el.addEventListener('click', () => {
                             input.value = el.dataset.hist;
@@ -1922,9 +1914,7 @@
                                         if (searchHistory.length > 10) searchHistory.pop();
                                         localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
                                     }
-                                    const overlay = document.getElementById('modalOverlay');
-                                    overlay.classList.remove('show');
-                                    setTimeout(() => overlay.remove(), 250);
+                                    document.getElementById('modalOverlay').remove();
                                     openAdDetail(ad);
                                 }
                             });
@@ -1935,36 +1925,28 @@
                 document.getElementById('searchItemBtn').addEventListener('click', async () => {
                     const q = input.value.trim().toLowerCase();
                     if (!q) return;
-                    try {
-                        const { data } = await withTimeout(
-                            supabase.from('ads').select('*').eq('status', 'approved').ilike('item_name', `%${q}%`)
-                        );
-                        const items = data || [];
-                        if (!items.length) { results.innerHTML = '<div class="empty-state">Ничего не найдено</div>'; return; }
-                        results.innerHTML = items.map(ad => `
-                            <div class="card" data-res-id="${ad.id}">
-                                <div style="font-weight:700;">${ad.item_name}</div>
-                                <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
-                            </div>
-                        `).join('');
-                        results.querySelectorAll('[data-res-id]').forEach(card => {
-                            card.addEventListener('click', () => {
-                                const ad = items.find(a => a.id == card.dataset.resId);
-                                if (ad) {
-                                    const overlay = document.getElementById('modalOverlay');
-                                    overlay.classList.remove('show');
-                                    setTimeout(() => overlay.remove(), 250);
-                                    openAdDetail(ad);
-                                }
-                            });
+                    const { data } = await withTimeout(
+                        supabase.from('ads').select('*').eq('status', 'approved').ilike('item_name', `%${q}%`)
+                    );
+                    const items = data || [];
+                    if (!items.length) { results.innerHTML = '<div class="empty-state">Ничего не найдено</div>'; return; }
+                    results.innerHTML = items.map(ad => `
+                        <div class="card" data-res-id="${ad.id}">
+                            <div style="font-weight:700;">${ad.item_name}</div>
+                            <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                        </div>
+                    `).join('');
+                    results.querySelectorAll('[data-res-id]').forEach(card => {
+                        card.addEventListener('click', () => {
+                            const ad = items.find(a => a.id == card.dataset.resId);
+                            if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
                         });
-                    } catch (e) {}
+                    });
                 });
 
-                document.getElementById('searchProfileBtn').addEventListener('click', async () => {
+                document.getElementById('searchProfileBtn').addEventListener('click', () => {
                     const q = input.value.trim();
-                    if (!q) return;
-                    openProfileModal(q);
+                    if (q) openProfileModal(q);
                 });
             }
 
@@ -1979,7 +1961,7 @@
                     );
                     const ads = data || [];
                     const container = document.getElementById('profileAdsList');
-                    if (!ads.length) { container.innerHTML = '<div class="empty-state">У пользователя нет активных объявлений</div>'; return; }
+                    if (!ads.length) { container.innerHTML = '<div class="empty-state">Нет активных объявлений</div>'; return; }
                     container.innerHTML = ads.map(ad => `
                         <div class="card" data-prof-ad="${ad.id}">
                             <div style="font-weight:700;">${ad.item_name}</div>
@@ -1989,29 +1971,24 @@
                     container.querySelectorAll('[data-prof-ad]').forEach(card => {
                         card.addEventListener('click', () => {
                             const ad = ads.find(a => a.id == card.dataset.profAd);
-                            if (ad) {
-                                const overlay = document.getElementById('modalOverlay');
-                                overlay.classList.remove('show');
-                                setTimeout(() => overlay.remove(), 250);
-                                openAdDetail(ad);
-                            }
+                            if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
                         });
                     });
                 } catch (e) {
-                    document.getElementById('profileAdsList').innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+                    document.getElementById('profileAdsList').innerHTML = '<div class="empty-state">Ошибка</div>';
                 }
             }
 
-            // ===== Все разделы и Дополнительные модули =====
+            // ================= ВСЕ РАЗДЕЛЫ =================
             function loadAllTiles() {
                 const tiles = [
-                    { id: 'baryga', icon: '🎮', label: 'Игра «Барыга»' },
-                    { id: 'looks', icon: '📸', label: 'Лента луков' },
-                    { id: 'travelers', icon: '🚗', label: 'Попутчики' },
+                    { id: 'looks', icon: '📸', label: 'Лента «Луков»' },
+                    { id: 'companions', icon: '👥', label: 'Попутчики' },
                     { id: 'music', icon: '🎵', label: 'Музыка' },
+                    { id: 'baryga', icon: '🎮', label: 'Игра «Барыга»' },
                     { id: 'settings', icon: '⚙️', label: 'Настройки' },
-                    { id: 'support', icon: '💬', label: 'Связь с менеджером' },
-                    { id: 'logout', icon: '🚪', label: 'Сменить аккаунт' }
+                    { id: 'manager', icon: '👨‍💼', label: 'Менеджер' },
+                    { id: 'chat', icon: '💬', label: 'Переписки' }
                 ];
                 const container = document.getElementById('allTiles');
                 container.innerHTML = tiles.map(t => `
@@ -2020,58 +1997,189 @@
                         <span>${t.label}</span>
                     </div>
                 `).join('');
-
                 container.querySelectorAll('[data-tile]').forEach(tile => {
                     tile.addEventListener('click', () => {
                         const id = tile.dataset.tile;
-                        if (id === 'baryga') openBarygaGame();
-                        if (id === 'looks') showAlert('Лента луков', 'Скоро открытие раздела');
-                        if (id === 'travelers') showAlert('Попутчики', 'Скоро открытие раздела');
+                        if (id === 'looks') openLooksModal();
+                        if (id === 'companions') openCompanionsModal();
                         if (id === 'music') openMusicModal();
+                        if (id === 'baryga') openBarygaGame();
                         if (id === 'settings') openSettingsModal();
-                        if (id === 'support') window.open('https://t.me/' + OWNER_USERNAME, '_blank');
-                        if (id === 'logout') {
-                            localStorage.removeItem('arizona_current_user');
-                            location.reload();
-                        }
+                        if (id === 'manager') openManagerModal();
+                        if (id === 'chat') openChatModal();
                     });
                 });
             }
 
-            function openMusicModal() {
+            // 1. Лента луков
+            function openLooksModal() {
                 showModal(`
-                    <h3 class="modal-title">🎵 Музыка</h3>
-                    <p style="color:var(--muted);margin-bottom:12px;">Плейлист радио Arizona RP</p>
-                    <div class="card flex-between">
-                        <div>
-                            <div style="font-weight:700;">Arizona Hot Radio</div>
-                            <div style="font-size:12px;color:var(--muted);">Прямой эфир</div>
-                        </div>
-                        <button class="btn" id="playRadioBtn">▶️ Играть</button>
-                    </div>
+                    <h3 class="modal-title">📸 Лента «Луков»</h3>
+                    <div class="form-group"><label>Ссылка на фото</label><input type="text" id="lookImg" placeholder="https://..."></div>
+                    <div class="form-group"><label>Описание</label><input type="text" id="lookDesc" placeholder="Мой лук"></div>
+                    <button class="btn w-full mb-12" id="lookSubmitBtn">Опубликовать</button>
+                    <div id="looksList"><div class="empty-state">Загрузка...</div></div>
                 `);
-                document.getElementById('playRadioBtn').addEventListener('click', () => {
-                    showAlert('Радио', 'Воспроизведение потока временно недоступно в WebApp');
+                loadLooksFeed();
+                document.getElementById('lookSubmitBtn').addEventListener('click', async () => {
+                    const img = document.getElementById('lookImg').value.trim();
+                    const desc = document.getElementById('lookDesc').value.trim();
+                    const linkCheck = checkLinksString(img);
+                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+                    await withTimeout(supabase.from('looks').insert({
+                        author_id: userIdentifier, image_url: img, description: desc, created_at: new Date().toISOString()
+                    }));
+                    playSfx('success');
+                    document.getElementById('lookImg').value = '';
+                    document.getElementById('lookDesc').value = '';
+                    loadLooksFeed();
                 });
             }
 
+            async function loadLooksFeed() {
+                const container = document.getElementById('looksList');
+                if (!container || !supabase) return;
+                const { data } = await withTimeout(supabase.from('looks').select('*').order('created_at', { ascending: false }));
+                const looks = data || [];
+                if (!looks.length) { container.innerHTML = '<div class="empty-state">Образов пока нет</div>'; return; }
+                container.innerHTML = looks.map(l => `
+                    <div class="card">
+                        <img src="${l.image_url}" style="width:100%;height:200px;object-fit:cover;border-radius:8px;margin-bottom:8px;" onerror="this.style.display='none'">
+                        <div style="font-weight:700;font-size:13px;">${l.author_id}</div>
+                        <p style="font-size:13px;color:var(--muted);">${l.description || ''}</p>
+                        ${l.author_id === userIdentifier ? `<button class="btn danger mt-8" data-delete-look="${l.id}">Удалить</button>` : ''}
+                    </div>
+                `).join('');
+                container.querySelectorAll('[data-delete-look]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        await withTimeout(supabase.from('looks').delete().eq('id', btn.dataset.deleteLook));
+                        playSfx('click');
+                        loadLooksFeed();
+                    });
+                });
+            }
+
+            // 2. Попутчики
+            function openCompanionsModal() {
+                showModal(`
+                    <h3 class="modal-title">👥 Попутчики</h3>
+                    <div class="form-group"><label>Цель / Направление</label><input type="text" id="compTarget" placeholder="Например: еду на шахту"></div>
+                    <div class="form-group"><label>Контакты</label><input type="text" id="compContact" placeholder="@username"></div>
+                    <button class="btn w-full mb-12" id="compSubmitBtn">Найти напарника</button>
+                    <div id="companionsList"><div class="empty-state">Загрузка...</div></div>
+                `);
+                loadCompanionsFeed();
+                document.getElementById('compSubmitBtn').addEventListener('click', async () => {
+                    const target = document.getElementById('compTarget').value.trim();
+                    const contact = document.getElementById('compContact').value.trim();
+                    if (!target || !contact) { showAlert('Ошибка', 'Заполните все поля'); return; }
+                    await withTimeout(supabase.from('companions').insert({
+                        author_id: userIdentifier, target, contact, created_at: new Date().toISOString()
+                    }));
+                    playSfx('success');
+                    document.getElementById('compTarget').value = '';
+                    document.getElementById('compContact').value = '';
+                    loadCompanionsFeed();
+                });
+            }
+
+            async function loadCompanionsFeed() {
+                const container = document.getElementById('companionsList');
+                if (!container || !supabase) return;
+                const { data } = await withTimeout(supabase.from('companions').select('*').order('created_at', { ascending: false }));
+                const comps = data || [];
+                if (!comps.length) { container.innerHTML = '<div class="empty-state">Заявок нет</div>'; return; }
+                container.innerHTML = comps.map(c => `
+                    <div class="card">
+                        <div style="font-weight:700;">${c.target}</div>
+                        <div style="font-size:12px;color:var(--muted);">Автор: ${c.author_id} • Контакт: ${c.contact}</div>
+                        ${c.author_id === userIdentifier ? `<button class="btn danger mt-8" data-delete-comp="${c.id}">Удалить</button>` : ''}
+                    </div>
+                `).join('');
+                container.querySelectorAll('[data-delete-comp]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        await withTimeout(supabase.from('companions').delete().eq('id', btn.dataset.deleteComp));
+                        playSfx('click');
+                        loadCompanionsFeed();
+                    });
+                });
+            }
+
+            // 3. Музыка
+            function openMusicModal() {
+                showModal(`
+                    <h3 class="modal-title">🎵 Музыка</h3>
+                    <div class="form-group"><label>Ссылка на трек (mp3)</label><input type="text" id="musicUrl" placeholder="https://..."></div>
+                    <div class="flex-between gap-8 mb-12">
+                        <button class="btn w-full" id="musicPlayBtn">▶️ Играть</button>
+                        <button class="btn secondary w-full" id="musicPauseBtn">⏸ Пауза</button>
+                    </div>
+                    <button class="btn danger w-full" id="musicResetBtn">⏹ Сбросить</button>
+                `);
+                let activeAudio = window.appCurrentAudio || null;
+                document.getElementById('musicPlayBtn').addEventListener('click', () => {
+                    const url = document.getElementById('musicUrl').value.trim();
+                    if (url) {
+                        if (activeAudio) activeAudio.pause();
+                        activeAudio = new Audio(url);
+                        window.appCurrentAudio = activeAudio;
+                        activeAudio.play().catch(() => showAlert('Ошибка', 'Не удалось воспроизвести'));
+                    } else if (activeAudio) activeAudio.play();
+                });
+                document.getElementById('musicPauseBtn').addEventListener('click', () => {
+                    if (activeAudio) activeAudio.pause();
+                });
+                document.getElementById('musicResetBtn').addEventListener('click', () => {
+                    if (activeAudio) { activeAudio.pause(); window.appCurrentAudio = null; }
+                    document.getElementById('musicUrl').value = '';
+                });
+            }
+
+            // 4. Настройки
             function openSettingsModal() {
                 showModal(`
                     <h3 class="modal-title">⚙️ Настройки</h3>
                     <div class="form-group flex-between">
-                        <label>Звуковые эффекты (SFX)</label>
-                        <button class="btn secondary" id="toggleSfxBtn">${sfxEnabled ? 'Включены' : 'Выключены'}</button>
+                        <label>Звуки в приложении</label>
+                        <input type="checkbox" id="settingsSfx" ${sfxEnabled ? 'checked' : ''} style="width:24px;height:24px;cursor:pointer;">
                     </div>
+                    <button class="btn danger w-full mt-12" id="settingsResetDataBtn">Сбросить все данные</button>
                 `);
-                document.getElementById('toggleSfxBtn').addEventListener('click', () => {
-                    sfxEnabled = !sfxEnabled;
+                document.getElementById('settingsSfx').addEventListener('change', (e) => {
+                    sfxEnabled = e.target.checked;
                     localStorage.setItem('sfx', sfxEnabled ? 'on' : 'off');
-                    document.getElementById('toggleSfxBtn').textContent = sfxEnabled ? 'Включены' : 'Выключены';
-                    playSfx('click');
+                });
+                document.getElementById('settingsResetDataBtn').addEventListener('click', () => {
+                    showConfirm('Сброс', 'Очистить все локальные данные и выйти?', () => {
+                        localStorage.clear();
+                        window.location.reload();
+                    });
                 });
             }
 
-            // Запуск авторизации при загрузке скрипта
+            // 5. Менеджер
+            function openManagerModal() {
+                showModal(`
+                    <h3 class="modal-title">👨‍💼 Менеджер / Поддержка</h3>
+                    <p style="color:var(--muted);margin-bottom:16px;">Свяжитесь с администрацией для решения вопросов.</p>
+                    <button class="btn w-full" id="managerContactBtn">Написать в Telegram</button>
+                `);
+                document.getElementById('managerContactBtn').addEventListener('click', () => {
+                    window.open(`https://t.me/${OWNER_USERNAME}`, '_blank');
+                });
+            }
+
+            // 6. Переписки
+            function openChatModal() {
+                showModal(`
+                    <h3 class="modal-title">💬 Переписки</h3>
+                    <div class="empty-state">Переписки ведутся напрямую в Telegram. Перейдите в чат с продавцом через карточку товара.</div>
+                    <button class="btn w-full mt-12" id="chatTgBtn">Перейти в Telegram</button>
+                `);
+                document.getElementById('chatTgBtn').addEventListener('click', () => window.open('https://t.me/', '_blank'));
+            }
+
+            // ================= ЗАПУСК =================
             checkAuth();
         })();
     </script>

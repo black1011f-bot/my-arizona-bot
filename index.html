@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* ... (весь CSS из вашего кода, без изменений) ... */
+        /* ==================== ОСНОВНЫЕ СТИЛИ ==================== */
         :root {
             --app-bg: #FFFFFF;
             --card-bg: #FFFFFF;
@@ -786,59 +786,56 @@
             };
         }
 
-        // ==================== ФУНКЦИИ ДОСТУПА К SUPABASE ====================
+        // ==================== ФУНКЦИИ ДОСТУПА К SUPABASE (с таймаутами) ====================
+        async function withTimeout(promise, ms = 5000) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+            ]);
+        }
+
         async function loadInitialData() {
             try {
                 // Загружаем пользователя (или создаём)
-                const { data: user, error: userError } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('id', currentUserId)
-                    .single();
-                if (userError && userError.code === 'PGRST116') { // не найден
-                    await supabase.from('users').insert({
+                const { data: user, error: userError } = await withTimeout(
+                    supabase.from('users').select('*').eq('id', currentUserId).single()
+                );
+                if (userError && userError.code === 'PGRST116') {
+                    await withTimeout(supabase.from('users').insert({
                         id: currentUserId,
                         username: currentUserUsername ? currentUserUsername.replace('@','') : null,
                         display_name: currentUserNameDisplay,
                         banned: false,
                         is_admin: false
-                    });
-                } else if (userError) {
-                    console.error('Ошибка загрузки пользователя:', userError);
+                    }));
                 }
 
                 // Загружаем бан-статус
-                const { data: userData } = await supabase
-                    .from('users')
-                    .select('banned, is_admin')
-                    .eq('id', currentUserId)
-                    .single();
+                const { data: userData } = await withTimeout(
+                    supabase.from('users').select('banned, is_admin').eq('id', currentUserId).single()
+                );
                 if (userData) {
                     bannedUsers = userData.banned ? [userData.username] : [];
                     if (userData.is_admin) ADMIN_USERNAMES.push(userData.username);
                 }
 
                 // Загружаем объявления (одобренные)
-                const { data: ads, error: adsError } = await supabase
-                    .from('ads')
-                    .select('*')
-                    .eq('status', 'approved')
-                    .order('created_at', { ascending: false });
-                if (!adsError) globalAdsFeed = ads;
+                const { data: ads } = await withTimeout(
+                    supabase.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false })
+                );
+                if (ads) globalAdsFeed = ads;
 
                 // Загружаем мои объявления
-                const { data: myAds, error: myAdsError } = await supabase
-                    .from('ads')
-                    .select('*')
-                    .eq('author_id', currentUserId);
-                if (!myAdsError) myAdsList = myAds;
+                const { data: myAds } = await withTimeout(
+                    supabase.from('ads').select('*').eq('author_id', currentUserId)
+                );
+                if (myAds) myAdsList = myAds;
 
                 // Загружаем избранное
-                const { data: favs, error: favsError } = await supabase
-                    .from('favorites')
-                    .select('ad_id')
-                    .eq('user_id', currentUserId);
-                if (!favsError) {
+                const { data: favs } = await withTimeout(
+                    supabase.from('favorites').select('ad_id').eq('user_id', currentUserId)
+                );
+                if (favs) {
                     favoritesList = [];
                     for (const fav of favs) {
                         const ad = globalAdsFeed.find(a => a.id === fav.ad_id) || myAdsList.find(a => a.id === fav.ad_id);
@@ -847,95 +844,95 @@
                 }
 
                 // Загружаем pending объявления (для админов)
-                const { data: pending, error: pendingError } = await supabase
-                    .from('ads')
-                    .select('*')
-                    .eq('status', 'pending');
-                if (!pendingError) pendingAdsList = pending;
+                const { data: pending } = await withTimeout(
+                    supabase.from('ads').select('*').eq('status', 'pending')
+                );
+                if (pending) pendingAdsList = pending;
 
                 // Загружаем апелляции
-                const { data: appeals, error: appealsError } = await supabase
-                    .from('appeals')
-                    .select('*');
-                if (!appealsError) appealsList = appeals;
+                const { data: appeals } = await withTimeout(
+                    supabase.from('appeals').select('*')
+                );
+                if (appeals) appealsList = appeals;
 
                 // Загружаем админов
-                const { data: admins, error: adminsError } = await supabase
-                    .from('users')
-                    .select('username')
-                    .eq('is_admin', true);
-                if (!adminsError) ADMIN_USERNAMES = admins.map(u => u.username);
+                const { data: admins } = await withTimeout(
+                    supabase.from('users').select('username').eq('is_admin', true)
+                );
+                if (admins) ADMIN_USERNAMES = admins.map(u => u.username);
 
                 // Загружаем состояние Барыги
-                const { data: baryga, error: barygaError } = await supabase
-                    .from('baryga')
-                    .select('*')
-                    .eq('user_id', currentUserId)
-                    .single();
+                const { data: baryga, error: barygaError } = await withTimeout(
+                    supabase.from('baryga').select('*').eq('user_id', currentUserId).single()
+                );
                 if (!barygaError && baryga) {
                     barygaData = baryga;
                 } else {
-                    await supabase.from('baryga').insert({ user_id: currentUserId });
+                    await withTimeout(supabase.from('baryga').insert({ user_id: currentUserId }));
                 }
 
                 // Загружаем луки и попутчиков
-                const { data: fashion, error: fashionError } = await supabase.from('fashion').select('*');
-                if (!fashionError) fashionLooks = fashion;
-                const { data: travel, error: travelError } = await supabase.from('travel').select('*');
-                if (!travelError) travelAds = travel;
+                const { data: fashion } = await withTimeout(supabase.from('fashion').select('*'));
+                if (fashion) fashionLooks = fashion;
+                const { data: travel } = await withTimeout(supabase.from('travel').select('*'));
+                if (travel) travelAds = travel;
+
+                // После загрузки данных обновляем интерфейс
+                renderFeed();
+                renderCart();
+                renderMoreSection();
+                updateBarygaUI();
+                checkUserPermissions();
+                if (isAdmin()) document.getElementById('adminTabBtn').style.display = 'flex';
             } catch (e) {
                 console.error('Ошибка загрузки данных:', e);
+                // Показываем сообщение, но не блокируем интерфейс
+                showCustomAlert('Не удалось загрузить данные. Проверьте подключение.', 'Ошибка');
             }
         }
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
         async function init() {
-            document.getElementById('preloader').style.display = 'flex';
-            try {
-                if (!await checkUsername()) return;
-                applyThemeFromStorage();
-                await loadInitialData();
-                checkUserPermissions();
-                requestWakeLock();
-                renderFeed();
-                renderCart();
-                renderMoreSection();
-                updateBarygaUI();
-                showTutorial();
-                if (isAdmin()) document.getElementById('adminTabBtn').style.display = 'flex';
-            } catch (e) {
-                console.error('Ошибка инициализации:', e);
-                showCustomAlert('Произошла ошибка при загрузке. Проверьте подключение к интернету.', 'Ошибка');
-            } finally {
+            // Сначала проверяем username и показываем экран, если его нет
+            const hasUsername = await checkUsername();
+            if (!hasUsername) {
                 document.getElementById('preloader').style.display = 'none';
+                return;
             }
+
+            // Показываем основной интерфейс сразу, скрываем прелоадер
+            document.getElementById('preloader').style.display = 'none';
+            document.getElementById('appContainer').style.display = 'block';
+            applyThemeFromStorage();
+
+            // Загружаем данные в фоне
+            loadInitialData();
+
+            // Показываем туториал (если не завершён)
+            showTutorial();
         }
+
         if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
 
-        // ==================== ПРОВЕРКА USERNAME ====================
+        // ==================== ПРОВЕРКА USERNAME (быстрая) ====================
         async function checkUsername() {
             if (!currentUserUsername) {
                 document.getElementById('noUsernameScreen').style.display = 'flex';
-                document.getElementById('appContainer').style.display = 'none';
                 return false;
             }
+            // Проверяем бан (не блокируем отображение интерфейса, но если забанен - скроем)
             try {
-                const { data: user } = await supabase
-                    .from('users')
-                    .select('banned')
-                    .eq('id', currentUserId)
-                    .single();
+                const { data: user } = await withTimeout(
+                    supabase.from('users').select('banned').eq('id', currentUserId).single(),
+                    3000
+                );
                 if (user && user.banned) {
                     document.getElementById('bannedScreen').style.display = 'flex';
-                    document.getElementById('appContainer').style.display = 'none';
                     return false;
                 }
             } catch (e) {
-                console.error('Ошибка проверки бана:', e);
+                // Если ошибка, продолжаем (может быть временная проблема)
             }
-            document.getElementById('noUsernameScreen').style.display = 'none';
-            document.getElementById('bannedScreen').style.display = 'none';
-            document.getElementById('appContainer').style.display = 'block';
             return true;
         }
 
@@ -2136,4 +2133,4 @@
         }
     </script>
 </body>
-    </html>
+</html>

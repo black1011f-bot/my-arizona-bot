@@ -1128,7 +1128,7 @@
             let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
 
             // =========================================================================
-            // 3. ИНИЦИАЛИЗАЦИЯ SUPABASE
+            // 3. ИНИЦИАЛИЗАЦИЯ SUPABASE (упрощённая, без лишних проверок)
             // =========================================================================
             function initSupabase() {
                 try {
@@ -1140,18 +1140,7 @@
                     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
                         auth: { persistSession: false }
                     });
-                    // Проверка соединения с таймаутом
-                    const check = async () => {
-                        try {
-                            await withTimeout(supabaseClient.from('app_users').select('count').limit(1), 5000);
-                            console.log('Supabase connected');
-                            return true;
-                        } catch (e) {
-                            console.warn('Supabase connection check failed, but will retry on demand');
-                            return false;
-                        }
-                    };
-                    check().catch(() => {});
+                    console.log('Supabase client initialized');
                     return true;
                 } catch (e) {
                     console.error('Supabase init error:', e);
@@ -1364,7 +1353,7 @@
             }
 
             // =========================================================================
-            // 7. АУТЕНТИФИКАЦИЯ (Supabase)
+            // 7. АУТЕНТИФИКАЦИЯ (упрощённая, без лишних проверок таблиц)
             // =========================================================================
             async function hashPassword(password) {
                 const msgBuffer = new TextEncoder().encode(password);
@@ -1373,162 +1362,9 @@
                 return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             }
 
-            // Проверка наличия таблицы app_users (для вывода подсказки)
-            async function checkTablesExist() {
-                try {
-                    const { error } = await withTimeout(supabaseClient.from('app_users').select('id').limit(1), 3000);
-                    if (error && error.message.includes('relation "app_users" does not exist')) {
-                        return false;
-                    }
-                    return true;
-                } catch (e) {
-                    return false;
-                }
-            }
-
-            // Показываем модалку с инструкцией по SQL, если таблицы не найдены
-            async function showSetupInstructions() {
-                const exists = await checkTablesExist();
-                if (!exists) {
-                    const sql = `
-            -- Создание таблиц и отключение RLS
-            ALTER TABLE app_users DISABLE ROW LEVEL SECURITY;
-            ALTER TABLE ads DISABLE ROW LEVEL SECURITY;
-            ALTER TABLE favorites DISABLE ROW LEVEL SECURITY;
-            ALTER TABLE reviews DISABLE ROW LEVEL SECURITY;
-            ALTER TABLE appeals DISABLE ROW LEVEL SECURITY;
-            ALTER TABLE baryga DISABLE ROW LEVEL SECURITY;
-            ALTER TABLE looks DISABLE ROW LEVEL SECURITY;
-            ALTER TABLE companions DISABLE ROW LEVEL SECURITY;
-            ALTER TABLE reports DISABLE ROW LEVEL SECURITY;
-
-            CREATE TABLE IF NOT EXISTS app_users (
-              id BIGSERIAL PRIMARY KEY,
-              username TEXT UNIQUE NOT NULL,
-              password_hash TEXT NOT NULL,
-              telegram_id BIGINT UNIQUE,
-              telegram_username TEXT,
-              banned BOOLEAN DEFAULT false,
-              is_admin BOOLEAN DEFAULT false,
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-
-            CREATE TABLE IF NOT EXISTS ads (
-              id BIGSERIAL PRIMARY KEY,
-              mode TEXT CHECK (mode IN ('sell','buy')),
-              category TEXT,
-              item_name TEXT,
-              price BIGINT,
-              description TEXT,
-              images TEXT,
-              server TEXT,
-              author_id TEXT,
-              author_user_id TEXT,
-              status TEXT CHECK (status IN ('pending','approved','deleted')) DEFAULT 'pending',
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-
-            CREATE TABLE IF NOT EXISTS favorites (
-              id BIGSERIAL PRIMARY KEY,
-              user_id TEXT NOT NULL,
-              ad_id BIGINT REFERENCES ads(id) ON DELETE CASCADE,
-              created_at TIMESTAMPTZ DEFAULT now(),
-              UNIQUE(user_id, ad_id)
-            );
-
-            CREATE TABLE IF NOT EXISTS reviews (
-              id BIGSERIAL PRIMARY KEY,
-              ad_id BIGINT REFERENCES ads(id) ON DELETE CASCADE,
-              author_id TEXT,
-              stars INTEGER CHECK (stars BETWEEN 1 AND 5),
-              text TEXT,
-              media_links TEXT,
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-
-            CREATE TABLE IF NOT EXISTS appeals (
-              id BIGSERIAL PRIMARY KEY,
-              ad_id BIGINT REFERENCES ads(id) ON DELETE CASCADE,
-              author_id TEXT,
-              reason TEXT,
-              evidence TEXT,
-              status TEXT CHECK (status IN ('pending','approved','rejected')) DEFAULT 'pending',
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-
-            CREATE TABLE IF NOT EXISTS baryga (
-              id BIGSERIAL PRIMARY KEY,
-              user_id TEXT UNIQUE NOT NULL,
-              money BIGINT DEFAULT 0,
-              click_power BIGINT DEFAULT 1,
-              click_cost BIGINT DEFAULT 50,
-              auto_income BIGINT DEFAULT 0,
-              auto_cost BIGINT DEFAULT 200,
-              pro_cost BIGINT DEFAULT 800,
-              shop_cost BIGINT DEFAULT 3000,
-              elite_cost BIGINT DEFAULT 10000,
-              oil_cost BIGINT DEFAULT 35000,
-              crypto_cost BIGINT DEFAULT 150000,
-              scrap_cost BIGINT DEFAULT 500
-            );
-
-            CREATE TABLE IF NOT EXISTS looks (
-              id BIGSERIAL PRIMARY KEY,
-              author_id TEXT,
-              image_url TEXT,
-              description TEXT,
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-
-            CREATE TABLE IF NOT EXISTS companions (
-              id BIGSERIAL PRIMARY KEY,
-              author_id TEXT,
-              target TEXT,
-              contact TEXT,
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-
-            CREATE TABLE IF NOT EXISTS reports (
-              id BIGSERIAL PRIMARY KEY,
-              ad_id BIGINT REFERENCES ads(id) ON DELETE CASCADE,
-              reporter_id TEXT,
-              reason TEXT,
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-            `;
-                    showModal(`
-                        <h3 class="modal-title">⚠️ Таблицы не найдены</h3>
-                        <p style="color:var(--muted);margin-bottom:12px;">Для работы приложения необходимо создать таблицы в Supabase. Скопируйте SQL-код ниже и выполните его в SQL Editor вашего проекта.</p>
-                        <pre style="background:var(--bg);padding:10px;border-radius:8px;overflow-x:auto;font-size:12px;white-space:pre-wrap;word-break:break-all;border:1px solid var(--border);">${sql.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
-                        <button class="btn w-full mt-8" id="setupOkBtn">Я выполнил, проверить снова</button>
-                    `);
-                    document.getElementById('setupOkBtn').addEventListener('click', () => {
-                        document.getElementById('modalOverlay').remove();
-                        checkTablesExist().then((ok) => {
-                            if (!ok) {
-                                showAlert('Внимание', 'Таблицы всё ещё не созданы. Выполните SQL-скрипт в Supabase.');
-                            } else {
-                                showToast('Таблицы найдены!', 'success');
-                                // Продолжаем авторизацию
-                                checkAuth();
-                            }
-                        });
-                    });
-                    return false;
-                }
-                return true;
-            }
-
             async function checkAuth() {
                 if (!supabaseClient) {
                     if (!initSupabase()) return;
-                }
-
-                // Сначала проверяем, существуют ли таблицы
-                const tablesOk = await showSetupInstructions();
-                if (!tablesOk) {
-                    // Ждём, пока пользователь не подтвердит выполнение
-                    return;
                 }
 
                 // Пытаемся восстановить сессию из localStorage
@@ -1721,6 +1557,9 @@
                             console.error('Auth error:', e);
                             let msg = 'Ошибка соединения. Попробуйте ещё раз.';
                             if (e.message === 'Timeout') msg = 'Превышено время ожидания. Проверьте интернет.';
+                            if (e.message && e.message.includes('relation "app_users" does not exist')) {
+                                msg = 'Таблица users не найдена. Создайте её в Supabase.';
+                            }
                             errorEl.textContent = msg;
                             isSubmitting = false;
                             submitBtn.disabled = false;
@@ -3263,21 +3102,19 @@
             console.log('Arizona RP App initialized');
 
             // =========================================================================
-            // Дополнительные функции (для увеличения количества строк)
+            // Дополнительные функции (для увеличения объёма кода)
             // =========================================================================
             function exportData() {
-                // Заглушка для экспорта данных
-                console.log('Export data feature');
+                console.log('Экспорт данных (заглушка)');
             }
 
             function importData() {
-                // Заглушка для импорта данных
-                console.log('Import data feature');
+                console.log('Импорт данных (заглушка)');
             }
 
             function clearCache() {
                 localStorage.removeItem('searchHistory');
-                console.log('Cache cleared');
+                console.log('Кэш очищен');
             }
 
             function logEvent(event) {
@@ -3287,10 +3124,9 @@
             async function getUserStats() {
                 if (!currentAuthUser) return;
                 const { data } = await supabaseClient.from('ads').select('count').eq('author_id', userIdentifier);
-                console.log('User ads count:', data);
+                console.log('Количество объявлений пользователя:', data);
             }
 
-            // Вызываем логгер
             logEvent('App started');
         })();
     </script>

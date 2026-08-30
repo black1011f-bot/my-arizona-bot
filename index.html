@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* (весь CSS из твоего кода, без изменений) */
+        /* ==================== ОСНОВНЫЕ СТИЛИ ==================== */
         :root {
             --app-bg: #FFFFFF;
             --card-bg: #FFFFFF;
@@ -899,10 +899,114 @@
                 updateBarygaUI();
                 checkUserPermissions();
                 if (isAdmin()) document.getElementById('adminTabBtn').style.display = 'flex';
+
+                // Подписываемся на Realtime изменения таблицы ads
+                setupRealtimeSubscriptions();
             } catch (e) {
                 console.error('Ошибка загрузки данных:', e);
                 showCustomAlert('Не удалось загрузить данные. Проверьте подключение.', 'Ошибка');
             }
+        }
+
+        // ==================== REALTIME ПОДПИСКИ ====================
+        function setupRealtimeSubscriptions() {
+            try {
+                // Подписка на изменения в таблице ads
+                const adsChannel = supabase
+                    .channel('ads-changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'ads' }, (payload) => {
+                        handleAdsRealtimeEvent(payload);
+                    })
+                    .subscribe((status) => {
+                        console.log('Realtime subscription status:', status);
+                        if (status === 'CHANNEL_ERROR') {
+                            console.error('Ошибка подключения Realtime');
+                        }
+                    });
+            } catch (e) {
+                console.error('Ошибка настройки Realtime:', e);
+            }
+        }
+
+        function handleAdsRealtimeEvent(payload) {
+            const { eventType, new: newRecord, old: oldRecord } = payload;
+            console.log('Realtime event:', eventType, newRecord, oldRecord);
+
+            switch (eventType) {
+                case 'INSERT':
+                    // Если новое объявление со статусом approved, добавляем в ленту
+                    if (newRecord && newRecord.status === 'approved') {
+                        if (!globalAdsFeed.some(a => a.id === newRecord.id)) {
+                            globalAdsFeed.unshift(newRecord);
+                        }
+                    }
+                    // Если pending, добавляем в pendingAdsList
+                    if (newRecord && newRecord.status === 'pending') {
+                        if (!pendingAdsList.some(a => a.id === newRecord.id)) {
+                            pendingAdsList.push(newRecord);
+                        }
+                    }
+                    // Добавляем в myAdsList, если автор текущий пользователь
+                    if (newRecord && newRecord.author_id === currentUserId) {
+                        if (!myAdsList.some(a => a.id === newRecord.id)) {
+                            myAdsList.push(newRecord);
+                        }
+                    }
+                    break;
+
+                case 'UPDATE':
+                    // Обновляем во всех массивах
+                    if (newRecord) {
+                        // В ленте
+                        const feedIndex = globalAdsFeed.findIndex(a => a.id === newRecord.id);
+                        if (feedIndex > -1) {
+                            if (newRecord.status === 'approved') {
+                                globalAdsFeed[feedIndex] = newRecord;
+                            } else {
+                                globalAdsFeed.splice(feedIndex, 1); // удаляем, если больше не approved
+                            }
+                        } else if (newRecord.status === 'approved') {
+                            globalAdsFeed.unshift(newRecord); // добавим, если появилось
+                        }
+
+                        // В pending
+                        const pendingIndex = pendingAdsList.findIndex(a => a.id === newRecord.id);
+                        if (pendingIndex > -1) {
+                            if (newRecord.status === 'pending') {
+                                pendingAdsList[pendingIndex] = newRecord;
+                            } else {
+                                pendingAdsList.splice(pendingIndex, 1);
+                            }
+                        } else if (newRecord.status === 'pending') {
+                            pendingAdsList.push(newRecord);
+                        }
+
+                        // В моих объявлениях
+                        const myIndex = myAdsList.findIndex(a => a.id === newRecord.id);
+                        if (myIndex > -1) {
+                            myAdsList[myIndex] = newRecord;
+                        } else if (newRecord.author_id === currentUserId) {
+                            myAdsList.push(newRecord);
+                        }
+                    }
+                    break;
+
+                case 'DELETE':
+                    // Удаляем из всех массивов
+                    if (oldRecord && oldRecord.id) {
+                        globalAdsFeed = globalAdsFeed.filter(a => a.id !== oldRecord.id);
+                        pendingAdsList = pendingAdsList.filter(a => a.id !== oldRecord.id);
+                        myAdsList = myAdsList.filter(a => a.id !== oldRecord.id);
+                        favoritesList = favoritesList.filter(f => f.id !== oldRecord.id);
+                    }
+                    break;
+            }
+
+            // Перерисовываем все видимые секции
+            renderFeed();
+            renderPendingAds();
+            renderMyAds();
+            renderCart();
         }
 
         // ==================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ====================
@@ -925,8 +1029,6 @@
         // Перехват непойманных ошибок
         window.onerror = function(message, source, lineno, colno, error) {
             console.error('Global error:', message, 'at', lineno, ':', colno);
-            // Можно вывести сообщение на экран, но не всегда нужно
-            // document.body.innerHTML = '<div style="text-align:center;padding:40px;">Ошибка: ' + message + '</div>';
         };
 
         if(document.readyState==='complete') init(); else document.addEventListener('DOMContentLoaded', init);
@@ -1229,6 +1331,7 @@
         async function deleteMyAdPermanently(id) {
             customConfirm('Удаление объявления', 'Вы уверены, что хотите удалить объявление навсегда?', async function() {
                 await supabase.from('ads').delete().eq('id', id);
+                // Realtime сам обновит массивы, но для мгновенного отклика удалим локально
                 myAdsList = myAdsList.filter(a => a.id !== id);
                 renderMyAds();
                 playSfx('success');
@@ -1410,6 +1513,7 @@
                 return;
             }
 
+            // Realtime подхватит и обновит, но добавим локально для мгновенного отклика
             pendingAdsList.push(newAd);
             myAdsList.push(newAd);
             if (!isAdmin()) {
@@ -1790,9 +1894,10 @@
             const idx = globalAdsFeed.findIndex(a => a.id === id);
             if (idx > -1) {
                 await supabase.from('ads').update({ status: 'deleted' }).eq('id', id);
+                // Realtime обновит всех, но обновим локально для мгновенного отклика
+                globalAdsFeed.splice(idx, 1);
                 const myIdx = myAdsList.findIndex(a => a.id === id);
                 if (myIdx > -1) { myAdsList[myIdx].status = 'deleted'; }
-                globalAdsFeed.splice(idx, 1);
                 favoritesList = favoritesList.filter(f => f.id !== id);
                 renderFeed(); renderCart(); renderMyAds();
             }
@@ -2037,6 +2142,8 @@
             const ad = pendingAdsList.find(a => a.id === id);
             if (!ad) return;
             await supabase.from('ads').update({ status: 'approved' }).eq('id', id);
+            // Realtime обновит всех
+            // Локально тоже обновим для мгновенного отклика
             ad.status = 'approved';
             pendingAdsList = pendingAdsList.filter(a => a.id !== id);
             globalAdsFeed.unshift(ad);
@@ -2094,6 +2201,7 @@
             const updates = { item_name, price, description, images, server };
             await supabase.from('ads').update(updates).eq('id', id);
             Object.assign(ad, updates);
+            // Realtime обновит всех
             renderPendingAds();
             renderFeed();
             renderMyAds();
@@ -2140,6 +2248,7 @@
         async function clearFeed() {
             customConfirm('Очистка ленты', 'Вы уверены, что хотите удалить все объявления?', async function() {
                 await supabase.from('ads').delete().neq('id', 0);
+                // Realtime обновит всех
                 globalAdsFeed = [];
                 myAdsList = [];
                 pendingAdsList = [];

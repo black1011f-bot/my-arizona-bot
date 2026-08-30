@@ -2,1569 +2,1747 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arizona RP - Telegram Mini App</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Arizona RP Marketplace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* ==========================================================================
-           1. СТИЛИ И ПЕРЕМЕННЫЕ ТЕМ
-           ========================================================================== */
         :root {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-card: #1e293b;
-            --bg-hover: #334155;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent: #eab308; /* Акцентный жёлтый/золотой в стиле Arizona RP */
-            --accent-hover: #ca8a04;
-            --danger: #ef4444;
-            --success: #22c55e;
-            --border: #334155;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-            --tabbar-height: 64px;
+            --bg: #f5f5f7;
+            --card: #ffffff;
+            --text: #1c1c1e;
+            --text-secondary: #8e8e93;
+            --primary: #007aff;
+            --primary-light: #e3f2fd;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --warning: #ff9500;
+            --border: #e5e5ea;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+            --radius: 16px;
+            --radius-sm: 12px;
+            --radius-xs: 8px;
+            --font: 'Montserrat', sans-serif;
+            --transition: all 0.2s ease;
+            --tabbar-height: 60px;
+            --header-height: 56px;
         }
-
-        body.light-theme {
-            --bg-primary: #f1f5f9;
-            --bg-secondary: #ffffff;
-            --bg-card: #ffffff;
-            --bg-hover: #e2e8f0;
-            --text-primary: #0f172a;
-            --text-secondary: #64748b;
-            --accent: #d97706;
-            --accent-hover: #b45309;
-            --border: #cbd5e1;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        body.dark {
+            --bg: #0a0a0c;
+            --card: #1c1c1e;
+            --text: #f2f2f7;
+            --text-secondary: #98989e;
+            --primary: #0a84ff;
+            --primary-light: #1a2b3c;
+            --danger: #ff453a;
+            --success: #30d158;
+            --warning: #ff9f0a;
+            --border: #2c2c2e;
+            --shadow: 0 2px 12px rgba(0,0,0,0.3);
         }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        html, body { height:100%; overflow:hidden; }
+        body { font-family:var(--font); background:var(--bg); color:var(--text); transition:var(--transition); display:flex; flex-direction:column; }
+        button { font-family:var(--font); cursor:pointer; border:none; background:none; color:var(--text); transition:var(--transition); }
+        button:active { transform:scale(0.98); }
+        input, textarea, select { font-family:var(--font); background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-xs); padding:10px 12px; font-size:14px; width:100%; transition:var(--transition); }
+        input:focus, textarea:focus, select:focus { outline:none; border-color:var(--primary); }
+        textarea { resize:vertical; min-height:80px; }
+        img { max-width:100%; display:block; }
+        .container { max-width:480px; margin:0 auto; width:100%; flex:1; display:flex; flex-direction:column; position:relative; overflow:hidden; }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Montserrat', sans-serif;
-            -webkit-tap-highlight-color: transparent;
+        /* Header */
+        .app-header { height:var(--header-height); display:flex; align-items:center; padding:0 16px; gap:10px; background:var(--card); border-bottom:1px solid var(--border); flex-shrink:0; z-index:10; }
+        .header-logo { display:flex; align-items:center; gap:8px; font-weight:800; font-size:16px; }
+        .header-logo img { width:32px; height:32px; border-radius:50%; object-fit:cover; }
+        .header-search { flex:1; display:flex; align-items:center; background:var(--bg); border-radius:var(--radius-xs); padding:6px 10px; gap:6px; cursor:pointer; }
+        .header-search span { color:var(--text-secondary); font-size:13px; }
+        .header-theme-btn { font-size:22px; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--bg); }
+
+        /* Tab Bar */
+        .tab-bar { height:var(--tabbar-height); display:flex; align-items:center; justify-content:space-around; background:var(--card); border-top:1px solid var(--border); flex-shrink:0; padding-bottom:env(safe-area-inset-bottom); z-index:10; }
+        .tab-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:10px; font-weight:600; color:var(--text-secondary); padding:6px 0; transition:var(--transition); position:relative; }
+        .tab-item.active { color:var(--primary); }
+        .tab-item .tab-icon { font-size:20px; }
+        .tab-item .tab-label { font-size:9px; }
+        .tab-item.hidden-tab { display:none; }
+
+        /* Sections */
+        .sections-container { flex:1; overflow:hidden; position:relative; }
+        .section { display:none; height:100%; overflow-y:auto; padding:16px; animation:fadeIn 0.25s ease; scroll-behavior:smooth; }
+        .section.active { display:block; }
+        @keyframes fadeIn { from {opacity:0; transform:translateY(8px);} to {opacity:1; transform:translateY(0);} }
+        .section-title { font-size:20px; font-weight:800; margin-bottom:16px; }
+
+        /* Cards */
+        .ad-card { background:var(--card); border-radius:var(--radius); padding:12px; margin-bottom:12px; box-shadow:var(--shadow); transition:var(--transition); cursor:pointer; }
+        .ad-card:active { transform:scale(0.99); }
+        .ad-card-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+        .ad-badge { font-size:10px; padding:3px 8px; border-radius:20px; background:var(--primary-light); color:var(--primary); font-weight:700; }
+        .ad-badge.status-pending { background:#fff3e0; color:var(--warning); }
+        .ad-badge.status-deleted { background:#ffebee; color:var(--danger); }
+        .ad-badge.type-sell { background:#e8f5e9; color:var(--success); }
+        .ad-badge.type-buy { background:#e3f2fd; color:var(--primary); }
+        .ad-card-body { display:flex; gap:12px; }
+        .ad-image { width:80px; height:80px; border-radius:var(--radius-xs); object-fit:cover; flex-shrink:0; background:var(--bg); }
+        .ad-image-placeholder { width:80px; height:80px; border-radius:var(--radius-xs); flex-shrink:0; background:var(--bg); display:flex; align-items:center; justify-content:center; font-size:32px; }
+        .ad-info { flex:1; min-width:0; }
+        .ad-title { font-weight:700; font-size:14px; margin-bottom:4px; word-break:break-word; }
+        .ad-price { font-weight:900; font-size:16px; color:var(--primary); }
+        .ad-author { font-size:11px; color:var(--text-secondary); margin-top:2px; }
+        .ad-category { font-size:10px; color:var(--text-secondary); }
+
+        /* Buttons */
+        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 16px; border-radius:var(--radius-xs); font-weight:700; font-size:13px; transition:var(--transition); border:1px solid transparent; }
+        .btn-primary { background:var(--primary); color:#fff; }
+        .btn-primary:hover { background:#0066cc; }
+        .btn-danger { background:var(--danger); color:#fff; }
+        .btn-success { background:var(--success); color:#fff; }
+        .btn-outline { border-color:var(--border); background:transparent; }
+        .btn-sm { padding:6px 12px; font-size:11px; }
+        .btn-block { width:100%; }
+        .btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+        /* Forms */
+        .form-group { margin-bottom:12px; }
+        .form-label { font-size:12px; font-weight:700; margin-bottom:4px; display:block; }
+        .picker-row { display:flex; gap:8px; flex-wrap:wrap; }
+        .picker-item { padding:8px 14px; border-radius:20px; background:var(--bg); font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); }
+        .picker-item.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+
+        /* Modals */
+        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100; display:none; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px); }
+        .modal-overlay.active { display:flex; }
+        .modal { background:var(--card); border-radius:var(--radius); max-width:480px; width:100%; max-height:90vh; overflow-y:auto; padding:20px; animation:modalIn 0.25s ease; box-shadow:0 8px 32px rgba(0,0,0,0.2); }
+        @keyframes modalIn { from {opacity:0; transform:scale(0.95) translateY(10px);} to {opacity:1; transform:scale(1) translateY(0);} }
+        .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+        .modal-title { font-size:18px; font-weight:800; }
+        .modal-close { font-size:20px; width:32px; height:32px; border-radius:50%; background:var(--bg); display:flex; align-items:center; justify-content:center; font-weight:700; }
+        .modal-body { margin-bottom:16px; }
+
+        /* Alert & Confirm */
+        .alert-icon { font-size:48px; text-align:center; margin-bottom:12px; }
+        .alert-message { text-align:center; font-size:14px; margin-bottom:16px; }
+
+        /* Fullscreen screens */
+        .fullscreen-screen { position:fixed; inset:0; z-index:200; display:none; align-items:center; justify-content:center; flex-direction:column; padding:24px; background:var(--bg); text-align:center; }
+        .fullscreen-screen.active { display:flex; }
+        .fullscreen-icon { font-size:64px; margin-bottom:16px; }
+        .fullscreen-title { font-size:22px; font-weight:800; margin-bottom:8px; }
+        .fullscreen-subtitle { font-size:14px; color:var(--text-secondary); margin-bottom:20px; }
+
+        /* Tutorial */
+        .tutorial-overlay { position:fixed; inset:0; z-index:300; background:var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px; }
+        .tutorial-overlay.active { display:flex; }
+        .tutorial-slide { max-width:400px; width:100%; text-align:center; animation:fadeIn 0.3s ease; }
+        .tutorial-slide h2 { font-size:20px; font-weight:800; margin-bottom:12px; }
+        .tutorial-slide p { font-size:14px; color:var(--text-secondary); margin-bottom:16px; line-height:1.5; }
+        .tutorial-dots { display:flex; gap:6px; justify-content:center; margin:16px 0; }
+        .tutorial-dot { width:8px; height:8px; border-radius:50%; background:var(--border); transition:var(--transition); }
+        .tutorial-dot.active { background:var(--primary); width:24px; border-radius:4px; }
+
+        /* Baryga game */
+        .baryga-balance { font-size:32px; font-weight:900; text-align:center; color:var(--primary); margin:8px 0; }
+        .baryga-click-area { width:150px; height:150px; margin:16px auto; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:64px; cursor:pointer; transition:var(--transition); user-select:none; box-shadow:var(--shadow); }
+        .baryga-click-area:active { transform:scale(0.95); }
+        .baryga-upgrade { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+
+        /* Grid layouts */
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+        .more-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(100px,1fr)); gap:10px; }
+        .more-item { background:var(--card); border-radius:var(--radius-sm); padding:16px 8px; text-align:center; cursor:pointer; box-shadow:var(--shadow); transition:var(--transition); }
+        .more-item:active { transform:scale(0.97); }
+        .more-item .icon { font-size:28px; margin-bottom:6px; }
+        .more-item .label { font-size:11px; font-weight:600; }
+
+        /* Reviews */
+        .star-rating { display:flex; gap:4px; font-size:28px; cursor:pointer; }
+        .star-rating .star { color:var(--border); transition:var(--transition); }
+        .star-rating .star.active { color:var(--warning); }
+        .review-item { background:var(--bg); border-radius:var(--radius-xs); padding:10px; margin-bottom:8px; }
+        .review-header { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+        .review-stars { font-size:12px; color:var(--warning); }
+
+        /* Search suggestions */
+        .suggestions { position:absolute; background:var(--card); border-radius:var(--radius-sm); box-shadow:0 4px 16px rgba(0,0,0,0.15); max-height:200px; overflow-y:auto; z-index:20; width:calc(100% - 32px); }
+        .suggestion-item { padding:10px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--border); }
+        .suggestion-item:hover { background:var(--bg); }
+
+        /* Media queries */
+        @media (min-width:768px) {
+            .container { max-width:720px; }
+            .grid-2 { grid-template-columns:1fr 1fr; }
+            .grid-3 { grid-template-columns:1fr 1fr 1fr; }
+            .section { padding:20px; }
+            .ad-card-body { flex-direction:row; }
         }
-
-        body {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-            padding-bottom: calc(var(--tabbar-height) + 16px);
-            transition: background-color 0.3s, color 0.3s;
+        @media (min-width:1024px) {
+            .container { max-width:960px; }
+            .section { padding:24px; }
+            .grid-3 { grid-template-columns:1fr 1fr 1fr; }
         }
-
-        /* ==========================================================================
-           2. ШАПКА И НАВИГАЦИЯ
-           ========================================================================== */
-        header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border);
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: var(--shadow);
-        }
-
-        .header-logo {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 800;
-            font-size: 1.1rem;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .icon-btn {
-            background: var(--bg-hover);
-            border: none;
-            color: var(--text-primary);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-        }
-
-        .icon-btn:active {
-            transform: scale(0.95);
-        }
-
-        /* Нижняя панель навигации */
-        .tab-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: var(--tabbar-height);
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 100;
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
-        }
-
-        .tab-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.75rem;
-            font-weight: 600;
-            gap: 4px;
-            width: 20%;
-            height: 100%;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            transition: color 0.2s, transform 0.1s;
-        }
-
-        .tab-item .icon {
-            font-size: 1.3rem;
-        }
-
-        .tab-item.active {
-            color: var(--accent);
-        }
-
-        /* ==========================================================================
-           3. КОНТЕНТ И СЕКЦИИ
-           ========================================================================== */
-        main {
-            padding: 16px;
-            max-width: 800px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .section {
-            display: none;
-            animation: fadeIn 0.25s ease-in-out;
-        }
-
-        .section.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Фильтры и селекторы */
-        .filters-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 16px;
-            overflow-x: auto;
-            padding-bottom: 4px;
-        }
-
-        .select-input, .input-field, .textarea-field {
-            width: 100%;
-            padding: 12px;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            color: var(--text-primary);
-            font-size: 0.95rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        .select-input:focus, .input-field:focus, .textarea-field:focus {
-            border-color: var(--accent);
-        }
-
-        /* Карточки объявлений */
-        .ads-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .ad-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 12px;
-            display: flex;
-            gap: 12px;
-            cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
-            position: relative;
-        }
-
-        .ad-card:active {
-            transform: scale(0.99);
-        }
-
-        .ad-thumb {
-            width: 90px;
-            height: 90px;
-            border-radius: var(--radius-md);
-            object-fit: cover;
-            background: var(--bg-hover);
-            flex-shrink: 0;
-        }
-
-        .ad-info {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            flex-grow: 1;
-            overflow: hidden;
-        }
-
-        .ad-badges {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-bottom: 4px;
-        }
-
-        .badge {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .badge-sale { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
-        .badge-buy { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
-        .badge-server { background: rgba(234, 179, 8, 0.2); color: var(--accent); }
-        .badge-status { background: var(--bg-hover); color: var(--text-secondary); }
-
-        .ad-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .ad-price {
-            font-size: 1.1rem;
-            font-weight: 800;
-            color: var(--accent);
-        }
-
-        .ad-author {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        /* Кнопки */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 12px 20px;
-            border-radius: var(--radius-md);
-            border: none;
-            font-weight: 700;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: background 0.2s, opacity 0.2s, transform 0.1s;
-            min-height: 44px;
-        }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        .btn-primary { background: var(--accent); color: #000; }
-        .btn-primary:hover { background: var(--accent-hover); }
-        .btn-secondary { background: var(--bg-hover); color: var(--text-primary); }
-        .btn-danger { background: var(--danger); color: #fff; }
-        .btn-full { width: 100%; }
-
-        /* ==========================================================================
-           4. МОДАЛЬНЫЕ ОКНА И ОВЕРЛЕИ
-           ========================================================================== */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(4px);
-            z-index: 200;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal-container {
-            background: var(--bg-secondary);
-            border-radius: var(--radius-lg);
-            width: 100%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            border: 1px solid var(--border);
-            position: relative;
-            padding: 20px;
-            animation: modalSlide 0.2s ease-out;
-        }
-
-        @keyframes modalSlide {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 14px;
-            right: 14px;
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.4rem;
-            cursor: pointer;
-        }
-
-        /* Галерея в детальном просмотре */
-        .gallery-container {
-            width: 100%;
-            height: 220px;
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            position: relative;
-            background: var(--bg-primary);
-            margin-bottom: 16px;
-        }
-
-        .gallery-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        /* Экраны блокировки/инструкций */
-        .full-screen-block {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--bg-primary);
-            z-index: 999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            text-align: center;
-        }
-
-        /* Игровой интерфейс "Барыга" */
-        .clicker-box {
-            background: var(--bg-card);
-            border-radius: var(--radius-lg);
-            padding: 20px;
-            text-align: center;
-            border: 1px solid var(--border);
-            margin-bottom: 20px;
-        }
-
-        .clicker-btn {
-            width: 130px;
-            height: 130px;
-            border-radius: 50%;
-            background: radial-gradient(circle, var(--accent) 0%, var(--accent-hover) 100%);
-            border: 4px solid var(--border);
-            font-size: 3rem;
-            margin: 16px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            user-select: none;
-            box-shadow: 0 6px 20px rgba(234, 179, 8, 0.4);
-            transition: transform 0.05s;
-        }
-
-        .clicker-btn:active {
-            transform: scale(0.92);
-        }
-
-        .upgrades-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .upgrade-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            padding: 12px;
-            border-radius: var(--radius-md);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* Грид категории */
-        .catalog-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-
-        .catalog-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            padding: 16px;
-            border-radius: var(--radius-md);
-            text-align: center;
-            cursor: pointer;
-            font-weight: 700;
-        }
-
-        /* Отображение гистограммы отзывов */
-        .rating-bar-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-            font-size: 0.8rem;
-        }
-
-        .rating-bar {
-            flex-grow: 1;
-            height: 8px;
-            background: var(--bg-hover);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .rating-fill {
-            height: 100%;
-            background: var(--accent);
-        }
+        .scrollbar-hide::-webkit-scrollbar { display:none; }
+        .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
     </style>
 </head>
 <body>
+    <div class="container" id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <img src="https://www.arizona-rp.com/favicon.ico" alt="Logo" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🏜️%3C/text%3E%3C/svg%3E'">
+                <span>ARIZONA</span>
+            </div>
+            <div class="header-search" id="headerSearchBtn">
+                <span>🔍 Поиск...</span>
+            </div>
+            <button class="header-theme-btn" id="themeToggle">🌓</button>
+        </header>
 
-    <header>
-        <div class="header-logo">
-            <span>🌵</span> Arizona RP
+        <!-- Sections Container -->
+        <div class="sections-container">
+            <section class="section active" id="section-feed">
+                <h2 class="section-title">📋 Лента объявлений</h2>
+                <div id="globalAdsFeed" class="scrollbar-hide"></div>
+            </section>
+            <section class="section" id="section-cart">
+                <h2 class="section-title">🧺 Корзина</h2>
+                <div id="favoritesList"></div>
+            </section>
+            <section class="section" id="section-app">
+                <h2 class="section-title">📝 Подать объявление</h2>
+                <div id="newAdFormContainer"></div>
+            </section>
+            <section class="section" id="section-admin">
+                <h2 class="section-title">👑 Админ-панель</h2>
+                <div id="adminPanel"></div>
+            </section>
+            <section class="section" id="section-more">
+                <h2 class="section-title">📂 Все разделы</h2>
+                <div class="more-grid" id="moreGrid"></div>
+            </section>
+            <section class="section" id="section-myAds">
+                <h2 class="section-title">📦 Мои объявления</h2>
+                <div id="myAdsList"></div>
+            </section>
         </div>
-        <div class="header-actions">
-            <button class="icon-btn" onclick="openSearchModal()" title="Поиск">🔍</button>
-            <button class="icon-btn" onclick="toggleTheme()" id="themeBtn" title="Смена темы">🌙</button>
+
+        <!-- Tab Bar -->
+        <nav class="tab-bar" id="tabBar">
+            <button class="tab-item active" data-tab="feed"><span class="tab-icon">🏠</span><span class="tab-label">Главная</span></button>
+            <button class="tab-item" data-tab="cart"><span class="tab-icon">🧺</span><span class="tab-label">Корзина</span></button>
+            <button class="tab-item" data-tab="app"><span class="tab-icon">📝</span><span class="tab-label">Отправка</span></button>
+            <button class="tab-item hidden-tab" data-tab="admin" id="adminTabBtn"><span class="tab-icon">👑</span><span class="tab-label">Админ</span></button>
+            <button class="tab-item" data-tab="more"><span class="tab-icon">📂</span><span class="tab-label">Все разделы</span></button>
+        </nav>
+    </div>
+
+    <!-- Fullscreen Screens -->
+    <div class="fullscreen-screen" id="noUsernameScreen">
+        <div class="fullscreen-icon">👤</div>
+        <h2 class="fullscreen-title">Требуется username</h2>
+        <p class="fullscreen-subtitle">Для использования приложения необходим username в Telegram. Пожалуйста, установите его.</p>
+        <button class="btn btn-primary" id="noUsernameHelpBtn">Как установить?</button>
+    </div>
+    <div class="fullscreen-screen" id="bannedScreen">
+        <div class="fullscreen-icon">🚫</div>
+        <h2 class="fullscreen-title">Вы заблокированы</h2>
+        <p class="fullscreen-subtitle">Ваш аккаунт заблокирован администрацией. Свяжитесь с нами для уточнения.</p>
+        <div class="grid-2" style="gap:8px;">
+            <button class="btn btn-primary" onclick="window.open('https://t.me/bounqy','_blank')">Telegram</button>
+            <button class="btn btn-outline" onclick="window.open('https://vk.com/bounqy','_blank')">VK</button>
         </div>
-    </header>
+    </div>
 
-    <main>
+    <!-- Tutorial Overlay -->
+    <div class="tutorial-overlay" id="tutorialOverlay">
+        <div class="tutorial-slide" id="tutorialSlide0">
+            <h2>🛡️ Безопасность</h2>
+            <p>Никогда не передавайте пароли и не совершайте сделки вне игры. Остерегайтесь скама. Вы соглашаетесь с правилами.</p>
+            <button class="btn btn-primary btn-block" id="tutorialAgreeBtn" disabled>Продолжить (60с)</button>
+        </div>
+        <div class="tutorial-slide" id="tutorialSlide1" style="display:none;">
+            <h2>🏠 Главная</h2>
+            <p>Здесь вы видите все одобренные объявления. Нажмите на карточку для деталей.</p>
+        </div>
+        <div class="tutorial-slide" id="tutorialSlide2" style="display:none;">
+            <h2>🧺 Корзина</h2>
+            <p>Сохраняйте понравившиеся объявления, чтобы не потерять их.</p>
+        </div>
+        <div class="tutorial-slide" id="tutorialSlide3" style="display:none;">
+            <h2>📝 Отправка</h2>
+            <p>Подавайте свои объявления. Они проходят модерацию.</p>
+        </div>
+        <div class="tutorial-slide" id="tutorialSlide4" style="display:none;">
+            <h2>📂 Все разделы</h2>
+            <p>Дополнительные функции: Барыга, Луки, Попутчики и многое другое.</p>
+        </div>
+        <div class="tutorial-slide" id="tutorialSlide5" style="display:none;">
+            <h2>🔍 Поиск</h2>
+            <p>Ищите предметы и профили игроков.</p>
+        </div>
+        <div class="tutorial-dots" id="tutorialDots">
+            <span class="tutorial-dot active"></span><span class="tutorial-dot"></span><span class="tutorial-dot"></span><span class="tutorial-dot"></span><span class="tutorial-dot"></span><span class="tutorial-dot"></span>
+        </div>
+        <button class="btn btn-primary" id="tutorialNextBtn">Далее</button>
+    </div>
 
-        <section id="sec-main" class="section active">
-            <div class="filters-bar">
-                <select id="filterServer" class="select-input" onchange="renderMainFeed()">
-                    <option value="">Все сервера (Arizona)</option>
-                    <option value="Phoenix">01 Phoenix</option>
-                    <option value="Tucson">02 Tucson</option>
-                    <option value="Scottdale">03 Scottdale</option>
-                    <option value="Chandler">04 Chandler</option>
-                    <option value="Brainburg">05 Brainburg</option>
-                    <option value="SainTrose">06 SainTrose</option>
-                    <option value="Mesa">07 Mesa</option>
-                    <option value="Red-Rock">08 Red-Rock</option>
-                    <option value="Yuma">09 Yuma</option>
-                    <option value="Surprise">10 Surprise</option>
-                    <option value="Prescott">11 Prescott</option>
-                    <option value="Glendale">12 Glendale</option>
-                    <option value="Kingman">13 Kingman</option>
-                    <option value="Winslow">14 Winslow</option>
-                    <option value="Payson">15 Payson</option>
-                    <option value="Gilbert">16 Gilbert</option>
-                    <option value="Show-Low">17 Show-Low</option>
-                    <option value="Casa-Grande">18 Casa-Grande</option>
-                    <option value="Page">19 Page</option>
-                    <option value="Sun-City">20 Sun-City</option>
-                    <option value="Queen-Creek">21 Queen-Creek</option>
-                    <option value="Sedona">22 Sedona</option>
-                    <option value="Holiday">23 Holiday</option>
-                    <option value="Wednesday">24 Wednesday</option>
-                    <option value="Yava">25 Yava</option>
-                    <option value="Faraway">26 Faraway</option>
-                    <option value="Bumble Bee">27 Bumble Bee</option>
-                    <option value="Christmas">28 Christmas</option>
-                    <option value="Mirage">29 Mirage</option>
-                    <option value="Love">30 Love</option>
-                    <option value="Drake">31 Drake</option>
-                </select>
+    <!-- Admin Tutorial Overlay -->
+    <div class="tutorial-overlay" id="adminTutorialOverlay">
+        <div class="tutorial-slide" id="adminTutorialSlide0">
+            <h2>👑 Админ-панель</h2>
+            <p>Здесь вы можете одобрять или отклонять объявления.</p>
+        </div>
+        <div class="tutorial-slide" id="adminTutorialSlide1" style="display:none;">
+            <h2>✏️ Редактирование</h2>
+            <p>Можно редактировать объявления перед одобрением.</p>
+        </div>
+        <div class="tutorial-slide" id="adminTutorialSlide2" style="display:none;">
+            <h2>👥 Пользователи</h2>
+            <p>Управляйте блокировками и правами администраторов.</p>
+        </div>
+        <div class="tutorial-slide" id="adminTutorialSlide3" style="display:none;">
+            <h2>📋 Апелляции</h2>
+            <p>Просматривайте апелляции на отклонённые объявления.</p>
+        </div>
+        <div class="tutorial-slide" id="adminTutorialSlide4" style="display:none;">
+            <h2>⚠️ Внимание</h2>
+            <p>Будьте осторожны с действиями. Прочитайте правила перед модерацией.</p>
+            <button class="btn btn-primary btn-block" id="adminTutorialCloseBtn" disabled>Закрыть (60с)</button>
+        </div>
+        <div class="tutorial-dots" id="adminTutorialDots">
+            <span class="tutorial-dot active"></span><span class="tutorial-dot"></span><span class="tutorial-dot"></span><span class="tutorial-dot"></span><span class="tutorial-dot"></span>
+        </div>
+        <button class="btn btn-primary" id="adminTutorialNextBtn">Далее</button>
+    </div>
 
-                <select id="filterCategory" class="select-input" onchange="renderMainFeed()">
-                    <option value="">Все категории</option>
-                    <option value="Аксессуары">Аксессуары</option>
-                    <option value="Транспорт">Транспорт</option>
-                    <option value="Недвижимость">Недвижимость</option>
-                    <option value="Бизнесы">Бизнесы</option>
-                    <option value="Оружие и материалы">Оружие и материалы</option>
-                    <option value="Одежда">Одежда (Скины)</option>
-                    <option value="Электроника">Электроника</option>
-                </select>
-            </div>
-
-            <div id="mainAdsFeed" class="ads-grid">
-                </div>
-        </section>
-
-        <section id="sec-cart" class="section">
-            <h2 style="margin-bottom: 16px;">🛒 Избранные объявления</h2>
-            <div id="cartAdsFeed" class="ads-grid">
-                </div>
-        </section>
-
-        <section id="sec-create" class="section">
-            <h2 style="margin-bottom: 16px;">➕ Разместить объявление</h2>
-            <form id="createAdForm" onsubmit="handleCreateAd(event)" style="display: flex; flex-direction: column; gap: 12px;">
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Тип объявления</label>
-                    <select id="adMode" class="select-input" required>
-                        <option value="sell">Продажа</option>
-                        <option value="buy">Покупка</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Сервер Arizona RP</label>
-                    <select id="adServer" class="select-input" required>
-                        <option value="Phoenix">01 Phoenix</option>
-                        <option value="Tucson">02 Tucson</option>
-                        <option value="Scottdale">03 Scottdale</option>
-                        <option value="Chandler">04 Chandler</option>
-                        <option value="Brainburg">05 Brainburg</option>
-                        <option value="Mesa">07 Mesa</option>
-                        <option value="Yuma">09 Yuma</option>
-                        <option value="Payson">15 Payson</option>
-                        <option value="Gilbert">16 Gilbert</option>
-                        <option value="Love">30 Love</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Категория</label>
-                    <select id="adCategory" class="select-input" required>
-                        <option value="Аксессуары">Аксессуары</option>
-                        <option value="Транспорт">Транспорт</option>
-                        <option value="Недвижимость">Недвижимость</option>
-                        <option value="Бизнесы">Бизнесы</option>
-                        <option value="Оружие и материалы">Оружие и материалы</option>
-                        <option value="Одежда">Одежда (Скины)</option>
-                        <option value="Электроника">Электроника</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Название предмета / имущества</label>
-                    <input type="text" id="adTitle" class="input-field" placeholder="Например: Машинка на пульте +12" required>
-                </div>
-
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Цена ($ или формат 5кк / 10к)</label>
-                    <input type="text" id="adPrice" class="input-field" placeholder="Например: 25000000 или 25кк" required>
-                </div>
-
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Описание</label>
-                    <textarea id="adDescription" class="textarea-field" rows="4" placeholder="Укажите подробности (заточка, гравировка, торг)..." required></textarea>
-                </div>
-
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Скриншоты (URL через запятую или загрузка файла)</label>
-                    <input type="text" id="adImageUrls" class="input-field" placeholder="https://postimages.org/... , https://..." style="margin-bottom: 8px;">
-                    <input type="file" id="adFileInput" class="input-field" accept="image/*" multiple onchange="handleFileUpload(event)">
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-full">Отправить на модерацию</button>
-            </form>
-        </section>
-
-        <section id="sec-admin" class="section">
-            <h2 style="margin-bottom: 16px;">🛡️ Панель модерации</h2>
-            <div id="adminNotice" style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-secondary);"></div>
-
-            <div id="ownerControls" style="display: none; background: var(--bg-card); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid var(--accent);">
-                <h4 style="color: var(--accent); margin-bottom: 8px;">👑 Инструменты Владельца</h4>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <button class="btn btn-danger" onclick="adminClearFeed()">Очистить всю ленту</button>
-                    <button class="btn btn-secondary" onclick="adminManageUsers()">Управление пользователями</button>
-                </div>
-            </div>
-
-            <h3 style="font-size: 1rem; margin-bottom: 10px;">Заявки на модерацию</h3>
-            <div id="adminPendingFeed" class="ads-grid">
-                </div>
-
-            <h3 style="font-size: 1rem; margin-top: 20px; margin-bottom: 10px;">Апелляции на удаление</h3>
-            <div id="adminAppealsFeed" class="ads-grid">
-                </div>
-        </section>
-
-        <section id="sec-all" class="section">
-            <h2 style="margin-bottom: 16px;">☰ Разделы и сервисы</h2>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                <div class="catalog-card" onclick="openSubSection('my-ads')">📦 Мои объявления</div>
-                <div class="catalog-card" onclick="openSubSection('catalog')">📚 Каталог товаров</div>
-                <div class="catalog-card" onclick="openSubSection('baryga')">💰 Игра «Барыга»</div>
-                <div class="catalog-card" onclick="openSubSection('fashion')">🕶️ Лента «Луков»</div>
-                <div class="catalog-card" onclick="openSubSection('travel')">🚗 Попутчики</div>
-                <div class="catalog-card" onclick="openSubSection('music')">🎵 Музыка</div>
-                <div class="catalog-card" onclick="openSubSection('settings')">⚙️ Настройки</div>
-                <div class="catalog-card" onclick="openSubSection('manager')">👨‍💻 Менеджер</div>
-                <div class="catalog-card" onclick="openSubSection('chat')">💬 Переписки</div>
-            </div>
-
-            <div id="sub-container" style="margin-top: 20px;">
-                </div>
-        </section>
-
-    </main>
-
-    <nav class="tab-bar">
-        <button class="tab-item active" onclick="switchTab('main')">
-            <span class="icon">🏠</span>
-            <span>Главная</span>
-        </button>
-        <button class="tab-item" onclick="switchTab('cart')">
-            <span class="icon">🛒</span>
-            <span>Корзина</span>
-        </button>
-        <button class="tab-item" onclick="switchTab('create')">
-            <span class="icon">➕</span>
-            <span>Отправить</span>
-        </button>
-        <button class="tab-item" onclick="switchTab('admin')">
-            <span class="icon">🛡️</span>
-            <span>Админ</span>
-        </button>
-        <button class="tab-item" onclick="switchTab('all')">
-            <span class="icon">☰</span>
-            <span>Разделы</span>
-        </button>
-    </nav>
-
-    <div id="adDetailModal" class="modal-overlay">
-        <div class="modal-container">
-            <button class="modal-close" onclick="closeModal('adDetailModal')">✕</button>
-            <div class="gallery-container">
-                <img id="modalAdImg" class="gallery-img" src="" alt="Товар">
-            </div>
-            <div class="ad-badges" id="modalAdBadges"></div>
-            <h2 id="modalAdTitle" style="margin-top: 8px;"></h2>
-            <div id="modalAdPrice" class="ad-price" style="margin: 8px 0;"></div>
-            <p id="modalAdDesc" style="color: var(--text-secondary); line-height: 1.5; font-size: 0.9rem; margin-bottom: 16px;"></p>
-            <div id="modalAdAuthor" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 16px; color: var(--accent);"></div>
-
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-                <button id="modalBtnContact" class="btn btn-primary btn-full">💬 Написать продавцу в Telegram</button>
-                <button id="modalBtnCart" class="btn btn-secondary btn-full">⭐ Добавить в корзину</button>
-                <button id="modalBtnReviews" class="btn btn-secondary btn-full">⭐ Отзывы товара</button>
-                <button id="modalBtnDelete" class="btn btn-danger btn-full" style="display: none;">🗑️ Удалить объявление</button>
-                <button id="modalBtnAppeal" class="btn btn-secondary btn-full" style="display: none;">✉️ Подать апелляцию</button>
-            </div>
-
-            <div style="margin-top: 24px;">
-                <h4>Похожие объявления</h4>
-                <div id="similarAdsList" class="ads-grid" style="margin-top: 10px;"></div>
+    <!-- Modals -->
+    <div class="modal-overlay" id="alertModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">Уведомление</span><button class="modal-close" onclick="closeModal('alertModal')">×</button></div>
+            <div class="alert-icon" id="alertIcon">ℹ️</div>
+            <div class="alert-message" id="alertMessage"></div>
+            <button class="btn btn-primary btn-block" onclick="closeModal('alertModal')">OK</button>
+        </div>
+    </div>
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">Подтверждение</span><button class="modal-close" onclick="closeModal('confirmModal')">×</button></div>
+            <div class="alert-icon" id="confirmIcon">❓</div>
+            <div class="alert-message" id="confirmMessage"></div>
+            <div class="grid-2" style="gap:8px;">
+                <button class="btn btn-outline" onclick="closeModal('confirmModal')">Отмена</button>
+                <button class="btn btn-danger" id="confirmOkBtn">Подтвердить</button>
             </div>
         </div>
     </div>
 
-    <div id="searchModal" class="modal-overlay">
-        <div class="modal-container">
-            <button class="modal-close" onclick="closeModal('searchModal')">✕</button>
-            <h3>🔍 Поиск</h3>
-            <div style="display: flex; gap: 8px; margin: 12px 0;">
-                <input type="text" id="searchInput" class="input-field" placeholder="Поиск по предметам..." oninput="handleSearchInput()">
+    <!-- Ad Detail Modal -->
+    <div class="modal-overlay" id="adDetailModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">Детали объявления</span><button class="modal-close" onclick="closeModal('adDetailModal')">×</button></div>
+            <div id="adDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- Search Modal -->
+    <div class="modal-overlay" id="searchModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">🔍 Поиск</span><button class="modal-close" onclick="closeModal('searchModal')">×</button></div>
+            <input type="text" id="searchInput" placeholder="Введите запрос...">
+            <div id="searchSuggestions" class="suggestions" style="display:none;"></div>
+            <div class="grid-2" style="gap:8px; margin-top:12px;">
+                <button class="btn btn-primary" id="searchItemBtn">🔎 Предмет</button>
+                <button class="btn btn-outline" id="searchProfileBtn">👤 Профиль</button>
             </div>
-            <div id="searchSuggestions" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;"></div>
-            <div id="searchHistory" style="font-size: 0.8rem; color: var(--text-secondary);"></div>
-            <div id="searchResults" class="ads-grid" style="margin-top: 12px;"></div>
+            <div style="margin-top:12px;"><b>История:</b> <span id="searchHistory"></span></div>
         </div>
     </div>
 
-    <div id="reviewsModal" class="modal-overlay">
-        <div class="modal-container">
-            <button class="modal-close" onclick="closeModal('reviewsModal')">✕</button>
-            <h3>Отзывы о товаре</h3>
-            <div id="reviewsHistogram" style="margin: 12px 0; background: var(--bg-primary); padding: 10px; border-radius: var(--radius-md);"></div>
-
-            <div id="reviewsList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;"></div>
-
-            <form id="addReviewForm" onsubmit="handleAddReview(event)">
-                <h4 style="margin-bottom: 8px;">Оставить отзыв</h4>
-                <select id="reviewStars" class="select-input" style="margin-bottom: 8px;">
-                    <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
-                    <option value="4">⭐⭐⭐⭐ (4/5)</option>
-                    <option value="3">⭐⭐⭐ (3/5)</option>
-                    <option value="2">⭐⭐ (2/5)</option>
-                    <option value="1">⭐ (1/5)</option>
-                </select>
-                <textarea id="reviewText" class="textarea-field" rows="2" placeholder="Ваш отзыв..." required style="margin-bottom: 8px;"></textarea>
-                <input type="text" id="reviewMedia" class="input-field" placeholder="Ссылки на медиа (через запятую)" style="margin-bottom: 8px;">
-                <button type="submit" class="btn btn-primary btn-full">Опубликовать отзыв</button>
-            </form>
+    <!-- Category Modal -->
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">📂 Каталог</span><button class="modal-close" onclick="closeModal('categoryModal')">×</button></div>
+            <div id="categoryList" class="grid-2"></div>
         </div>
     </div>
 
-    <div id="noUsernameBlock" class="full-screen-block" style="display: none;">
-        <h2>⚠️ Отсутствует Username</h2>
-        <p style="margin: 12px 0; color: var(--text-secondary);">Для использования приложения необходимо установить имя пользователя (username) в настройках Telegram.</p>
-        <button class="btn btn-primary" onclick="alert('Откройте Настройки Telegram -> Изменить профиль -> Имя пользователя (Username).')">Инструкция по установке</button>
-    </div>
-
-    <div id="bannedBlock" class="full-screen-block" style="display: none;">
-        <h2>⛔ Ваш аккаунт заблокирован</h2>
-        <p style="margin: 12px 0; color: var(--text-secondary);">Вы были заблокированы администрацией за нарушение правил торговой площадки.</p>
-        <button class="btn btn-primary" onclick="window.Telegram.WebApp.openTelegramLink('https://t.me/bounqy')">Связаться с менеджером</button>
-    </div>
-
-    <div id="tutorialOverlay" class="modal-overlay" style="z-index: 900;">
-        <div class="modal-container" style="text-align: center;">
-            <h3 id="tutTitle">Добро пожаловать в Arizona RP!</h3>
-            <p id="tutText" style="margin: 16px 0; color: var(--text-secondary); line-height: 1.5; font-size: 0.9rem;"></p>
-            <div id="tutTimer" style="font-weight: 700; color: var(--accent); margin-bottom: 12px;"></div>
-            <button id="tutNextBtn" class="btn btn-primary btn-full" onclick="nextTutorialStep()">Продолжить</button>
+    <!-- Reviews Modal -->
+    <div class="modal-overlay" id="reviewsModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">⭐ Отзывы</span><button class="modal-close" onclick="closeModal('reviewsModal')">×</button></div>
+            <div id="reviewsContent"></div>
         </div>
     </div>
 
-    <audio id="bgAudio" loop preload="none"></audio>
+    <!-- Baryga Modal -->
+    <div class="modal-overlay" id="barygaModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">💰 Игра «Барыга»</span><button class="modal-close" onclick="closeModal('barygaModal')">×</button></div>
+            <div class="baryga-balance" id="barygaMoney">0</div>
+            <div class="baryga-click-area" id="barygaClickBtn">💎</div>
+            <div style="font-size:12px;color:var(--text-secondary);text-align:center;">Пассивный доход: <span id="barygaAutoIncome">0</span>/сек</div>
+            <div id="barygaUpgrades" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <!-- Fashion Modal -->
+    <div class="modal-overlay" id="fashionModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">👗 Лента «Луков»</span><button class="modal-close" onclick="closeModal('fashionModal')">×</button></div>
+            <div id="fashionForm"></div>
+            <div id="fashionList" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <!-- Travel Modal -->
+    <div class="modal-overlay" id="travelModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">🚗 Попутчики</span><button class="modal-close" onclick="closeModal('travelModal')">×</button></div>
+            <div id="travelForm"></div>
+            <div id="travelList" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <!-- Music Modal -->
+    <div class="modal-overlay" id="musicModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">🎵 Музыка</span><button class="modal-close" onclick="closeModal('musicModal')">×</button></div>
+            <div id="musicControls"></div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">⚙️ Настройки</span><button class="modal-close" onclick="closeModal('settingsModal')">×</button></div>
+            <div class="form-group"><label class="form-label">Звуковые эффекты</label><input type="checkbox" id="sfxToggle" checked></div>
+            <button class="btn btn-danger btn-block" id="resetDataBtn">🗑️ Сбросить данные</button>
+        </div>
+    </div>
+
+    <!-- Manager Modal -->
+    <div class="modal-overlay" id="managerModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">📞 Менеджер</span><button class="modal-close" onclick="closeModal('managerModal')">×</button></div>
+            <button class="btn btn-primary btn-block" onclick="window.open('https://t.me/bounqy','_blank')">Telegram</button>
+            <button class="btn btn-outline btn-block" style="margin-top:8px;" onclick="window.open('https://vk.com/bounqy','_blank')">VK</button>
+        </div>
+    </div>
+
+    <!-- Messaging Modal -->
+    <div class="modal-overlay" id="messagingModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">💬 Переписки</span><button class="modal-close" onclick="closeModal('messagingModal')">×</button></div>
+            <p style="text-align:center;">В разработке</p>
+            <button class="btn btn-primary btn-block" onclick="window.open('https://t.me/bounqy','_blank')">Перейти в Telegram</button>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">👤 Профиль</span><button class="modal-close" onclick="closeModal('profileModal')">×</button></div>
+            <div id="profileContent"></div>
+        </div>
+    </div>
+
+    <!-- Admin Edit Ad Modal -->
+    <div class="modal-overlay" id="adminEditAdModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">✏️ Редактировать объявление</span><button class="modal-close" onclick="closeModal('adminEditAdModal')">×</button></div>
+            <div id="adminEditAdForm"></div>
+        </div>
+    </div>
+
+    <!-- Admin Appeals Modal -->
+    <div class="modal-overlay" id="adminAppealsModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">📋 Апелляции</span><button class="modal-close" onclick="closeModal('adminAppealsModal')">×</button></div>
+            <div id="adminAppealsList"></div>
+        </div>
+    </div>
+
+    <!-- Admin Users Modal -->
+    <div class="modal-overlay" id="adminUsersModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">👥 Управление пользователями</span><button class="modal-close" onclick="closeModal('adminUsersModal')">×</button></div>
+            <div id="adminUsersContent"></div>
+        </div>
+    </div>
+
+    <!-- Audio element -->
+    <audio id="bgMusic" loop preload="none"></audio>
 
     <script>
-        /* --------------------------------------------------------------------------
-         * CONFIG & CONSTANTS
-         * -------------------------------------------------------------------------- */
-        const SUPABASE_URL = "https://your-supabase-url.supabase.co"; // Замените на реальный URL
-        const SUPABASE_ANON_KEY = "your-anon-key";                   // Замените на реальный Key
-        const ADMIN_USERNAMES = ['bounqy', 'admin', 'moderator'];
-        const ALLOWED_DOMAINS = ['youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com'];
+    // ===================== CONFIGURATION =====================
+    const supabaseUrl = 'https://sbtitlayqkpllnaiyeld.supabase.co';
+    const supabaseAnonKey = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
+    const OWNER_USERNAME = 'bounqy';
+    const ALL_CATEGORIES = ['Оружие','Транспорт','Недвижимость','Бизнес','Одежда','Аксессуары','Услуги','Другое'];
+    const ALL_SERVERS = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20'];
+    const ALLOWED_DOMAINS = ['youtube.com','youtu.be','radikal.cloud','allwebs.ru','postimages.org','ru.imgbb.com'];
 
-        // Инициализация Supabase с локальным фоллбэком при ошибках
-        let supabaseClient = null;
-        try {
-            if (window.supabase) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // ===================== STATE =====================
+    let supabase = null;
+    let currentUser = null;
+    let usersList = [];
+    let globalAdsFeed = [];
+    let myAdsList = [];
+    let pendingAdsList = [];
+    let favoritesList = [];
+    let appealsList = [];
+    let barygaData = null;
+    let fashionList = [];
+    let travelList = [];
+    let adminList = [];
+    let currentSection = 'feed';
+    let currentAdDetailId = null;
+    let currentReviewsAdId = null;
+    let currentProfileUsername = null;
+    let tutorialTimer = null;
+    let adminTutorialTimer = null;
+    let realtimeChannel = null;
+    let sfxEnabled = localStorage.getItem('sfx_enabled') !== 'false';
+    let searchHistory = JSON.parse(localStorage.getItem('search_history') || '[]');
+    let lastAdSubmitTime = parseInt(localStorage.getItem('last_ad_submit') || '0');
+    let barygaInterval = null;
+
+    // ===================== FAKE TELEGRAM =====================
+    if (!window.Telegram) {
+        window.Telegram = {
+            WebApp: {
+                initDataUnsafe: { user: { id: 999999, username: 'testuser', first_name: 'Тест' } },
+                ready: () => {},
+                expand: () => {},
+                close: () => {},
+                openTelegramLink: (url) => window.open(url,'_blank'),
+                setHeaderColor: () => {},
+                setBackgroundColor: () => {},
+                HapticFeedback: { impactOccurred: () => {}, notificationOccurred: () => {} },
+                isExpanded: true,
+                viewportHeight: window.innerHeight,
+                onEvent: () => {},
+                offEvent: () => {},
+                sendData: () => {},
+                showAlert: (msg) => showAlert('ℹ️', msg),
+                showConfirm: (msg, cb) => { if(confirm(msg)) cb(); }
             }
-        } catch (e) {
-            console.warn("Supabase initialization fallback to local state.");
+        };
+        console.log('🤖 Используется эмуляция Telegram WebApp');
+    }
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor('#1c1c1e');
+    tg.setBackgroundColor('#f5f5f7');
+
+    // ===================== SUPABASE INIT =====================
+    function initSupabase() {
+        if (!supabase) {
+            supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
         }
+    }
 
-        /* --------------------------------------------------------------------------
-         * GLOBAL STATE
-         * -------------------------------------------------------------------------- */
-        const tg = window.Telegram?.WebApp;
-        let currentUser = {
-            id: tg?.initDataUnsafe?.user?.id ? String(tg.initDataUnsafe.user.id) : "7770001",
-            username: tg?.initDataUnsafe?.user?.username || "test_user",
-            first_name: tg?.initDataUnsafe?.user?.first_name || "Игрок",
-            banned: false,
-            is_admin: false
-        };
-
-        // Локальное хранилище данных (Mock/Fallback API)
-        let localState = {
-            ads: JSON.parse(localStorage.getItem('az_ads')) || [
-                {
-                    id: '1',
-                    author_id: '7770001',
-                    author_name: 'bounqy',
-                    mode: 'sell',
-                    category: 'Аксессуары',
-                    item_name: 'Скейтборд +12 (Красный)',
-                    price: 45000000,
-                    description: 'Отличный аксессуар для быстрого перемещения по штату Arizona.',
-                    images: 'https://postimages.org/sample.jpg',
-                    server: 'Phoenix',
-                    status: 'approved',
-                    created_at: new Date().toISOString()
-                }
-            ],
-            favorites: JSON.parse(localStorage.getItem('az_favorites')) || [],
-            reviews: JSON.parse(localStorage.getItem('az_reviews')) || [],
-            appeals: JSON.parse(localStorage.getItem('az_appeals')) || [],
-            baryga: JSON.parse(localStorage.getItem('az_baryga')) || { money: 0, click_power: 1, auto_income: 0, upgrades: {} },
-            fashion: JSON.parse(localStorage.getItem('az_fashion')) || [],
-            travel: JSON.parse(localStorage.getItem('az_travel')) || [],
-            soundEnabled: localStorage.getItem('az_sound') !== 'false'
-        };
-
-        let activeTab = 'main';
-        let currentDetailAdId = null;
-        let tutorialStep = 0;
-        let tutorialTimer = null;
-        let uploadedImagesBase64 = [];
-
-        /* --------------------------------------------------------------------------
-         * INIT & AUTHENTICATION
-         * -------------------------------------------------------------------------- */
-        document.addEventListener('DOMContentLoaded', () => {
-            if (tg) {
-                tg.ready();
-                tg.expand();
-            }
-
-            // Проверка наличия username
-            if (!currentUser.username) {
-                document.getElementById('noUsernameBlock').style.display = 'flex';
-                return;
-            }
-
-            // Проверка прав администратора
-            if (ADMIN_USERNAMES.includes(currentUser.username.toLowerCase())) {
-                currentUser.is_admin = true;
-            }
-
-            // Проверка бана
-            if (currentUser.banned) {
-                document.getElementById('bannedBlock').style.display = 'flex';
-                return;
-            }
-
-            // Настройка темы из localStorage
-            if (localStorage.getItem('az_theme') === 'light') {
-                document.body.classList.add('light-theme');
-                document.getElementById('themeBtn').innerText = '☀️';
-            }
-
-            // Запуск туториала при первом входе
-            if (!localStorage.getItem('az_tut_done')) {
-                startTutorial();
-            }
-
-            // Запуск авто-дохода кликера
-            setInterval(barygaAutoTick, 100);
-
-            // Инициализация Realtime подписки (если доступен Supabase)
-            initRealtime();
-
-            // Отрисовка
-            renderMainFeed();
+    // ===================== UTILITY FUNCTIONS =====================
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
         });
+    }
 
-        /* --------------------------------------------------------------------------
-         * UTILS & HELPERS
-         * -------------------------------------------------------------------------- */
-        function escapeHtml(str) {
-            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    function formatPrice(val) {
+        if (!val) return '0';
+        let num = typeof val === 'string' ? parseFloat(val.replace(/\s/g,'')) : val;
+        if (isNaN(num)) return '0';
+        if (num < 1000) return String(Math.floor(num));
+        let suffixes = ['', 'к', 'кк', 'ккк', 'кккк', 'ккккк', 'кккккк', 'ккккккк'];
+        let idx = 0;
+        while (num >= 1000 && idx < suffixes.length - 1) {
+            num /= 1000;
+            idx++;
         }
+        return (Math.floor(num * 100) / 100) + suffixes[idx];
+    }
 
-        function formatPrice(val) {
-            let num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
-            if (isNaN(num)) return '0 $';
-            if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'ккк $';
-            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'кк $';
-            if (num >= 1000) return (num / 1000).toFixed(1) + 'к $';
-            return num.toLocaleString('ru-RU') + ' $';
+    function parsePriceToNumber(str) {
+        if (!str) return 0;
+        let s = String(str).toLowerCase().trim();
+        if (!s) return 0;
+        let multiplier = 1;
+        let kCount = (s.match(/к/g) || []).length;
+        s = s.replace(/к/g, '');
+        let num = parseFloat(s);
+        if (isNaN(num)) return 0;
+        return num * Math.pow(1000, kCount);
+    }
+
+    function formatPriceInput(e) {
+        const input = e.target;
+        const raw = input.value.replace(/[^\dк.]/g, '');
+        const num = parsePriceToNumber(raw);
+        if (num >= 1000) {
+            input.value = formatPrice(num);
+        } else {
+            input.value = raw;
         }
+    }
 
-        function parsePriceInput(val) {
-            let str = String(val).toLowerCase().trim();
-            if (str.endsWith('ккк')) return parseFloat(str) * 1000000000;
-            if (str.endsWith('кк')) return parseFloat(str) * 1000000;
-            if (str.endsWith('к')) return parseFloat(str) * 1000;
-            return parseInt(str.replace(/[^0-9]/g, ''), 10) || 0;
+    function isAllowedLink(url) {
+        if (!url) return false;
+        if (url.startsWith('data:image')) return true;
+        try {
+            const u = new URL(url, window.location.origin);
+            return ALLOWED_DOMAINS.some(d => u.hostname === d || u.hostname.endsWith('.' + d));
+        } catch(e) { return false; }
+    }
+
+    function showAlert(icon, message) {
+        document.getElementById('alertIcon').textContent = icon;
+        document.getElementById('alertMessage').textContent = message;
+        document.getElementById('alertModal').classList.add('active');
+    }
+
+    function showConfirm(icon, message, onOk) {
+        document.getElementById('confirmIcon').textContent = icon;
+        document.getElementById('confirmMessage').textContent = message;
+        document.getElementById('confirmModal').classList.add('active');
+        document.getElementById('confirmOkBtn').onclick = () => {
+            closeModal('confirmModal');
+            onOk();
+        };
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function supabaseRequest(fn, fallback = null) {
+        try {
+            const result = await Promise.race([
+                fn(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+            ]);
+            return result;
+        } catch(e) {
+            console.error('Supabase error:', e);
+            showAlert('❌', 'Ошибка сети. Попробуйте позже.');
+            return fallback;
         }
-
-        function isValidImageUrl(url) {
-            if (url.startsWith('data:image/')) return true;
-            try {
-                const parsed = new URL(url);
-                return ALLOWED_DOMAINS.some(domain => parsed.hostname.endsWith(domain));
-            } catch {
-                return false;
-            }
-        }
-
-        function playSound(type = 'click') {
-            if (!localState.soundEnabled) return;
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.frequency.value = type === 'click' ? 400 : 800;
-                gain.gain.setValueAtTime(0.05, ctx.currentTime);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.05);
-            } catch (e) {}
-        }
-
-        /* --------------------------------------------------------------------------
-         * NAVIGATION & TABS
-         * -------------------------------------------------------------------------- */
-        function switchTab(tabName) {
-            playSound('click');
-            activeTab = tabName;
-            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
-
-            const targetBtn = Array.from(document.querySelectorAll('.tab-item')).find(b => b.getAttribute('onclick')?.includes(tabName));
-            if (targetBtn) targetBtn.classList.add('active');
-
-            const targetSec = document.getElementById(`sec-${tabName}`);
-            if (targetSec) targetSec.classList.add('active');
-
-            if (tabName === 'main') renderMainFeed();
-            if (tabName === 'cart') renderCartFeed();
-            if (tabName === 'admin') renderAdminPanel();
-        }
-
-        function toggleTheme() {
-            playSound('click');
-            document.body.classList.toggle('light-theme');
-            const isLight = document.body.classList.contains('light-theme');
-            localStorage.setItem('az_theme', isLight ? 'light' : 'dark');
-            document.getElementById('themeBtn').innerText = isLight ? '☀️' : '🌙';
-        }
-
-        /* --------------------------------------------------------------------------
-         * REALTIME & DATA HANDLERS
-         * -------------------------------------------------------------------------- */
-        function initRealtime() {
-            if (!supabaseClient) return;
-            supabaseClient
-                .channel('public:ads')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'ads' }, payload => {
-                    if (activeTab === 'main') renderMainFeed();
-                    if (activeTab === 'admin') renderAdminPanel();
-                })
-                .subscribe();
-        }
-
-        function saveData(key, val) {
-            localState[key] = val;
-            localStorage.setItem(`az_${key}`, JSON.stringify(val));
-        }
-
-        /* --------------------------------------------------------------------------
-         * MAIN FEED & CARDS
-         * -------------------------------------------------------------------------- */
-        function renderMainFeed() {
-            const container = document.getElementById('mainAdsFeed');
-            const server = document.getElementById('filterServer').value;
-            const category = document.getElementById('filterCategory').value;
-
-            let filtered = localState.ads.filter(a => a.status === 'approved');
-            if (server) filtered = filtered.filter(a => a.server === server);
-            if (category) filtered = filtered.filter(a => a.category === category);
-
-            if (filtered.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 40px 0;">Объявлений пока нет 🌵</div>`;
-                return;
-            }
-
-            container.innerHTML = filtered.map(ad => createAdCardHTML(ad)).join('');
-        }
-
-        function createAdCardHTML(ad) {
-            const isBuy = ad.mode === 'buy';
-            const img = (ad.images && ad.images.split(',')[0]) || 'https://via.placeholder.com/150';
-            return `
-                <div class="ad-card" onclick="openAdDetail('${ad.id}')">
-                    <img src="${escapeHtml(img)}" class="ad-thumb" alt="Preview" onerror="this.src='https://via.placeholder.com/90'">
-                    <div class="ad-info">
-                        <div>
-                            <div class="ad-badges">
-                                <span class="badge ${isBuy ? 'badge-buy' : 'badge-sale'}">${isBuy ? 'Покупка' : 'Продажа'}</span>
-                                <span class="badge badge-server">${escapeHtml(ad.server)}</span>
-                            </div>
-                            <div class="ad-title">${escapeHtml(ad.item_name)}</div>
-                        </div>
-                        <div>
-                            <div class="ad-price">${formatPrice(ad.price)}</div>
-                            <div class="ad-author">Автор: @${escapeHtml(ad.author_name)}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        /* --------------------------------------------------------------------------
-         * AD DETAILS & MODAL
-         * -------------------------------------------------------------------------- */
-        function openAdDetail(id) {
-            playSound('click');
-            const ad = localState.ads.find(a => String(a.id) === String(id));
-            if (!ad) return;
-
-            currentDetailAdId = ad.id;
-            const img = (ad.images && ad.images.split(',')[0]) || 'https://via.placeholder.com/300';
-            document.getElementById('modalAdImg').src = img;
-            document.getElementById('modalAdTitle').innerText = ad.item_name;
-            document.getElementById('modalAdPrice').innerText = formatPrice(ad.price);
-            document.getElementById('modalAdDesc').innerText = ad.description;
-            document.getElementById('modalAdAuthor').innerText = `Продавец: @${ad.author_name}`;
-
-            document.getElementById('modalAdBadges').innerHTML = `
-                <span class="badge ${ad.mode === 'buy' ? 'badge-buy' : 'badge-sale'}">${ad.mode === 'buy' ? 'Покупка' : 'Продажа'}</span>
-                <span class="badge badge-server">${escapeHtml(ad.server)}</span>
-                <span class="badge badge-status">${escapeHtml(ad.category)}</span>
-            `;
-
-            // Настройка кнопок
-            const btnContact = document.getElementById('modalBtnContact');
-            btnContact.onclick = () => window.Telegram.WebApp.openTelegramLink(`https://t.me/${ad.author_name}`);
-
-            const btnCart = document.getElementById('modalBtnCart');
-            const isFav = localState.favorites.includes(ad.id);
-            btnCart.innerText = isFav ? '❌ Удалить из корзины' : '⭐ Добавить в корзину';
-            btnCart.onclick = () => toggleFavorite(ad.id);
-
-            const btnDelete = document.getElementById('modalBtnDelete');
-            const isAuthor = String(ad.author_id) === String(currentUser.id);
-            btnDelete.style.display = isAuthor && ad.status === 'approved' ? 'block' : 'none';
-            btnDelete.onclick = () => deleteAdByAuthor(ad.id);
-
-            const btnAppeal = document.getElementById('modalBtnAppeal');
-            btnAppeal.style.display = isAuthor && ad.status === 'deleted' ? 'block' : 'none';
-            btnAppeal.onclick = () => submitAppeal(ad.id);
-
-            document.getElementById('modalBtnReviews').onclick = () => openReviewsModal(ad.id);
-
-            // Похожие объявления
-            const similar = localState.ads.filter(a => a.category === ad.category && String(a.id) !== String(ad.id) && a.status === 'approved').slice(0, 3);
-            document.getElementById('similarAdsList').innerHTML = similar.length ? similar.map(a => createAdCardHTML(a)).join('') : '<div style="font-size: 0.8rem; color: var(--text-secondary);">Нет похожих товаров</div>';
-
-            openModal('adDetailModal');
-        }
-
-        function toggleFavorite(id) {
-            playSound('click');
-            const index = localState.favorites.indexOf(id);
-            if (index > -1) {
-                localState.favorites.splice(index, 1);
-            } else {
-                localState.favorites.push(id);
-            }
-            saveData('favorites', localState.favorites);
-            openAdDetail(id);
-        }
-
-        function deleteAdByAuthor(id) {
-            if (!confirm('Вы уверены, что хотите удалить объявление?')) return;
-            const ad = localState.ads.find(a => String(a.id) === String(id));
-            if (ad) {
-                ad.status = 'deleted';
-                saveData('ads', localState.ads);
-                closeModal('adDetailModal');
-                renderMainFeed();
-            }
-        }
-
-        /* --------------------------------------------------------------------------
-         * CREATE AD & FILE UPLOAD
-         * -------------------------------------------------------------------------- */
-        function handleFileUpload(event) {
-            const files = event.target.files;
-            uploadedImagesBase64 = [];
-            for (let i = 0; i < files.length; i++) {
-                const reader = new FileReader();
-                reader.onload = (e) => uploadedImagesBase64.push(e.target.result);
-                reader.readAsDataURL(files[i]);
-            }
-        }
-
-        function handleCreateAd(e) {
-            e.preventDefault();
-
-            // Проверка времени 09:00 - 22:00 МСК
-            const now = new Date();
-            const utcHours = now.getUTCHours() + 3; // МСК
-            const currentMskHour = utcHours >= 24 ? utcHours - 24 : utcHours;
-            if (!currentUser.is_admin && (currentMskHour < 9 || currentMskHour >= 22)) {
-                alert('Приём объявлений работает с 09:00 до 22:00 по МСК!');
-                return;
-            }
-
-            // Проверка кулдауна 2 мин
-            const lastTime = localStorage.getItem('az_last_post_time');
-            if (!currentUser.is_admin && lastTime && (Date.now() - parseInt(lastTime, 10)) < 120000) {
-                alert('Повторная публикация возможна раз в 2 минуты!');
-                return;
-            }
-
-            const rawPrice = document.getElementById('adPrice').value;
-            const parsedPrice = parsePriceInput(rawPrice);
-            const manualUrls = document.getElementById('adImageUrls').value.split(',').map(s => s.trim()).filter(Boolean);
-            const allImages = [...manualUrls, ...uploadedImagesBase64];
-
-            // Валидация URL изображений
-            for (let url of manualUrls) {
-                if (!isValidImageUrl(url)) {
-                    alert(`Недопустимый хостинг картинок: ${url}\nРазрешены: ${ALLOWED_DOMAINS.join(', ')}`);
-                    return;
-                }
-            }
-
-            const newAd = {
-                id: String(Date.now()),
-                author_id: currentUser.id,
-                author_name: currentUser.username,
-                mode: document.getElementById('adMode').value,
-                category: document.getElementById('adCategory').value,
-                item_name: document.getElementById('adTitle').value,
-                price: parsedPrice,
-                description: document.getElementById('adDescription').value,
-                images: allImages.join(','),
-                server: document.getElementById('adServer').value,
-                status: 'pending',
-                created_at: new Date().toISOString()
-            };
-
-            localState.ads.unshift(newAd);
-            saveData('ads', localState.ads);
-            localStorage.setItem('az_last_post_time', String(Date.now()));
-
-            alert('Объявление отправлено на модерацию!');
-            document.getElementById('createAdForm').reset();
-            uploadedImagesBase64 = [];
-            switchTab('all');
-            openSubSection('my-ads');
-        }
-
-        /* --------------------------------------------------------------------------
-         * CART (FAVORITES)
-         * -------------------------------------------------------------------------- */
-        function renderCartFeed() {
-            const container = document.getElementById('cartAdsFeed');
-            const favAds = localState.ads.filter(a => localState.favorites.includes(a.id));
-
-            if (favAds.length === 0) {
-                container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 40px 0;">Ваша корзина пуста 🛒</div>`;
-                return;
-            }
-
-            container.innerHTML = favAds.map(ad => {
-                const statusBadge = ad.status === 'approved' ? '🟢 Висит' : '🔴 Удалена';
-                return `
-                    <div style="position: relative;">
-                        <div style="position: absolute; right: 10px; top: 10px; z-index: 2;" class="badge">${statusBadge}</div>
-                        ${createAdCardHTML(ad)}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        /* --------------------------------------------------------------------------
-         * ADMIN PANEL & MODERATION
-         * -------------------------------------------------------------------------- */
-        function renderAdminPanel() {
-            if (!currentUser.is_admin) {
-                document.getElementById('adminNotice').innerText = '⛔ Доступ только для администраторов.';
-                document.getElementById('adminPendingFeed').innerHTML = '';
-                return;
-            }
-
-            document.getElementById('adminNotice').innerText = `Добро пожаловать, администратор @${currentUser.username}`;
-
-            if (currentUser.username.toLowerCase() === 'bounqy') {
-                document.getElementById('ownerControls').style.display = 'block';
-            }
-
-            const pending = localState.ads.filter(a => a.status === 'pending');
-            const container = document.getElementById('adminPendingFeed');
-
-            if (pending.length === 0) {
-                container.innerHTML = '<div style="color: var(--text-secondary);">Заявок на модерацию нет.</div>';
-            } else {
-                container.innerHTML = pending.map(ad => `
-                    <div class="ad-card">
-                        <div class="ad-info">
-                            <div class="ad-title">${escapeHtml(ad.item_name)} (${formatPrice(ad.price)})</div>
-                            <div style="font-size: 0.8rem; margin: 4px 0;">Сервер: ${ad.server} | Категория: ${ad.category}</div>
-                            <div style="font-size: 0.8rem; color: var(--text-secondary);">${escapeHtml(ad.description)}</div>
-                            <div style="display: flex; gap: 8px; margin-top: 10px;">
-                                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.8rem;" onclick="adminApproveAd('${ad.id}')">✅ Одобрить</button>
-                                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.8rem;" onclick="adminRejectAd('${ad.id}')">❌ Отклонить</button>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            // Апелляции
-            const appealsCont = document.getElementById('adminAppealsFeed');
-            appealsCont.innerHTML = localState.appeals.length ? localState.appeals.map(ap => `
-                <div class="ad-card">
-                    <div class="ad-info">
-                        <div>Причина: ${escapeHtml(ap.reason)}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Автор: @${ap.author_name}</div>
-                    </div>
-                </div>
-            `).join('') : '<div style="color: var(--text-secondary);">Апелляций нет.</div>';
-        }
-
-        function adminApproveAd(id) {
-            const ad = localState.ads.find(a => String(a.id) === String(id));
-            if (ad) {
-                ad.status = 'approved';
-                saveData('ads', localState.ads);
-                renderAdminPanel();
-            }
-        }
-
-        function adminRejectAd(id) {
-            const ad = localState.ads.find(a => String(a.id) === String(id));
-            if (ad) {
-                ad.status = 'deleted';
-                saveData('ads', localState.ads);
-                renderAdminPanel();
-            }
-        }
-
-        function adminClearFeed() {
-            if (confirm('Вы действительно хотите полностью очистить ленту объявлений?')) {
-                localState.ads = [];
-                saveData('ads', []);
-                renderAdminPanel();
-            }
-        }
-
-        /* --------------------------------------------------------------------------
-         * SUB SECTIONS (MY ADS, GAME, FASHION, TRAVEL, ETC)
-         * -------------------------------------------------------------------------- */
-        function openSubSection(name) {
-            playSound('click');
-            const container = document.getElementById('sub-container');
-
-            if (name === 'my-ads') {
-                const myAds = localState.ads.filter(a => String(a.author_id) === String(currentUser.id));
-                container.innerHTML = `
-                    <h3>📦 Мои объявления</h3>
-                    <div class="ads-grid" style="margin-top: 12px;">
-                        ${myAds.length ? myAds.map(ad => `
-                            <div class="ad-card" onclick="openAdDetail('${ad.id}')">
-                                <div class="ad-info">
-                                    <div class="ad-title">${escapeHtml(ad.item_name)}</div>
-                                    <div class="ad-price">${formatPrice(ad.price)}</div>
-                                    <div>Статус: <b>${ad.status}</b></div>
-                                </div>
-                            </div>
-                        `).join('') : 'У вас пока нет объявлений.'}
-                    </div>
-                `;
-            } else if (name === 'catalog') {
-                container.innerHTML = `
-                    <h3>📚 Каталог товаров</h3>
-                    <div class="catalog-grid" style="margin-top: 12px;">
-                        ${['Аксессуары', 'Транспорт', 'Недвижимость', 'Бизнесы', 'Оружие и материалы', 'Одежда', 'Электроника'].map(c => `
-                            <div class="catalog-card" onclick="document.getElementById('filterCategory').value='${c}'; switchTab('main');">${c}</div>
-                        `).join('')}
-                    </div>
-                `;
-            } else if (name === 'baryga') {
-                renderBarygaGame(container);
-            } else if (name === 'fashion') {
-                renderCrudSection(container, 'fashion', '🕶️ Лента «Луков»');
-            } else if (name === 'travel') {
-                renderCrudSection(container, 'travel', '🚗 Попутчики');
-            } else if (name === 'music') {
-                container.innerHTML = `
-                    <h3>🎵 Музыкальный плеер</h3>
-                    <div style="margin-top: 12px; background: var(--bg-card); padding: 16px; border-radius: var(--radius-md);">
-                        <button class="btn btn-primary btn-full" onclick="toggleAudio()" style="margin-bottom: 8px;">⏯️ Пауза / Воспроизведение</button>
-                        <input type="file" accept="audio/*" onchange="loadCustomAudio(event)" class="input-field">
-                    </div>
-                `;
-            } else if (name === 'settings') {
-                container.innerHTML = `
-                    <h3>⚙️ Настройки</h3>
-                    <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 12px;">
-                        <button class="btn btn-secondary" onclick="toggleSound()">Звуковые эффекты: ${localState.soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}</button>
-                        <button class="btn btn-danger" onclick="resetAllData()">⚠️ Сбросить все данные</button>
-                    </div>
-                `;
-            } else if (name === 'manager') {
-                container.innerHTML = `
-                    <h3>👨‍💻 Менеджер</h3>
-                    <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-                        <button class="btn btn-primary" onclick="window.Telegram.WebApp.openTelegramLink('https://t.me/bounqy')">Telegram Менеджера</button>
-                        <button class="btn btn-secondary" onclick="window.Telegram.WebApp.openLink('https://vk.com')">Группа ВКонтакте</button>
-                    </div>
-                `;
-            } else if (name === 'chat') {
-                container.innerHTML = `
-                    <h3>💬 Переписки</h3>
-                    <p style="color: var(--text-secondary); margin-top: 8px;">Чат проходит напрямую в Telegram с покупателем или продавцом.</p>
-                `;
-            }
-        }
-
-        /* --------------------------------------------------------------------------
-         * BARYGA CLICKER MINI-GAME
-         * -------------------------------------------------------------------------- */
-        function renderBarygaGame(container) {
-            const b = localState.baryga;
-            container.innerHTML = `
-                <div class="clicker-box">
-                    <h3 style="color: var(--accent);">Баланс: <span id="barygaMoney">${Math.floor(b.money)}</span> $</h3>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Пассивный доход: ${b.auto_income} $/сек</div>
-                    <div class="clicker-btn" onclick="clickBaryga()">💰</div>
-                </div>
-                <h4>Магазин улучшений</h4>
-                <div class="upgrades-list" style="margin-top: 8px;">
-                    <div class="upgrade-card">
-                        <div><b>Клик +1</b><br><small>Цена: 50 $</small></div>
-                        <button class="btn btn-primary" onclick="buyBarygaUpgrade('click', 50, 1)">Купить</button>
-                    </div>
-                    <div class="upgrade-card">
-                        <div><b>Авто-Скупка +5/сек</b><br><small>Цена: 200 $</small></div>
-                        <button class="btn btn-primary" onclick="buyBarygaUpgrade('auto', 200, 5)">Купить</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function clickBaryga() {
-            playSound('click');
-            localState.baryga.money += localState.baryga.click_power;
-            saveData('baryga', localState.baryga);
-            document.getElementById('barygaMoney').innerText = Math.floor(localState.baryga.money);
-        }
-
-        function barygaAutoTick() {
-            if (localState.baryga.auto_income > 0) {
-                localState.baryga.money += localState.baryga.auto_income / 10;
-                saveData('baryga', localState.baryga);
-                const el = document.getElementById('barygaMoney');
-                if (el) el.innerText = Math.floor(localState.baryga.money);
-            }
-        }
-
-        function buyBarygaUpgrade(type, baseCost, addVal) {
-            playSound('click');
-            if (localState.baryga.money >= baseCost) {
-                localState.baryga.money -= baseCost;
-                if (type === 'click') localState.baryga.click_power += addVal;
-                if (type === 'auto') localState.baryga.auto_income += addVal;
-                saveData('baryga', localState.baryga);
-                openSubSection('baryga');
-            } else {
-                alert('Недостаточно денег!');
-            }
-        }
-
-        /* --------------------------------------------------------------------------
-         * GENERIC CRUD (FASHION / TRAVEL)
-         * -------------------------------------------------------------------------- */
-        function renderCrudSection(container, key, title) {
-            const items = localState[key];
-            container.innerHTML = `
-                <h3>${title}</h3>
-                <div style="margin: 12px 0;">
-                    <input type="text" id="${key}Input" class="input-field" placeholder="Добавить запись..." style="margin-bottom: 8px;">
-                    <button class="btn btn-primary btn-full" onclick="addCrudItem('${key}')">Опубликовать</button>
-                </div>
-                <div class="ads-grid">
-                    ${items.map((item, idx) => `
-                        <div class="ad-card">
-                            <div class="ad-info">
-                                <div>${escapeHtml(item.title)}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">Автор: @${escapeHtml(item.author)}</div>
-                            </div>
-                            ${item.author === currentUser.username ? `<button class="btn btn-danger" onclick="deleteCrudItem('${key}', ${idx})">🗑️</button>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        function addCrudItem(key) {
-            const val = document.getElementById(`${key}Input`).value.trim();
-            if (!val) return;
-            localState[key].unshift({ title: val, author: currentUser.username });
-            saveData(key, localState[key]);
-            openSubSection(key);
-        }
-
-        function deleteCrudItem(key, idx) {
-            localState[key].splice(idx, 1);
-            saveData(key, localState[key]);
-            openSubSection(key);
-        }
-
-        /* --------------------------------------------------------------------------
-         * REVIEWS & SEARCH & MODALS CONTROL
-         * -------------------------------------------------------------------------- */
-        function openReviewsModal(adId) {
-            const reviews = localState.reviews.filter(r => String(r.ad_id) === String(adId));
-            const listEl = document.getElementById('reviewsList');
-            listEl.innerHTML = reviews.length ? reviews.map(r => `
-                <div style="background: var(--bg-primary); padding: 8px; border-radius: var(--radius-sm);">
-                    <div style="color: var(--accent); font-weight: 700;">${'⭐'.repeat(r.stars)}</div>
-                    <div style="font-size: 0.85rem; margin: 4px 0;">${escapeHtml(r.text)}</div>
-                    <div style="font-size: 0.7rem; color: var(--text-secondary);">@${escapeHtml(r.author)}</div>
-                </div>
-            `).join('') : '<div style="font-size: 0.85rem; color: var(--text-secondary);">Отзывов пока нет.</div>';
-
-            openModal('reviewsModal');
-        }
-
-        function handleAddReview(e) {
-            e.preventDefault();
-            const text = document.getElementById('reviewText').value;
-            const stars = parseInt(document.getElementById('reviewStars').value, 10);
-            localState.reviews.unshift({
-                ad_id: currentDetailAdId,
-                author: currentUser.username,
-                stars,
-                text,
-                created_at: new Date().toISOString()
-            });
-            saveData('reviews', localState.reviews);
-            openReviewsModal(currentDetailAdId);
-            document.getElementById('addReviewForm').reset();
-        }
-
-        function openSearchModal() {
-            openModal('searchModal');
-        }
-
-        function handleSearchInput() {
-            const q = document.getElementById('searchInput').value.toLowerCase().trim();
-            const res = document.getElementById('searchResults');
-            if (!q) { res.innerHTML = ''; return; }
-            const matches = localState.ads.filter(a => a.item_name.toLowerCase().includes(q) && a.status === 'approved');
-            res.innerHTML = matches.map(a => createAdCardHTML(a)).join('');
-        }
-
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
-
-        /* --------------------------------------------------------------------------
-         * TUTORIAL & AUDIO & SETTINGS
-         * -------------------------------------------------------------------------- */
-        const TUTORIAL_STEPS = [
-            {
-                title: "Важные правила и риски ⚠️",
-                text: "Запрещена продажа/покупка аккаунтов и виртуальной валюты за реальные деньги! Соблюдайте правила Arizona RP и Telegram."
-            },
-            {
-                title: "Лента и Поиск 🔍",
-                text: "Находите редкие аксессуары, транспорт и недвижимость с помощью удобных фильтров по серверам."
-            },
-            {
-                title: "Безопасные сделки 🤝",
-                text: "Связывайтесь напрямую с продавцами через Telegram для обсуждения деталей покупки."
-            }
-        ];
-
-        function startTutorial() {
-            tutorialStep = 0;
-            renderTutorialStep();
-            openModal('tutorialOverlay');
-        }
-
-        function renderTutorialStep() {
-            const step = TUTORIAL_STEPS[tutorialStep];
-            document.getElementById('tutTitle').innerText = step.title;
-            document.getElementById('tutText').innerText = step.text;
-            const btn = document.getElementById('tutNextBtn');
-
-            if (tutorialStep === 0) {
-                btn.disabled = true;
-                let secLeft = 60;
-                document.getElementById('tutTimer').innerText = `Ознакомьтесь с правилами (${secLeft}с)`;
+    }
+
+    function getUserId() {
+        return tg?.initDataUnsafe?.user?.id || 0;
+    }
+
+    function getUsername() {
+        return tg?.initDataUnsafe?.user?.username || '';
+    }
+
+    function isAdmin() {
+        if (!currentUser) return false;
+        if (currentUser.username === OWNER_USERNAME) return true;
+        return currentUser.is_admin === true;
+    }
+
+    function isOwner() {
+        return currentUser && currentUser.username === OWNER_USERNAME;
+    }
+
+    function playSfx(type) {
+        if (!sfxEnabled) return;
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            gain.gain.value = 0.1;
+            if (type === 'click') { osc.type = 'square'; osc.frequency.value = 600; osc.start(); osc.stop(ctx.currentTime + 0.05); }
+            else if (type === 'buy') { osc.type = 'triangle'; osc.frequency.setValueAtTime(400, ctx.currentTime); osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 0.15); osc.start(); osc.stop(ctx.currentTime + 0.2); }
+            else if (type === 'success') { osc.type = 'sine'; osc.frequency.value = 880; osc.start(); osc.stop(ctx.currentTime + 0.3); }
+            setTimeout(() => ctx.close(), 500);
+        } catch(e) {}
+    }
+
+    function debounce(fn, ms) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; }
+
+    // ===================== THEME =====================
+    function initTheme() {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'dark') document.body.classList.add('dark');
+        else if (saved === 'light') document.body.classList.remove('dark');
+        else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) document.body.classList.add('dark');
+    }
+    function toggleTheme() {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    // ===================== TUTORIAL =====================
+    function startTutorial() {
+        if (localStorage.getItem('tutorial_completed')) return;
+        document.getElementById('tutorialOverlay').classList.add('active');
+        showTutorialSlide(0);
+        let seconds = 60;
+        const btn = document.getElementById('tutorialAgreeBtn');
+        btn.textContent = 'Продолжить (60с)';
+        btn.disabled = true;
+        tutorialTimer = setInterval(() => {
+            seconds--;
+            if (seconds <= 0) {
                 clearInterval(tutorialTimer);
-                tutorialTimer = setInterval(() => {
-                    secLeft--;
-                    document.getElementById('tutTimer').innerText = `Ознакомьтесь с правилами (${secLeft}с)`;
-                    if (secLeft <= 0) {
-                        clearInterval(tutorialTimer);
-                        document.getElementById('tutTimer').innerText = "";
-                        btn.disabled = false;
-                    }
-                }, 1000);
-            } else {
-                document.getElementById('tutTimer').innerText = "";
+                btn.textContent = 'Продолжить';
                 btn.disabled = false;
-            }
-        }
-
-        function nextTutorialStep() {
-            tutorialStep++;
-            if (tutorialStep >= TUTORIAL_STEPS.length) {
-                localStorage.setItem('az_tut_done', 'true');
-                closeModal('tutorialOverlay');
             } else {
-                renderTutorialStep();
+                btn.textContent = `Продолжить (${seconds}с)`;
+            }
+        }, 1000);
+    }
+
+    function showTutorialSlide(idx) {
+        for (let i = 0; i <= 5; i++) {
+            document.getElementById(`tutorialSlide${i}`).style.display = i === idx ? 'block' : 'none';
+        }
+        document.querySelectorAll('#tutorialDots .tutorial-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+        const nextBtn = document.getElementById('tutorialNextBtn');
+        if (idx === 5) nextBtn.textContent = 'Понятно';
+        else nextBtn.textContent = 'Далее';
+        nextBtn.onclick = () => {
+            if (idx < 5) showTutorialSlide(idx + 1);
+            else {
+                localStorage.setItem('tutorial_completed', 'true');
+                document.getElementById('tutorialOverlay').classList.remove('active');
+            }
+        };
+    }
+
+    function startAdminTutorial() {
+        if (localStorage.getItem('admin_tutorial_completed')) return;
+        document.getElementById('adminTutorialOverlay').classList.add('active');
+        showAdminTutorialSlide(0);
+        let seconds = 60;
+        const btn = document.getElementById('adminTutorialCloseBtn');
+        btn.textContent = 'Закрыть (60с)';
+        btn.disabled = true;
+        adminTutorialTimer = setInterval(() => {
+            seconds--;
+            if (seconds <= 0) {
+                clearInterval(adminTutorialTimer);
+                btn.textContent = 'Закрыть';
+                btn.disabled = false;
+            } else {
+                btn.textContent = `Закрыть (${seconds}с)`;
+            }
+        }, 1000);
+    }
+
+    function showAdminTutorialSlide(idx) {
+        for (let i = 0; i <= 4; i++) {
+            document.getElementById(`adminTutorialSlide${i}`).style.display = i === idx ? 'block' : 'none';
+        }
+        document.querySelectorAll('#adminTutorialDots .tutorial-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+        const nextBtn = document.getElementById('adminTutorialNextBtn');
+        if (idx === 4) nextBtn.textContent = 'Закрыть';
+        else nextBtn.textContent = 'Далее';
+        nextBtn.onclick = () => {
+            if (idx < 4) showAdminTutorialSlide(idx + 1);
+            else {
+                localStorage.setItem('admin_tutorial_completed', 'true');
+                document.getElementById('adminTutorialOverlay').classList.remove('active');
+            }
+        };
+    }
+
+    // ===================== LOAD DATA =====================
+    async function loadInitialData() {
+        const uid = getUserId();
+        if (!uid) return;
+
+        // Load users
+        const usersRes = await supabaseRequest(() => supabase.from('users').select('*'));
+        if (usersRes && usersRes.data) {
+            usersList = usersRes.data;
+            currentUser = usersList.find(u => u.id === uid || u.user_id === uid);
+            if (!currentUser) {
+                // Create user
+                const newUser = {
+                    id: uid,
+                    username: getUsername(),
+                    first_name: tg?.initDataUnsafe?.user?.first_name || '',
+                    is_admin: false,
+                    banned: false,
+                    created_at: new Date().toISOString()
+                };
+                await supabaseRequest(() => supabase.from('users').insert(newUser));
+                currentUser = newUser;
+                usersList.push(newUser);
             }
         }
 
-        function toggleAudio() {
-            const audio = document.getElementById('bgAudio');
-            if (audio.paused) audio.play(); else audio.pause();
+        // Check ban
+        if (currentUser && currentUser.banned) {
+            document.getElementById('bannedScreen').classList.add('active');
+            return;
         }
 
-        function loadCustomAudio(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const audio = document.getElementById('bgAudio');
-                audio.src = URL.createObjectURL(file);
-                audio.play();
+        // Check username
+        if (!getUsername() && currentUser && currentUser.username !== OWNER_USERNAME) {
+            document.getElementById('noUsernameScreen').classList.add('active');
+            return;
+        }
+
+        // Load ads
+        const adsRes = await supabaseRequest(() => supabase.from('ads').select('*').order('created_at', {ascending:false}));
+        if (adsRes && adsRes.data) {
+            globalAdsFeed = adsRes.data.filter(a => a.status === 'approved');
+            myAdsList = adsRes.data.filter(a => a.user_id === uid || a.author_id === uid);
+            pendingAdsList = adsRes.data.filter(a => a.status === 'pending');
+        }
+
+        // Load favorites
+        const favRes = await supabaseRequest(() => supabase.from('favorites').select('*').eq('user_id', uid));
+        if (favRes && favRes.data) favoritesList = favRes.data;
+
+        // Load appeals
+        const appealsRes = await supabaseRequest(() => supabase.from('appeals').select('*'));
+        if (appealsRes && appealsRes.data) appealsList = appealsRes.data;
+
+        // Load baryga
+        const barygaRes = await supabaseRequest(() => supabase.from('baryga').select('*').eq('user_id', uid).maybeSingle());
+        if (barygaRes && barygaRes.data) {
+            barygaData = barygaRes.data;
+        } else {
+            barygaData = { user_id: uid, money: 0, click_power: 1, auto_income: 0, click_upgrade_cost: 10, auto_upgrade_cost: 25, pro_upgrade_cost: 100, shop_upgrade_cost: 500, elite_upgrade_cost: 2000, oil_upgrade_cost: 5000, crypto_upgrade_cost: 20000, scrap_upgrade_cost: 10000 };
+            await supabaseRequest(() => supabase.from('baryga').insert(barygaData));
+        }
+
+        // Load fashion
+        const fashionRes = await supabaseRequest(() => supabase.from('fashion').select('*').order('created_at', {ascending:false}));
+        if (fashionRes && fashionRes.data) fashionList = fashionRes.data;
+
+        // Load travel
+        const travelRes = await supabaseRequest(() => supabase.from('travel').select('*').order('created_at', {ascending:false}));
+        if (travelRes && travelRes.data) travelList = travelRes.data;
+
+        // Load admin list
+        adminList = usersList.filter(u => u.is_admin || u.username === OWNER_USERNAME);
+
+        // Update UI
+        updateAdminTabVisibility();
+        renderFeed();
+        renderCart();
+        renderMyAds();
+        renderAdmin();
+        renderMoreGrid();
+        if (barygaData) startBarygaInterval();
+
+        // Setup realtime
+        setupRealtime();
+
+        // Tutorials
+        startTutorial();
+        if (isAdmin()) startAdminTutorial();
+    }
+
+    function setupRealtime() {
+        if (!supabase) return;
+        if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+        realtimeChannel = supabase.channel('ads-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'ads' }, async (payload) => {
+                const adsRes = await supabaseRequest(() => supabase.from('ads').select('*').order('created_at', {ascending:false}));
+                if (adsRes && adsRes.data) {
+                    globalAdsFeed = adsRes.data.filter(a => a.status === 'approved');
+                    pendingAdsList = adsRes.data.filter(a => a.status === 'pending');
+                    const uid = getUserId();
+                    myAdsList = adsRes.data.filter(a => a.user_id === uid || a.author_id === uid);
+                    renderFeed();
+                    renderMyAds();
+                    renderAdmin();
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'favorites' }, async (payload) => {
+                const uid = getUserId();
+                const favRes = await supabaseRequest(() => supabase.from('favorites').select('*').eq('user_id', uid));
+                if (favRes && favRes.data) {
+                    favoritesList = favRes.data;
+                    renderCart();
+                }
+            })
+            .subscribe();
+    }
+
+    // ===================== RENDER FUNCTIONS =====================
+    function renderFeed(filterCategory = null) {
+        const container = document.getElementById('globalAdsFeed');
+        let ads = globalAdsFeed;
+        if (filterCategory) ads = ads.filter(a => a.category === filterCategory);
+        if (!ads.length) {
+            container.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:40px 0;">Объявлений пока нет</p>';
+            return;
+        }
+        container.innerHTML = ads.map(ad => {
+            const imgs = ad.images ? (Array.isArray(ad.images) ? ad.images : [ad.images]) : [];
+            const firstImg = imgs[0] || '';
+            const priceStr = formatPrice(ad.price);
+            const typeBadge = ad.type === 'sell' ? '<span class="ad-badge type-sell">Продажа</span>' : '<span class="ad-badge type-buy">Покупка</span>';
+            return `<div class="ad-card" onclick="openAdDetail('${ad.id}')">
+                <div class="ad-card-header">${typeBadge}
+                    <span class="ad-badge">${escapeHtml(ad.server)} сервер</span>
+                    <span class="ad-badge">${escapeHtml(ad.category)}</span>
+                    ${ad.status !== 'approved' ? `<span class="ad-badge status-${ad.status}">${ad.status}</span>` : ''}
+                </div>
+                <div class="ad-card-body">
+                    ${firstImg ? `<img class="ad-image" src="${escapeHtml(firstImg)}" onerror="this.style.display='none'" alt="">` : '<div class="ad-image-placeholder">📦</div>'}
+                    <div class="ad-info">
+                        <div class="ad-title">${escapeHtml(ad.title)}</div>
+                        <div class="ad-price">${priceStr} 💰</div>
+                        <div class="ad-author">👤 ${escapeHtml(ad.author_username || 'Неизвестно')}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderCart() {
+        const container = document.getElementById('favoritesList');
+        if (!favoritesList.length) {
+            container.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:40px 0;">Корзина пуста</p>';
+            return;
+        }
+        container.innerHTML = favoritesList.map(fav => {
+            const ad = globalAdsFeed.find(a => a.id === fav.ad_id) || myAdsList.find(a => a.id === fav.ad_id);
+            if (!ad) {
+                return `<div class="ad-card"><div class="ad-card-body"><div class="ad-image-placeholder">🗑️</div><div><b>Объявление удалено</b><br><span style="font-size:12px;color:var(--text-secondary);">ID: ${fav.ad_id}</span></div></div>
+                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();removeFromFavorites('${fav.ad_id}')">Удалить</button></div>`;
             }
+            const imgs = ad.images ? (Array.isArray(ad.images) ? ad.images : [ad.images]) : [];
+            const firstImg = imgs[0] || '';
+            const isActive = globalAdsFeed.some(a => a.id === ad.id);
+            return `<div class="ad-card" onclick="openAdDetail('${ad.id}')">
+                <div class="ad-card-header">
+                    <span class="ad-badge ${isActive ? '' : 'status-deleted'}">${isActive ? 'Висит' : 'Удалена'}</span>
+                </div>
+                <div class="ad-card-body">
+                    ${firstImg ? `<img class="ad-image" src="${escapeHtml(firstImg)}" onerror="this.style.display='none'" alt="">` : '<div class="ad-image-placeholder">📦</div>'}
+                    <div class="ad-info"><div class="ad-title">${escapeHtml(ad.title)}</div><div class="ad-price">${formatPrice(ad.price)} 💰</div></div>
+                </div>
+                <button class="btn btn-sm btn-danger" style="margin-top:8px;" onclick="event.stopPropagation();removeFromFavorites('${fav.ad_id}')">🗑️ Удалить</button>
+            </div>`;
+        }).join('');
+    }
+
+    function renderMyAds() {
+        const container = document.getElementById('myAdsList');
+        if (!myAdsList.length) {
+            container.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:40px 0;">У вас нет объявлений</p>';
+            return;
+        }
+        container.innerHTML = myAdsList.map(ad => {
+            const imgs = ad.images ? (Array.isArray(ad.images) ? ad.images : [ad.images]) : [];
+            const firstImg = imgs[0] || '';
+            return `<div class="ad-card">
+                <div class="ad-card-header">
+                    <span class="ad-badge status-${ad.status}">${ad.status}</span>
+                    <span class="ad-badge">${escapeHtml(ad.category)}</span>
+                </div>
+                <div class="ad-card-body">
+                    ${firstImg ? `<img class="ad-image" src="${escapeHtml(firstImg)}" onerror="this.style.display='none'" alt="">` : '<div class="ad-image-placeholder">📦</div>'}
+                    <div class="ad-info"><div class="ad-title">${escapeHtml(ad.title)}</div><div class="ad-price">${formatPrice(ad.price)} 💰</div></div>
+                </div>
+                <div class="grid-2" style="gap:8px;margin-top:8px;">
+                    ${ad.status !== 'deleted' ? `<button class="btn btn-sm btn-danger" onclick="deleteAdPermanently('${ad.id}')">🗑️ Удалить навсегда</button>` : `<button class="btn btn-sm btn-outline" onclick="submitAppeal('${ad.id}')">📋 Апелляция</button>`}
+                    <button class="btn btn-sm btn-outline" onclick="openAdDetail('${ad.id}')">👁️ Просмотр</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderAdmin() {
+        const container = document.getElementById('adminPanel');
+        if (!isAdmin()) {
+            container.innerHTML = '<p>Нет доступа</p>';
+            return;
+        }
+        let html = '<div class="grid-2" style="gap:10px;margin-bottom:16px;">';
+        html += `<button class="btn btn-outline" onclick="document.getElementById('adminAppealsModal').classList.add('active');renderAdminAppeals();">📋 Апелляции (${appealsList.length})</button>`;
+        if (isOwner()) html += `<button class="btn btn-outline" onclick="document.getElementById('adminUsersModal').classList.add('active');renderAdminUsers();">👥 Пользователи</button>`;
+        html += `</div>`;
+        html += '<h3 style="margin-bottom:12px;">📝 На модерации</h3>';
+        if (!pendingAdsList.length) {
+            html += '<p style="color:var(--text-secondary);">Нет объявлений на модерации</p>';
+        }
+        html += pendingAdsList.map(ad => {
+            const imgs = ad.images ? (Array.isArray(ad.images) ? ad.images : [ad.images]) : [];
+            const firstImg = imgs[0] || '';
+            return `<div class="ad-card">
+                <div class="ad-card-header"><span class="ad-badge">${escapeHtml(ad.server)} сервер</span><span class="ad-badge">${escapeHtml(ad.category)}</span></div>
+                <div class="ad-card-body">
+                    ${firstImg ? `<img class="ad-image" src="${escapeHtml(firstImg)}" onerror="this.style.display='none'" alt="">` : '<div class="ad-image-placeholder">📦</div>'}
+                    <div class="ad-info"><div class="ad-title">${escapeHtml(ad.title)}</div><div class="ad-price">${formatPrice(ad.price)} 💰</div><div class="ad-author">👤 ${escapeHtml(ad.author_username)}</div></div>
+                </div>
+                <div class="grid-3" style="gap:6px;margin-top:8px;">
+                    <button class="btn btn-sm btn-success" onclick="approveAd('${ad.id}')">✅ Одобрить</button>
+                    <button class="btn btn-sm btn-danger" onclick="rejectAd('${ad.id}')">❌ Отклонить</button>
+                    <button class="btn btn-sm btn-outline" onclick="openAdminEditAd('${ad.id}')">✏️</button>
+                </div>
+            </div>`;
+        }).join('');
+        if (isOwner()) {
+            html += `<button class="btn btn-danger btn-block" style="margin-top:16px;" onclick="clearAllAds()">🗑️ Очистить ленту</button>`;
+        }
+        container.innerHTML = html;
+    }
+
+    function renderMoreGrid() {
+        const grid = document.getElementById('moreGrid');
+        const items = [
+            { icon:'📦', label:'Мои объявления', action:"switchTab('myAds')" },
+            { icon:'📂', label:'Каталог', action:"openCategoryModal()" },
+            { icon:'💰', label:'Барыга', action:"openBarygaModal()" },
+            { icon:'🔍', label:'Поиск', action:"document.getElementById('searchModal').classList.add('active');" },
+            { icon:'👗', label:'Луки', action:"openFashionModal()" },
+            { icon:'🚗', label:'Попутчики', action:"openTravelModal()" },
+            { icon:'🎵', label:'Музыка', action:"openMusicModal()" },
+            { icon:'⚙️', label:'Настройки', action:"openSettingsModal()" },
+            { icon:'📞', label:'Менеджер', action:"document.getElementById('managerModal').classList.add('active');" },
+            { icon:'💬', label:'Переписки', action:"document.getElementById('messagingModal').classList.add('active');" },
+        ];
+        grid.innerHTML = items.map(item => `<div class="more-item" onclick="${item.action}"><div class="icon">${item.icon}</div><div class="label">${item.label}</div></div>`).join('');
+    }
+
+    function renderNewAdForm() {
+        const container = document.getElementById('newAdFormContainer');
+        container.innerHTML = `
+            <div class="form-group">
+                <label class="form-label">Тип</label>
+                <div class="picker-row" id="adTypePicker">
+                    <span class="picker-item active" data-value="sell">💰 Продажа</span>
+                    <span class="picker-item" data-value="buy">🛒 Покупка</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Категория</label>
+                <select id="adCategory">${ALL_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}</select>
+            </div>
+            <div class="form-group"><label class="form-label">Название</label><input type="text" id="adTitle" placeholder="Например: AK-47 | Redline"></div>
+            <div class="form-group"><label class="form-label">Цена</label><input type="text" id="adPrice" placeholder="0" oninput="formatPriceInput(event)"></div>
+            <div class="form-group"><label class="form-label">Описание</label><textarea id="adDescription" placeholder="Подробности..."></textarea></div>
+            <div class="form-group"><label class="form-label">Скриншот(ы) URL (через запятую)</label><input type="text" id="adImages" placeholder="https://..."></div>
+            <div class="form-group"><label class="form-label">Или загрузить с устройства</label><input type="file" id="adImageFile" accept="image/*" multiple></div>
+            <div class="form-group"><label class="form-label">Сервер</label><select id="adServer">${ALL_SERVERS.map(s => `<option value="${s}">${s}</option>`).join('')}</select></div>
+            <button class="btn btn-primary btn-block" id="submitAdBtn" onclick="submitAd()">📤 Отправить</button>
+        `;
+        document.querySelectorAll('#adTypePicker .picker-item').forEach(el => {
+            el.onclick = () => {
+                document.querySelectorAll('#adTypePicker .picker-item').forEach(x => x.classList.remove('active'));
+                el.classList.add('active');
+            };
+        });
+    }
+
+    function renderFashionForm() {
+        document.getElementById('fashionForm').innerHTML = `
+            <input type="text" id="fashionSetName" placeholder="Название сета">
+            <input type="text" id="fashionImageUrl" placeholder="Ссылка на скриншот" style="margin-top:8px;">
+            <button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="submitFashion()">Опубликовать</button>
+        `;
+        renderFashionList();
+    }
+
+    function renderFashionList() {
+        const container = document.getElementById('fashionList');
+        if (!fashionList.length) container.innerHTML = '<p>Нет луков</p>';
+        else container.innerHTML = fashionList.map(f => `<div class="ad-card"><div class="ad-card-body"><img class="ad-image" src="${escapeHtml(f.image_url)}" onerror="this.style.display='none'"><div><b>${escapeHtml(f.set_name)}</b><br><span style="font-size:11px;">👤 ${escapeHtml(f.author_username)}</span></div></div>${f.user_id === getUserId() ? `<button class="btn btn-sm btn-danger" onclick="deleteFashion('${f.id}')">Удалить</button>` : ''}</div>`).join('');
+    }
+
+    function renderTravelForm() {
+        document.getElementById('travelForm').innerHTML = `
+            <input type="text" id="travelDestination" placeholder="Куда идёте?">
+            <input type="text" id="travelTerms" placeholder="Условия" style="margin-top:8px;">
+            <button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="submitTravel()">Опубликовать</button>
+        `;
+        renderTravelList();
+    }
+
+    function renderTravelList() {
+        const container = document.getElementById('travelList');
+        if (!travelList.length) container.innerHTML = '<p>Нет попутчиков</p>';
+        else container.innerHTML = travelList.map(t => `<div class="ad-card"><b>${escapeHtml(t.destination)}</b><br><span style="font-size:12px;">${escapeHtml(t.terms)}</span><br><span style="font-size:11px;">👤 ${escapeHtml(t.author_username)}</span>${t.user_id === getUserId() ? `<button class="btn btn-sm btn-danger" onclick="deleteTravel('${t.id}')">Удалить</button>` : ''}</div>`).join('');
+    }
+
+    function renderBarygaUpgrades() {
+        if (!barygaData) return;
+        const container = document.getElementById('barygaUpgrades');
+        const upgrades = [
+            { key:'click_upgrade_cost', label:'Клик +1', cost:barygaData.click_upgrade_cost, action:() => buyBarygaUpgrade('click', barygaData.click_upgrade_cost) },
+            { key:'auto_upgrade_cost', label:'Авто +5/сек', cost:barygaData.auto_upgrade_cost, action:() => buyBarygaUpgrade('auto', barygaData.auto_upgrade_cost) },
+            { key:'pro_upgrade_cost', label:'Про +20/сек', cost:barygaData.pro_upgrade_cost, action:() => buyBarygaUpgrade('pro', barygaData.pro_upgrade_cost) },
+            { key:'shop_upgrade_cost', label:'Магазин +50/сек', cost:barygaData.shop_upgrade_cost, action:() => buyBarygaUpgrade('shop', barygaData.shop_upgrade_cost) },
+            { key:'elite_upgrade_cost', label:'Элита: клик +10', cost:barygaData.elite_upgrade_cost, action:() => buyBarygaUpgrade('elite', barygaData.elite_upgrade_cost) },
+            { key:'oil_upgrade_cost', label:'Нефть +200/сек', cost:barygaData.oil_upgrade_cost, action:() => buyBarygaUpgrade('oil', barygaData.oil_upgrade_cost) },
+            { key:'crypto_upgrade_cost', label:'Крипта +1000/сек', cost:barygaData.crypto_upgrade_cost, action:() => buyBarygaUpgrade('crypto', barygaData.crypto_upgrade_cost) },
+            { key:'scrap_upgrade_cost', label:'Скупка лома +500/сек', cost:barygaData.scrap_upgrade_cost, action:() => buyBarygaUpgrade('scrap', barygaData.scrap_upgrade_cost) },
+        ];
+        container.innerHTML = upgrades.map(u => `<div class="baryga-upgrade"><span>${u.label} 💰${formatPrice(u.cost)}</span><button class="btn btn-sm btn-primary" ${barygaData.money >= u.cost ? '' : 'disabled'} onclick="(${u.action.toString()})()">Купить</button></div>`).join('');
+    }
+
+    function updateBarygaUI() {
+        if (!barygaData) return;
+        document.getElementById('barygaMoney').textContent = formatPrice(Math.floor(barygaData.money));
+        document.getElementById('barygaAutoIncome').textContent = barygaData.auto_income || 0;
+        renderBarygaUpgrades();
+    }
+
+    function renderAdminAppeals() {
+        const container = document.getElementById('adminAppealsList');
+        if (!appealsList.length) container.innerHTML = '<p>Нет апелляций</p>';
+        else container.innerHTML = appealsList.map(a => `<div class="ad-card"><b>Объявление ID: ${a.ad_id}</b><br><span>Причина: ${escapeHtml(a.reason)}</span><br><span style="font-size:11px;">👤 ${escapeHtml(a.user_username)}</span><div class="grid-2" style="gap:6px;margin-top:8px;"><button class="btn btn-sm btn-success" onclick="approveAppeal('${a.id}')">Одобрить</button><button class="btn btn-sm btn-danger" onclick="rejectAppeal('${a.id}')">Отклонить</button></div></div>`).join('');
+    }
+
+    function renderAdminUsers() {
+        const container = document.getElementById('adminUsersContent');
+        container.innerHTML = `
+            <div class="form-group"><label class="form-label">Username</label><input type="text" id="adminUserInput" placeholder="username"></div>
+            <div class="grid-2" style="gap:8px;">
+                <button class="btn btn-danger" onclick="adminBanUser()">Забанить</button>
+                <button class="btn btn-success" onclick="adminUnbanUser()">Разбанить</button>
+                <button class="btn btn-primary" onclick="adminMakeAdmin()">Сделать админом</button>
+                <button class="btn btn-outline" onclick="adminRemoveAdmin()">Снять админа</button>
+            </div>
+            <h4 style="margin-top:16px;">Пользователи:</h4>
+            ${usersList.slice(0,20).map(u => `<div class="ad-card" style="padding:8px;"><b>${escapeHtml(u.username)}</b> ${u.banned ? '🚫' : ''} ${u.is_admin ? '👑' : ''}</div>`).join('')}
+        `;
+    }
+
+    // ===================== AD DETAIL =====================
+    async function openAdDetail(adId) {
+        currentAdDetailId = adId;
+        const allAds = [...globalAdsFeed, ...myAdsList, ...pendingAdsList];
+        const ad = allAds.find(a => a.id === adId);
+        if (!ad) { showAlert('❌', 'Объявление не найдено'); return; }
+        const imgs = ad.images ? (Array.isArray(ad.images) ? ad.images : [ad.images]) : [];
+        let html = `
+            <div class="ad-card-header">
+                <span class="ad-badge ${ad.type === 'sell' ? 'type-sell' : 'type-buy'}">${ad.type === 'sell' ? 'Продажа' : 'Покупка'}</span>
+                <span class="ad-badge">${escapeHtml(ad.server)} сервер</span>
+                <span class="ad-badge">${escapeHtml(ad.category)}</span>
+            </div>
+            <h3 style="margin-bottom:8px;">${escapeHtml(ad.title)}</h3>
+            <div style="font-size:22px;font-weight:900;color:var(--primary);margin-bottom:12px;">${formatPrice(ad.price)} 💰</div>
+            <div style="font-size:13px;margin-bottom:12px;">${escapeHtml(ad.description || '')}</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:12px;">👤 ${escapeHtml(ad.author_username)}</div>
+        `;
+        if (imgs.length) {
+            html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">${imgs.map(img => `<img src="${escapeHtml(img)}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;" onerror="this.style.display='none'">`).join('')}</div>`;
+        }
+        const isFavorite = favoritesList.some(f => f.ad_id === adId);
+        html += `<div class="grid-2" style="gap:8px;margin-bottom:12px;">
+            <button class="btn btn-primary" onclick="window.open('https://t.me/${escapeHtml(ad.author_username)}','_blank')">✉️ Написать продавцу</button>
+            <button class="btn ${isFavorite ? 'btn-danger' : 'btn-outline'}" onclick="toggleFavorite('${adId}')">${isFavorite ? '🗑️ Убрать' : '🧺 В корзину'}</button>
+            <button class="btn btn-outline" onclick="openReviews('${adId}')">⭐ Отзывы</button>
+            ${ad.user_id === getUserId() || ad.author_id === getUserId() ? `<button class="btn btn-danger" onclick="deleteAdByAuthor('${adId}')">🗑️ Удалить</button>` : ''}
+        </div>`;
+        // Similar ads
+        const similar = globalAdsFeed.filter(a => a.category === ad.category && a.id !== adId).slice(0,3);
+        if (similar.length) {
+            html += '<h4 style="margin:12px 0 8px;">Похожие объявления</h4>';
+            html += similar.map(s => `<div class="ad-card" onclick="openAdDetail('${s.id}')" style="padding:8px;"><b>${escapeHtml(s.title)}</b> — ${formatPrice(s.price)} 💰</div>`).join('');
+        }
+        document.getElementById('adDetailContent').innerHTML = html;
+        document.getElementById('adDetailModal').classList.add('active');
+    }
+
+    // ===================== ACTIONS =====================
+    async function toggleFavorite(adId) {
+        const uid = getUserId();
+        const existing = favoritesList.find(f => f.ad_id === adId);
+        if (existing) {
+            await supabaseRequest(() => supabase.from('favorites').delete().eq('id', existing.id));
+            favoritesList = favoritesList.filter(f => f.ad_id !== adId);
+            playSfx('click');
+        } else {
+            const newFav = { user_id: uid, ad_id: adId };
+            await supabaseRequest(() => supabase.from('favorites').insert(newFav));
+            favoritesList.push(newFav);
+            playSfx('success');
+        }
+        renderCart();
+        openAdDetail(adId);
+    }
+
+    async function removeFromFavorites(adId) {
+        await supabaseRequest(() => supabase.from('favorites').delete().eq('user_id', getUserId()).eq('ad_id', adId));
+        favoritesList = favoritesList.filter(f => f.ad_id !== adId);
+        renderCart();
+    }
+
+    async function deleteAdPermanently(adId) {
+        showConfirm('🗑️', 'Удалить объявление навсегда?', async () => {
+            await supabaseRequest(() => supabase.from('ads').delete().eq('id', adId));
+            myAdsList = myAdsList.filter(a => a.id !== adId);
+            globalAdsFeed = globalAdsFeed.filter(a => a.id !== adId);
+            renderMyAds();
+            renderFeed();
+            playSfx('success');
+        });
+    }
+
+    async function deleteAdByAuthor(adId) {
+        showConfirm('🗑️', 'Удалить объявление?', async () => {
+            await supabaseRequest(() => supabase.from('ads').update({status:'deleted'}).eq('id', adId));
+            myAdsList = myAdsList.map(a => a.id === adId ? {...a, status:'deleted'} : a);
+            globalAdsFeed = globalAdsFeed.filter(a => a.id !== adId);
+            renderMyAds();
+            renderFeed();
+            closeModal('adDetailModal');
+            playSfx('success');
+        });
+    }
+
+    function submitAppeal(adId) {
+        showConfirm('📋', 'Подать апелляцию на это объявление?', async () => {
+            const reason = prompt('Причина апелляции:');
+            if (!reason) return;
+            await supabaseRequest(() => supabase.from('appeals').insert({
+                ad_id: adId,
+                user_id: getUserId(),
+                user_username: getUsername(),
+                reason: reason,
+                created_at: new Date().toISOString()
+            }));
+            const appealsRes = await supabaseRequest(() => supabase.from('appeals').select('*'));
+            if (appealsRes && appealsRes.data) appealsList = appealsRes.data;
+            showAlert('✅', 'Апелляция отправлена');
+        });
+    }
+
+    async function submitAd() {
+        const uid = getUserId();
+        const type = document.querySelector('#adTypePicker .picker-item.active')?.dataset.value || 'sell';
+        const category = document.getElementById('adCategory').value;
+        const title = document.getElementById('adTitle').value.trim();
+        const priceRaw = document.getElementById('adPrice').value;
+        const description = document.getElementById('adDescription').value.trim();
+        const imagesStr = document.getElementById('adImages').value.trim();
+        const server = document.getElementById('adServer').value;
+        const fileInput = document.getElementById('adImageFile');
+        let images = imagesStr ? imagesStr.split(',').map(s => s.trim()).filter(s => s) : [];
+        let fileImages = [];
+
+        if (!title || !priceRaw || !category) { showAlert('❌', 'Заполните обязательные поля'); return; }
+        const price = parsePriceToNumber(priceRaw);
+        if (price <= 0) { showAlert('❌', 'Некорректная цена'); return; }
+
+        // Validate links
+        for (let img of images) {
+            if (!isAllowedLink(img)) { showAlert('❌', `Недопустимая ссылка: ${img}`); return; }
         }
 
-        function toggleSound() {
-            localState.soundEnabled = !localState.soundEnabled;
-            localStorage.setItem('az_sound', String(localState.soundEnabled));
-            openSubSection('settings');
-        }
-
-        function resetAllData() {
-            if (confirm('Очистить локальные данные и перезапустить приложение?')) {
-                localStorage.clear();
-                location.reload();
+        // Handle files
+        if (fileInput && fileInput.files.length) {
+            for (let f of fileInput.files) {
+                const reader = new FileReader();
+                const dataUrl = await new Promise(resolve => { reader.onload = e => resolve(e.target.result); reader.readAsDataURL(f); });
+                fileImages.push(dataUrl);
             }
+            images = images.concat(fileImages);
         }
+
+        // Check cooldown for non-admins
+        if (!isAdmin()) {
+            const now = Date.now();
+            if (now - lastAdSubmitTime < 120000) { showAlert('⏳', 'Подождите 2 минуты между подачами'); return; }
+            const moscowHour = (new Date().getUTCHours() + 3) % 24;
+            if (moscowHour < 9 || moscowHour >= 22) { showAlert('⏰', 'Приём объявлений с 09:00 до 22:00 МСК'); return; }
+        }
+
+        const newAd = {
+            user_id: uid,
+            author_username: getUsername() || currentUser?.username || 'unknown',
+            type: type,
+            category: category,
+            title: title,
+            price: price,
+            description: description,
+            images: images,
+            server: server,
+            status: 'pending',
+            created_at: new Date().toISOString()
+        };
+        const res = await supabaseRequest(() => supabase.from('ads').insert(newAd).select());
+        if (res && res.data) {
+            const inserted = res.data[0];
+            myAdsList.push(inserted);
+            pendingAdsList.push(inserted);
+            lastAdSubmitTime = Date.now();
+            localStorage.setItem('last_ad_submit', lastAdSubmitTime);
+            renderMyAds();
+            renderAdmin();
+            showAlert('✅', 'Объявление отправлено на модерацию');
+            renderNewAdForm();
+            playSfx('success');
+        }
+    }
+
+    async function approveAd(adId) {
+        await supabaseRequest(() => supabase.from('ads').update({status:'approved'}).eq('id', adId));
+        const ad = pendingAdsList.find(a => a.id === adId);
+        if (ad) {
+            ad.status = 'approved';
+            globalAdsFeed.unshift(ad);
+            pendingAdsList = pendingAdsList.filter(a => a.id !== adId);
+        }
+        renderFeed();
+        renderAdmin();
+        playSfx('success');
+    }
+
+    async function rejectAd(adId) {
+        await supabaseRequest(() => supabase.from('ads').update({status:'deleted'}).eq('id', adId));
+        pendingAdsList = pendingAdsList.filter(a => a.id !== adId);
+        globalAdsFeed = globalAdsFeed.filter(a => a.id !== adId);
+        renderAdmin();
+        renderFeed();
+        playSfx('click');
+    }
+
+    function openAdminEditAd(adId) {
+        const ad = pendingAdsList.find(a => a.id === adId);
+        if (!ad) return;
+        document.getElementById('adminEditAdForm').innerHTML = `
+            <div class="form-group"><label class="form-label">Название</label><input type="text" id="editAdTitle" value="${escapeHtml(ad.title)}"></div>
+            <div class="form-group"><label class="form-label">Цена</label><input type="text" id="editAdPrice" value="${formatPrice(ad.price)}" oninput="formatPriceInput(event)"></div>
+            <div class="form-group"><label class="form-label">Описание</label><textarea id="editAdDesc">${escapeHtml(ad.description)}</textarea></div>
+            <div class="form-group"><label class="form-label">Скриншоты (через запятую)</label><input type="text" id="editAdImages" value="${escapeHtml(ad.images ? ad.images.join(',') : '')}"></div>
+            <div class="form-group"><label class="form-label">Сервер</label><select id="editAdServer">${ALL_SERVERS.map(s => `<option value="${s}" ${s == ad.server ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+            <button class="btn btn-primary btn-block" onclick="saveAdminEditAd('${adId}')">💾 Сохранить</button>
+        `;
+        document.getElementById('adminEditAdModal').classList.add('active');
+    }
+
+    async function saveAdminEditAd(adId) {
+        const title = document.getElementById('editAdTitle').value.trim();
+        const price = parsePriceToNumber(document.getElementById('editAdPrice').value);
+        const description = document.getElementById('editAdDesc').value.trim();
+        const imagesStr = document.getElementById('editAdImages').value.trim();
+        const server = document.getElementById('editAdServer').value;
+        const images = imagesStr ? imagesStr.split(',').map(s => s.trim()).filter(s => s) : [];
+        for (let img of images) if (!isAllowedLink(img)) { showAlert('❌', 'Недопустимая ссылка'); return; }
+        await supabaseRequest(() => supabase.from('ads').update({title, price, description, images, server}).eq('id', adId));
+        closeModal('adminEditAdModal');
+        const adsRes = await supabaseRequest(() => supabase.from('ads').select('*').order('created_at', {ascending:false}));
+        if (adsRes && adsRes.data) {
+            globalAdsFeed = adsRes.data.filter(a => a.status === 'approved');
+            pendingAdsList = adsRes.data.filter(a => a.status === 'pending');
+            myAdsList = adsRes.data.filter(a => a.user_id === getUserId() || a.author_id === getUserId());
+            renderAdmin();
+            renderFeed();
+            renderMyAds();
+        }
+        playSfx('success');
+    }
+
+    async function clearAllAds() {
+        showConfirm('🗑️', 'Удалить ВСЕ объявления?', async () => {
+            await supabaseRequest(() => supabase.from('ads').delete().neq('id', '00000000-0000-0000-0000-000000000000'));
+            globalAdsFeed = [];
+            pendingAdsList = [];
+            myAdsList = [];
+            renderFeed();
+            renderAdmin();
+            renderMyAds();
+            playSfx('success');
+        });
+    }
+
+    async function adminBanUser() {
+        const username = document.getElementById('adminUserInput').value.trim();
+        if (!username) return;
+        const user = usersList.find(u => u.username === username);
+        if (!user) { showAlert('❌', 'Пользователь не найден'); return; }
+        await supabaseRequest(() => supabase.from('users').update({banned:true}).eq('username', username));
+        user.banned = true;
+        showAlert('✅', 'Пользователь забанен');
+    }
+
+    async function adminUnbanUser() {
+        const username = document.getElementById('adminUserInput').value.trim();
+        if (!username) return;
+        await supabaseRequest(() => supabase.from('users').update({banned:false}).eq('username', username));
+        usersList.find(u => u.username === username).banned = false;
+        showAlert('✅', 'Пользователь разбанен');
+    }
+
+    async function adminMakeAdmin() {
+        const username = document.getElementById('adminUserInput').value.trim();
+        if (!username) return;
+        await supabaseRequest(() => supabase.from('users').update({is_admin:true}).eq('username', username));
+        usersList.find(u => u.username === username).is_admin = true;
+        adminList = usersList.filter(u => u.is_admin || u.username === OWNER_USERNAME);
+        showAlert('✅', 'Админ добавлен');
+    }
+
+    async function adminRemoveAdmin() {
+        const username = document.getElementById('adminUserInput').value.trim();
+        if (!username) return;
+        await supabaseRequest(() => supabase.from('users').update({is_admin:false}).eq('username', username));
+        usersList.find(u => u.username === username).is_admin = false;
+        adminList = usersList.filter(u => u.is_admin || u.username === OWNER_USERNAME);
+        showAlert('✅', 'Админ снят');
+    }
+
+    async function approveAppeal(appealId) {
+        const appeal = appealsList.find(a => a.id === appealId);
+        if (appeal) {
+            await supabaseRequest(() => supabase.from('ads').update({status:'approved'}).eq('id', appeal.ad_id));
+            await supabaseRequest(() => supabase.from('appeals').delete().eq('id', appealId));
+            appealsList = appealsList.filter(a => a.id !== appealId);
+            renderAdminAppeals();
+            showAlert('✅', 'Апелляция одобрена');
+        }
+    }
+
+    async function rejectAppeal(appealId) {
+        await supabaseRequest(() => supabase.from('appeals').delete().eq('id', appealId));
+        appealsList = appealsList.filter(a => a.id !== appealId);
+        renderAdminAppeals();
+        showAlert('✅', 'Апелляция отклонена');
+    }
+
+    // ===================== BARYGA =====================
+    function startBarygaInterval() {
+        if (barygaInterval) clearInterval(barygaInterval);
+        barygaInterval = setInterval(async () => {
+            if (!barygaData || document.getElementById('barygaModal').classList.contains('active') === false) return;
+            if (barygaData.auto_income > 0) {
+                barygaData.money += barygaData.auto_income / 10;
+                if (Math.random() < 0.1) {
+                    await supabaseRequest(() => supabase.from('baryga').update({money: barygaData.money}).eq('user_id', getUserId()));
+                }
+                updateBarygaUI();
+            }
+        }, 100);
+    }
+
+    async function barygaClick() {
+        if (!barygaData) return;
+        barygaData.money += barygaData.click_power;
+        playSfx('click');
+        updateBarygaUI();
+        await supabaseRequest(() => supabase.from('baryga').update({money: barygaData.money}).eq('user_id', getUserId()));
+    }
+
+    async function buyBarygaUpgrade(type, cost) {
+        if (!barygaData || barygaData.money < cost) return;
+        barygaData.money -= cost;
+        switch(type) {
+            case 'click': barygaData.click_power += 1; barygaData.click_upgrade_cost *= 2; break;
+            case 'auto': barygaData.auto_income += 5; barygaData.auto_upgrade_cost *= 2; break;
+            case 'pro': barygaData.auto_income += 20; barygaData.pro_upgrade_cost *= 2; break;
+            case 'shop': barygaData.auto_income += 50; barygaData.shop_upgrade_cost *= 2; break;
+            case 'elite': barygaData.click_power += 10; barygaData.elite_upgrade_cost *= 2; break;
+            case 'oil': barygaData.auto_income += 200; barygaData.oil_upgrade_cost *= 2; break;
+            case 'crypto': barygaData.auto_income += 1000; barygaData.crypto_upgrade_cost *= 2; break;
+            case 'scrap': barygaData.auto_income += 500; barygaData.scrap_upgrade_cost *= 2; break;
+        }
+        playSfx('buy');
+        await supabaseRequest(() => supabase.from('baryga').update(barygaData).eq('user_id', getUserId()));
+        updateBarygaUI();
+    }
+
+    // ===================== FASHION & TRAVEL =====================
+    async function submitFashion() {
+        const name = document.getElementById('fashionSetName').value.trim();
+        const url = document.getElementById('fashionImageUrl').value.trim();
+        if (!name || !url) { showAlert('❌', 'Заполните поля'); return; }
+        if (!isAllowedLink(url)) { showAlert('❌', 'Недопустимая ссылка'); return; }
+        const res = await supabaseRequest(() => supabase.from('fashion').insert({user_id:getUserId(), author_username:getUsername(), set_name:name, image_url:url, created_at:new Date().toISOString()}).select());
+        if (res && res.data) {
+            fashionList.unshift(res.data[0]);
+            renderFashionList();
+            playSfx('success');
+        }
+    }
+
+    async function deleteFashion(id) {
+        await supabaseRequest(() => supabase.from('fashion').delete().eq('id', id));
+        fashionList = fashionList.filter(f => f.id !== id);
+        renderFashionList();
+    }
+
+    async function submitTravel() {
+        const dest = document.getElementById('travelDestination').value.trim();
+        const terms = document.getElementById('travelTerms').value.trim();
+        if (!dest) { showAlert('❌', 'Укажите направление'); return; }
+        const res = await supabaseRequest(() => supabase.from('travel').insert({user_id:getUserId(), author_username:getUsername(), destination:dest, terms:terms, created_at:new Date().toISOString()}).select());
+        if (res && res.data) {
+            travelList.unshift(res.data[0]);
+            renderTravelList();
+            playSfx('success');
+        }
+    }
+
+    async function deleteTravel(id) {
+        await supabaseRequest(() => supabase.from('travel').delete().eq('id', id));
+        travelList = travelList.filter(t => t.id !== id);
+        renderTravelList();
+    }
+
+    // ===================== REVIEWS =====================
+    function openReviews(adId) {
+        currentReviewsAdId = adId;
+        const modal = document.getElementById('reviewsModal');
+        const container = document.getElementById('reviewsContent');
+        container.innerHTML = '<p>Загрузка отзывов...</p>';
+        modal.classList.add('active');
+        supabaseRequest(() => supabase.from('reviews').select('*').eq('ad_id', adId)).then(res => {
+            const reviews = res?.data || [];
+            const avg = reviews.length ? (reviews.reduce((s,r) => s + r.stars, 0) / reviews.length).toFixed(1) : '0';
+            let html = `<div style="text-align:center;margin-bottom:16px;"><span style="font-size:32px;font-weight:900;">${avg}</span> ⭐ (${reviews.length} отзывов)</div>`;
+            if (!reviews.length) html += '<p>Нет отзывов</p>';
+            html += reviews.map(r => `<div class="review-item"><div class="review-header"><b>${escapeHtml(r.author_username)}</b><span class="review-stars">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span></div><p>${escapeHtml(r.text)}</p>${r.media_links ? `<div style="font-size:10px;color:var(--text-secondary);">📎 ${escapeHtml(r.media_links)}</div>` : ''}</div>`).join('');
+            html += `<button class="btn btn-primary btn-block" style="margin-top:12px;" onclick="showAddReviewForm('${adId}')">⭐ Оставить отзыв</button>`;
+            container.innerHTML = html;
+        });
+    }
+
+    function showAddReviewForm(adId) {
+        const container = document.getElementById('reviewsContent');
+        container.innerHTML = `
+            <h4>Ваш отзыв</h4>
+            <div class="star-rating" id="starRating">${[1,2,3,4,5].map(i => `<span class="star" data-star="${i}">★</span>`).join('')}</div>
+            <textarea id="reviewText" placeholder="Текст отзыва" style="margin-top:8px;"></textarea>
+            <input type="text" id="reviewMedia" placeholder="Медиа-ссылки (через запятую)" style="margin-top:8px;">
+            <button class="btn btn-primary btn-block" style="margin-top:8px;" onclick="submitReview('${adId}')">Отправить</button>
+        `;
+        let selectedStars = 0;
+        document.querySelectorAll('#starRating .star').forEach(star => {
+            star.onclick = () => {
+                selectedStars = parseInt(star.dataset.star);
+                document.querySelectorAll('#starRating .star').forEach(s => s.classList.toggle('active', parseInt(s.dataset.star) <= selectedStars));
+            };
+        });
+    }
+
+    async function submitReview(adId) {
+        const stars = document.querySelectorAll('#starRating .star.active').length;
+        const text = document.getElementById('reviewText').value.trim();
+        const mediaLinks = document.getElementById('reviewMedia').value.trim();
+        if (!stars) { showAlert('❌', 'Выберите рейтинг'); return; }
+        const mediaArr = mediaLinks ? mediaLinks.split(',').map(s => s.trim()).filter(s => s) : [];
+        for (let m of mediaArr) if (!isAllowedLink(m)) { showAlert('❌', 'Недопустимая ссылка'); return; }
+        await supabaseRequest(() => supabase.from('reviews').insert({
+            ad_id: adId,
+            author_id: getUserId(),
+            author_username: getUsername(),
+            stars: stars,
+            text: text,
+            media_links: mediaArr.join(','),
+            created_at: new Date().toISOString()
+        }));
+        showAlert('✅', 'Отзыв отправлен');
+        openReviews(adId);
+    }
+
+    // ===================== SEARCH =====================
+    function setupSearch() {
+        const input = document.getElementById('searchInput');
+        const suggestions = document.getElementById('searchSuggestions');
+        input.addEventListener('input', debounce(() => {
+            const val = input.value.trim().toLowerCase();
+            if (!val) { suggestions.style.display = 'none'; return; }
+            const matches = globalAdsFeed.filter(a => a.title.toLowerCase().includes(val) || (a.description && a.description.toLowerCase().includes(val))).slice(0,5);
+            if (matches.length) {
+                suggestions.innerHTML = matches.map(m => `<div class="suggestion-item" onclick="openAdDetail('${m.id}');closeModal('searchModal');">${escapeHtml(m.title)} — ${formatPrice(m.price)}</div>`).join('');
+                suggestions.style.display = 'block';
+            } else {
+                suggestions.style.display = 'none';
+            }
+        }, 200));
+        document.getElementById('searchItemBtn').onclick = () => {
+            const val = input.value.trim();
+            if (!val) return;
+            addToSearchHistory(val);
+            const matched = globalAdsFeed.filter(a => a.title.toLowerCase().includes(val.toLowerCase()) || (a.description && a.description.toLowerCase().includes(val.toLowerCase())));
+            globalAdsFeed = matched.length ? matched : globalAdsFeed;
+            renderFeed();
+            closeModal('searchModal');
+        };
+        document.getElementById('searchProfileBtn').onclick = () => {
+            const val = input.value.trim();
+            if (!val) return;
+            addToSearchHistory(val);
+            currentProfileUsername = val;
+            openProfile(val);
+        };
+        renderSearchHistory();
+    }
+
+    function addToSearchHistory(val) {
+        searchHistory = [val, ...searchHistory.filter(h => h !== val)].slice(0,10);
+        localStorage.setItem('search_history', JSON.stringify(searchHistory));
+        renderSearchHistory();
+    }
+
+    function renderSearchHistory() {
+        const el = document.getElementById('searchHistory');
+        el.innerHTML = searchHistory.map(h => `<span style="cursor:pointer;margin-right:8px;" onclick="document.getElementById('searchInput').value='${escapeHtml(h)}'">${escapeHtml(h)}</span>`).join('');
+    }
+
+    // ===================== PROFILE =====================
+    function openProfile(username) {
+        const user = usersList.find(u => u.username === username);
+        if (!user) { showAlert('❌', 'Пользователь не найден'); return; }
+        document.getElementById('profileContent').innerHTML = `
+            <div style="text-align:center;margin-bottom:16px;"><div style="font-size:64px;">👤</div><h3>${escapeHtml(user.username)}</h3></div>
+            <div class="grid-2" style="gap:8px;">
+                <button class="btn btn-primary" onclick="window.open('https://t.me/${escapeHtml(user.username)}','_blank')">✉️ Написать</button>
+                <button class="btn btn-outline" onclick="followUser('${escapeHtml(user.username)}')">⭐ Подписаться</button>
+            </div>
+        `;
+        document.getElementById('profileModal').classList.add('active');
+    }
+
+    function followUser(username) {
+        showAlert('✅', `Вы подписались на ${username}`);
+    }
+
+    // ===================== CATEGORIES =====================
+    function openCategoryModal() {
+        const container = document.getElementById('categoryList');
+        container.innerHTML = ALL_CATEGORIES.map(c => `<div class="more-item" onclick="filterByCategory('${c}')"><div class="icon">📂</div><div class="label">${c}</div></div>`).join('');
+        document.getElementById('categoryModal').classList.add('active');
+    }
+
+    function filterByCategory(cat) {
+        renderFeed(cat);
+        closeModal('categoryModal');
+    }
+
+    // ===================== MODALS OPENERS =====================
+    function openBarygaModal() {
+        document.getElementById('barygaModal').classList.add('active');
+        updateBarygaUI();
+    }
+    function openFashionModal() { renderFashionForm(); document.getElementById('fashionModal').classList.add('active'); }
+    function openTravelModal() { renderTravelForm(); document.getElementById('travelModal').classList.add('active'); }
+    function openSettingsModal() { document.getElementById('sfxToggle').checked = sfxEnabled; document.getElementById('settingsModal').classList.add('active'); }
+
+    function openMusicModal() {
+        const container = document.getElementById('musicControls');
+        container.innerHTML = `
+            <div class="grid-2" style="gap:8px;">
+                <button class="btn btn-primary" onclick="toggleMusic()" id="musicToggleBtn">⏸️ Пауза</button>
+                <button class="btn btn-outline" onclick="resetMusic()">🔄 Сбросить</button>
+            </div>
+            <div class="form-group" style="margin-top:12px;"><label class="form-label">Загрузить свой трек</label><input type="file" accept="audio/*" id="musicFileInput" onchange="loadCustomMusic(event)"></div>
+        `;
+        document.getElementById('musicModal').classList.add('active');
+    }
+
+    // ===================== MUSIC =====================
+    let defaultMusicUrl = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+    let isMusicPlaying = false;
+
+    function toggleMusic() {
+        const audio = document.getElementById('bgMusic');
+        const btn = document.getElementById('musicToggleBtn');
+        if (isMusicPlaying) { audio.pause(); isMusicPlaying = false; btn.textContent = '▶️ Играть'; }
+        else { audio.play().catch(e => showAlert('❌','Не удалось воспроизвести')); isMusicPlaying = true; btn.textContent = '⏸️ Пауза'; }
+    }
+
+    function resetMusic() {
+        const audio = document.getElementById('bgMusic');
+        audio.src = defaultMusicUrl;
+        if (isMusicPlaying) audio.play();
+        showAlert('✅', 'Трек сброшен');
+    }
+
+    function loadCustomMusic(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            document.getElementById('bgMusic').src = url;
+            if (isMusicPlaying) document.getElementById('bgMusic').play();
+            showAlert('✅', 'Трек загружен');
+        }
+    }
+
+    // ===================== SETTINGS =====================
+    document.getElementById('sfxToggle').addEventListener('change', function() {
+        sfxEnabled = this.checked;
+        localStorage.setItem('sfx_enabled', sfxEnabled ? 'true' : 'false');
+    });
+    document.getElementById('resetDataBtn').addEventListener('click', () => {
+        showConfirm('🗑️', 'Сбросить все локальные данные?', () => {
+            localStorage.clear();
+            location.reload();
+        });
+    });
+
+    // ===================== NAVIGATION =====================
+    function switchTab(tab) {
+        currentSection = tab;
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        const map = {feed:'section-feed', cart:'section-cart', app:'section-app', admin:'section-admin', more:'section-more', myAds:'section-myAds'};
+        const target = map[tab] || 'section-feed';
+        document.getElementById(target).classList.add('active');
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+        if (tab === 'app') renderNewAdForm();
+        if (tab === 'admin' && isAdmin()) { renderAdmin(); if (!localStorage.getItem('admin_tutorial_completed')) startAdminTutorial(); }
+        if (tab === 'more') renderMoreGrid();
+        if (tab === 'myAds') renderMyAds();
+        if (tab === 'feed') renderFeed();
+        if (tab === 'cart') renderCart();
+    }
+
+    function updateAdminTabVisibility() {
+        const adminTab = document.getElementById('adminTabBtn');
+        if (isAdmin()) adminTab.classList.remove('hidden-tab');
+        else adminTab.classList.add('hidden-tab');
+    }
+
+    // ===================== EVENT LISTENERS =====================
+    document.addEventListener('DOMContentLoaded', () => {
+        initTheme();
+        initSupabase();
+        document.getElementById('themeToggle').onclick = toggleTheme;
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.onclick = () => switchTab(tab.dataset.tab);
+        });
+        document.getElementById('headerSearchBtn').onclick = () => {
+            document.getElementById('searchModal').classList.add('active');
+            document.getElementById('searchInput').focus();
+        };
+        document.getElementById('tutorialAgreeBtn').onclick = () => showTutorialSlide(1);
+        document.getElementById('tutorialNextBtn').onclick = () => {};
+        document.getElementById('adminTutorialCloseBtn').onclick = () => {};
+        document.getElementById('adminTutorialNextBtn').onclick = () => {};
+        document.getElementById('noUsernameHelpBtn').onclick = () => {
+            showAlert('ℹ️', 'Откройте Telegram → Настройки → Username → Установить');
+        };
+        // Baryga click
+        document.getElementById('barygaClickBtn').onclick = barygaClick;
+        // Close modals on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) overlay.classList.remove('active');
+            });
+        });
+        setupSearch();
+        loadInitialData();
+    });
+
+    window.onerror = function(msg, src, line, col, err) {
+        console.error('Global error:', msg, err);
+        return false;
+    };
     </script>
 </body>
 </html>

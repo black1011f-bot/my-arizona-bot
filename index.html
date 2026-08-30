@@ -3,73 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Arizona RP — Маркетплейс</title>
+    <title>Arizona RP Market</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg: #FFFFFF; --card: #FFFFFF; --border: #E8E8EC; --accent: #005BFF; --gold: #FF9900;
-            --text: #1A1A1A; --muted: #8A8A8E; --shadow: 0 2px 12px rgba(0,0,0,0.08);
-            --radius: 12px; --btn-min-height: 44px; --container-width: 480px; --nav-height: 60px;
-            --header-height: 56px; --font: 'Montserrat', sans-serif; --transition-speed: 0.25s;
+            --bg: #FFFFFF;
+            --card: #FFFFFF;
+            --border: #E8E8EC;
+            --accent: #005BFF;
+            --gold: #FF9900;
+            --text: #1A1A1A;
+            --muted: #8A8A8E;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --btn-min-height: 44px;
+            --container-width: 480px;
+            --nav-height: 60px;
+            --header-height: 56px;
+            --font: 'Montserrat', sans-serif;
+            --transition-speed: 0.25s;
         }
         [data-theme="dark"] {
-            --bg: #1C1C1E; --card: #2C2C2E; --border: #3A3A3C; --accent: #0A84FF; --gold: #FFD60A;
-            --text: #FFFFFF; --muted: #A0A0A5; --shadow: 0 2px 12px rgba(0,0,0,0.3);
+            --bg: #1C1C1E;
+            --card: #2C2C2E;
+            --border: #3A3A3C;
+            --accent: #0A84FF;
+            --gold: #FFD60A;
+            --text: #FFFFFF;
+            --muted: #A0A0A5;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; font-family: var(--font); }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            font-family: var(--font);
+        }
         body {
-            background: var(--bg); color: var(--text); min-height: 100vh;
-            transition: background 0.3s, color 0.3s; overflow-x: hidden; user-select: none; -webkit-user-select: none; touch-action: manipulation;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
         .container {
-            max-width: var(--container-width); margin: 0 auto; padding: 0 12px;
-            padding-top: calc(var(--header-height) + 10px); padding-bottom: calc(var(--nav-height) + 20px); transition: max-width 0.3s;
+            max-width: var(--container-width);
+            margin: 0 auto;
+            padding: 0 12px;
+            padding-top: calc(var(--header-height) + 10px);
+            padding-bottom: calc(var(--nav-height) + 20px);
+            transition: max-width 0.3s;
         }
-        @media (min-width: 768px) { :root { --container-width: 720px; } .ads-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; } .ad-card { width: 100%; } }
-        @media (min-width: 1024px) { :root { --container-width: 1200px; } .ads-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 768px) {
+            :root { --container-width: 720px; }
+            .ads-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .ad-card { width: 100%; }
+        }
+        @media (min-width: 1024px) {
+            :root { --container-width: 1200px; }
+            .ads-grid { grid-template-columns: repeat(3, 1fr); }
+        }
         .header {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--bg);
-            border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 8px 12px;
-            height: var(--header-height); gap: 8px; transition: background 0.3s, border-color 0.3s;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            height: var(--header-height);
+            gap: 8px;
+            transition: background 0.3s, border-color 0.3s;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
-        .header-logo { width: 36px; height: 36px; border-radius: 8px; overflow: hidden; flex-shrink: 0; cursor: pointer; transition: transform 0.2s; }
+        .header-logo {
+            width: 36px; height: 36px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
         .header-logo:active { transform: scale(0.9); }
         .header-logo img { width: 100%; height: 100%; object-fit: cover; }
         .header-title { font-weight: 800; font-size: 18px; color: var(--text); white-space: nowrap; flex-shrink: 0; }
         .header-search { flex: 1; min-width: 0; cursor: pointer; }
         .header-search input {
-            width: 100%; padding: 8px 12px; border-radius: 20px; border: 1px solid var(--border);
-            background: var(--card); color: var(--text); font-size: 14px; outline: none;
-            transition: border-color 0.3s, background 0.3s, color 0.3s; pointer-events: none;
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s, background 0.3s, color 0.3s;
+            pointer-events: none;
         }
-        .theme-toggle { background: none; border: none; font-size: 22px; cursor: pointer; padding: 4px; border-radius: 8px; transition: transform 0.2s; flex-shrink: 0; }
+        .theme-toggle {
+            background: none; border: none; font-size: 22px; cursor: pointer;
+            padding: 4px; border-radius: 8px; transition: transform 0.2s; flex-shrink: 0;
+        }
         .theme-toggle:active { transform: scale(0.9); }
         .nav-bar {
-            position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; background: var(--bg); border-top: 1px solid var(--border);
-            display: flex; justify-content: space-around; align-items: center; height: var(--nav-height);
-            padding-bottom: env(safe-area-inset-bottom); transition: background 0.3s, border-color 0.3s;
+            position: fixed; bottom: 0; left: 0; right: 0;
+            z-index: 100; background: var(--bg); border-top: 1px solid var(--border);
+            display: flex; justify-content: space-around; align-items: center;
+            height: var(--nav-height); padding-bottom: env(safe-area-inset-bottom);
+            transition: background 0.3s, border-color 0.3s;
         }
         .nav-item {
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-            background: none; border: none; color: var(--muted); font-size: 10px; font-weight: 600; cursor: pointer;
-            padding: 4px 8px; border-radius: 8px; transition: color 0.3s, transform 0.2s, background 0.2s;
-            flex: 1; max-width: 80px; min-height: var(--btn-min-height);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 2px; background: none; border: none; color: var(--muted); font-size: 10px;
+            font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 8px;
+            transition: color 0.3s, transform 0.2s, background 0.2s; flex: 1; max-width: 80px; min-height: var(--btn-min-height);
         }
         .nav-item .nav-icon { font-size: 22px; line-height: 1; }
         .nav-item.active { color: var(--accent); background: rgba(0, 91, 255, 0.08); }
         .nav-item:active { transform: scale(0.92); }
-        .section { display: none; opacity: 0; transform: translateY(10px); transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease; }
-        .section.active { display: block; opacity: 1; transform: translateY(0); }
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+        }
+        .section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
         .card {
-            background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow);
-            padding: 12px; margin-bottom: 10px; transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s, opacity 0.3s; cursor: pointer;
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s, opacity 0.3s;
+            cursor: pointer;
         }
         .card:active { transform: scale(0.98); }
-        .card.inactive-card { background: rgba(128,128,128,0.12) !important; opacity: 0.75; }
-        [data-theme="dark"] .card.inactive-card { background: rgba(255,255,255,0.04) !important; opacity: 0.65; }
+        .card.inactive-card {
+            background: rgba(128, 128, 128, 0.12) !important;
+            opacity: 0.75;
+        }
+        [data-theme="dark"] .card.inactive-card {
+            background: rgba(255, 255, 255, 0.04) !important;
+            opacity: 0.65;
+        }
         .ad-card { display: flex; gap: 10px; align-items: flex-start; }
         .ad-card-img { width: 80px; height: 100px; border-radius: 8px; object-fit: cover; background: var(--border); flex-shrink: 0; }
         .ad-card-info { flex: 1; min-width: 0; }
@@ -86,30 +175,33 @@
         .badge.status-approved { background: #34c759; color: #fff; }
         .ad-card-author { font-size: 11px; color: var(--muted); }
         .btn {
-            display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px;
-            border-radius: var(--radius); border: none; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px;
-            cursor: pointer; transition: transform 0.2s, opacity 0.2s, background 0.3s; touch-action: manipulation; min-height: var(--btn-min-height);
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 10px 18px; border-radius: var(--radius); border: none; background: var(--accent);
+            color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s, background 0.3s; touch-action: manipulation; min-height: var(--btn-min-height);
         }
         .btn:active { transform: scale(0.96); }
         .btn.secondary { background: var(--border); color: var(--text); }
         .btn.danger { background: #ff3b30; color: #fff; }
         .btn.gold { background: var(--gold); color: #1a1a1a; }
-        .btn.success { background: #34c759; color: #fff; }
         .btn:disabled { opacity: 0.5; pointer-events: none; }
         .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 200;
-            display: flex; align-items: center; justify-content: center; padding: 16px; opacity: 0; transition: opacity 0.25s ease;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); z-index: 200; display: flex;
+            align-items: center; justify-content: center; padding: 16px;
+            opacity: 0; transition: opacity 0.25s ease;
         }
         .modal-overlay.show { opacity: 1; }
         .modal {
-            background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-            width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto; padding: 20px; position: relative;
+            background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2); width: 100%; max-width: 520px; max-height: 85vh;
+            overflow-y: auto; padding: 20px; position: relative;
             transform: translateY(20px); transition: transform 0.25s ease, background 0.3s, border-color 0.3s;
         }
         .modal-overlay.show .modal { transform: translateY(0); }
         .modal-close {
-            position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 24px; cursor: pointer;
-            color: var(--muted); padding: 4px; line-height: 1; z-index: 5; transition: transform 0.2s;
+            position: absolute; top: 12px; right: 12px; background: none; border: none;
+            font-size: 24px; cursor: pointer; color: var(--muted); padding: 4px; line-height: 1; z-index: 5; transition: transform 0.2s;
         }
         .modal-close:active { transform: scale(0.9); }
         .modal-title { font-weight: 800; font-size: 18px; margin-bottom: 16px; padding-right: 30px; }
@@ -117,55 +209,34 @@
         .form-group label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--muted); }
         .form-group input, .form-group select, .form-group textarea {
             width: 100%; padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border);
-            background: var(--bg); color: var(--text); font-size: 14px; outline: none; transition: border-color 0.3s, background 0.3s, color 0.3s;
-            font-family: var(--font);
+            background: var(--bg); color: var(--text); font-size: 14px; outline: none;
+            transition: border-color 0.3s, background 0.3s, color 0.3s; font-family: var(--font);
         }
         .form-group textarea { min-height: 80px; resize: vertical; }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
         .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-weight: 500; }
         .tutorial-overlay, .fullscreen-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 500;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; transition: background 0.3s;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg); z-index: 500; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 24px; text-align: center; transition: background 0.3s;
         }
         .tutorial-slide { max-width: 420px; width: 100%; }
         .tutorial-slide h2 { font-weight: 900; font-size: 24px; margin-bottom: 12px; }
         .tutorial-slide p { font-size: 15px; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
         .tutorial-nav { display: flex; gap: 10px; margin-top: 15px; }
-        .star-rating { display: flex; gap: 4px; font-size: 28px; cursor: pointer; }
-        .star-rating span { color: var(--border); transition: color 0.2s, transform 0.2s; }
-        .star-rating span.active { color: var(--gold); }
-        .star-rating span:hover { transform: scale(1.2); }
-        .review-item { border-bottom: 1px solid var(--border); padding: 10px 0; }
-        .review-item:last-child { border-bottom: none; }
         .game-click-area {
-            width: 100%; max-width: 250px; aspect-ratio: 1; margin: 0 auto 20px; cursor: pointer; border-radius: 50%;
-            overflow: hidden; border: 4px solid var(--border); transition: transform 0.1s, border-color 0.3s;
-            user-select: none; -webkit-user-select: none; touch-action: manipulation;
+            width: 100%; max-width: 250px; aspect-ratio: 1; margin: 0 auto 20px; cursor: pointer;
+            border-radius: 50%; overflow: hidden; border: 4px solid var(--border);
+            transition: transform 0.1s, border-color 0.3s; user-select: none; -webkit-user-select: none; touch-action: manipulation;
+            display: flex; align-items: center; justify-content: center; background: var(--card);
         }
         .game-click-area:active { transform: scale(0.92); }
-        .game-click-area img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-        .upgrade-card {
-            display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border);
-            border-radius: var(--radius); margin-bottom: 8px; background: var(--card); transition: background 0.3s, border-color 0.3s;
-        }
-        .upgrade-info { flex: 1; }
-        .upgrade-name { font-weight: 700; font-size: 14px; }
-        .upgrade-cost { font-size: 12px; color: var(--muted); }
-        .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 6px 0; }
-        .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
-        .category-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .category-tile {
-            padding: 12px 8px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card);
-            text-align: center; cursor: pointer; font-weight: 600; font-size: 11px; transition: transform 0.2s, border-color 0.3s, background 0.3s;
-        }
-        .category-tile:active { transform: scale(0.95); }
-        .category-tile .cat-icon { font-size: 24px; display: block; margin-bottom: 4px; }
-        .search-suggestion { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
-        .search-suggestion:hover, .search-suggestion:active { background: var(--border); }
+        .game-click-area span { font-size: 80px; pointer-events: none; }
         .grid-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         .grid-tile {
-            padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card);
-            text-align: center; cursor: pointer; font-weight: 700; font-size: 13px; transition: transform 0.2s, border-color 0.3s, background 0.3s;
+            padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);
+            background: var(--card); text-align: center; cursor: pointer; font-weight: 700; font-size: 13px;
+            transition: transform 0.2s, border-color 0.3s, background 0.3s;
         }
         .grid-tile:active { transform: scale(0.95); }
         .grid-tile .tile-icon { font-size: 32px; display: block; margin-bottom: 8px; }
@@ -174,16 +245,13 @@
         .image-gallery img:active { transform: scale(0.96); }
         .hidden { display: none !important; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .mt-8 { margin-top: 8px; } .mt-12 { margin-top: 12px; } .mb-8 { margin-bottom: 8px; } .mb-12 { margin-bottom: 12px; }
-        .w-full { width: 100%; } .gap-8 { gap: 8px; } .gap-12 { gap: 12px; }
-        .auth-container {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 1000;
-            display: flex; align-items: center; justify-content: center; padding: 20px;
-        }
-        .auth-box {
-            width: 100%; max-width: 400px; background: var(--card); border-radius: var(--radius);
-            border: 1px solid var(--border); padding: 24px; box-shadow: var(--shadow);
-        }
+        .mt-8 { margin-top: 8px; }
+        .mt-12 { margin-top: 12px; }
+        .mb-8 { margin-bottom: 8px; }
+        .mb-12 { margin-bottom: 12px; }
+        .w-full { width: 100%; }
+        .gap-8 { gap: 8px; }
+        .gap-12 { gap: 12px; }
     </style>
 </head>
 <body>
@@ -197,59 +265,104 @@
         </div>
         <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">🌓</button>
     </header>
+
     <main class="container" id="mainContainer">
         <section class="section active" id="section-home">
             <div id="homeCategories" style="margin-bottom: 12px; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;"></div>
             <div class="ads-grid" id="homeFeed"></div>
         </section>
+        
         <section class="section" id="section-cart">
             <h2 style="margin-bottom:12px;font-weight:800;">🛒 Корзина</h2>
             <div id="cartList"></div>
         </section>
+        
         <section class="section" id="section-send">
             <h2 style="margin-bottom:12px;font-weight:800;">➕ Отправка объявления</h2>
             <div class="card">
-                <div class="form-group"><label>Тип сделки</label><select id="sendType"><option value="sell">Продажа</option><option value="buy">Покупка</option></select></div>
-                <div class="form-group"><label>Категория</label><select id="sendCategory"></select></div>
-                <div class="form-group"><label>Название</label><input type="text" id="sendName" placeholder="Введите название"></div>
-                <div class="form-group"><label>Цена</label><input type="text" id="sendPrice" placeholder="Например: 5к или 1000000" inputmode="text"></div>
-                <div class="form-group"><label>Описание</label><textarea id="sendDescription" placeholder="Подробное описание"></textarea></div>
-                <div class="form-group"><label>Скриншоты (ссылки через запятую, до 20, необязательно)</label><input type="text" id="sendImages" placeholder="https://..."><div style="margin-top:6px;font-size:11px;color:var(--muted);">Разрешены: youtube.com, youtu.be, radikal.cloud, allwebs.ru, postimages.org, ru.imgbb.com</div></div>
-                <div class="form-group"><label>Сервер</label><select id="sendServer"></select></div>
+                <div class="form-group">
+                    <label>Тип сделки</label>
+                    <select id="sendType">
+                        <option value="sell">Продажа</option>
+                        <option value="buy">Покупка</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select id="sendCategory"></select>
+                </div>
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" id="sendName" placeholder="Введите название">
+                </div>
+                <div class="form-group">
+                    <label>Цена</label>
+                    <input type="text" id="sendPrice" placeholder="Например: 5к или 1000000" inputmode="text">
+                </div>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="sendDescription" placeholder="Подробное описание"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Скриншоты (ссылки через запятую, до 20, необязательно)</label>
+                    <input type="text" id="sendImages" placeholder="https://...">
+                    <div style="margin-top:6px;font-size:11px;color:var(--muted);">Разрешены: youtube.com, youtu.be, radikal.cloud, allwebs.ru, postimages.org, ru.imgbb.com</div>
+                </div>
+                <div class="form-group">
+                    <label>Сервер</label>
+                    <select id="sendServer"></select>
+                </div>
                 <button class="btn w-full" id="sendSubmitBtn">Отправить объявление</button>
             </div>
             <h3 style="margin:16px 0 8px;font-weight:800;">📦 Мои объявления</h3>
             <div id="myAdsList"></div>
         </section>
+        
         <section class="section" id="section-admin">
             <h2 style="margin-bottom:12px;font-weight:800;">🛡️ Админ-панель</h2>
             <div id="adminPanelContent"></div>
         </section>
+        
         <section class="section" id="section-all">
             <h2 style="margin-bottom:12px;font-weight:800;">☰ Все разделы</h2>
             <div class="grid-tiles" id="allTiles"></div>
         </section>
     </main>
+
     <nav class="nav-bar" id="navBar">
-        <button class="nav-item active" data-section="home"><span class="nav-icon">🏠</span><span>Главная</span></button>
-        <button class="nav-item" data-section="cart"><span class="nav-icon">🛒</span><span>Корзина</span></button>
-        <button class="nav-item" data-section="send"><span class="nav-icon">➕</span><span>Отправка</span></button>
-        <button class="nav-item hidden" id="adminNavBtn" data-section="admin"><span class="nav-icon">🛡️</span><span>Админ</span></button>
-        <button class="nav-item" data-section="all"><span class="nav-icon">☰</span><span>Все разделы</span></button>
+        <button class="nav-item active" data-section="home">
+            <span class="nav-icon">🏠</span>
+            <span>Главная</span>
+        </button>
+        <button class="nav-item" data-section="cart">
+            <span class="nav-icon">🛒</span>
+            <span>Корзина</span>
+        </button>
+        <button class="nav-item" data-section="send">
+            <span class="nav-icon">➕</span>
+            <span>Отправка</span>
+        </button>
+        <button class="nav-item hidden" id="adminNavBtn" data-section="admin">
+            <span class="nav-icon">🛡️</span>
+            <span>Админ</span>
+        </button>
+        <button class="nav-item" data-section="all">
+            <span class="nav-icon">☰</span>
+            <span>Все разделы</span>
+        </button>
     </nav>
+
     <div id="modalContainer"></div>
     <div id="tutorialContainer"></div>
-    <div id="authContainer"></div>
 
     <script>
         (function() {
-            // ================= КОНСТАНТЫ =================
             const OWNER_USERNAME = 'bounqy';
             const ALL_SERVERS = [
-                'Phoenix','Tucson','Scottdale','Chandler','Brainburg','Saint-Rose','Mesa','Red-Rock','Yuma',
-                'Surprise','Prescott','Glendale','Kingman','Winslow','Payson','Gilbert','Show-Low','Casa-Grande',
-                'Page','Sun-City','Queen-Creek','Sedona','Holiday','Wednesday','Yava','Faraway','Bumble-Bee',
-                'Christmas','Mirage','Love','Drake','Space','Home','Mobile I','Mobile II','Mobile III'
+                'Phoenix', 'Tucson', 'Scottdale', 'Chandler', 'Brainburg', 'Saint-Rose', 'Mesa', 'Red-Rock', 'Yuma',
+                'Surprise', 'Prescott', 'Glendale', 'Kingman', 'Winslow', 'Payson', 'Gilbert', 'Show-Low', 'Casa-Grande',
+                'Page', 'Sun-City', 'Queen-Creek', 'Sedona', 'Holiday', 'Wednesday', 'Yava', 'Faraway', 'Bumble-Bee',
+                'Christmas', 'Mirage', 'Love', 'Drake', 'Space', 'Home', 'Mobile I', 'Mobile II', 'Mobile III'
             ];
             const ALL_CATEGORIES = [
                 { id: 'accessories', label: '💍 Аксессуары и вещи' },
@@ -261,148 +374,21 @@
                 { id: 'electronics', label: '📱 Электроника' }
             ];
             const APPEAL_REASONS = [
-                'Несправедливая блокировка','Ошибка модерации','Объявление удалили по ошибке',
-                'Нарушение правил другой стороной','Техническая проблема','Возврат средств',
-                'Жалоба на пользователя','Взлом аккаунта','Другое','Не знаю'
+                'Несправедливая блокировка', 'Ошибка модерации', 'Объявление удалили по ошибке',
+                'Нарушение правил другой стороной', 'Техническая проблема', 'Возврат средств',
+                'Жалоба на пользователя', 'Взлом аккаунта', 'Другое', 'Не знаю'
             ];
-            const ALLOWED_DOMAINS = ['youtube.com','youtu.be','radikal.cloud','allwebs.ru','postimages.org','ru.imgbb.com'];
+            const ALLOWED_DOMAINS = [
+                'youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com'
+            ];
             const DEFAULT_AD_IMAGE = 'https://i.postimg.cc/zDwTPKwq/0465dd7cc4f5446e5e908000ec4379bb.jpg';
             const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
 
-            // ================= ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =================
             let tg = null;
-            let supabase = null;
             let currentAuthUser = JSON.parse(localStorage.getItem('arizona_current_user') || 'null');
             let currentUser = { id: 123456789, username: 'testuser', first_name: 'Тест' };
-            let currentSection = 'home';
-            let currentTheme = localStorage.getItem('theme') || 'light';
-            let sfxEnabled = localStorage.getItem('sfx') !== 'off';
-            let currentFilterCategory = null;
-            let currentUserServer = ALL_SERVERS[0];
-            let currentUserData = null;
-            let isAdmin = false;
-            let isOwner = false;
-            let lastAdSubmitTime = 0;
-            let audioCtx = null;
-            let gameState = {
-                money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800,
-                shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000, scrapCost: 500, elitePurchased: false
-            };
-            let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
-            let appealAdId = null;
-            let cartAds = [], myAds = [], pendingAds = [], pendingAppeals = [], homeAds = [];
-            let saveGameTimeout = null;
 
-            // ================= ИНИЦИАЛИЗАЦИЯ SUPABASE (если доступен) =================
-            try {
-                if (window.supabase && window.supabase.createClient) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                }
-            } catch (e) {
-                console.warn('Supabase init error, используем localStorage', e);
-                supabase = null;
-            }
-
-            // ================= УНИВЕРСАЛЬНЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С ДАННЫМИ =================
-            // Локальное хранилище (резерв)
-            function getLocalCollection(name) {
-                return JSON.parse(localStorage.getItem('arizona_col_' + name) || '[]');
-            }
-            function setLocalCollection(name, data) {
-                localStorage.setItem('arizona_col_' + name, JSON.stringify(data));
-            }
-            function localInsert(name, item) {
-                const col = getLocalCollection(name);
-                item.id = item.id || Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                col.push(item);
-                setLocalCollection(name, col);
-                return item;
-            }
-            function localUpdate(name, id, updates) {
-                let col = getLocalCollection(name);
-                const idx = col.findIndex(x => x.id == id);
-                if (idx !== -1) {
-                    col[idx] = { ...col[idx], ...updates };
-                    setLocalCollection(name, col);
-                }
-            }
-            function localDelete(name, id) {
-                let col = getLocalCollection(name);
-                col = col.filter(x => x.id != id);
-                setLocalCollection(name, col);
-            }
-            function localSelect(name, filterFn) {
-                let col = getLocalCollection(name);
-                if (filterFn) col = col.filter(filterFn);
-                return col;
-            }
-
-            // Обертки, использующие supabase или localStorage
-            async function dbSelect(collection, query = {}) {
-                if (supabase) {
-                    let q = supabase.from(collection).select('*');
-                    if (query.eq) { for (let [key, val] of Object.entries(query.eq)) q = q.eq(key, val); }
-                    if (query.in) { for (let [key, val] of Object.entries(query.in)) q = q.in(key, val); }
-                    if (query.order) { q = q.order(query.order.by, { ascending: query.order.asc !== false }); }
-                    if (query.limit) q = q.limit(query.limit);
-                    const { data, error } = await withTimeout(q);
-                    if (error) throw error;
-                    return data || [];
-                } else {
-                    // localStorage
-                    let data = localSelect(collection);
-                    if (query.eq) {
-                        for (let [key, val] of Object.entries(query.eq)) {
-                            data = data.filter(item => item[key] == val);
-                        }
-                    }
-                    if (query.in) {
-                        for (let [key, val] of Object.entries(query.in)) {
-                            data = data.filter(item => val.includes(item[key]));
-                        }
-                    }
-                    if (query.order) {
-                        data.sort((a, b) => {
-                            const va = a[query.order.by], vb = b[query.order.by];
-                            if (query.order.asc === false) return va < vb ? 1 : va > vb ? -1 : 0;
-                            return va > vb ? 1 : va < vb ? -1 : 0;
-                        });
-                    }
-                    if (query.limit) data = data.slice(0, query.limit);
-                    return data;
-                }
-            }
-
-            async function dbInsert(collection, item) {
-                if (supabase) {
-                    const { data, error } = await withTimeout(supabase.from(collection).insert(item).select().single());
-                    if (error) throw error;
-                    return data;
-                } else {
-                    return localInsert(collection, item);
-                }
-            }
-
-            async function dbUpdate(collection, id, updates) {
-                if (supabase) {
-                    const { error } = await withTimeout(supabase.from(collection).update(updates).eq('id', id));
-                    if (error) throw error;
-                } else {
-                    localUpdate(collection, id, updates);
-                }
-            }
-
-            async function dbDelete(collection, id) {
-                if (supabase) {
-                    const { error } = await withTimeout(supabase.from(collection).delete().eq('id', id));
-                    if (error) throw error;
-                } else {
-                    localDelete(collection, id);
-                }
-            }
-
-            // ================= TELEGRAM (опционально) =================
             try {
                 if (window.Telegram && window.Telegram.WebApp) {
                     tg = window.Telegram.WebApp;
@@ -419,35 +405,77 @@
                 }
             } catch (e) { console.warn('Telegram WebApp not available', e); }
 
-            // ================= УТИЛИТЫ =================
-            function withTimeout(promise, ms = 8000) {
-                return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))]);
+            let supabase = null;
+            try {
+                if (window.supabase && window.supabase.createClient) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                }
+            } catch (e) { console.warn('Supabase init error', e); }
+
+            let currentSection = 'home';
+            let currentTheme = localStorage.getItem('theme') || 'light';
+            let sfxEnabled = localStorage.getItem('sfx') !== 'off';
+            let currentFilterCategory = null;
+            let currentUserServer = ALL_SERVERS[0];
+            let currentUserData = null;
+            let isAdmin = false;
+            let isOwner = false;
+            let wakeLock = null;
+            let audioCtx = null;
+            let gameState = { money: 0, clickPower: 1 };
+            let appealAdId = null;
+            let cartAds = [];
+            let myAds = [];
+            let pendingAds = [];
+            let homeAds = [];
+
+            function getUserIdentifier() {
+                if (currentAuthUser && currentAuthUser.username) return `@${currentAuthUser.username}`;
+                if (currentUser.username) return `@${currentUser.username}`;
+                return `ID: ${currentUser.id}`;
             }
+            let userIdentifier = getUserIdentifier();
+
+            function withTimeout(promise, ms = 8000) {
+                return Promise.race([
+                    promise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+                ]);
+            }
+
             function playSfx(type = 'click') {
                 if (!sfxEnabled) return;
                 try {
                     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
-                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
                     const freqs = { click: 800, success: 1200, error: 300, buy: 1000 };
                     osc.frequency.value = freqs[type] || 600;
                     osc.type = 'sine';
                     gain.gain.value = 0.1;
                     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.15);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.15);
                 } catch (e) {}
             }
-            function applyTheme() { document.documentElement.setAttribute('data-theme', currentTheme); }
+
+            function applyTheme() {
+                document.documentElement.setAttribute('data-theme', currentTheme);
+            }
             applyTheme();
+
             document.getElementById('themeToggleBtn').addEventListener('click', () => {
                 currentTheme = currentTheme === 'light' ? 'dark' : 'light';
                 localStorage.setItem('theme', currentTheme);
                 applyTheme();
                 playSfx('click');
             });
-            document.getElementById('headerSearchTrigger').addEventListener('click', () => openSearchModal());
-            document.getElementById('logoBtn').addEventListener('click', () => { currentFilterCategory = null; switchSection('home'); });
+
+            document.getElementById('headerSearchTrigger').addEventListener('click', () => {
+                openSearchModal();
+            });
 
             function formatPrice(value) {
                 if (!value) return '0';
@@ -455,7 +483,9 @@
                 if (num.includes('к')) {
                     let base = parseFloat(num.split('к')[0]) || 0;
                     let kCount = (num.match(/к/g) || []).length;
-                    if (kCount === 1) base *= 1000; else if (kCount === 2) base *= 1000000; else if (kCount === 3) base *= 1000000000;
+                    if (kCount === 1) base *= 1000;
+                    else if (kCount === 2) base *= 1000000;
+                    else if (kCount === 3) base *= 1000000000;
                     return base;
                 }
                 num = parseInt(num) || 0;
@@ -464,33 +494,36 @@
                 if (num >= 1000) return (num / 1000).toFixed(num % 1000 === 0 ? 0 : 1) + 'к';
                 return num.toString();
             }
+
             function formatPriceInput(input) {
                 let val = input.value.toLowerCase().replace(/[^0-9к]/g, '');
                 if (!val) { input.value = ''; return; }
                 let num = parseInt(val.replace(/к/g, '')) || 0;
                 let kCount = (val.match(/к/g) || []).length;
-                if (kCount === 1) num *= 1000; else if (kCount === 2) num *= 1000000; else if (kCount === 3) num *= 1000000000;
+                if (kCount === 1) num *= 1000;
+                else if (kCount === 2) num *= 1000000;
+                else if (kCount === 3) num *= 1000000000;
                 input.value = formatPrice(num);
             }
-            function formatPriceInputHandler(e) { formatPriceInput(e.target); }
+
             function isAllowedLink(url) {
-                try { const u = new URL(url); const host = u.hostname.replace('www.', ''); return ALLOWED_DOMAINS.some(d => host === d || host.endsWith('.' + d)); } catch (e) { return false; }
+                try {
+                    const u = new URL(url);
+                    const host = u.hostname.replace('www.', '');
+                    return ALLOWED_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+                } catch (e) { return false; }
             }
+
             function checkLinksString(str) {
                 if (!str.trim()) return { valid: true, links: [] };
                 const links = str.split(',').map(s => s.trim()).filter(s => s.length > 0);
                 if (links.length > 20) return { valid: false, message: 'Максимум 20 ссылок' };
-                for (let link of links) if (!isAllowedLink(link)) return { valid: false, message: `Ссылка ${link} не разрешена` };
+                for (let link of links) {
+                    if (!isAllowedLink(link)) return { valid: false, message: `Ссылка ${link} не разрешена` };
+                }
                 return { valid: true, links };
             }
-            function parsePriceToNumber(str) {
-                if (!str) return 0;
-                str = str.toLowerCase().trim();
-                let num = parseInt(str.replace(/[^0-9]/g, '')) || 0;
-                let kCount = (str.match(/к/g) || []).length;
-                if (kCount === 1) num *= 1000; else if (kCount === 2) num *= 1000000; else if (kCount === 3) num *= 1000000000;
-                return num;
-            }
+
             function showModal(html, onClose) {
                 const container = document.getElementById('modalContainer');
                 container.innerHTML = `
@@ -504,17 +537,22 @@
                 const overlay = document.getElementById('modalOverlay');
                 const closeBtn = document.getElementById('modalCloseBtn');
                 setTimeout(() => overlay.classList.add('show'), 10);
+                
                 function closeModal() {
                     overlay.classList.remove('show');
-                    setTimeout(() => { overlay.remove(); if (onClose) onClose(); }, 250);
+                    setTimeout(() => {
+                        overlay.remove();
+                        if (onClose) onClose();
+                    }, 250);
                 }
                 closeBtn.addEventListener('click', closeModal);
                 overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
                 return { overlay, closeModal };
             }
+
             function showAlert(title, message, type = 'info') {
                 const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
-                const { closeModal } = showModal(`
+                showModal(`
                     <div style="text-align:center;">
                         <div style="font-size:48px;margin-bottom:12px;">${icon}</div>
                         <h3 class="modal-title" style="text-align:center;">${title}</h3>
@@ -522,10 +560,17 @@
                         <button class="btn w-full" id="alertOkBtn">ОК</button>
                     </div>
                 `);
-                document.getElementById('alertOkBtn').addEventListener('click', closeModal);
+                document.getElementById('alertOkBtn').addEventListener('click', () => {
+                    const overlay = document.getElementById('modalOverlay');
+                    if (overlay) {
+                        overlay.classList.remove('show');
+                        setTimeout(() => overlay.remove(), 250);
+                    }
+                });
             }
+
             function showConfirm(title, message, onConfirm) {
-                const { closeModal } = showModal(`
+                showModal(`
                     <div style="text-align:center;">
                         <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
                         <h3 class="modal-title" style="text-align:center;">${title}</h3>
@@ -536,152 +581,293 @@
                         </div>
                     </div>
                 `);
-                document.getElementById('confirmCancelBtn').addEventListener('click', closeModal);
-                document.getElementById('confirmOkBtn').addEventListener('click', () => { closeModal(); onConfirm(); });
-            }
-            function requestWakeLock() {
-                try { if ('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock => { wakeLock = lock; }).catch(() => {}); } catch (e) {}
+                const overlay = document.getElementById('modalOverlay');
+                document.getElementById('confirmCancelBtn').addEventListener('click', () => {
+                    overlay.classList.remove('show');
+                    setTimeout(() => overlay.remove(), 250);
+                });
+                document.getElementById('confirmOkBtn').addEventListener('click', () => {
+                    overlay.classList.remove('show');
+                    setTimeout(() => {
+                        overlay.remove();
+                        onConfirm();
+                    }, 250);
+                });
             }
 
-            // ================= АУТЕНТИФИКАЦИЯ =================
-            function getUserIdentifier() {
-                if (currentAuthUser && currentAuthUser.username) return `@${currentAuthUser.username}`;
-                if (currentUser.username) return `@${currentUser.username}`;
-                return `ID: ${currentUser.id}`;
+            function requestWakeLock() {
+                try {
+                    if ('wakeLock' in navigator) {
+                        navigator.wakeLock.request('screen').then(lock => { wakeLock = lock; }).catch(() => {});
+                    }
+                } catch (e) {}
             }
-            let userIdentifier = getUserIdentifier();
 
             function checkAuth() {
-                if (!currentAuthUser) showAuthScreen();
-                else { userIdentifier = `@${currentAuthUser.username}`; initApp(); }
+                if (!currentAuthUser) {
+                    showAuthModal();
+                } else {
+                    userIdentifier = `@${currentAuthUser.username}`;
+                    initApp();
+                }
             }
 
-            function showAuthScreen() {
-                const container = document.getElementById('authContainer');
+            function showAuthModal() {
+                const container = document.getElementById('tutorialContainer');
                 let mode = 'login';
+
                 function renderAuthForm() {
                     container.innerHTML = `
-                        <div class="auth-container">
-                            <div class="auth-box">
-                                <h2 style="text-align:center; margin-bottom:8px;">Arizona RP</h2>
-                                <p style="text-align:center; font-size:13px; color:var(--muted); margin-bottom:20px;">
-                                    Это не ваш Telegram-аккаунт, а отдельная учётная запись для использования приложения
-                                </p>
-                                <div style="display:flex; margin-bottom:16px; border-bottom:1px solid var(--border);">
-                                    <button type="button" class="auth-tab ${mode === 'login' ? 'active' : ''}" id="authTabLogin" style="flex:1; padding:8px; background:none; border:none; cursor:pointer; font-weight:700; color:${mode === 'login' ? 'var(--accent)' : 'var(--muted)'}; border-bottom:2px solid ${mode === 'login' ? 'var(--accent)' : 'transparent'};">Вход</button>
-                                    <button type="button" class="auth-tab ${mode === 'register' ? 'active' : ''}" id="authTabRegister" style="flex:1; padding:8px; background:none; border:none; cursor:pointer; font-weight:700; color:${mode === 'register' ? 'var(--accent)' : 'var(--muted)'}; border-bottom:2px solid ${mode === 'register' ? 'var(--accent)' : 'transparent'};">Создать аккаунт</button>
-                                </div>
-                                <div class="form-group">
-                                    <label>Логин</label>
+                        <div class="fullscreen-overlay">
+                            <div class="tutorial-slide" style="background:var(--card); padding:24px; border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow);">
+                                <h2 style="margin-bottom:8px;">${mode === 'login' ? '🔑 Вход в аккаунт' : '✨ Регистрация'}</h2>
+                                <p style="font-size:13px; margin-bottom:16px;">${mode === 'register' && OWNER_USERNAME ? 'Для владельца проекта укажите логин: ' + OWNER_USERNAME : 'Создайте или войдите в свою учетную запись'}</p>
+                                <div class="form-group" style="text-align:left;">
+                                    <label>Имя пользователя (логин)</label>
                                     <input type="text" id="authUsername" placeholder="Введите логин" autocomplete="off">
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group" style="text-align:left;">
                                     <label>Пароль</label>
                                     <input type="password" id="authPassword" placeholder="Введите пароль">
                                 </div>
-                                <button type="button" class="btn w-full" id="authSubmitBtn">${mode === 'login' ? 'Войти' : 'Создать аккаунт'}</button>
-                                <p id="authError" style="color:#ff3b30; font-size:12px; margin-top:8px; text-align:center;"></p>
+                                <button class="btn w-full mb-8" id="authSubmitBtn">${mode === 'login' ? 'Войти' : 'Создать аккаунт'}</button>
+                                <button class="btn secondary w-full" id="authSwitchBtn">${mode === 'login' ? 'Создать аккаунт' : 'Уже есть аккаунт? Войти'}</button>
                             </div>
                         </div>
                     `;
-                    const tabLogin = document.getElementById('authTabLogin');
-                    const tabRegister = document.getElementById('authTabRegister');
-                    const submitBtn = document.getElementById('authSubmitBtn');
-                    const errorEl = document.getElementById('authError');
 
-                    tabLogin.addEventListener('click', () => { if (mode !== 'login') { mode = 'login'; renderAuthForm(); } });
-                    tabRegister.addEventListener('click', () => { if (mode !== 'register') { mode = 'register'; renderAuthForm(); } });
+                    document.getElementById('authSwitchBtn').addEventListener('click', () => {
+                        mode = mode === 'login' ? 'register' : 'login';
+                        playSfx('click');
+                        renderAuthForm();
+                    });
 
-                    submitBtn.addEventListener('click', async () => {
-                        errorEl.textContent = '';
-                        const username = document.getElementById('authUsername').value.trim().toLowerCase();
-                        const password = document.getElementById('authPassword').value.trim();
-                        if (!username || !password) { errorEl.textContent = 'Заполните все поля'; return; }
+                    document.getElementById('authSubmitBtn').addEventListener('click', async () => {
+                        const usernameInput = document.getElementById('authUsername').value.trim().toLowerCase().replace('@', '');
+                        const passwordInput = document.getElementById('authPassword').value.trim();
+
+                        if (!usernameInput || !passwordInput) {
+                            showAlert('Ошибка', 'Заполните все поля');
+                            return;
+                        }
+
+                        if (!supabase) {
+                            showAlert('Ошибка', 'Нет подключения к серверу базы данных');
+                            return;
+                        }
 
                         try {
                             if (mode === 'login') {
-                                // Вход
-                                const users = await dbSelect('custom_users', { eq: { username: username } });
-                                if (!users.length || users[0].password !== password) {
-                                    errorEl.textContent = 'Неверный логин или пароль';
+                                const { data, error } = await withTimeout(
+                                    supabase.from('custom_users').select('*').eq('username', usernameInput).maybeSingle()
+                                );
+                                if (error) throw error;
+                                if (!data || data.password !== passwordInput) {
+                                    showAlert('Ошибка', 'Неверный логин или пароль');
                                     return;
                                 }
-                                currentAuthUser = users[0];
-                                localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
-                                userIdentifier = `@${currentAuthUser.username}`;
+                                currentAuthUser = data;
+                                localStorage.setItem('arizona_current_user', JSON.stringify(data));
                                 playSfx('success');
                                 container.innerHTML = '';
-                                await ensureUserRecord(username);
+                                userIdentifier = `@${currentAuthUser.username}`;
                                 initApp(true);
                             } else {
-                                // Регистрация
-                                const existing = await dbSelect('custom_users', { eq: { username: username } });
-                                if (existing.length) { errorEl.textContent = 'Такой пользователь уже существует'; return; }
-                                const newUser = { username, password, created_at: new Date().toISOString() };
-                                const inserted = await dbInsert('custom_users', newUser);
-                                currentAuthUser = inserted;
+                                const { data: existing } = await withTimeout(
+                                    supabase.from('custom_users').select('*').eq('username', usernameInput).maybeSingle()
+                                );
+                                if (existing) {
+                                    showAlert('Ошибка', 'Такой пользователь уже существует');
+                                    return;
+                                }
+                                const newUser = {
+                                    username: usernameInput,
+                                    password: passwordInput,
+                                    created_at: new Date().toISOString()
+                                };
+                                const { data: inserted, error: insErr } = await withTimeout(
+                                    supabase.from('custom_users').insert(newUser).select().single()
+                                );
+                                if (insErr) throw insErr;
+                                currentAuthUser = inserted || newUser;
                                 localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
-                                userIdentifier = `@${currentAuthUser.username}`;
                                 playSfx('success');
                                 container.innerHTML = '';
-                                await ensureUserRecord(username);
+                                userIdentifier = `@${currentAuthUser.username}`;
                                 initApp(true);
                             }
                         } catch (e) {
-                            console.error('Auth error:', e);
-                            errorEl.textContent = 'Ошибка соединения с сервером. Попробуйте ещё раз.';
+                            showAlert('Ошибка', 'Ошибка соединения с сервером');
                         }
                     });
                 }
                 renderAuthForm();
             }
 
-            async function ensureUserRecord(username) {
-                const isOwner = username === OWNER_USERNAME;
-                try {
-                    const users = await dbSelect('users', { eq: { username: username } });
-                    if (!users.length) {
-                        await dbInsert('users', {
-                            id: currentUser.id.toString(),
-                            username: username,
-                            display_name: username,
-                            banned: false,
-                            is_admin: isOwner
-                        });
-                    } else if (isOwner && !users[0].is_admin) {
-                        await dbUpdate('users', users[0].id, { is_admin: true });
-                    }
-                } catch (e) { console.warn('ensureUserRecord error', e); }
+            function checkTutorials(isFirstLogin = false) {
+                const userKey = currentAuthUser ? currentAuthUser.username : (currentUser.username || currentUser.id);
+                const tutorialDone = localStorage.getItem(`arizona_${userKey}_tutorial_completed`) === '1';
+                if (isFirstLogin || !tutorialDone) {
+                    showUserTutorial(userKey);
+                }
             }
 
-            // ================= ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =================
+            function showUserTutorial(userKey) {
+                const slides = [
+                    { title: '⚠️ Предупреждение', text: 'Мы не несём ответственности за скам… Запрещена продажа/покупка аккаунтов… Продолжая использование, вы соглашаетесь.', btn: 'Продолжить', timer: 10 },
+                    { title: 'Добро пожаловать!', text: 'Общее описание приложения для размещения объявлений.', btn: 'Далее', timer: 5 },
+                    { title: '🏠 Главная', text: 'Здесь отображаются все одобренные объявления.', btn: 'Далее', timer: 5 },
+                    { title: '🛒 Корзина', text: 'Сохраняйте понравившиеся объявления.', btn: 'Далее', timer: 5 },
+                    { title: '➕ Отправка', text: 'Создавайте свои объявления.', btn: 'Далее', timer: 5 },
+                    { title: '☰ Все разделы', text: 'Дополнительные возможности: игра, музыка и настройки.', btn: 'Далее', timer: 5 },
+                    { title: '🔍 Поиск', text: 'Используйте строку поиска вверху.', btn: 'Продолжить', timer: 5 }
+                ];
+                let currentSlide = 0;
+                const container = document.getElementById('tutorialContainer');
+
+                function renderSlide() {
+                    const slide = slides[currentSlide];
+                    container.innerHTML = `
+                        <div class="tutorial-overlay">
+                            <div class="tutorial-slide">
+                                <h2>${slide.title}</h2>
+                                <p>${slide.text}</p>
+                                <div class="tutorial-nav">
+                                    <button class="btn secondary w-full" id="tutorialBackBtn" ${currentSlide === 0 ? 'disabled' : ''}>Назад</button>
+                                    <button class="btn secondary w-full" id="tutorialForwardBtn">Вперёд</button>
+                                </div>
+                                <button class="btn w-full mt-12" id="tutorialContinueBtn" disabled>Продолжить (${slide.timer}с)</button>
+                            </div>
+                        </div>
+                    `;
+                    const continueBtn = document.getElementById('tutorialContinueBtn');
+                    const backBtn = document.getElementById('tutorialBackBtn');
+                    const forwardBtn = document.getElementById('tutorialForwardBtn');
+
+                    let timeLeft = slide.timer;
+                    let timerFinished = false;
+
+                    const interval = setInterval(() => {
+                        timeLeft--;
+                        if (timeLeft > 0) {
+                            continueBtn.textContent = `Продолжить (${timeLeft}с)`;
+                        } else {
+                            clearInterval(interval);
+                            timerFinished = true;
+                            continueBtn.disabled = false;
+                            continueBtn.textContent = 'Продолжить';
+                        }
+                    }, 1000);
+
+                    backBtn.addEventListener('click', () => {
+                        if (currentSlide > 0) {
+                            clearInterval(interval);
+                            currentSlide--;
+                            renderSlide();
+                        }
+                    });
+
+                    forwardBtn.addEventListener('click', () => {
+                        if (currentSlide < slides.length - 1) {
+                            clearInterval(interval);
+                            currentSlide++;
+                            renderSlide();
+                        } else {
+                            if (timerFinished) {
+                                clearInterval(interval);
+                                localStorage.setItem(`arizona_${userKey}_tutorial_completed`, '1');
+                                container.innerHTML = '';
+                            } else {
+                                showAlert('Внимание', 'Необходимо дождаться окончания таймера');
+                            }
+                        }
+                    });
+
+                    continueBtn.addEventListener('click', () => {
+                        if (!timerFinished) return;
+                        clearInterval(interval);
+                        currentSlide++;
+                        if (currentSlide < slides.length) {
+                            renderSlide();
+                        } else {
+                            localStorage.setItem(`arizona_${userKey}_tutorial_completed`, '1');
+                            container.innerHTML = '';
+                        }
+                    });
+                }
+                renderSlide();
+            }
+
             async function initApp(isFirstLogin = false) {
                 await loadCurrentUserData();
                 checkTutorials(isFirstLogin);
                 switchSection('home');
             }
 
+            function switchSection(section) {
+                currentSection = section;
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                const targetSec = document.getElementById('section-' + section);
+                if (targetSec) targetSec.classList.add('active');
+
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                const navBtn = document.querySelector(`.nav-item[data-section="${section}"]`);
+                if (navBtn) navBtn.classList.add('active');
+
+                if (section === 'home') loadHomeFeed();
+                if (section === 'cart') loadCart();
+                if (section === 'send') { populateSendForm(); loadMyAds(); }
+                if (section === 'admin') { loadAdminPanel(); }
+                if (section === 'all') loadAllTiles();
+                playSfx('click');
+                requestWakeLock();
+            }
+
+            document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const sec = btn.dataset.section;
+                    if (sec === 'admin' && !isAdmin) return;
+                    switchSection(sec);
+                });
+            });
+
             async function loadCurrentUserData() {
-                const identifier = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
+                if (!supabase) return;
                 try {
-                    const users = await dbSelect('users', { eq: { username: identifier } });
-                    if (users.length) {
-                        currentUserData = users[0];
-                        isAdmin = users[0].is_admin || (identifier === OWNER_USERNAME);
-                        isOwner = identifier === OWNER_USERNAME;
-                        if (users[0].banned) showBanScreen();
+                    const identifier = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
+                    const { data, error } = await withTimeout(
+                        supabase.from('users').select('*').eq('username', identifier).maybeSingle()
+                    );
+                    if (error) throw error;
+                    if (data) {
+                        currentUserData = data;
                     } else {
-                        isAdmin = (identifier === OWNER_USERNAME);
-                        isOwner = isAdmin;
-                        await ensureUserRecord(identifier);
+                        const newUser = {
+                            id: currentUser.id.toString(),
+                            username: identifier,
+                            display_name: currentAuthUser ? currentAuthUser.username : (currentUser.first_name || ''),
+                            banned: false,
+                            is_admin: identifier === OWNER_USERNAME
+                        };
+                        await withTimeout(supabase.from('users').insert(newUser));
+                        currentUserData = newUser;
+                    }
+                    isAdmin = (currentUserData && currentUserData.is_admin) || (identifier === OWNER_USERNAME);
+                    isOwner = identifier === OWNER_USERNAME;
+                    if (isAdmin) {
+                        document.getElementById('adminNavBtn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('adminNavBtn').classList.add('hidden');
+                    }
+                    if (currentUserData && currentUserData.banned) {
+                        showBanScreen();
                     }
                 } catch (e) {
-                    console.warn('loadCurrentUserData error', e);
+                    const identifier = currentAuthUser ? currentAuthUser.username : '';
                     isAdmin = (identifier === OWNER_USERNAME);
                     isOwner = isAdmin;
+                    if (isAdmin) document.getElementById('adminNavBtn').classList.remove('hidden');
                 }
-                if (isAdmin) document.getElementById('adminNavBtn').classList.remove('hidden');
-                else document.getElementById('adminNavBtn').classList.add('hidden');
             }
 
             function showBanScreen() {
@@ -693,163 +879,43 @@
                 `;
             }
 
-            // ================= ТУТОРИАЛЫ =================
-            function checkTutorials(isFirstLogin = false) {
-                if (!currentAuthUser) return;
-                const userKey = currentAuthUser.username;
-                const tutorialDone = localStorage.getItem(`arizona_${userKey}_tutorial_completed`) === '1';
-                if (isFirstLogin || !tutorialDone) showUserTutorial(userKey);
-            }
-            function showUserTutorial(userKey) {
-                const slides = [
-                    { title: '⚠️ Предупреждение', text: 'Мы не несём ответственности за скам. Запрещена продажа/покупка аккаунтов. Продолжая использование, вы соглашаетесь с правилами.', timer: 30 },
-                    { title: 'Добро пожаловать!', text: 'Это приложение для размещения объявлений на серверах Arizona RP.', timer: 30 },
-                    { title: '🏠 Главная', text: 'Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности, отзывы и написать продавцу.', timer: 30 },
-                    { title: '🛒 Корзина', text: 'Сохраняйте понравившиеся объявления. Удалённые объявления отмечены серым фоном.', timer: 30 },
-                    { title: '➕ Отправка', text: 'Создавайте свои объявления, после модерации они появятся в ленте.', timer: 30 },
-                    { title: '☰ Все разделы', text: 'Игра «Барыга», лента луков, попутчики, музыка и настройки.', timer: 30 },
-                    { title: '🔍 Поиск', text: 'Используйте строку поиска вверху для быстрого поиска товаров.', timer: 30 }
-                ];
-                let currentSlide = 0;
-                const container = document.getElementById('tutorialContainer');
-                function renderSlide() {
-                    const slide = slides[currentSlide];
-                    const isLast = currentSlide === slides.length - 1;
-                    container.innerHTML = `
-                        <div class="tutorial-overlay">
-                            <div class="tutorial-slide">
-                                <h2>${slide.title}</h2>
-                                <p>${slide.text}</p>
-                                <div class="tutorial-nav">
-                                    <button class="btn secondary" id="tutBackBtn" ${currentSlide === 0 ? 'disabled' : ''}>← Назад</button>
-                                    <button class="btn" id="tutNextBtn">${isLast ? 'Завершить' : 'Вперёд →'}</button>
-                                </div>
-                                <button class="btn w-full mt-12" id="tutContinueBtn" disabled>Продолжить (30с)</button>
-                            </div>
-                        </div>
-                    `;
-                    const backBtn = document.getElementById('tutBackBtn');
-                    const nextBtn = document.getElementById('tutNextBtn');
-                    const continueBtn = document.getElementById('tutContinueBtn');
-                    let timeLeft = slide.timer;
-                    let timerFinished = false;
-                    const interval = setInterval(() => {
-                        timeLeft--;
-                        if (timeLeft > 0) continueBtn.textContent = `Продолжить (${timeLeft}с)`;
-                        else { clearInterval(interval); timerFinished = true; continueBtn.disabled = false; continueBtn.textContent = 'Продолжить'; }
-                    }, 1000);
-                    backBtn.addEventListener('click', () => { if (currentSlide > 0) { clearInterval(interval); currentSlide--; renderSlide(); } });
-                    nextBtn.addEventListener('click', () => {
-                        if (!isLast) { clearInterval(interval); currentSlide++; renderSlide(); }
-                        else if (timerFinished) { clearInterval(interval); localStorage.setItem(`arizona_${userKey}_tutorial_completed`, '1'); container.innerHTML = ''; }
-                        else showAlert('Внимание', 'Необходимо дождаться окончания таймера');
-                    });
-                    continueBtn.addEventListener('click', () => {
-                        if (!timerFinished) return;
-                        clearInterval(interval);
-                        if (currentSlide < slides.length - 1) { currentSlide++; renderSlide(); }
-                        else { localStorage.setItem(`arizona_${userKey}_tutorial_completed`, '1'); container.innerHTML = ''; }
-                    });
-                }
-                renderSlide();
-            }
-            function showAdminTutorial() {
-                if (!currentAuthUser) return;
-                const userKey = currentAuthUser.username;
-                const slides = [
-                    { title: '🔧 Админ-панель', text: 'Здесь вы управляете объявлениями: одобрение, отклонение, редактирование.', timer: 30 },
-                    { title: '📨 Апелляции', text: 'Вы можете одобрять или отклонять апелляции пользователей.', timer: 30 },
-                    { title: '⚖️ Управление пользователями', text: 'Владелец может банить, разбанивать, назначать админов.', timer: 30 },
-                    { title: '🧹 Дополнительно', text: 'Доступна очистка всей ленты. Все изменения сохраняются автоматически.', timer: 30 }
-                ];
-                let currentSlide = 0;
-                const container = document.getElementById('tutorialContainer');
-                function renderSlide() {
-                    const slide = slides[currentSlide];
-                    const isLast = currentSlide === slides.length - 1;
-                    container.innerHTML = `
-                        <div class="tutorial-overlay">
-                            <div class="tutorial-slide">
-                                <h2>${slide.title}</h2>
-                                <p>${slide.text}</p>
-                                <button class="btn w-full mt-12" id="adminTutNextBtn" disabled>Продолжить (30с)</button>
-                            </div>
-                        </div>
-                    `;
-                    const btn = document.getElementById('adminTutNextBtn');
-                    let timeLeft = slide.timer;
-                    let timerFinished = false;
-                    const interval = setInterval(() => {
-                        timeLeft--;
-                        if (timeLeft > 0) btn.textContent = `Продолжить (${timeLeft}с)`;
-                        else { clearInterval(interval); timerFinished = true; btn.disabled = false; btn.textContent = 'Продолжить'; }
-                    }, 1000);
-                    btn.addEventListener('click', () => {
-                        if (!timerFinished) return;
-                        clearInterval(interval);
-                        if (currentSlide < slides.length - 1) { currentSlide++; renderSlide(); }
-                        else { localStorage.setItem(`arizona_${userKey}_admin_tutorial_completed`, '1'); container.innerHTML = ''; }
-                    });
-                }
-                renderSlide();
-            }
-
-            // ================= НАВИГАЦИЯ =================
-            function switchSection(section) {
-                currentSection = section;
-                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-                const target = document.getElementById('section-' + section);
-                if (target) target.classList.add('active');
-                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-                const navBtn = document.querySelector(`.nav-item[data-section="${section}"]`);
-                if (navBtn) navBtn.classList.add('active');
-                if (section === 'home') loadHomeFeed();
-                if (section === 'cart') loadCart();
-                if (section === 'send') { populateSendForm(); loadMyAds(); }
-                if (section === 'admin') {
-                    loadAdminPanel();
-                    const adminTutDone = localStorage.getItem(`arizona_${currentAuthUser.username}_admin_tutorial_completed`) === '1';
-                    if (isAdmin && !adminTutDone) showAdminTutorial();
-                }
-                if (section === 'all') loadAllTiles();
-                playSfx('click');
-                requestWakeLock();
-            }
-            document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const sec = btn.dataset.section;
-                    if (sec === 'admin' && !isAdmin) return;
-                    switchSection(sec);
-                });
-            });
-
-            // ================= ГЛАВНАЯ ЛЕНТА =================
             async function loadHomeFeed() {
                 const catContainer = document.getElementById('homeCategories');
-                if (catContainer) {
-                    catContainer.innerHTML = `
-                        <button class="badge category ${!currentFilterCategory ? 'active' : ''}" style="cursor:pointer;padding:6px 12px;" data-cat-filter="">Все</button>
-                        ${ALL_CATEGORIES.map(c => `<button class="badge category ${currentFilterCategory === c.id ? 'active' : ''}" style="cursor:pointer;padding:6px 12px;" data-cat-filter="${c.id}">${c.label}</button>`).join('')}
-                    `;
-                    catContainer.querySelectorAll('[data-cat-filter]').forEach(btn => {
-                        btn.addEventListener('click', () => { currentFilterCategory = btn.dataset.catFilter || null; loadHomeFeed(); });
+                catContainer.innerHTML = `
+                    <button class="badge category ${!currentFilterCategory ? 'active' : ''}" style="cursor:pointer;padding:6px 12px;" data-cat-filter="">Все</button>
+                    ${ALL_CATEGORIES.map(c => `<button class="badge category ${currentFilterCategory === c.id ? 'active' : ''}" style="cursor:pointer;padding:6px 12px;" data-cat-filter="${c.id}">${c.label}</button>`).join('')}
+                `;
+                catContainer.querySelectorAll('[data-cat-filter]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        currentFilterCategory = btn.dataset.catFilter || null;
+                        loadHomeFeed();
                     });
+                });
+
+                if (!supabase) {
+                    document.getElementById('homeFeed').innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
+                    return;
                 }
                 const container = document.getElementById('homeFeed');
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    let query = { eq: { status: 'approved' }, order: { by: 'created_at', asc: false } };
-                    if (currentFilterCategory) query.eq.category = currentFilterCategory;
-                    homeAds = await dbSelect('ads', query);
+                    let query = supabase.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false });
+                    if (currentFilterCategory) query = query.eq('category', currentFilterCategory);
+                    const { data, error } = await withTimeout(query);
+                    if (error) throw error;
+                    homeAds = data || [];
                     renderHomeFeed();
                 } catch (e) {
-                    console.warn('loadHomeFeed error', e);
-                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+                    container.innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
                 }
             }
+
             function renderHomeFeed() {
                 const container = document.getElementById('homeFeed');
-                if (!homeAds.length) { container.innerHTML = '<div class="empty-state">Объявлений пока нет</div>'; return; }
+                if (!homeAds.length) {
+                    container.innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
+                    return;
+                }
                 let html = '';
                 homeAds.forEach(ad => {
                     const firstImg = ad.images ? ad.images.split(',')[0].trim() : '';
@@ -882,19 +948,34 @@
                 });
             }
 
-            // ================= КОРЗИНА =================
             async function loadCart() {
                 const container = document.getElementById('cartList');
-                if (!currentAuthUser) { container.innerHTML = '<div class="empty-state">Корзина пуста</div>'; return; }
+                if (!supabase) {
+                    container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
+                    return;
+                }
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    const userId = currentAuthUser.username;
-                    const favs = await dbSelect('favorites', { eq: { user_id: userId } });
+                    const userIdKey = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
+                    const { data: favs, error: favErr } = await withTimeout(
+                        supabase.from('favorites').select('ad_id').eq('user_id', userIdKey)
+                    );
+                    if (favErr) throw favErr;
                     const adIds = favs.map(f => f.ad_id);
-                    if (!adIds.length) { container.innerHTML = '<div class="empty-state">Корзина пуста</div>'; return; }
-                    cartAds = await dbSelect('ads', { in: { id: adIds } });
-                    cartAds.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    if (!cartAds.length) { container.innerHTML = '<div class="empty-state">Корзина пуста</div>'; return; }
+                    if (!adIds.length) {
+                        container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
+                        cartAds = [];
+                        return;
+                    }
+                    const { data: ads, error: adsErr } = await withTimeout(
+                        supabase.from('ads').select('*').in('id', adIds).order('created_at', { ascending: false })
+                    );
+                    if (adsErr) throw adsErr;
+                    cartAds = ads || [];
+                    if (!cartAds.length) {
+                        container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
+                        return;
+                    }
                     let html = '';
                     cartAds.forEach(ad => {
                         const isDeleted = ad.status === 'deleted';
@@ -918,9 +999,7 @@
                         btn.addEventListener('click', async (e) => {
                             e.stopPropagation();
                             const adId = btn.dataset.removeCart;
-                            // Удаляем из избранного
-                            const favs = await dbSelect('favorites', { eq: { user_id: userId, ad_id: adId } });
-                            if (favs.length) await dbDelete('favorites', favs[0].id);
+                            await withTimeout(supabase.from('favorites').delete().eq('user_id', userIdKey).eq('ad_id', adId));
                             playSfx('click');
                             loadCart();
                         });
@@ -933,10 +1012,11 @@
                             if (ad) openAdDetail(ad);
                         });
                     });
-                } catch (e) { console.warn('loadCart error', e); container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; }
+                } catch (e) {
+                    container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
+                }
             }
 
-            // ================= ОТПРАВКА ОБЪЯВЛЕНИЯ =================
             function populateSendForm() {
                 const catSelect = document.getElementById('sendCategory');
                 catSelect.innerHTML = ALL_CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
@@ -947,8 +1027,9 @@
                 priceInput.removeEventListener('input', formatPriceInputHandler);
                 priceInput.addEventListener('input', formatPriceInputHandler);
             }
+            function formatPriceInputHandler(e) { formatPriceInput(e.target); }
+
             document.getElementById('sendSubmitBtn').addEventListener('click', async () => {
-                if (!currentAuthUser) { showAlert('Ошибка', 'Вы не авторизованы'); return; }
                 const mode = document.getElementById('sendType').value;
                 const category = document.getElementById('sendCategory').value;
                 const itemName = document.getElementById('sendName').value.trim();
@@ -956,16 +1037,25 @@
                 const description = document.getElementById('sendDescription').value.trim();
                 const images = document.getElementById('sendImages').value.trim();
                 const server = document.getElementById('sendServer').value;
-                if (!itemName || !priceRaw || !description) { showAlert('Ошибка', 'Заполните все обязательные поля'); return; }
+
+                if (!itemName) { showAlert('Ошибка', 'Введите название'); return; }
+                if (!priceRaw) { showAlert('Ошибка', 'Введите цену'); return; }
+                if (!description) { showAlert('Ошибка', 'Введите описание'); return; }
+
                 const linkCheck = checkLinksString(images);
                 if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+
+                const priceNum = parsePriceToNumber(priceRaw);
                 const newAd = {
-                    mode, category, item_name: itemName, price: parsePriceToNumber(priceRaw),
-                    description, images, server, author_id: userIdentifier,
-                    status: 'pending', created_at: new Date().toISOString()
+                    mode, category, item_name: itemName, price: priceNum,
+                    description, images, server,
+                    author_id: userIdentifier,
+                    status: 'pending',
+                    created_at: new Date().toISOString()
                 };
+
                 try {
-                    await dbInsert('ads', newAd);
+                    await withTimeout(supabase.from('ads').insert(newAd));
                     playSfx('success');
                     showAlert('Успех', 'Объявление отправлено на модерацию', 'success');
                     document.getElementById('sendName').value = '';
@@ -973,25 +1063,47 @@
                     document.getElementById('sendDescription').value = '';
                     document.getElementById('sendImages').value = '';
                     loadMyAds();
-                } catch (e) { showAlert('Ошибка', 'Не удалось отправить объявление'); }
+                } catch (e) {
+                    showAlert('Ошибка', 'Не удалось отправить');
+                }
             });
+
+            function parsePriceToNumber(str) {
+                if (!str) return 0;
+                str = str.toLowerCase().trim();
+                let num = parseInt(str.replace(/[^0-9]/g, '')) || 0;
+                let kCount = (str.match(/к/g) || []).length;
+                if (kCount === 1) num *= 1000;
+                else if (kCount === 2) num *= 1000000;
+                else if (kCount === 3) num *= 1000000000;
+                return num;
+            }
 
             async function loadMyAds() {
                 const container = document.getElementById('myAdsList');
-                if (!currentAuthUser) { container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>'; return; }
+                if (!supabase) {
+                    container.innerHTML = '<div class="empty-state">Нет объявлений</div>';
+                    return;
+                }
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    myAds = await dbSelect('ads', { eq: { author_id: userIdentifier }, order: { by: 'created_at', asc: false } });
-                    if (!myAds.length) { container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>'; return; }
+                    const { data, error } = await withTimeout(
+                        supabase.from('ads').select('*').eq('author_id', userIdentifier).order('created_at', { ascending: false })
+                    );
+                    if (error) throw error;
+                    myAds = data || [];
+                    if (!myAds.length) {
+                        container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>';
+                        return;
+                    }
                     let html = '';
                     myAds.forEach(ad => {
                         let statusBadge = '';
-                        if (ad.status === 'pending') statusBadge = '<span class="badge status-pending">🟡 На модерации</span>';
-                        else if (ad.status === 'deleted') statusBadge = '<span class="badge status-deleted">🔴 Удалено</span>';
-                        else statusBadge = '<span class="badge status-approved">🟢 Висит</span>';
-                        const cardClass = ad.status === 'deleted' ? 'card inactive-card' : 'card';
+                        if (ad.status === 'pending') statusBadge = '<span class="badge status-pending">На модерации</span>';
+                        else if (ad.status === 'deleted') statusBadge = '<span class="badge status-deleted">Удалено</span>';
+                        else statusBadge = '<span class="badge status-approved">🟢 Активно</span>';
                         html += `
-                            <div class="${cardClass}">
+                            <div class="card">
                                 <div class="flex-between">
                                     <div>
                                         <div style="font-weight:700;">${ad.item_name}</div>
@@ -999,7 +1111,7 @@
                                         <div style="margin-top:4px;">${statusBadge}</div>
                                     </div>
                                     <div class="flex-between gap-8">
-                                        <button class="btn danger" data-permanent-delete="${ad.id}">Удалить навсегда</button>
+                                        <button class="btn danger" data-permanent-delete="${ad.id}">Удалить</button>
                                         ${ad.status === 'deleted' ? `<button class="btn gold" data-appeal-ad="${ad.id}">Апелляция</button>` : ''}
                                     </div>
                                 </div>
@@ -1011,691 +1123,231 @@
                         btn.addEventListener('click', async (e) => {
                             e.stopPropagation();
                             const id = btn.dataset.permanentDelete;
-                            showConfirm('Удаление', 'Стереть объявление из базы навсегда?', async () => {
-                                await dbDelete('ads', id);
-                                // также удалить из избранного
-                                const favs = await dbSelect('favorites', { eq: { ad_id: id } });
-                                for (let f of favs) await dbDelete('favorites', f.id);
+                            showConfirm('Удаление', 'Стереть навсегда?', async () => {
+                                await withTimeout(supabase.from('ads').delete().eq('id', id));
+                                await withTimeout(supabase.from('favorites').delete().eq('ad_id', id));
                                 playSfx('click');
                                 loadMyAds();
                             });
                         });
                     });
                     container.querySelectorAll('[data-appeal-ad]').forEach(btn => {
-                        btn.addEventListener('click', (e) => { e.stopPropagation(); appealAdId = btn.dataset.appealAd; openAppealModal(); });
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            appealAdId = btn.dataset.appealAd;
+                            openAppealModal();
+                        });
                     });
-                } catch (e) { console.warn('loadMyAds error', e); container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; }
+                } catch (e) {
+                    container.innerHTML = '<div class="empty-state">Нет объявлений</div>';
+                }
             }
 
-            // ================= АДМИН-ПАНЕЛЬ =================
             async function loadAdminPanel() {
                 const container = document.getElementById('adminPanelContent');
-                if (!isAdmin) { container.innerHTML = '<div class="empty-state">Нет доступа</div>'; return; }
+                if (!supabase || !isAdmin) {
+                    container.innerHTML = '<div class="empty-state">Нет доступа</div>';
+                    return;
+                }
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    pendingAds = await dbSelect('ads', { eq: { status: 'pending' }, order: { by: 'created_at', asc: false } });
-                    pendingAppeals = await dbSelect('appeals', { eq: { status: 'pending' }, order: { by: 'created_at', asc: false } });
-                    let html = '<h3>Объявления на модерации</h3>';
-                    if (!pendingAds.length) html += '<div class="empty-state">Нет объявлений</div>';
-                    else pendingAds.forEach(ad => {
-                        html += `
-                            <div class="card">
-                                <div style="font-weight:700;">${ad.item_name}</div>
-                                <div style="font-size:12px;color:var(--muted);">${ad.server} • ${ad.author_id} • ${formatPrice(ad.price)}</div>
-                                <div class="flex-between gap-8 mt-8">
-                                    <button class="btn success" data-approve="${ad.id}">✅ Одобрить</button>
-                                    <button class="btn danger" data-reject="${ad.id}">❌ Отклонить</button>
-                                    <button class="btn secondary" data-edit-ad="${ad.id}">✏️</button>
+                    const { data: pendingData } = await withTimeout(
+                        supabase.from('ads').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+                    );
+                    pendingAds = pendingData || [];
+
+                    let html = '<h3 style="margin-bottom:12px;">На модерации</h3>';
+                    if (!pendingAds.length) {
+                        html += '<div class="empty-state">Нет заявок</div>';
+                    } else {
+                        pendingAds.forEach(ad => {
+                            html += `
+                                <div class="card" style="margin-bottom:8px;">
+                                    <div style="font-weight:700;">${ad.item_name}</div>
+                                    <div style="font-size:12px;color:var(--muted);">${ad.server} • ${ad.author_id} • ${formatPrice(ad.price)}</div>
+                                    <div class="flex-between gap-8 mt-8">
+                                        <button class="btn" data-approve="${ad.id}" style="background:#34c759;">Одобрить</button>
+                                        <button class="btn danger" data-reject="${ad.id}">Отклонить</button>
+                                    </div>
                                 </div>
-                            </div>
-                        `;
-                    });
-                    html += '<h3 style="margin-top:20px;">Апелляции</h3>';
-                    if (!pendingAppeals.length) html += '<div class="empty-state">Нет апелляций</div>';
-                    else pendingAppeals.forEach(appeal => {
-                        html += `
-                            <div class="card">
-                                <div style="font-weight:700;">Объявление ID: ${appeal.ad_id}</div>
-                                <div style="font-size:12px;color:var(--muted);">Автор: ${appeal.author_id}</div>
-                                <div style="font-size:12px;color:var(--muted);">Причина: ${appeal.reason}</div>
-                                ${appeal.evidence ? `<div style="font-size:11px;color:var(--accent);">Доказательства: ${appeal.evidence}</div>` : ''}
-                                <div class="flex-between gap-8 mt-8">
-                                    <button class="btn success" data-approve-appeal="${appeal.id}">✅ Одобрить</button>
-                                    <button class="btn danger" data-reject-appeal="${appeal.id}">❌ Отклонить</button>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    if (isOwner) {
-                        html += `
-                            <h3 style="margin-top:20px;">Управление пользователями</h3>
-                            <div class="form-group"><input type="text" id="adminUsernameInput" placeholder="username или ID"></div>
-                            <div class="flex-between gap-8 mb-8">
-                                <button class="btn danger w-full" id="adminBanBtn">Забанить</button>
-                                <button class="btn success w-full" id="adminUnbanBtn">Разбанить</button>
-                            </div>
-                            <div class="flex-between gap-8 mb-8">
-                                <button class="btn w-full" id="adminMakeAdminBtn">Сделать админом</button>
-                                <button class="btn secondary w-full" id="adminRemoveAdminBtn">Снять админа</button>
-                            </div>
-                            <button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>
-                        `;
+                            `;
+                        });
                     }
                     container.innerHTML = html;
+
                     container.querySelectorAll('[data-approve]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            await dbUpdate('ads', btn.dataset.approve, { status: 'approved' });
+                            await withTimeout(supabase.from('ads').update({ status: 'approved' }).eq('id', btn.dataset.approve));
                             playSfx('success'); loadAdminPanel(); loadHomeFeed();
                         });
                     });
                     container.querySelectorAll('[data-reject]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            await dbUpdate('ads', btn.dataset.reject, { status: 'deleted' });
+                            await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', btn.dataset.reject));
                             playSfx('click'); loadAdminPanel();
                         });
                     });
-                    container.querySelectorAll('[data-edit-ad]').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const ad = pendingAds.find(a => a.id == btn.dataset.editAd);
-                            if (ad) openAdminEditModal(ad);
-                        });
-                    });
-                    container.querySelectorAll('[data-approve-appeal]').forEach(btn => {
-                        btn.addEventListener('click', async () => {
-                            await dbUpdate('appeals', btn.dataset.approveAppeal, { status: 'approved' });
-                            playSfx('success'); loadAdminPanel();
-                        });
-                    });
-                    container.querySelectorAll('[data-reject-appeal]').forEach(btn => {
-                        btn.addEventListener('click', async () => {
-                            await dbUpdate('appeals', btn.dataset.rejectAppeal, { status: 'rejected' });
-                            playSfx('click'); loadAdminPanel();
-                        });
-                    });
-                    if (isOwner) {
-                        document.getElementById('adminBanBtn').addEventListener('click', () => adminUserAction('ban'));
-                        document.getElementById('adminUnbanBtn').addEventListener('click', () => adminUserAction('unban'));
-                        document.getElementById('adminMakeAdminBtn').addEventListener('click', () => adminUserAction('make_admin'));
-                        document.getElementById('adminRemoveAdminBtn').addEventListener('click', () => adminUserAction('remove_admin'));
-                        document.getElementById('adminClearFeedBtn').addEventListener('click', async () => {
-                            showConfirm('Очистка', 'Удалить ВСЕ объявления из ленты?', async () => {
-                                const allAds = await dbSelect('ads');
-                                for (let ad of allAds) await dbDelete('ads', ad.id);
-                                const allFavs = await dbSelect('favorites');
-                                for (let f of allFavs) await dbDelete('favorites', f.id);
-                                playSfx('click'); loadAdminPanel(); loadHomeFeed();
-                            });
-                        });
-                    }
-                } catch (e) { console.warn('loadAdminPanel error', e); container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; }
+                } catch (e) {
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+                }
             }
 
-            async function adminUserAction(action) {
-                const target = document.getElementById('adminUsernameInput').value.trim();
-                if (!target) { showAlert('Ошибка', 'Введите username или ID'); return; }
-                try {
-                    let users;
-                    if (!isNaN(target)) users = await dbSelect('users', { eq: { id: target } });
-                    else users = await dbSelect('users', { eq: { username: target } });
-                    if (!users.length) { showAlert('Ошибка', 'Пользователь не найден'); return; }
-                    const user = users[0];
-                    let updates = {};
-                    if (action === 'ban') updates.banned = true;
-                    else if (action === 'unban') updates.banned = false;
-                    else if (action === 'make_admin') updates.is_admin = true;
-                    else if (action === 'remove_admin') updates.is_admin = false;
-                    await dbUpdate('users', user.id, updates);
-                    playSfx('success'); showAlert('Успех', 'Действие выполнено'); loadAdminPanel();
-                } catch (e) { showAlert('Ошибка', 'Не удалось выполнить'); }
-            }
-
-            function openAdminEditModal(ad) {
-                showModal(`
-                    <h3 class="modal-title">✏️ Редактирование</h3>
-                    <div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name || ''}"></div>
-                    <div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price || ''}"></div>
-                    <div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description || ''}</textarea></div>
-                    <div class="form-group"><label>Скриншоты</label><input type="text" id="editAdminImgs" value="${ad.images || ''}"></div>
-                    <button class="btn w-full" id="editAdminSaveBtn">Сохранить и одобрить</button>
-                `);
-                document.getElementById('editAdminSaveBtn').addEventListener('click', async () => {
-                    const item_name = document.getElementById('editAdminName').value.trim();
-                    const price = parsePriceToNumber(document.getElementById('editAdminPrice').value);
-                    const description = document.getElementById('editAdminDesc').value.trim();
-                    const images = document.getElementById('editAdminImgs').value.trim();
-                    const linkCheck = checkLinksString(images);
-                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbUpdate('ads', ad.id, { item_name, price, description, images, status: 'approved' });
-                    playSfx('success');
-                    document.getElementById('modalOverlay').remove();
-                    loadAdminPanel(); loadHomeFeed();
-                });
-            }
-
-            // ================= ДЕТАЛИ ОБЪЯВЛЕНИЯ =================
             async function openAdDetail(ad) {
+                let galleryHtml = '';
                 const images = ad.images ? ad.images.split(',').map(s => s.trim()).filter(s => s) : [];
-                const galleryHtml = images.length ? '<div class="image-gallery">' + images.map(img => `<img src="${img}" onerror="this.style.display='none'">`).join('') + '</div>' : '';
+                if (images.length) {
+                    galleryHtml = '<div class="image-gallery">' + images.map(img => `<img src="${img}" onerror="this.style.display='none'">`).join('') + '</div>';
+                }
                 const catLabel = ALL_CATEGORIES.find(c => c.id === ad.category)?.label || ad.category;
                 const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
-                let statusHtml = '';
-                if (ad.status === 'pending') statusHtml = '<div class="empty-state">Объявление находится на модерации</div>';
-                else if (ad.status === 'deleted') {
-                    statusHtml = '<div class="empty-state">Объявление удалено</div>';
-                    if (ad.author_id === userIdentifier) statusHtml += '<button class="btn gold w-full mt-8" id="detailAppealBtn">Подать апелляцию</button>';
-                } else {
-                    statusHtml = `
-                        <button class="btn w-full mb-8" id="detailContactBtn">💬 Написать</button>
-                        <button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button>
-                        <button class="btn secondary w-full mb-8" id="detailReviewsBtn">⭐ Отзывы</button>
-                        ${ad.author_id === userIdentifier ? '<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить</button>' : ''}
-                    `;
-                }
-                const isFav = await checkIfInCart(ad.id);
+                
                 showModal(`
                     <h3 class="modal-title">${ad.item_name}</h3>
                     <div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>
                     ${galleryHtml}
                     <div style="font-size:24px;font-weight:900;color:var(--accent);margin-bottom:8px;">${formatPrice(ad.price)}</div>
                     <p style="color:var(--muted);margin-bottom:12px;">${ad.description || 'Нет описания'}</p>
-                    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Автор: <span style="color:var(--text);cursor:pointer;" id="detailAuthorLink">${ad.author_id}</span></div>
-                    ${statusHtml}
-                    <div id="detailReviewsSection"></div>
-                    <h4 style="margin:16px 0 8px;">Похожие объявления</h4>
-                    <div id="detailSimilarAds"></div>
+                    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Автор: ${ad.author_id}</div>
+                    <button class="btn w-full mb-8" id="detailContactBtn">💬 Связаться</button>
+                    <button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button>
                 `);
-                const overlay = document.getElementById('modalOverlay');
-                if (ad.status === 'approved') {
-                    document.getElementById('detailContactBtn').addEventListener('click', () => {
-                        let contact = ad.author_id.replace('@', '');
-                        window.open(`https://t.me/${contact}`, '_blank');
-                    });
-                    const cartBtn = document.getElementById('detailCartToggleBtn');
-                    cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 В корзину';
-                    cartBtn.addEventListener('click', async () => {
-                        const userId = currentAuthUser.username;
-                        if (isFav) {
-                            const favs = await dbSelect('favorites', { eq: { user_id: userId, ad_id: ad.id } });
-                            if (favs.length) await dbDelete('favorites', favs[0].id);
-                            cartBtn.textContent = '🛒 В корзину';
-                        } else {
-                            await dbInsert('favorites', { user_id: userId, ad_id: ad.id });
-                            cartBtn.textContent = '🛒 Убрать из корзины';
-                        }
-                        playSfx('click'); loadCart();
-                    });
-                    document.getElementById('detailReviewsBtn').addEventListener('click', () => openReviewsModal(ad.id));
-                    if (ad.author_id === userIdentifier) {
-                        document.getElementById('detailDeleteBtn').addEventListener('click', async () => {
-                            showConfirm('Удаление', 'Удалить объявление?', async () => {
-                                await dbUpdate('ads', ad.id, { status: 'deleted' });
-                                playSfx('click'); overlay.remove(); loadHomeFeed();
-                            });
-                        });
+
+                const isFav = await checkIfInCart(ad.id);
+                const cartBtn = document.getElementById('detailCartToggleBtn');
+                cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 В корзину';
+
+                document.getElementById('detailContactBtn').addEventListener('click', () => {
+                    let contact = ad.author_id;
+                    if (contact.startsWith('@')) {
+                        window.open(`https://t.me/${contact.replace('@', '')}`, '_blank');
+                    } else {
+                        showAlert('Контакт', `Автор: ${contact}`);
                     }
-                }
-                if (ad.status === 'deleted' && ad.author_id === userIdentifier) {
-                    const appealBtn = document.getElementById('detailAppealBtn');
-                    if (appealBtn) appealBtn.addEventListener('click', () => { appealAdId = ad.id; openAppealModal(); });
-                }
-                document.getElementById('detailAuthorLink').addEventListener('click', () => openProfileModal(ad.author_id));
-                loadReviews(ad.id);
-                loadSimilarAds(ad.category, ad.id);
+                });
+
+                cartBtn.addEventListener('click', async () => {
+                    const userIdKey = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
+                    if (isFav) {
+                        await withTimeout(supabase.from('favorites').delete().eq('user_id', userIdKey).eq('ad_id', ad.id));
+                        cartBtn.textContent = '🛒 В корзину';
+                    } else {
+                        await withTimeout(supabase.from('favorites').insert({ user_id: userIdKey, ad_id: ad.id }));
+                        cartBtn.textContent = '🛒 Убрать из корзины';
+                    }
+                    playSfx('click'); loadCart();
+                });
             }
 
             async function checkIfInCart(adId) {
-                if (!currentAuthUser) return false;
-                const favs = await dbSelect('favorites', { eq: { user_id: currentAuthUser.username, ad_id: adId } });
-                return favs.length > 0;
-            }
-
-            // ================= ОТЗЫВЫ =================
-            async function loadReviews(adId) {
-                const container = document.getElementById('detailReviewsSection');
-                if (!container) return;
+                if (!supabase) return false;
                 try {
-                    const reviews = await dbSelect('reviews', { eq: { ad_id: adId }, order: { by: 'created_at', asc: false } });
-                    if (!reviews.length) { container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Отзывов пока нет</p>'; return; }
-                    const avg = reviews.reduce((s, r) => s + r.stars, 0) / reviews.length;
-                    let html = `<div style="font-size:20px;font-weight:800;margin-bottom:8px;">⭐ ${avg.toFixed(1)} (${reviews.length})</div>`;
-                    html += '<div class="progress-bar mb-12"><div class="progress-fill" style="width:' + (avg / 5 * 100) + '%;"></div></div>';
-                    reviews.forEach(r => {
-                        const canEdit = r.author_id === userIdentifier && (Date.now() - new Date(r.created_at).getTime()) < 7*24*60*60*1000;
-                        html += `
-                            <div class="review-item">
-                                <div style="font-weight:600;">${r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span></div>
-                                <div style="font-size:12px;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('ru-RU')}</div>
-                                <p style="font-size:13px;margin:4px 0;">${r.text || ''}</p>
-                                ${r.media_links ? `<div style="font-size:11px;color:var(--accent);">${r.media_links}</div>` : ''}
-                                ${canEdit ? `<div class="flex-between gap-8 mt-8"><button class="btn secondary" data-edit-review="${r.id}">✏️</button><button class="btn danger" data-delete-review="${r.id}">🗑</button></div>` : ''}
-                            </div>
-                        `;
-                    });
-                    container.innerHTML = html;
-                    container.querySelectorAll('[data-edit-review]').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const rev = reviews.find(r => r.id == btn.dataset.editReview);
-                            if (rev) openEditReviewModal(rev);
-                        });
-                    });
-                    container.querySelectorAll('[data-delete-review]').forEach(btn => {
-                        btn.addEventListener('click', async () => {
-                            await dbDelete('reviews', btn.dataset.deleteReview);
-                            playSfx('click'); loadReviews(adId);
-                        });
-                    });
-                } catch (e) { container.innerHTML = '<p style="color:var(--muted);">Не удалось загрузить отзывы</p>'; }
-            }
-
-            async function loadSimilarAds(category, currentAdId) {
-                const container = document.getElementById('detailSimilarAds');
-                if (!container) return;
-                try {
-                    const similar = await dbSelect('ads', { eq: { status: 'approved', category: category }, order: { by: 'created_at', asc: false }, limit: 3 });
-                    const filtered = similar.filter(a => a.id != currentAdId);
-                    if (!filtered.length) { container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Похожих нет</p>'; return; }
-                    container.innerHTML = filtered.map(ad => `
-                        <div class="card" data-sim="${ad.id}">
-                            <span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}
-                        </div>
-                    `).join('');
-                    container.querySelectorAll('[data-sim]').forEach(el => {
-                        el.addEventListener('click', () => {
-                            const found = filtered.find(a => a.id == el.dataset.sim);
-                            if (found) { document.getElementById('modalOverlay').remove(); openAdDetail(found); }
-                        });
-                    });
-                } catch (e) {}
-            }
-
-            function openReviewsModal(adId) {
-                showModal(`
-                    <h3 class="modal-title">⭐ Оставить отзыв</h3>
-                    <div class="form-group"><label>Оценка</label><div class="star-rating" id="reviewStars">${[1,2,3,4,5].map(i => `<span data-star="${i}">☆</span>`).join('')}</div></div>
-                    <div class="form-group"><label>Ссылки (до 20, через запятую)</label><input type="text" id="reviewMedia" placeholder="https://..."></div>
-                    <div class="form-group"><label>Текст отзыва</label><textarea id="reviewText" placeholder="Ваш отзыв"></textarea></div>
-                    <button class="btn w-full" id="reviewSubmitBtn">Отправить отзыв</button>
-                `);
-                let selectedStars = 0;
-                const starsContainer = document.getElementById('reviewStars');
-                starsContainer.querySelectorAll('span').forEach(span => {
-                    span.addEventListener('click', () => {
-                        selectedStars = parseInt(span.dataset.star);
-                        updateStars(starsContainer, selectedStars);
-                    });
-                });
-                document.getElementById('reviewSubmitBtn').addEventListener('click', async () => {
-                    if (!selectedStars) { showAlert('Ошибка', 'Выберите оценку'); return; }
-                    const text = document.getElementById('reviewText').value.trim();
-                    const media = document.getElementById('reviewMedia').value.trim();
-                    const linkCheck = checkLinksString(media);
-                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbInsert('reviews', {
-                        ad_id: adId, author_id: userIdentifier, stars: selectedStars,
-                        text, media_links: media, created_at: new Date().toISOString()
-                    });
-                    playSfx('success'); showAlert('Успех', 'Отзыв отправлен');
-                    document.getElementById('modalOverlay').remove(); loadReviews(adId);
-                });
-            }
-            function updateStars(container, selected) {
-                container.querySelectorAll('span').forEach(span => {
-                    span.textContent = parseInt(span.dataset.star) <= selected ? '★' : '☆';
-                    span.classList.toggle('active', parseInt(span.dataset.star) <= selected);
-                });
-            }
-            function openEditReviewModal(review) {
-                showModal(`
-                    <h3 class="modal-title">✏️ Редактировать отзыв</h3>
-                    <div class="form-group"><label>Оценка</label><div class="star-rating" id="editReviewStars">${[1,2,3,4,5].map(i => `<span data-star="${i}" class="${i <= review.stars ? 'active' : ''}">${i <= review.stars ? '★' : '☆'}</span>`).join('')}</div></div>
-                    <div class="form-group"><label>Ссылки</label><input type="text" id="editReviewMedia" value="${review.media_links || ''}"></div>
-                    <div class="form-group"><label>Текст</label><textarea id="editReviewText">${review.text || ''}</textarea></div>
-                    <button class="btn w-full" id="editReviewSubmitBtn">Сохранить</button>
-                `);
-                let selectedStars = review.stars;
-                const starsContainer = document.getElementById('editReviewStars');
-                starsContainer.querySelectorAll('span').forEach(span => {
-                    span.addEventListener('click', () => {
-                        selectedStars = parseInt(span.dataset.star);
-                        updateStars(starsContainer, selectedStars);
-                    });
-                });
-                document.getElementById('editReviewSubmitBtn').addEventListener('click', async () => {
-                    const text = document.getElementById('editReviewText').value.trim();
-                    const media = document.getElementById('editReviewMedia').value.trim();
-                    const linkCheck = checkLinksString(media);
-                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbUpdate('reviews', review.id, { stars: selectedStars, text, media_links: media });
-                    playSfx('success'); document.getElementById('modalOverlay').remove(); loadReviews(review.ad_id);
-                });
+                    const userIdKey = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
+                    const { data } = await withTimeout(
+                        supabase.from('favorites').select('*').eq('user_id', userIdKey).eq('ad_id', adId).maybeSingle()
+                    );
+                    return !!data;
+                } catch (e) { return false; }
             }
 
             function openAppealModal() {
                 if (!appealAdId) return;
                 showModal(`
                     <h3 class="modal-title">📨 Апелляция</h3>
-                    <div class="form-group"><label>Причина</label><select id="appealReason">${APPEAL_REASONS.map(r => `<option>${r}</option>`).join('')}</select></div>
-                    <div class="form-group"><label>Доказательства (ссылки)</label><input type="text" id="appealEvidence" placeholder="https://..."></div>
+                    <div class="form-group">
+                        <label>Причина</label>
+                        <select id="appealReason">${APPEAL_REASONS.map(r => `<option value="${r}">${r}</option>`).join('')}</select>
+                    </div>
                     <button class="btn w-full" id="appealSubmitBtn">Отправить</button>
                 `);
                 document.getElementById('appealSubmitBtn').addEventListener('click', async () => {
                     const reason = document.getElementById('appealReason').value;
-                    const evidence = document.getElementById('appealEvidence').value.trim();
-                    const linkCheck = checkLinksString(evidence);
-                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbInsert('appeals', {
-                        ad_id: appealAdId, author_id: userIdentifier, reason,
-                        evidence, status: 'pending', created_at: new Date().toISOString()
-                    });
-                    playSfx('success'); showAlert('Успех', 'Апелляция отправлена');
-                    document.getElementById('modalOverlay').remove();
+                    try {
+                        await withTimeout(supabase.from('appeals').insert({
+                            ad_id: appealAdId, author_id: userIdentifier, reason: reason,
+                            status: 'pending', created_at: new Date().toISOString()
+                        }));
+                        playSfx('success'); showAlert('Успех', 'Апелляция отправлена');
+                        const overlay = document.getElementById('modalOverlay');
+                        overlay.classList.remove('show');
+                        setTimeout(() => overlay.remove(), 250);
+                    } catch (e) { showAlert('Ошибка', 'Не удалось отправить'); }
                 });
             }
 
-            // ================= ИГРА «БАРЫГА» =================
-            async function loadGameState() {
-                if (!currentAuthUser) return;
-                const data = await dbSelect('baryga', { eq: { user_id: currentAuthUser.username } });
-                if (data.length) gameState = { ...gameState, ...data[0] };
-                else await dbInsert('baryga', { user_id: currentAuthUser.username, ...gameState });
-            }
-            function openBarygaGame() {
-                loadGameState().then(() => {
-                    showModal(`
-                        <h3 class="modal-title">🎮 Игра «Барыга»</h3>
-                        <div style="text-align:center;font-size:24px;font-weight:900;margin-bottom:8px;" id="gameMoneyDisplay">💰 ${formatPrice(gameState.money)}</div>
-                        <div class="game-click-area" id="gameClickArea">
-                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23FF9900'/%3E%3Ctext x='50' y='60' font-size='40' text-anchor='middle' fill='white'%3E💰%3C/text%3E%3C/svg%3E" alt="Клик">
-                        </div>
-                        <div style="font-size:12px;color:var(--muted);text-align:center;" id="gameStatsDisplay">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div>
-                        <div class="mt-12" id="gameUpgradesContainer"></div>
-                    `);
-                    const clickArea = document.getElementById('gameClickArea');
-                    const upgradesContainer = document.getElementById('gameUpgradesContainer');
-                    upgradesContainer.innerHTML = renderUpgrades();
-                    clickArea.addEventListener('click', () => {
-                        gameState.money += gameState.clickPower;
-                        updateGameUIFast(); playSfx('click'); saveGameStateDebounced();
-                        clickArea.style.transform = 'scale(0.92)'; setTimeout(() => clickArea.style.transform = '', 80);
-                    });
-                    upgradesContainer.addEventListener('click', (e) => {
-                        const btn = e.target.closest('[data-upgrade]');
-                        if (!btn) return;
-                        const idx = parseInt(btn.dataset.upgrade);
-                        const upgrade = getUpgradesList()[idx];
-                        if (gameState.money >= upgrade.cost) {
-                            gameState.money -= upgrade.cost;
-                            upgrade.action();
-                            updateGameUIFast(); saveGameStateDebounced(); playSfx('buy');
-                        }
-                    });
-                    const interval = setInterval(() => {
-                        if (!document.getElementById('gameClickArea')) { clearInterval(interval); return; }
-                        if (gameState.autoIncome > 0) { gameState.money += gameState.autoIncome / 10; updateGameUIFast(); }
-                    }, 100);
-                });
-            }
-            function getUpgradesList() {
-                return [
-                    { name: 'Клик +1', cost: gameState.clickCost, action: () => { gameState.clickPower += 1; gameState.clickCost *= 2; } },
-                    { name: 'Авто +5/сек', cost: gameState.autoCost, action: () => { gameState.autoIncome += 5; gameState.autoCost *= 2; } },
-                    { name: 'Про +20/сек', cost: gameState.proCost, action: () => { gameState.autoIncome += 20; gameState.proCost *= 2; } },
-                    { name: 'Магазин +50/сек', cost: gameState.shopCost, action: () => { gameState.autoIncome += 50; gameState.shopCost *= 2; } },
-                    { name: 'Элита: клик +10', cost: gameState.eliteCost, action: () => { gameState.clickPower += 10; gameState.eliteCost *= 2; gameState.elitePurchased = true; } },
-                    { name: 'Нефть +200/сек', cost: gameState.oilCost, action: () => { gameState.autoIncome += 200; gameState.oilCost *= 2; } },
-                    { name: 'Крипта +1000/сек', cost: gameState.cryptoCost, action: () => { gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
-                    { name: 'Скупка лома +500/сек', cost: gameState.scrapCost, action: () => { gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
-                ];
-            }
-            function renderUpgrades() {
-                return getUpgradesList().map((u, i) => `
-                    <div class="upgrade-card">
-                        <div class="upgrade-info"><div class="upgrade-name">${u.name}</div><div class="upgrade-cost" data-cost-idx="${i}">💰 ${formatPrice(u.cost)}</div></div>
-                        <button class="btn secondary" data-upgrade="${i}" ${gameState.money < u.cost ? 'disabled' : ''}>Купить</button>
-                    </div>
-                `).join('');
-            }
-            function updateGameUIFast() {
-                const moneyEl = document.getElementById('gameMoneyDisplay');
-                if (moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money);
-                const statsEl = document.getElementById('gameStatsDisplay');
-                if (statsEl) statsEl.textContent = `Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек`;
-                const upgrades = getUpgradesList();
-                upgrades.forEach((u, i) => {
-                    const btn = document.querySelector(`[data-upgrade="${i}"]`);
-                    const costEl = document.querySelector(`[data-cost-idx="${i}"]`);
-                    if (btn && costEl) {
-                        costEl.textContent = '💰 ' + formatPrice(u.cost);
-                        if (gameState.money < u.cost) btn.setAttribute('disabled', 'true');
-                        else btn.removeAttribute('disabled');
-                    }
-                });
-            }
-            function saveGameStateDebounced() {
-                if (saveGameTimeout) clearTimeout(saveGameTimeout);
-                saveGameTimeout = setTimeout(saveGameState, 1000);
-            }
-            async function saveGameState() {
-                if (!currentAuthUser) return;
-                const data = await dbSelect('baryga', { eq: { user_id: currentAuthUser.username } });
-                if (data.length) await dbUpdate('baryga', data[0].id, {
-                    money: gameState.money, click_power: gameState.clickPower, click_cost: gameState.clickCost,
-                    auto_income: gameState.autoIncome, auto_cost: gameState.autoCost, pro_cost: gameState.proCost,
-                    shop_cost: gameState.shopCost, elite_cost: gameState.eliteCost, oil_cost: gameState.oilCost,
-                    crypto_cost: gameState.cryptoCost, scrap_cost: gameState.scrapCost
-                });
-                else await dbInsert('baryga', { user_id: currentAuthUser.username, ...gameState });
-            }
-
-            // ================= ПОИСК =================
             function openSearchModal() {
                 showModal(`
                     <h3 class="modal-title">🔍 Поиск</h3>
-                    <div class="form-group"><input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off"></div>
-                    <div class="flex-between gap-8 mb-12">
-                        <button class="btn w-full" id="searchItemBtn">📦 Предмет</button>
-                        <button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button>
+                    <div class="form-group">
+                        <input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off">
                     </div>
-                    <div id="searchSuggestions"></div><div id="searchHistory"></div><div id="searchResults"></div>
+                    <div id="searchResults"></div>
                 `);
                 const input = document.getElementById('searchInput');
-                setTimeout(() => input.focus(), 100);
-                const suggestions = document.getElementById('searchSuggestions');
                 const results = document.getElementById('searchResults');
-                const history = document.getElementById('searchHistory');
-                function renderHistory() {
-                    if (!searchHistory.length) { history.innerHTML = ''; return; }
-                    history.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">История:</div>' + searchHistory.map(h => `<span class="badge" style="cursor:pointer;margin:2px;" data-hist="${h}">${h}</span>`).join('');
-                    history.querySelectorAll('[data-hist]').forEach(el => {
-                        el.addEventListener('click', () => { input.value = el.dataset.hist; input.dispatchEvent(new Event('input')); });
-                    });
-                }
-                renderHistory();
+                setTimeout(() => input.focus(), 100);
+
                 input.addEventListener('input', async () => {
                     const q = input.value.trim().toLowerCase();
-                    if (!q) { suggestions.innerHTML = ''; results.innerHTML = ''; return; }
-                    const items = await dbSelect('ads', { eq: { status: 'approved' }, limit: 5 });
-                    const filtered = items.filter(a => a.item_name && a.item_name.toLowerCase().includes(q));
-                    suggestions.innerHTML = filtered.map(ad => `<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('');
-                    suggestions.querySelectorAll('[data-sug]').forEach(el => {
-                        el.addEventListener('click', () => {
-                            const ad = filtered.find(a => a.id == el.dataset.sug);
-                            if (ad) {
-                                if (!searchHistory.includes(q)) { searchHistory.unshift(q); if (searchHistory.length > 10) searchHistory.pop(); localStorage.setItem('searchHistory', JSON.stringify(searchHistory)); }
-                                document.getElementById('modalOverlay').remove(); openAdDetail(ad);
-                            }
+                    if (!q) { results.innerHTML = ''; return; }
+                    try {
+                        const { data } = await withTimeout(
+                            supabase.from('ads').select('*').eq('status', 'approved').ilike('item_name', `%${q}%`).limit(5)
+                        );
+                        const items = data || [];
+                        results.innerHTML = items.map(ad => `
+                            <div class="card" data-res-id="${ad.id}">
+                                <div style="font-weight:700;">${ad.item_name}</div>
+                                <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                            </div>
+                        `).join('');
+                        results.querySelectorAll('[data-res-id]').forEach(card => {
+                            card.addEventListener('click', () => {
+                                const ad = items.find(a => a.id == card.dataset.resId);
+                                if (ad) {
+                                    const overlay = document.getElementById('modalOverlay');
+                                    overlay.classList.remove('show');
+                                    setTimeout(() => overlay.remove(), 250);
+                                    openAdDetail(ad);
+                                }
+                            });
                         });
-                    });
-                });
-                document.getElementById('searchItemBtn').addEventListener('click', async () => {
-                    const q = input.value.trim().toLowerCase();
-                    if (!q) return;
-                    const items = await dbSelect('ads', { eq: { status: 'approved' } });
-                    const filtered = items.filter(a => a.item_name && a.item_name.toLowerCase().includes(q));
-                    if (!filtered.length) { results.innerHTML = '<div class="empty-state">Ничего не найдено</div>'; return; }
-                    results.innerHTML = filtered.map(ad => `<div class="card" data-res-id="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
-                    results.querySelectorAll('[data-res-id]').forEach(card => {
-                        card.addEventListener('click', () => {
-                            const ad = filtered.find(a => a.id == card.dataset.resId);
-                            if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
-                        });
-                    });
-                });
-                document.getElementById('searchProfileBtn').addEventListener('click', () => {
-                    const q = input.value.trim();
-                    if (q) openProfileModal(q);
+                    } catch (e) {}
                 });
             }
 
-            async function openProfileModal(authorId) {
-                showModal(`<h3 class="modal-title">👤 Профиль: ${authorId}</h3><div id="profileAdsList"><div class="empty-state">Загрузка...</div></div>`);
-                try {
-                    const ads = await dbSelect('ads', { eq: { status: 'approved', author_id: authorId } });
-                    const container = document.getElementById('profileAdsList');
-                    if (!ads.length) { container.innerHTML = '<div class="empty-state">Нет активных объявлений</div>'; return; }
-                    container.innerHTML = ads.map(ad => `<div class="card" data-prof-ad="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
-                    container.querySelectorAll('[data-prof-ad]').forEach(card => {
-                        card.addEventListener('click', () => {
-                            const ad = ads.find(a => a.id == card.dataset.profAd);
-                            if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
-                        });
-                    });
-                } catch (e) { document.getElementById('profileAdsList').innerHTML = '<div class="empty-state">Ошибка</div>'; }
-            }
-
-            // ================= ВСЕ РАЗДЕЛЫ =================
             function loadAllTiles() {
                 const tiles = [
-                    { id: 'looks', icon: '📸', label: 'Лента «Луков»' },
-                    { id: 'companions', icon: '👥', label: 'Попутчики' },
-                    { id: 'music', icon: '🎵', label: 'Музыка' },
                     { id: 'baryga', icon: '🎮', label: 'Игра «Барыга»' },
+                    { id: 'looks', icon: '📸', label: 'Лента луков' },
+                    { id: 'travelers', icon: '🚗', label: 'Попутчики' },
+                    { id: 'music', icon: '🎵', label: 'Музыка' },
                     { id: 'settings', icon: '⚙️', label: 'Настройки' },
-                    { id: 'manager', icon: '👨‍💼', label: 'Менеджер' },
-                    { id: 'chat', icon: '💬', label: 'Переписки' }
+                    { id: 'support', icon: '💬', label: 'Связь с менеджером' },
+                    { id: 'logout', icon: '🚪', label: 'Сменить аккаунт' }
                 ];
                 const container = document.getElementById('allTiles');
-                container.innerHTML = tiles.map(t => `<div class="grid-tile" data-tile="${t.id}"><span class="tile-icon">${t.icon}</span><span>${t.label}</span></div>`).join('');
+                container.innerHTML = tiles.map(t => `
+                    <div class="grid-tile" data-tile="${t.id}">
+                        <span class="tile-icon">${t.icon}</span>
+                        <span>${t.label}</span>
+                    </div>
+                `).join('');
+
                 container.querySelectorAll('[data-tile]').forEach(tile => {
                     tile.addEventListener('click', () => {
                         const id = tile.dataset.tile;
-                        if (id === 'looks') openLooksModal();
-                        if (id === 'companions') openCompanionsModal();
-                        if (id === 'music') openMusicModal();
                         if (id === 'baryga') openBarygaGame();
+                        if (id === 'looks') showAlert('Лента луков', 'Скоро открытие раздела!');
+                        if (id === 'travelers') showAlert('Попутчики', 'Скоро открытие раздела!');
+                        if (id === 'music') showAlert('Музыка', 'Скоро открытие плеера!');
                         if (id === 'settings') openSettingsModal();
-                        if (id === 'manager') openManagerModal();
-                        if (id === 'chat') openChatModal();
+                        if (id === 'support') window.open('https://t.me/' + OWNER_USERNAME, '_blank');
+                        if (id === 'logout') {
+                            localStorage.removeItem('arizona_current_user');
+                            currentAuthUser = null;
+                            showAuthModal();
+                        }
                     });
-                });
-            }
-
-            function openLooksModal() {
-                showModal(`
-                    <h3 class="modal-title">📸 Лента «Луков»</h3>
-                    <div class="form-group"><label>Ссылка на фото</label><input type="text" id="lookImg" placeholder="https://..."></div>
-                    <div class="form-group"><label>Описание</label><input type="text" id="lookDesc" placeholder="Мой лук"></div>
-                    <button class="btn w-full mb-12" id="lookSubmitBtn">Опубликовать</button>
-                    <div id="looksList"><div class="empty-state">Загрузка...</div></div>
-                `);
-                loadLooksFeed();
-                document.getElementById('lookSubmitBtn').addEventListener('click', async () => {
-                    const img = document.getElementById('lookImg').value.trim();
-                    const desc = document.getElementById('lookDesc').value.trim();
-                    const linkCheck = checkLinksString(img);
-                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbInsert('looks', { author_id: userIdentifier, image_url: img, description: desc, created_at: new Date().toISOString() });
-                    playSfx('success');
-                    document.getElementById('lookImg').value = '';
-                    document.getElementById('lookDesc').value = '';
-                    loadLooksFeed();
-                });
-            }
-            async function loadLooksFeed() {
-                const container = document.getElementById('looksList');
-                if (!container) return;
-                const looks = await dbSelect('looks', { order: { by: 'created_at', asc: false } });
-                if (!looks.length) { container.innerHTML = '<div class="empty-state">Образов пока нет</div>'; return; }
-                container.innerHTML = looks.map(l => `
-                    <div class="card">
-                        <img src="${l.image_url}" style="width:100%;height:200px;object-fit:cover;border-radius:8px;margin-bottom:8px;" onerror="this.style.display='none'">
-                        <div style="font-weight:700;font-size:13px;">${l.author_id}</div>
-                        <p style="font-size:13px;color:var(--muted);">${l.description || ''}</p>
-                        ${l.author_id === userIdentifier ? `<button class="btn danger mt-8" data-delete-look="${l.id}">Удалить</button>` : ''}
-                    </div>
-                `).join('');
-                container.querySelectorAll('[data-delete-look]').forEach(btn => {
-                    btn.addEventListener('click', async () => {
-                        await dbDelete('looks', btn.dataset.deleteLook);
-                        playSfx('click'); loadLooksFeed();
-                    });
-                });
-            }
-
-            function openCompanionsModal() {
-                showModal(`
-                    <h3 class="modal-title">👥 Попутчики</h3>
-                    <div class="form-group"><label>Цель / Направление</label><input type="text" id="compTarget" placeholder="Например: еду на шахту"></div>
-                    <div class="form-group"><label>Контакты</label><input type="text" id="compContact" placeholder="@username"></div>
-                    <button class="btn w-full mb-12" id="compSubmitBtn">Найти напарника</button>
-                    <div id="companionsList"><div class="empty-state">Загрузка...</div></div>
-                `);
-                loadCompanionsFeed();
-                document.getElementById('compSubmitBtn').addEventListener('click', async () => {
-                    const target = document.getElementById('compTarget').value.trim();
-                    const contact = document.getElementById('compContact').value.trim();
-                    if (!target || !contact) { showAlert('Ошибка', 'Заполните все поля'); return; }
-                    await dbInsert('companions', { author_id: userIdentifier, target, contact, created_at: new Date().toISOString() });
-                    playSfx('success');
-                    document.getElementById('compTarget').value = '';
-                    document.getElementById('compContact').value = '';
-                    loadCompanionsFeed();
-                });
-            }
-            async function loadCompanionsFeed() {
-                const container = document.getElementById('companionsList');
-                if (!container) return;
-                const comps = await dbSelect('companions', { order: { by: 'created_at', asc: false } });
-                if (!comps.length) { container.innerHTML = '<div class="empty-state">Заявок нет</div>'; return; }
-                container.innerHTML = comps.map(c => `
-                    <div class="card">
-                        <div style="font-weight:700;">${c.target}</div>
-                        <div style="font-size:12px;color:var(--muted);">Автор: ${c.author_id} • Контакт: ${c.contact}</div>
-                        ${c.author_id === userIdentifier ? `<button class="btn danger mt-8" data-delete-comp="${c.id}">Удалить</button>` : ''}
-                    </div>
-                `).join('');
-                container.querySelectorAll('[data-delete-comp]').forEach(btn => {
-                    btn.addEventListener('click', async () => {
-                        await dbDelete('companions', btn.dataset.deleteComp);
-                        playSfx('click'); loadCompanionsFeed();
-                    });
-                });
-            }
-
-            function openMusicModal() {
-                showModal(`
-                    <h3 class="modal-title">🎵 Музыка</h3>
-                    <div class="form-group"><label>Ссылка на трек (mp3)</label><input type="text" id="musicUrl" placeholder="https://..."></div>
-                    <div class="flex-between gap-8 mb-12">
-                        <button class="btn w-full" id="musicPlayBtn">▶️ Играть</button>
-                        <button class="btn secondary w-full" id="musicPauseBtn">⏸ Пауза</button>
-                    </div>
-                    <button class="btn danger w-full" id="musicResetBtn">⏹ Сбросить</button>
-                `);
-                let activeAudio = window.appCurrentAudio || null;
-                document.getElementById('musicPlayBtn').addEventListener('click', () => {
-                    const url = document.getElementById('musicUrl').value.trim();
-                    if (url) {
-                        if (activeAudio) activeAudio.pause();
-                        activeAudio = new Audio(url);
-                        window.appCurrentAudio = activeAudio;
-                        activeAudio.play().catch(() => showAlert('Ошибка', 'Не удалось воспроизвести'));
-                    } else if (activeAudio) activeAudio.play();
-                });
-                document.getElementById('musicPauseBtn').addEventListener('click', () => { if (activeAudio) activeAudio.pause(); });
-                document.getElementById('musicResetBtn').addEventListener('click', () => {
-                    if (activeAudio) { activeAudio.pause(); window.appCurrentAudio = null; }
-                    document.getElementById('musicUrl').value = '';
                 });
             }
 
@@ -1703,46 +1355,37 @@
                 showModal(`
                     <h3 class="modal-title">⚙️ Настройки</h3>
                     <div class="form-group flex-between">
-                        <label>Звуки в приложении</label>
-                        <input type="checkbox" id="settingsSfx" ${sfxEnabled ? 'checked' : ''} style="width:24px;height:24px;cursor:pointer;">
+                        <label>Звуковые эффекты (SFX)</label>
+                        <button class="btn secondary" id="toggleSfxBtn">${sfxEnabled ? 'Вкл' : 'Выкл'}</button>
                     </div>
-                    <button class="btn danger w-full mt-12" id="settingsResetDataBtn">Сбросить все данные</button>
                 `);
-                document.getElementById('settingsSfx').addEventListener('change', (e) => {
-                    sfxEnabled = e.target.checked;
+                document.getElementById('toggleSfxBtn').addEventListener('click', () => {
+                    sfxEnabled = !sfxEnabled;
                     localStorage.setItem('sfx', sfxEnabled ? 'on' : 'off');
-                });
-                document.getElementById('settingsResetDataBtn').addEventListener('click', () => {
-                    showConfirm('Сброс', 'Очистить все локальные данные и выйти?', () => {
-                        localStorage.clear();
-                        window.location.reload();
-                    });
+                    document.getElementById('toggleSfxBtn').textContent = sfxEnabled ? 'Вкл' : 'Выкл';
+                    playSfx('click');
                 });
             }
 
-            function openManagerModal() {
+            function openBarygaGame() {
                 showModal(`
-                    <h3 class="modal-title">👨‍💼 Менеджер / Поддержка</h3>
-                    <p style="color:var(--muted);margin-bottom:16px;">Свяжитесь с администрацией для решения вопросов.</p>
-                    <button class="btn w-full" id="managerContactBtn">Написать в Telegram</button>
+                    <h3 class="modal-title">🎮 Игра «Барыга»</h3>
+                    <div style="text-align:center;font-size:24px;font-weight:900;margin-bottom:8px;" id="gameMoneyDisplay">💰 ${formatPrice(gameState.money)}</div>
+                    <div class="game-click-area" id="gameClickArea">
+                        <span>💰</span>
+                    </div>
                 `);
-                document.getElementById('managerContactBtn').addEventListener('click', () => {
-                    window.open(`https://t.me/${OWNER_USERNAME}`, '_blank');
+                const clickArea = document.getElementById('gameClickArea');
+                clickArea.addEventListener('click', () => {
+                    gameState.money += gameState.clickPower;
+                    const moneyEl = document.getElementById('gameMoneyDisplay');
+                    if (moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money);
+                    playSfx('click');
                 });
             }
 
-            function openChatModal() {
-                showModal(`
-                    <h3 class="modal-title">💬 Переписки</h3>
-                    <div class="empty-state">Переписки ведутся напрямую в Telegram. Перейдите в чат с продавцом через карточку товара.</div>
-                    <button class="btn w-full mt-12" id="chatTgBtn">Перейти в Telegram</button>
-                `);
-                document.getElementById('chatTgBtn').addEventListener('click', () => window.open('https://t.me/', '_blank'));
-            }
-
-            // ================= ЗАПУСК =================
             checkAuth();
         })();
     </script>
 </body>
-    </html>
+</html>

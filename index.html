@@ -300,124 +300,17 @@
             let wakeLock = null;
 
             // =========================================================================
-            // ИНИЦИАЛИЗАЦИЯ SUPABASE (с проверкой доступности)
+            // ИНИЦИАЛИЗАЦИЯ SUPABASE
             // =========================================================================
             try {
-                if (window.supabase && window.supabase.createClient) {
-                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                }
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             } catch (e) {
-                console.warn('Supabase init error, используем localStorage', e);
+                console.error('Supabase initialization failed:', e);
                 supabase = null;
             }
-
-            // =========================================================================
-            // ЛОКАЛЬНОЕ ХРАНИЛИЩЕ (резервный механизм)
-            // =========================================================================
-            function getLocalCollection(name) {
-                try {
-                    return JSON.parse(localStorage.getItem('arizona_col_' + name) || '[]');
-                } catch (e) { return []; }
-            }
-            function setLocalCollection(name, data) {
-                localStorage.setItem('arizona_col_' + name, JSON.stringify(data));
-            }
-            function localInsert(name, item) {
-                const col = getLocalCollection(name);
-                item.id = item.id || Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                col.push(item);
-                setLocalCollection(name, col);
-                return item;
-            }
-            function localUpdate(name, id, updates) {
-                let col = getLocalCollection(name);
-                const idx = col.findIndex(x => x.id == id);
-                if (idx !== -1) {
-                    col[idx] = { ...col[idx], ...updates };
-                    setLocalCollection(name, col);
-                }
-            }
-            function localDelete(name, id) {
-                let col = getLocalCollection(name);
-                col = col.filter(x => x.id != id);
-                setLocalCollection(name, col);
-            }
-            function localSelect(name, filterFn) {
-                let col = getLocalCollection(name);
-                if (filterFn) col = col.filter(filterFn);
-                return col;
-            }
-
-            // =========================================================================
-            // УНИВЕРСАЛЬНЫЕ ОБЕРТКИ БД (Supabase или localStorage)
-            // =========================================================================
-            async function dbSelect(collection, query = {}) {
-                if (supabase) {
-                    try {
-                        let q = supabase.from(collection).select('*');
-                        if (query.eq) { for (let [key, val] of Object.entries(query.eq)) q = q.eq(key, val); }
-                        if (query.in) { for (let [key, val] of Object.entries(query.in)) q = q.in(key, val); }
-                        if (query.order) { q = q.order(query.order.by, { ascending: query.order.asc !== false }); }
-                        if (query.limit) q = q.limit(query.limit);
-                        const { data, error } = await withTimeout(q, 4000);
-                        if (error) throw error;
-                        return data || [];
-                    } catch (e) {
-                        console.warn(`Supabase select error for ${collection}, fallback to local`, e);
-                        supabase = null;
-                    }
-                }
-                let data = getLocalCollection(collection);
-                if (query.eq) for (let [key, val] of Object.entries(query.eq)) data = data.filter(item => item[key] == val);
-                if (query.in) for (let [key, val] of Object.entries(query.in)) data = data.filter(item => val.includes(item[key]));
-                if (query.order) data.sort((a, b) => {
-                    const va = a[query.order.by], vb = b[query.order.by];
-                    return query.order.asc === false ? (va < vb ? 1 : va > vb ? -1 : 0) : (va > vb ? 1 : va < vb ? -1 : 0);
-                });
-                if (query.limit) data = data.slice(0, query.limit);
-                return data;
-            }
-
-            async function dbInsert(collection, item) {
-                if (supabase) {
-                    try {
-                        const { data, error } = await withTimeout(supabase.from(collection).insert(item).select().single(), 4000);
-                        if (error) throw error;
-                        return data;
-                    } catch (e) {
-                        console.warn(`Supabase insert error for ${collection}, fallback to local`, e);
-                        supabase = null;
-                    }
-                }
-                return localInsert(collection, item);
-            }
-
-            async function dbUpdate(collection, id, updates) {
-                if (supabase) {
-                    try {
-                        const { error } = await withTimeout(supabase.from(collection).update(updates).eq('id', id), 4000);
-                        if (error) throw error;
-                        return;
-                    } catch (e) {
-                        console.warn(`Supabase update error for ${collection}, fallback to local`, e);
-                        supabase = null;
-                    }
-                }
-                localUpdate(collection, id, updates);
-            }
-
-            async function dbDelete(collection, id) {
-                if (supabase) {
-                    try {
-                        const { error } = await withTimeout(supabase.from(collection).delete().eq('id', id), 4000);
-                        if (error) throw error;
-                        return;
-                    } catch (e) {
-                        console.warn(`Supabase delete error for ${collection}, fallback to local`, e);
-                        supabase = null;
-                    }
-                }
-                localDelete(collection, id);
+            if (!supabase) {
+                document.body.innerHTML = '<div class="fullscreen-overlay"><h1 style="color:#ff3b30;">Ошибка подключения к серверу</h1><p>Не удалось инициализировать Supabase. Проверьте ключи и доступ к интернету.</p></div>';
+                return;
             }
 
             // =========================================================================
@@ -566,8 +459,15 @@
             }
 
             // =========================================================================
-            // АУТЕНТИФИКАЦИЯ
+            // АУТЕНТИФИКАЦИЯ (Supabase таблица app_users)
             // =========================================================================
+            async function hashPassword(password) {
+                const msgBuffer = new TextEncoder().encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
             function getUserIdentifier() {
                 if (currentAuthUser && currentAuthUser.username) return `@${currentAuthUser.username}`;
                 if (currentUser.username) return `@${currentUser.username}`;
@@ -575,9 +475,13 @@
             }
             let userIdentifier = getUserIdentifier();
 
-            function checkAuth() {
-                if (!currentAuthUser) showAuthScreen();
-                else { userIdentifier = `@${currentAuthUser.username}`; initApp(); }
+            async function checkAuth() {
+                if (!currentAuthUser) {
+                    showAuthScreen();
+                } else {
+                    userIdentifier = `@${currentAuthUser.username}`;
+                    await initApp();
+                }
             }
 
             function showAuthScreen() {
@@ -623,62 +527,64 @@
                         if (!username || !password) { errorEl.textContent = 'Заполните все поля'; return; }
 
                         try {
+                            const hashedPassword = await hashPassword(password);
                             if (mode === 'login') {
-                                const users = await dbSelect('custom_users', { eq: { username: username } });
-                                if (!users.length || users[0].password !== password) {
+                                const { data, error } = await supabase
+                                    .from('app_users')
+                                    .select('*')
+                                    .eq('username', username)
+                                    .maybeSingle();
+                                if (error) throw error;
+                                if (!data || data.password_hash !== hashedPassword) {
                                     errorEl.textContent = 'Неверный логин или пароль';
                                     return;
                                 }
-                                currentAuthUser = users[0];
+                                if (data.banned) {
+                                    showBanScreen();
+                                    return;
+                                }
+                                currentAuthUser = data;
                                 localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
                                 userIdentifier = `@${currentAuthUser.username}`;
                                 playSfx('success');
                                 container.innerHTML = '';
-                                await ensureUserRecord(username);
-                                initApp(true);
+                                await initApp(true);
                             } else {
-                                const existing = await dbSelect('custom_users', { eq: { username: username } });
-                                if (existing.length) { errorEl.textContent = 'Такой пользователь уже существует'; return; }
-                                const newUser = { username, password, created_at: new Date().toISOString() };
-                                const inserted = await dbInsert('custom_users', newUser);
+                                const { data: existing } = await supabase
+                                    .from('app_users')
+                                    .select('id')
+                                    .eq('username', username)
+                                    .maybeSingle();
+                                if (existing) { errorEl.textContent = 'Такой пользователь уже существует'; return; }
+                                const newUser = {
+                                    username: username,
+                                    password_hash: hashedPassword,
+                                    banned: false,
+                                    is_admin: username === OWNER_USERNAME,
+                                    created_at: new Date().toISOString()
+                                };
+                                const { data: inserted, error: insertErr } = await supabase
+                                    .from('app_users')
+                                    .insert(newUser)
+                                    .select()
+                                    .single();
+                                if (insertErr) throw insertErr;
                                 currentAuthUser = inserted;
                                 localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
                                 userIdentifier = `@${currentAuthUser.username}`;
                                 playSfx('success');
                                 container.innerHTML = '';
-                                await ensureUserRecord(username);
-                                initApp(true);
+                                await initApp(true);
                             }
                         } catch (e) {
                             console.error('Auth error:', e);
-                            errorEl.textContent = 'Ошибка соединения. Попробуйте ещё раз.';
+                            errorEl.textContent = 'Ошибка соединения с сервером. Попробуйте ещё раз.';
                         }
                     });
                 }
                 renderAuthForm();
             }
 
-            async function ensureUserRecord(username) {
-                const isOwner = username === OWNER_USERNAME;
-                try {
-                    const users = await dbSelect('users', { eq: { username: username } });
-                    if (!users.length) {
-                        await dbInsert('users', {
-                            id: currentUser.id.toString(),
-                            username: username,
-                            display_name: username,
-                            banned: false,
-                            is_admin: isOwner
-                        });
-                    } else if (isOwner && !users[0].is_admin) {
-                        await dbUpdate('users', users[0].id, { is_admin: true });
-                    }
-                } catch (e) { console.warn('ensureUserRecord error', e); }
-            }
-
-            // =========================================================================
-            // ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
-            // =========================================================================
             async function initApp(isFirstLogin = false) {
                 await loadCurrentUserData();
                 checkTutorials(isFirstLogin);
@@ -686,22 +592,20 @@
             }
 
             async function loadCurrentUserData() {
-                const identifier = currentAuthUser ? currentAuthUser.username : currentUser.id.toString();
                 try {
-                    const users = await dbSelect('users', { eq: { username: identifier } });
-                    if (users.length) {
-                        currentUserData = users[0];
-                        isAdmin = users[0].is_admin || (identifier === OWNER_USERNAME);
-                        isOwner = identifier === OWNER_USERNAME;
-                        if (users[0].banned) showBanScreen();
-                    } else {
-                        isAdmin = (identifier === OWNER_USERNAME);
-                        isOwner = isAdmin;
-                        await ensureUserRecord(identifier);
-                    }
+                    const { data, error } = await supabase
+                        .from('app_users')
+                        .select('*')
+                        .eq('id', currentAuthUser.id)
+                        .single();
+                    if (error) throw error;
+                    currentUserData = data;
+                    isAdmin = data.is_admin || (data.username === OWNER_USERNAME);
+                    isOwner = data.username === OWNER_USERNAME;
+                    if (data.banned) showBanScreen();
                 } catch (e) {
                     console.warn('loadCurrentUserData error', e);
-                    isAdmin = (identifier === OWNER_USERNAME);
+                    isAdmin = currentAuthUser?.username === OWNER_USERNAME;
                     isOwner = isAdmin;
                 }
                 if (isAdmin) document.getElementById('adminNavBtn').classList.remove('hidden');
@@ -722,7 +626,7 @@
             // =========================================================================
             function checkTutorials(isFirstLogin = false) {
                 if (!currentAuthUser) return;
-                const userKey = currentAuthUser.username;
+                const userKey = currentAuthUser.id;
                 const tutorialDone = localStorage.getItem(`arizona_${userKey}_tutorial_completed`) === '1';
                 if (isFirstLogin || !tutorialDone) showUserTutorial(userKey);
             }
@@ -781,7 +685,7 @@
             }
             function showAdminTutorial() {
                 if (!currentAuthUser) return;
-                const userKey = currentAuthUser.username;
+                const userKey = currentAuthUser.id;
                 const slides = [
                     { title: '🔧 Админ-панель', text: 'Здесь вы управляете объявлениями: одобрение, отклонение, редактирование.', timer: 30 },
                     { title: '📨 Апелляции', text: 'Вы можете одобрять или отклонять апелляции пользователей.', timer: 30 },
@@ -836,7 +740,7 @@
                 if (section === 'send') { populateSendForm(); loadMyAds(); }
                 if (section === 'admin') {
                     loadAdminPanel();
-                    const adminTutDone = localStorage.getItem(`arizona_${currentAuthUser.username}_admin_tutorial_completed`) === '1';
+                    const adminTutDone = localStorage.getItem(`arizona_${currentAuthUser.id}_admin_tutorial_completed`) === '1';
                     if (isAdmin && !adminTutDone) showAdminTutorial();
                 }
                 if (section === 'all') loadAllTiles();
@@ -868,9 +772,11 @@
                 const container = document.getElementById('homeFeed');
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    let query = { eq: { status: 'approved' }, order: { by: 'created_at', asc: false } };
-                    if (currentFilterCategory) query.eq.category = currentFilterCategory;
-                    homeAds = await dbSelect('ads', query);
+                    let query = supabase.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false });
+                    if (currentFilterCategory) query = query.eq('category', currentFilterCategory);
+                    const { data, error } = await withTimeout(query);
+                    if (error) throw error;
+                    homeAds = data || [];
                     renderHomeFeed();
                 } catch (e) {
                     console.warn('loadHomeFeed error', e);
@@ -920,12 +826,21 @@
                 if (!currentAuthUser) { container.innerHTML = '<div class="empty-state">Корзина пуста</div>'; return; }
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    const userId = currentAuthUser.username;
-                    const favs = await dbSelect('favorites', { eq: { user_id: userId } });
+                    const userId = currentAuthUser.id.toString();
+                    const { data: favs, error: favErr } = await supabase
+                        .from('favorites')
+                        .select('ad_id')
+                        .eq('user_id', userId);
+                    if (favErr) throw favErr;
                     const adIds = favs.map(f => f.ad_id);
                     if (!adIds.length) { container.innerHTML = '<div class="empty-state">Корзина пуста</div>'; return; }
-                    cartAds = await dbSelect('ads', { in: { id: adIds } });
-                    cartAds.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    const { data: ads, error: adsErr } = await supabase
+                        .from('ads')
+                        .select('*')
+                        .in('id', adIds)
+                        .order('created_at', { ascending: false });
+                    if (adsErr) throw adsErr;
+                    cartAds = ads || [];
                     if (!cartAds.length) { container.innerHTML = '<div class="empty-state">Корзина пуста</div>'; return; }
                     let html = '';
                     cartAds.forEach(ad => {
@@ -950,8 +865,7 @@
                         btn.addEventListener('click', async (e) => {
                             e.stopPropagation();
                             const adId = btn.dataset.removeCart;
-                            const favs = await dbSelect('favorites', { eq: { user_id: userId, ad_id: adId } });
-                            if (favs.length) await dbDelete('favorites', favs[0].id);
+                            await supabase.from('favorites').delete().eq('user_id', userId).eq('ad_id', adId);
                             playSfx('click');
                             loadCart();
                         });
@@ -998,7 +912,7 @@
                     status: 'pending', created_at: new Date().toISOString()
                 };
                 try {
-                    await dbInsert('ads', newAd);
+                    await supabase.from('ads').insert(newAd);
                     playSfx('success');
                     showAlert('Успех', 'Объявление отправлено на модерацию', 'success');
                     document.getElementById('sendName').value = '';
@@ -1014,7 +928,13 @@
                 if (!currentAuthUser) { container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>'; return; }
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    myAds = await dbSelect('ads', { eq: { author_id: userIdentifier }, order: { by: 'created_at', asc: false } });
+                    const { data, error } = await supabase
+                        .from('ads')
+                        .select('*')
+                        .eq('author_id', userIdentifier)
+                        .order('created_at', { ascending: false });
+                    if (error) throw error;
+                    myAds = data || [];
                     if (!myAds.length) { container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>'; return; }
                     let html = '';
                     myAds.forEach(ad => {
@@ -1045,9 +965,8 @@
                             e.stopPropagation();
                             const id = btn.dataset.permanentDelete;
                             showConfirm('Удаление', 'Стереть объявление из базы навсегда?', async () => {
-                                await dbDelete('ads', id);
-                                const favs = await dbSelect('favorites', { eq: { ad_id: id } });
-                                for (let f of favs) await dbDelete('favorites', f.id);
+                                await supabase.from('ads').delete().eq('id', id);
+                                await supabase.from('favorites').delete().eq('ad_id', id);
                                 playSfx('click');
                                 loadMyAds();
                             });
@@ -1067,8 +986,22 @@
                 if (!isAdmin) { container.innerHTML = '<div class="empty-state">Нет доступа</div>'; return; }
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    pendingAds = await dbSelect('ads', { eq: { status: 'pending' }, order: { by: 'created_at', asc: false } });
-                    pendingAppeals = await dbSelect('appeals', { eq: { status: 'pending' }, order: { by: 'created_at', asc: false } });
+                    const { data: pendingData, error: pendingErr } = await supabase
+                        .from('ads')
+                        .select('*')
+                        .eq('status', 'pending')
+                        .order('created_at', { ascending: false });
+                    if (pendingErr) throw pendingErr;
+                    pendingAds = pendingData || [];
+
+                    const { data: appealsData, error: appealsErr } = await supabase
+                        .from('appeals')
+                        .select('*')
+                        .eq('status', 'pending')
+                        .order('created_at', { ascending: false });
+                    if (appealsErr) throw appealsErr;
+                    pendingAppeals = appealsData || [];
+
                     let html = '<h3>Объявления на модерации</h3>';
                     if (!pendingAds.length) html += '<div class="empty-state">Нет объявлений</div>';
                     else pendingAds.forEach(ad => {
@@ -1084,6 +1017,7 @@
                             </div>
                         `;
                     });
+
                     html += '<h3 style="margin-top:20px;">Апелляции</h3>';
                     if (!pendingAppeals.length) html += '<div class="empty-state">Нет апелляций</div>';
                     else pendingAppeals.forEach(appeal => {
@@ -1100,6 +1034,7 @@
                             </div>
                         `;
                     });
+
                     if (isOwner) {
                         html += `
                             <h3 style="margin-top:20px;">Управление пользователями</h3>
@@ -1118,13 +1053,13 @@
                     container.innerHTML = html;
                     container.querySelectorAll('[data-approve]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            await dbUpdate('ads', btn.dataset.approve, { status: 'approved' });
+                            await supabase.from('ads').update({ status: 'approved' }).eq('id', btn.dataset.approve);
                             playSfx('success'); loadAdminPanel(); loadHomeFeed();
                         });
                     });
                     container.querySelectorAll('[data-reject]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            await dbUpdate('ads', btn.dataset.reject, { status: 'deleted' });
+                            await supabase.from('ads').update({ status: 'deleted' }).eq('id', btn.dataset.reject);
                             playSfx('click'); loadAdminPanel();
                         });
                     });
@@ -1136,13 +1071,13 @@
                     });
                     container.querySelectorAll('[data-approve-appeal]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            await dbUpdate('appeals', btn.dataset.approveAppeal, { status: 'approved' });
+                            await supabase.from('appeals').update({ status: 'approved' }).eq('id', btn.dataset.approveAppeal);
                             playSfx('success'); loadAdminPanel();
                         });
                     });
                     container.querySelectorAll('[data-reject-appeal]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            await dbUpdate('appeals', btn.dataset.rejectAppeal, { status: 'rejected' });
+                            await supabase.from('appeals').update({ status: 'rejected' }).eq('id', btn.dataset.rejectAppeal);
                             playSfx('click'); loadAdminPanel();
                         });
                     });
@@ -1153,10 +1088,8 @@
                         document.getElementById('adminRemoveAdminBtn').addEventListener('click', () => adminUserAction('remove_admin'));
                         document.getElementById('adminClearFeedBtn').addEventListener('click', async () => {
                             showConfirm('Очистка', 'Удалить ВСЕ объявления из ленты?', async () => {
-                                const allAds = await dbSelect('ads');
-                                for (let ad of allAds) await dbDelete('ads', ad.id);
-                                const allFavs = await dbSelect('favorites');
-                                for (let f of allFavs) await dbDelete('favorites', f.id);
+                                await supabase.from('ads').delete().neq('id', 0);
+                                await supabase.from('favorites').delete().neq('id', 0);
                                 playSfx('click'); loadAdminPanel(); loadHomeFeed();
                             });
                         });
@@ -1168,9 +1101,11 @@
                 const target = document.getElementById('adminUsernameInput').value.trim();
                 if (!target) { showAlert('Ошибка', 'Введите username или ID'); return; }
                 try {
-                    let users;
-                    if (!isNaN(target)) users = await dbSelect('users', { eq: { id: target } });
-                    else users = await dbSelect('users', { eq: { username: target } });
+                    let query = supabase.from('app_users').select('*');
+                    if (!isNaN(target)) query = query.eq('id', target);
+                    else query = query.eq('username', target);
+                    const { data: users, error } = await query;
+                    if (error) throw error;
                     if (!users.length) { showAlert('Ошибка', 'Пользователь не найден'); return; }
                     const user = users[0];
                     let updates = {};
@@ -1178,7 +1113,7 @@
                     else if (action === 'unban') updates.banned = false;
                     else if (action === 'make_admin') updates.is_admin = true;
                     else if (action === 'remove_admin') updates.is_admin = false;
-                    await dbUpdate('users', user.id, updates);
+                    await supabase.from('app_users').update(updates).eq('id', user.id);
                     playSfx('success'); showAlert('Успех', 'Действие выполнено'); loadAdminPanel();
                 } catch (e) { showAlert('Ошибка', 'Не удалось выполнить'); }
             }
@@ -1199,7 +1134,7 @@
                     const images = document.getElementById('editAdminImgs').value.trim();
                     const linkCheck = checkLinksString(images);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbUpdate('ads', ad.id, { item_name, price, description, images, status: 'approved' });
+                    await supabase.from('ads').update({ item_name, price, description, images, status: 'approved' }).eq('id', ad.id);
                     playSfx('success');
                     document.getElementById('modalOverlay').remove();
                     loadAdminPanel(); loadHomeFeed();
@@ -1249,13 +1184,12 @@
                     const cartBtn = document.getElementById('detailCartToggleBtn');
                     cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 В корзину';
                     cartBtn.addEventListener('click', async () => {
-                        const userId = currentAuthUser.username;
+                        const userId = currentAuthUser.id.toString();
                         if (isFav) {
-                            const favs = await dbSelect('favorites', { eq: { user_id: userId, ad_id: ad.id } });
-                            if (favs.length) await dbDelete('favorites', favs[0].id);
+                            await supabase.from('favorites').delete().eq('user_id', userId).eq('ad_id', ad.id);
                             cartBtn.textContent = '🛒 В корзину';
                         } else {
-                            await dbInsert('favorites', { user_id: userId, ad_id: ad.id });
+                            await supabase.from('favorites').insert({ user_id: userId, ad_id: ad.id });
                             cartBtn.textContent = '🛒 Убрать из корзины';
                         }
                         playSfx('click'); loadCart();
@@ -1264,7 +1198,7 @@
                     if (ad.author_id === userIdentifier) {
                         document.getElementById('detailDeleteBtn').addEventListener('click', async () => {
                             showConfirm('Удаление', 'Удалить объявление?', async () => {
-                                await dbUpdate('ads', ad.id, { status: 'deleted' });
+                                await supabase.from('ads').update({ status: 'deleted' }).eq('id', ad.id);
                                 playSfx('click'); overlay.remove(); loadHomeFeed();
                             });
                         });
@@ -1281,8 +1215,14 @@
 
             async function checkIfInCart(adId) {
                 if (!currentAuthUser) return false;
-                const favs = await dbSelect('favorites', { eq: { user_id: currentAuthUser.username, ad_id: adId } });
-                return favs.length > 0;
+                const { data, error } = await supabase
+                    .from('favorites')
+                    .select('*')
+                    .eq('user_id', currentAuthUser.id.toString())
+                    .eq('ad_id', adId)
+                    .maybeSingle();
+                if (error) return false;
+                return !!data;
             }
 
             // =========================================================================
@@ -1292,12 +1232,21 @@
                 const container = document.getElementById('detailReviewsSection');
                 if (!container) return;
                 try {
-                    const reviews = await dbSelect('reviews', { eq: { ad_id: adId }, order: { by: 'created_at', asc: false } });
-                    if (!reviews.length) { container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Отзывов пока нет</p>'; return; }
-                    const avg = reviews.reduce((s, r) => s + r.stars, 0) / reviews.length;
-                    let html = `<div style="font-size:20px;font-weight:800;margin-bottom:8px;">⭐ ${avg.toFixed(1)} (${reviews.length})</div>`;
+                    const { data: reviews, error } = await supabase
+                        .from('reviews')
+                        .select('*')
+                        .eq('ad_id', adId)
+                        .order('created_at', { ascending: false });
+                    if (error) throw error;
+                    const reviewsData = reviews || [];
+                    if (!reviewsData.length) {
+                        container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Отзывов пока нет</p>';
+                        return;
+                    }
+                    const avg = reviewsData.reduce((s, r) => s + r.stars, 0) / reviewsData.length;
+                    let html = `<div style="font-size:20px;font-weight:800;margin-bottom:8px;">⭐ ${avg.toFixed(1)} (${reviewsData.length})</div>`;
                     html += '<div class="progress-bar mb-12"><div class="progress-fill" style="width:' + (avg / 5 * 100) + '%;"></div></div>';
-                    reviews.forEach(r => {
+                    reviewsData.forEach(r => {
                         const canEdit = r.author_id === userIdentifier && (Date.now() - new Date(r.created_at).getTime()) < 7*24*60*60*1000;
                         html += `
                             <div class="review-item">
@@ -1312,35 +1261,50 @@
                     container.innerHTML = html;
                     container.querySelectorAll('[data-edit-review]').forEach(btn => {
                         btn.addEventListener('click', () => {
-                            const rev = reviews.find(r => r.id == btn.dataset.editReview);
+                            const rev = reviewsData.find(r => r.id == btn.dataset.editReview);
                             if (rev) openEditReviewModal(rev);
                         });
                     });
                     container.querySelectorAll('[data-delete-review]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            await dbDelete('reviews', btn.dataset.deleteReview);
+                            await supabase.from('reviews').delete().eq('id', btn.dataset.deleteReview);
                             playSfx('click'); loadReviews(adId);
                         });
                     });
-                } catch (e) { container.innerHTML = '<p style="color:var(--muted);">Не удалось загрузить отзывы</p>'; }
+                } catch (e) {
+                    container.innerHTML = '<p style="color:var(--muted);">Не удалось загрузить отзывы</p>';
+                }
             }
 
             async function loadSimilarAds(category, currentAdId) {
                 const container = document.getElementById('detailSimilarAds');
                 if (!container) return;
                 try {
-                    const similar = await dbSelect('ads', { eq: { status: 'approved', category: category }, order: { by: 'created_at', asc: false }, limit: 3 });
-                    const filtered = similar.filter(a => a.id != currentAdId);
-                    if (!filtered.length) { container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Похожих нет</p>'; return; }
-                    container.innerHTML = filtered.map(ad => `
+                    const { data } = await supabase
+                        .from('ads')
+                        .select('*')
+                        .eq('status', 'approved')
+                        .eq('category', category)
+                        .neq('id', currentAdId)
+                        .limit(3)
+                        .order('created_at', { ascending: false });
+                    const similar = data || [];
+                    if (!similar.length) {
+                        container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Похожих нет</p>';
+                        return;
+                    }
+                    container.innerHTML = similar.map(ad => `
                         <div class="card" data-sim="${ad.id}">
                             <span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}
                         </div>
                     `).join('');
                     container.querySelectorAll('[data-sim]').forEach(el => {
                         el.addEventListener('click', () => {
-                            const found = filtered.find(a => a.id == el.dataset.sim);
-                            if (found) { document.getElementById('modalOverlay').remove(); openAdDetail(found); }
+                            const found = similar.find(a => a.id == el.dataset.sim);
+                            if (found) {
+                                document.getElementById('modalOverlay').remove();
+                                openAdDetail(found);
+                            }
                         });
                     });
                 } catch (e) {}
@@ -1368,12 +1332,15 @@
                     const media = document.getElementById('reviewMedia').value.trim();
                     const linkCheck = checkLinksString(media);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbInsert('reviews', {
-                        ad_id: adId, author_id: userIdentifier, stars: selectedStars,
-                        text, media_links: media, created_at: new Date().toISOString()
-                    });
-                    playSfx('success'); showAlert('Успех', 'Отзыв отправлен');
-                    document.getElementById('modalOverlay').remove(); loadReviews(adId);
+                    try {
+                        await supabase.from('reviews').insert({
+                            ad_id: adId, author_id: userIdentifier, stars: selectedStars,
+                            text, media_links: media, created_at: new Date().toISOString()
+                        });
+                        playSfx('success'); showAlert('Успех', 'Отзыв отправлен');
+                        document.getElementById('modalOverlay').remove();
+                        loadReviews(adId);
+                    } catch (e) { showAlert('Ошибка', 'Не удалось отправить отзыв'); }
                 });
             }
             function updateStars(container, selected) {
@@ -1403,8 +1370,10 @@
                     const media = document.getElementById('editReviewMedia').value.trim();
                     const linkCheck = checkLinksString(media);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbUpdate('reviews', review.id, { stars: selectedStars, text, media_links: media });
-                    playSfx('success'); document.getElementById('modalOverlay').remove(); loadReviews(review.ad_id);
+                    await supabase.from('reviews').update({ stars: selectedStars, text, media_links: media }).eq('id', review.id);
+                    playSfx('success');
+                    document.getElementById('modalOverlay').remove();
+                    loadReviews(review.ad_id);
                 });
             }
 
@@ -1421,11 +1390,12 @@
                     const evidence = document.getElementById('appealEvidence').value.trim();
                     const linkCheck = checkLinksString(evidence);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbInsert('appeals', {
+                    await supabase.from('appeals').insert({
                         ad_id: appealAdId, author_id: userIdentifier, reason,
                         evidence, status: 'pending', created_at: new Date().toISOString()
                     });
-                    playSfx('success'); showAlert('Успех', 'Апелляция отправлена');
+                    playSfx('success');
+                    showAlert('Успех', 'Апелляция отправлена');
                     document.getElementById('modalOverlay').remove();
                 });
             }
@@ -1435,9 +1405,16 @@
             // =========================================================================
             async function loadGameState() {
                 if (!currentAuthUser) return;
-                const data = await dbSelect('baryga', { eq: { user_id: currentAuthUser.username } });
-                if (data.length) gameState = { ...gameState, ...data[0] };
-                else await dbInsert('baryga', { user_id: currentAuthUser.username, ...gameState });
+                const { data, error } = await supabase
+                    .from('baryga')
+                    .select('*')
+                    .eq('user_id', currentAuthUser.id.toString())
+                    .maybeSingle();
+                if (error) console.warn('loadGameState error', error);
+                if (data) gameState = { ...gameState, ...data };
+                else {
+                    await supabase.from('baryga').insert({ user_id: currentAuthUser.id.toString(), ...gameState });
+                }
             }
             function openBarygaGame() {
                 loadGameState().then(() => {
@@ -1517,14 +1494,17 @@
             }
             async function saveGameState() {
                 if (!currentAuthUser) return;
-                const data = await dbSelect('baryga', { eq: { user_id: currentAuthUser.username } });
-                if (data.length) await dbUpdate('baryga', data[0].id, {
-                    money: gameState.money, click_power: gameState.clickPower, click_cost: gameState.clickCost,
-                    auto_income: gameState.autoIncome, auto_cost: gameState.autoCost, pro_cost: gameState.proCost,
-                    shop_cost: gameState.shopCost, elite_cost: gameState.eliteCost, oil_cost: gameState.oilCost,
-                    crypto_cost: gameState.cryptoCost, scrap_cost: gameState.scrapCost
-                });
-                else await dbInsert('baryga', { user_id: currentAuthUser.username, ...gameState });
+                const { data } = await supabase.from('baryga').select('id').eq('user_id', currentAuthUser.id.toString()).single();
+                if (data) {
+                    await supabase.from('baryga').update({
+                        money: gameState.money, click_power: gameState.clickPower, click_cost: gameState.clickCost,
+                        auto_income: gameState.autoIncome, auto_cost: gameState.autoCost, pro_cost: gameState.proCost,
+                        shop_cost: gameState.shopCost, elite_cost: gameState.eliteCost, oil_cost: gameState.oilCost,
+                        crypto_cost: gameState.cryptoCost, scrap_cost: gameState.scrapCost
+                    }).eq('id', data.id);
+                } else {
+                    await supabase.from('baryga').insert({ user_id: currentAuthUser.id.toString(), ...gameState });
+                }
             }
 
             // =========================================================================
@@ -1556,15 +1536,22 @@
                 input.addEventListener('input', async () => {
                     const q = input.value.trim().toLowerCase();
                     if (!q) { suggestions.innerHTML = ''; results.innerHTML = ''; return; }
-                    const items = await dbSelect('ads', { eq: { status: 'approved' }, limit: 5 });
-                    const filtered = items.filter(a => a.item_name && a.item_name.toLowerCase().includes(q));
-                    suggestions.innerHTML = filtered.map(ad => `<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('');
+                    const { data, error } = await supabase
+                        .from('ads')
+                        .select('*')
+                        .eq('status', 'approved')
+                        .ilike('item_name', `%${q}%`)
+                        .limit(5);
+                    if (error) return;
+                    const items = data || [];
+                    suggestions.innerHTML = items.map(ad => `<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('');
                     suggestions.querySelectorAll('[data-sug]').forEach(el => {
                         el.addEventListener('click', () => {
-                            const ad = filtered.find(a => a.id == el.dataset.sug);
+                            const ad = items.find(a => a.id == el.dataset.sug);
                             if (ad) {
                                 if (!searchHistory.includes(q)) { searchHistory.unshift(q); if (searchHistory.length > 10) searchHistory.pop(); localStorage.setItem('searchHistory', JSON.stringify(searchHistory)); }
-                                document.getElementById('modalOverlay').remove(); openAdDetail(ad);
+                                document.getElementById('modalOverlay').remove();
+                                openAdDetail(ad);
                             }
                         });
                     });
@@ -1572,13 +1559,23 @@
                 document.getElementById('searchItemBtn').addEventListener('click', async () => {
                     const q = input.value.trim().toLowerCase();
                     if (!q) return;
-                    const items = await dbSelect('ads', { eq: { status: 'approved' } });
-                    const filtered = items.filter(a => a.item_name && a.item_name.toLowerCase().includes(q));
-                    if (!filtered.length) { results.innerHTML = '<div class="empty-state">Ничего не найдено</div>'; return; }
-                    results.innerHTML = filtered.map(ad => `<div class="card" data-res-id="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
+                    const { data, error } = await supabase
+                        .from('ads')
+                        .select('*')
+                        .eq('status', 'approved')
+                        .ilike('item_name', `%${q}%`);
+                    if (error) return;
+                    const items = data || [];
+                    if (!items.length) { results.innerHTML = '<div class="empty-state">Ничего не найдено</div>'; return; }
+                    results.innerHTML = items.map(ad => `
+                        <div class="card" data-res-id="${ad.id}">
+                            <div style="font-weight:700;">${ad.item_name}</div>
+                            <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                        </div>
+                    `).join('');
                     results.querySelectorAll('[data-res-id]').forEach(card => {
                         card.addEventListener('click', () => {
-                            const ad = filtered.find(a => a.id == card.dataset.resId);
+                            const ad = items.find(a => a.id == card.dataset.resId);
                             if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
                         });
                     });
@@ -1592,10 +1589,21 @@
             async function openProfileModal(authorId) {
                 showModal(`<h3 class="modal-title">👤 Профиль: ${authorId}</h3><div id="profileAdsList"><div class="empty-state">Загрузка...</div></div>`);
                 try {
-                    const ads = await dbSelect('ads', { eq: { status: 'approved', author_id: authorId } });
+                    const { data } = await supabase
+                        .from('ads')
+                        .select('*')
+                        .eq('status', 'approved')
+                        .eq('author_id', authorId)
+                        .order('created_at', { ascending: false });
+                    const ads = data || [];
                     const container = document.getElementById('profileAdsList');
                     if (!ads.length) { container.innerHTML = '<div class="empty-state">Нет активных объявлений</div>'; return; }
-                    container.innerHTML = ads.map(ad => `<div class="card" data-prof-ad="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
+                    container.innerHTML = ads.map(ad => `
+                        <div class="card" data-prof-ad="${ad.id}">
+                            <div style="font-weight:700;">${ad.item_name}</div>
+                            <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                        </div>
+                    `).join('');
                     container.querySelectorAll('[data-prof-ad]').forEach(card => {
                         card.addEventListener('click', () => {
                             const ad = ads.find(a => a.id == card.dataset.profAd);
@@ -1648,7 +1656,9 @@
                     const desc = document.getElementById('lookDesc').value.trim();
                     const linkCheck = checkLinksString(img);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await dbInsert('looks', { author_id: userIdentifier, image_url: img, description: desc, created_at: new Date().toISOString() });
+                    await supabase.from('looks').insert({
+                        author_id: userIdentifier, image_url: img, description: desc, created_at: new Date().toISOString()
+                    });
                     playSfx('success');
                     document.getElementById('lookImg').value = '';
                     document.getElementById('lookDesc').value = '';
@@ -1658,7 +1668,9 @@
             async function loadLooksFeed() {
                 const container = document.getElementById('looksList');
                 if (!container) return;
-                const looks = await dbSelect('looks', { order: { by: 'created_at', asc: false } });
+                const { data, error } = await supabase.from('looks').select('*').order('created_at', { ascending: false });
+                if (error) { container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; return; }
+                const looks = data || [];
                 if (!looks.length) { container.innerHTML = '<div class="empty-state">Образов пока нет</div>'; return; }
                 container.innerHTML = looks.map(l => `
                     <div class="card">
@@ -1670,7 +1682,7 @@
                 `).join('');
                 container.querySelectorAll('[data-delete-look]').forEach(btn => {
                     btn.addEventListener('click', async () => {
-                        await dbDelete('looks', btn.dataset.deleteLook);
+                        await supabase.from('looks').delete().eq('id', btn.dataset.deleteLook);
                         playSfx('click'); loadLooksFeed();
                     });
                 });
@@ -1689,7 +1701,9 @@
                     const target = document.getElementById('compTarget').value.trim();
                     const contact = document.getElementById('compContact').value.trim();
                     if (!target || !contact) { showAlert('Ошибка', 'Заполните все поля'); return; }
-                    await dbInsert('companions', { author_id: userIdentifier, target, contact, created_at: new Date().toISOString() });
+                    await supabase.from('companions').insert({
+                        author_id: userIdentifier, target, contact, created_at: new Date().toISOString()
+                    });
                     playSfx('success');
                     document.getElementById('compTarget').value = '';
                     document.getElementById('compContact').value = '';
@@ -1699,7 +1713,9 @@
             async function loadCompanionsFeed() {
                 const container = document.getElementById('companionsList');
                 if (!container) return;
-                const comps = await dbSelect('companions', { order: { by: 'created_at', asc: false } });
+                const { data, error } = await supabase.from('companions').select('*').order('created_at', { ascending: false });
+                if (error) { container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>'; return; }
+                const comps = data || [];
                 if (!comps.length) { container.innerHTML = '<div class="empty-state">Заявок нет</div>'; return; }
                 container.innerHTML = comps.map(c => `
                     <div class="card">
@@ -1710,7 +1726,7 @@
                 `).join('');
                 container.querySelectorAll('[data-delete-comp]').forEach(btn => {
                     btn.addEventListener('click', async () => {
-                        await dbDelete('companions', btn.dataset.deleteComp);
+                        await supabase.from('companions').delete().eq('id', btn.dataset.deleteComp);
                         playSfx('click'); loadCompanionsFeed();
                     });
                 });

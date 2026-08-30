@@ -2,1528 +2,2624 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arizona RP — Маркетплейс</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Arizona RP</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg-color: #FFFFFF;
-            --card-bg: #FFFFFF;
-            --border-color: #E8E8EC;
-            --accent-color: #005BFF;
-            --gold-color: #FF9900;
-            --text-color: #1A1A1A;
-            --muted-color: #8A8A8E;
-            --button-text: #FFFFFF;
-            --card-shadow: 0 2px 12px rgba(0,0,0,0.08);
-            --nav-bg: #FFFFFF;
+            --bg: #FFFFFF;
+            --card: #FFFFFF;
+            --border: #E8E8EC;
+            --accent: #005BFF;
+            --gold: #FF9900;
+            --text: #1A1A1A;
+            --muted: #8A8A8E;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+            --container-width: 480px;
+            --nav-height: 60px;
+            --header-height: 56px;
+            --font: 'Montserrat', sans-serif;
         }
         [data-theme="dark"] {
-            --bg-color: #1C1C1E;
-            --card-bg: #2C2C2E;
-            --border-color: #3A3A3C;
-            --accent-color: #0A84FF;
-            --gold-color: #FFD60A;
-            --text-color: #FFFFFF;
-            --muted-color: #A0A0A5;
-            --button-text: #FFFFFF;
-            --card-shadow: 0 2px 12px rgba(0,0,0,0.3);
-            --nav-bg: #2C2C2E;
+            --bg: #1C1C1E;
+            --card: #2C2C2E;
+            --border: #3A3A3C;
+            --accent: #0A84FF;
+            --gold: #FFD60A;
+            --text: #FFFFFF;
+            --muted: #A0A0A5;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
         }
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Montserrat', sans-serif;
             -webkit-tap-highlight-color: transparent;
+            font-family: var(--font);
         }
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
             overflow-x: hidden;
-            transition: background-color 0.3s, color 0.3s;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
-        #app-container {
-            width: 100%;
-            max-width: 480px;
-            height: 100vh;
-            max-height: 100vh;
-            background-color: var(--bg-color);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            overflow: hidden;
+        .container {
+            max-width: var(--container-width);
+            margin: 0 auto;
+            padding: 0 12px;
+            padding-top: calc(var(--header-height) + 10px);
+            padding-bottom: calc(var(--nav-height) + 20px);
+            transition: max-width 0.3s;
         }
         @media (min-width: 768px) {
-            #app-container {
-                max-width: 1200px;
-                border-radius: 16px;
-                height: 90vh;
-                max-height: 900px;
+            :root {
+                --container-width: 720px;
+            }
+            .ads-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            .ad-card {
+                width: 100%;
             }
         }
-        /* Header */
-        header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            background-color: var(--card-bg);
-            border-bottom: 1px solid var(--border-color);
-            z-index: 10;
+        @media (min-width: 1024px) {
+            :root {
+                --container-width: 1200px;
+            }
+            .ads-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
-        .logo-area {
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
+            padding: 8px 12px;
+            height: var(--header-height);
             gap: 8px;
-            cursor: pointer;
+            transition: background 0.3s, border-color 0.3s;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
-        .logo-area img {
+        .header-logo {
             width: 32px;
             height: 32px;
-            border-radius: 8px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            cursor: pointer;
+            transition: transform 0.2s;
         }
-        .logo-area span {
-            font-weight: 700;
-            font-size: 16px;
-            color: var(--text-color);
+        .header-logo:active {
+            transform: scale(0.9);
         }
-        .search-input {
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .header-title {
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--text);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .header-search {
             flex: 1;
-            margin: 0 12px;
+            min-width: 0;
+        }
+        .header-search input {
+            width: 100%;
             padding: 8px 12px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
             font-size: 14px;
             outline: none;
+            transition: border-color 0.3s, background 0.3s, color 0.3s;
+        }
+        .header-search input::placeholder {
+            color: var(--muted);
+        }
+        .header-search input:focus {
+            border-color: var(--accent);
         }
         .theme-toggle {
             background: none;
             border: none;
-            font-size: 20px;
+            font-size: 22px;
             cursor: pointer;
             padding: 4px;
-        }
-        /* Main Content */
-        .content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            position: relative;
-            scroll-behavior: smooth;
-        }
-        .feed-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-        @media (min-width: 768px) {
-            .feed-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        @media (min-width: 1024px) {
-            .feed-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        /* Ad Card */
-        .ad-card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            gap: 12px;
-            box-shadow: var(--card-shadow);
-            cursor: pointer;
-            transition: transform 0.2s;
-            position: relative;
-        }
-        .ad-card:active {
-            transform: scale(0.98);
-        }
-        .ad-image {
-            width: 80px;
-            height: 80px;
             border-radius: 8px;
-            object-fit: cover;
-            background-color: var(--border-color);
+            transition: transform 0.2s;
+            flex-shrink: 0;
         }
-        @media (min-width: 768px) {
-            .ad-image {
-                width: 120px;
-                height: 120px;
-            }
+        .theme-toggle:active {
+            transform: scale(0.9);
         }
-        .ad-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .ad-badges {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-            margin-bottom: 4px;
-        }
-        .badge {
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-        .badge-type { background-color: var(--accent-color); color: white; }
-        .badge-server { background-color: var(--gold-color); color: #000; }
-        .badge-category { background-color: var(--border-color); color: var(--text-color); }
-        .ad-title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 4px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .ad-price {
-            font-weight: 700;
-            font-size: 16px;
-            color: var(--gold-color);
-        }
-        .ad-footer {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: var(--muted-color);
-            margin-top: 4px;
-        }
-        /* Bottom Navigation */
-        .bottom-nav {
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-around;
             align-items: center;
-            background-color: var(--nav-bg);
-            border-top: 1px solid var(--border-color);
-            padding: 8px 0;
-            height: 60px;
-            z-index: 10;
+            height: var(--nav-height);
+            padding-bottom: env(safe-area-inset-bottom);
+            transition: background 0.3s, border-color 0.3s;
         }
         .nav-item {
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            gap: 2px;
             background: none;
             border: none;
-            cursor: pointer;
+            color: var(--muted);
             font-size: 10px;
-            color: var(--muted-color);
-            gap: 2px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: color 0.3s, transform 0.2s, background 0.2s;
             flex: 1;
+            max-width: 80px;
         }
-        .nav-item span.icon {
-            font-size: 20px;
+        .nav-item .nav-icon {
+            font-size: 22px;
+            line-height: 1;
         }
         .nav-item.active {
-            color: var(--accent-color);
+            color: var(--accent);
+            background: rgba(0, 91, 255, 0.08);
         }
-        /* Modals & Overlays */
+        .nav-item:active {
+            transform: scale(0.92);
+        }
+        .section {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+        .section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s;
+            cursor: pointer;
+        }
+        .card:active {
+            transform: scale(0.98);
+        }
+        .ad-card {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .ad-card-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+        .ad-card-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .ad-card-title {
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ad-card-price {
+            font-weight: 800;
+            font-size: 16px;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .ad-card-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+        .badge {
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            background: var(--border);
+            color: var(--text);
+            white-space: nowrap;
+        }
+        .badge.sell {
+            background: #34c759;
+            color: #fff;
+        }
+        .badge.buy {
+            background: #ff9500;
+            color: #fff;
+        }
+        .badge.server {
+            background: var(--gold);
+            color: #1a1a1a;
+        }
+        .badge.category {
+            background: var(--accent);
+            color: #fff;
+        }
+        .badge.status-pending {
+            background: #ffcc00;
+            color: #1a1a1a;
+        }
+        .badge.status-deleted {
+            background: #ff3b30;
+            color: #fff;
+        }
+        .badge.status-approved {
+            background: #34c759;
+            color: #fff;
+        }
+        .ad-card-author {
+            font-size: 11px;
+            color: var(--muted);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 18px;
+            border-radius: var(--radius);
+            border: none;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s, background 0.3s;
+            touch-action: manipulation;
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn.secondary {
+            background: var(--border);
+            color: var(--text);
+        }
+        .btn.danger {
+            background: #ff3b30;
+            color: #fff;
+        }
+        .btn.gold {
+            background: var(--gold);
+            color: #1a1a1a;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
         .modal-overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 200;
             display: flex;
+            align-items: center;
             justify-content: center;
-            align-items: flex-end;
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
+            animation: fadeIn 0.2s;
+            padding: 16px;
         }
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .modal-content {
-            background-color: var(--card-bg);
+        .modal {
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
             width: 100%;
-            max-height: 90vh;
-            border-radius: 20px 20px 0 0;
+            max-width: 520px;
+            max-height: 85vh;
+            overflow-y: auto;
             padding: 20px;
+            position: relative;
+            animation: slideUp 0.3s ease;
+            transition: background 0.3s, border-color 0.3s;
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--muted);
+            padding: 4px;
+            line-height: 1;
+            z-index: 5;
+            transition: transform 0.2s;
+        }
+        .modal-close:active {
+            transform: scale(0.9);
+        }
+        .modal-title {
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 16px;
+            padding-right: 30px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+            color: var(--muted);
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s, background 0.3s, color 0.3s;
+            font-family: var(--font);
+        }
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: var(--accent);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--muted);
+            font-weight: 500;
+        }
+        .tutorial-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg);
+            z-index: 300;
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            overflow-y: auto;
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.1, 1, 0.1, 1);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+            transition: background 0.3s;
         }
-        .modal-overlay.active .modal-content {
-            transform: translateY(0);
+        .tutorial-slide {
+            max-width: 420px;
+            width: 100%;
         }
-        @media (min-width: 768px) {
-            .modal-overlay {
-                align-items: center;
-            }
-            .modal-content {
-                width: 600px;
-                border-radius: 20px;
-                max-height: 80vh;
-            }
+        .tutorial-slide h2 {
+            font-weight: 900;
+            font-size: 24px;
+            margin-bottom: 12px;
         }
-        .modal-header {
+        .tutorial-slide p {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg);
+            z-index: 400;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 24px;
+            text-align: center;
+            transition: background 0.3s;
+        }
+        .star-rating {
+            display: flex;
+            gap: 4px;
+            font-size: 28px;
+            cursor: pointer;
+        }
+        .star-rating span {
+            color: var(--border);
+            transition: color 0.2s, transform 0.2s;
+        }
+        .star-rating span.active {
+            color: var(--gold);
+        }
+        .star-rating span:hover {
+            transform: scale(1.2);
+        }
+        .review-item {
+            border-bottom: 1px solid var(--border);
+            padding: 10px 0;
+        }
+        .review-item:last-child {
+            border-bottom: none;
+        }
+        .game-click-area {
+            width: 100%;
+            max-width: 250px;
+            aspect-ratio: 1;
+            margin: 0 auto 20px;
+            cursor: pointer;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid var(--border);
+            transition: transform 0.1s, border-color 0.3s;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .game-click-area:active {
+            transform: scale(0.92);
+        }
+        .game-click-area img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+        .upgrade-card {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            background: var(--card);
+            transition: background 0.3s, border-color 0.3s;
+        }
+        .upgrade-info {
+            flex: 1;
+        }
+        .upgrade-name {
             font-weight: 700;
-            font-size: 18px;
-        }
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 20px;
-            color: var(--muted-color);
-            cursor: pointer;
-        }
-        /* Buttons & Forms */
-        .btn {
-            background-color: var(--accent-color);
-            color: var(--button-text);
-            border: none;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-weight: 600;
             font-size: 14px;
-            cursor: pointer;
-            text-align: center;
-            transition: opacity 0.2s, transform 0.1s;
         }
-        .btn:active {
-            transform: scale(0.98);
-        }
-        .btn-secondary {
-            background-color: var(--border-color);
-            color: var(--text-color);
-        }
-        .btn-danger {
-            background-color: #FF3B30;
-            color: white;
-        }
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .form-label {
+        .upgrade-cost {
             font-size: 12px;
-            font-weight: 600;
-            color: var(--muted-color);
+            color: var(--muted);
         }
-        .form-control {
-            padding: 10px 12px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-size: 14px;
-            outline: none;
+        .progress-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 6px 0;
         }
-        textarea.form-control {
-            resize: vertical;
-            min-height: 80px;
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width 0.3s;
         }
-        /* Grid Sections */
-        .sections-grid {
+        .category-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-        @media (min-width: 768px) {
-            .sections-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        .section-tile {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
-            cursor: pointer;
-            box-shadow: var(--card-shadow);
-            transition: transform 0.2s;
         }
-        .section-tile:active {
+        .category-tile {
+            padding: 12px 8px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--card);
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            transition: transform 0.2s, border-color 0.3s, background 0.3s;
+        }
+        .category-tile:active {
             transform: scale(0.95);
         }
-        .section-tile span.icon {
-            font-size: 28px;
+        .category-tile .cat-icon {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 4px;
         }
-        .section-tile span.title {
-            font-weight: 600;
+        .search-suggestion {
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
             font-size: 13px;
-            text-align: center;
+            transition: background 0.2s;
         }
-        /* Fullscreen overlays for blocks/tutorials */
-        .fullscreen-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-color);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 24px;
+        .search-suggestion:hover,
+        .search-suggestion:active {
+            background: var(--border);
+        }
+        .grid-tiles {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .grid-tile {
+            padding: 16px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--card);
             text-align: center;
-            gap: 16px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 13px;
+            transition: transform 0.2s, border-color 0.3s, background 0.3s;
+        }
+        .grid-tile:active {
+            transform: scale(0.95);
+        }
+        .grid-tile .tile-icon {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .image-gallery {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            margin-bottom: 12px;
+            scroll-snap-type: x mandatory;
+        }
+        .image-gallery img {
+            width: 200px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            scroll-snap-align: start;
+            flex-shrink: 0;
+            background: var(--border);
+        }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .admin-table th,
+        .admin-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .admin-table th {
+            font-weight: 700;
+            color: var(--muted);
+        }
+        @media (max-width: 480px) {
+            .modal {
+                padding: 16px;
+            }
+            .grid-tiles {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .category-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
         .hidden {
             display: none !important;
         }
-        /* Clicker Game */
-        .clicker-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 16px;
-        }
-        .clicker-coin {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 48px;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(255,165,0,0.4);
-            transition: transform 0.1s;
-        }
-        .clicker-coin:active {
-            transform: scale(0.9);
-        }
-        .upgrades-list {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-height: 250px;
-            overflow-y: auto;
-        }
-        .upgrade-item {
+        .flex-between {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: var(--border-color);
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 13px;
+            gap: 8px;
+        }
+        .text-muted {
+            color: var(--muted);
+        }
+        .text-accent {
+            color: var(--accent);
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .mt-12 {
+            margin-top: 12px;
+        }
+        .mb-8 {
+            margin-bottom: 8px;
+        }
+        .mb-12 {
+            margin-bottom: 12px;
+        }
+        .w-full {
+            width: 100%;
+        }
+        .gap-8 {
+            gap: 8px;
+        }
+        .gap-12 {
+            gap: 12px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .relative {
+            position: relative;
+        }
+        .overflow-hidden {
+            overflow: hidden;
         }
     </style>
 </head>
 <body>
+    <header class="header" id="appHeader">
+        <div class="header-logo" id="logoBtn">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%23005BFF'/%3E%3Ctext x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'%3EAZ%3C/text%3E%3C/svg%3E" alt="Arizona RP">
+        </div>
+        <div class="header-title">Arizona RP</div>
+        <div class="header-search">
+            <input type="text" id="globalSearchInput" placeholder="🔍 Поиск товаров" autocomplete="off">
+        </div>
+        <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">🌓</button>
+    </header>
 
-    <div id="app-container">
-        <header>
-            <div class="logo-area" onclick="openModal('modal-logo-info')">
-                <img src="https://via.placeholder.com/32" alt="Logo" id="app-logo">
-                <span>Arizona RP</span>
-            </div>
-            <input type="text" class="search-input" id="global-search-input" placeholder="🔍 Поиск товаров" onfocus="openModal('modal-search')">
-            <button class="theme-toggle" onclick="toggleTheme()" id="theme-toggle-btn">🌓</button>
-        </header>
-
-        <div class="content" id="main-content">
-            <div id="tab-home" class="tab-pane">
-                <div class="feed-grid" id="feed-container">
-                    </div>
-            </div>
-            <div id="tab-cart" class="tab-pane hidden">
-                <div class="feed-grid" id="cart-container"></div>
-            </div>
-            <div id="tab-create" class="tab-pane hidden">
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <div class="form-group">
-                        <label class="form-label">Тип сделки</label>
-                        <select class="form-control" id="create-mode">
-                            <option value="sell">Продажа</option>
-                            <option value="buy">Покупка</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Категория</label>
-                        <select class="form-control" id="create-category"></select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Название</label>
-                        <input type="text" class="form-control" id="create-title" placeholder="Например: Шар +12">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Цена</label>
-                        <input type="text" class="form-control" id="create-price" placeholder="Например: 50к, 10кк">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Описание</label>
-                        <textarea class="form-control" id="create-desc" placeholder="Описание товара..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Ссылки на скриншоты (через запятую)</label>
-                        <input type="text" class="form-control" id="create-images" placeholder="https://postimages.org/...">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Сервер</label>
-                        <select class="form-control" id="create-server"></select>
-                    </div>
-                    <button class="btn" onclick="submitAd()">Опубликовать объявление</button>
+    <main class="container" id="mainContainer">
+        <section class="section active" id="section-home">
+            <div class="ads-grid" id="homeFeed"></div>
+        </section>
+        <section class="section" id="section-cart">
+            <h2 style="margin-bottom:12px;font-weight:800;">🛒 Корзина</h2>
+            <div id="cartList"></div>
+        </section>
+        <section class="section" id="section-send">
+            <h2 style="margin-bottom:12px;font-weight:800;">➕ Отправка объявления</h2>
+            <div class="card">
+                <div class="form-group">
+                    <label>Тип сделки</label>
+                    <select id="sendType">
+                        <option value="sell">Продажа</option>
+                        <option value="buy">Покупка</option>
+                    </select>
                 </div>
-            </div>
-            <div id="tab-admin" class="tab-pane hidden">
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <h3>Модерация объявлений</h3>
-                    <div class="feed-grid" id="admin-pending-container"></div>
-                    <div id="owner-panel" class="hidden" style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                        <h3>Панель владельца</h3>
-                        <div class="form-group">
-                            <label class="form-label">Username пользователя (без @)</label>
-                            <input type="text" class="form-control" id="admin-target-user" placeholder="username">
-                        </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <button class="btn btn-danger" onclick="adminAction('ban')">Забанить</button>
-                            <button class="btn btn-secondary" onclick="adminAction('unban')">Разбанить</button>
-                            <button class="btn" onclick="adminAction('make_admin')">Сделать админом</button>
-                            <button class="btn btn-secondary" onclick="adminAction('remove_admin')">Снять админа</button>
-                        </div>
-                        <button class="btn btn-danger" onclick="adminClearFeed()" style="margin-top: 10px;">Очистить всю ленту</button>
-                    </div>
+                <div class="form-group">
+                    <label>Категория</label>
+                    <select id="sendCategory"></select>
                 </div>
-            </div>
-            <div id="tab-sections" class="tab-pane hidden">
-                <div class="sections-grid">
-                    <div class="section-tile" onclick="switchTab('tab-home'); setActiveNav(0);">
-                        <span class="icon">🏠</span>
-                        <span class="title">Главная</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-my-ads')">
-                        <span class="icon">📦</span>
-                        <span class="title">Мои объявления</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-catalog')">
-                        <span class="icon">📂</span>
-                        <span class="title">Каталог</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-clicker')">
-                        <span class="icon">🎮</span>
-                        <span class="title">Барыга</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-search')">
-                        <span class="icon">🔍</span>
-                        <span class="title">Поиск</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-looks')">
-                        <span class="icon">📸</span>
-                        <span class="title">Лента луков</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-travel')">
-                        <span class="icon">🤝</span>
-                        <span class="title">Попутчики</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-music')">
-                        <span class="icon">🎵</span>
-                        <span class="title">Музыка</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-settings')">
-                        <span class="icon">⚙️</span>
-                        <span class="title">Настройки</span>
-                    </div>
-                    <div class="section-tile" onclick="openModal('modal-manager')">
-                        <span class="icon">📩</span>
-                        <span class="title">Менеджер</span>
-                    </div>
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" id="sendName" placeholder="Введите название">
                 </div>
-            </div>
-        </div>
-
-        <nav class="bottom-nav">
-            <button class="nav-item active" onclick="switchTab('tab-home'); setActiveNav(0);">
-                <span class="icon">🏠</span>
-                <span>Главная</span>
-            </button>
-            <button class="nav-item" onclick="switchTab('tab-cart'); setActiveNav(1);">
-                <span class="icon">🛒</span>
-                <span>Корзина</span>
-            </button>
-            <button class="nav-item" onclick="switchTab('tab-create'); setActiveNav(2);">
-                <span class="icon">➕</span>
-                <span>Отправка</span>
-            </button>
-            <button class="nav-item hidden" id="nav-admin-btn" onclick="switchTab('tab-admin'); setActiveNav(3);">
-                <span class="icon">🛡️</span>
-                <span>Админ</span>
-            </button>
-            <button class="nav-item" onclick="switchTab('tab-sections'); setActiveNav(4);">
-                <span class="icon">☰</span>
-                <span>Разделы</span>
-            </button>
-        </nav>
-    </div>
-
-    <div class="modal-overlay" id="modal-ad-detail">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span id="detail-title">Детали объявления</span>
-                <button class="close-modal" onclick="closeModal('modal-ad-detail')">✕</button>
-            </div>
-            <div id="detail-body" style="display: flex; flex-direction: column; gap: 12px;"></div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-my-ads">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Мои объявления</span>
-                <button class="close-modal" onclick="closeModal('modal-my-ads')">✕</button>
-            </div>
-            <div class="feed-grid" id="my-ads-container"></div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-catalog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Категории</span>
-                <button class="close-modal" onclick="closeModal('modal-catalog')">✕</button>
-            </div>
-            <div class="sections-grid" id="catalog-grid"></div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-clicker">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Игра «Барыга»</span>
-                <button class="close-modal" onclick="closeModal('modal-clicker')">✕</button>
-            </div>
-            <div class="clicker-container">
-                <div style="font-size: 20px; font-weight: 700;" id="clicker-money">💰 0</div>
-                <div class="clicker-coin" id="clicker-btn" onclick="clickerTap()">💎</div>
-                <div class="upgrades-list" id="clicker-upgrades"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-search">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Поиск</span>
-                <button class="close-modal" onclick="closeModal('modal-search')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <input type="text" class="form-control" id="search-modal-input" placeholder="Введите запрос..." oninput="handleSearchInput()">
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn" style="flex:1;" onclick="executeSearch('item')">📦 Предмет</button>
-                    <button class="btn btn-secondary" style="flex:1;" onclick="executeSearch('user')">👤 Профиль</button>
+                <div class="form-group">
+                    <label>Цена</label>
+                    <input type="text" id="sendPrice" placeholder="Например: 5к или 1000000" inputmode="text">
                 </div>
-                <div id="search-history" style="display: flex; gap: 4px; flex-wrap: wrap;"></div>
-                <div class="feed-grid" id="search-results-container"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-looks">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Лента луков</span>
-                <button class="close-modal" onclick="closeModal('modal-looks')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <input type="text" class="form-control" id="look-title" placeholder="Название сета">
-                <input type="text" class="form-control" id="look-image" placeholder="Ссылка на скриншот">
-                <button class="btn" onclick="publishLook()">Опубликовать лук</button>
-                <div class="feed-grid" id="looks-container"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-travel">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Попутчики</span>
-                <button class="close-modal" onclick="closeModal('modal-travel')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <input type="text" class="form-control" id="travel-activity" placeholder="Активность (например: Шахта)">
-                <textarea class="form-control" id="travel-desc" placeholder="Условия / описание"></textarea>
-                <button class="btn" onclick="publishTravel()">Создать заявку</button>
-                <div class="feed-grid" id="travel-container"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-music">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Фоновая музыка</span>
-                <button class="close-modal" onclick="closeModal('modal-music')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                <audio id="bg-audio" loop src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf7f6.mp3?filename=lofi-study-112191.mp3"></audio>
-                <button class="btn" onclick="toggleAudioPlayback()" id="audio-toggle-btn">Пауза / Играть</button>
-                <button class="btn btn-secondary" onclick="resetAudio()">Сбросить</button>
-                <input type="file" id="custom-audio-file" accept="audio/*" onchange="loadCustomAudio(event)">
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-settings">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Настройки</span>
-                <button class="close-modal" onclick="closeModal('modal-settings')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>Звуковые эффекты (SFX)</span>
-                    <button class="btn" id="sfx-toggle-btn" onclick="toggleSFX()">Включены</button>
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea id="sendDescription" placeholder="Подробное описание"></textarea>
                 </div>
-                <button class="btn btn-danger" onclick="resetAllData()">Сбросить все данные</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-manager">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Менеджер</span>
-                <button class="close-modal" onclick="closeModal('modal-manager')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <button class="btn" onclick="window.open('https://t.me/bounqy31', '_blank')">Telegram менеджер</button>
-                <button class="btn btn-secondary" onclick="window.open('https://vk.com/bountyarz', '_blank')">VK менеджер</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-logo-info">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Arizona RP Info</span>
-                <button class="close-modal" onclick="closeModal('modal-logo-info')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <button class="btn" onclick="window.open('https://t.me/arizona_coin_bot', '_blank')">Перейти в бота</button>
-                <button class="btn btn-secondary" onclick="window.open('https://t.me/Bounty_Squad31', '_blank')">Telegram канал</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-user-profile">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Профиль пользователя</span>
-                <button class="close-modal" onclick="closeModal('modal-user-profile')">✕</button>
-            </div>
-            <div id="profile-body" style="display: flex; flex-direction: column; gap: 12px; align-items: center;"></div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-reviews">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Отзывы</span>
-                <button class="close-modal" onclick="closeModal('modal-reviews')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: flex; gap: 4px; justify-content: center;" id="review-stars-input">
-                    <span style="cursor:pointer; font-size:24px;" onclick="setReviewStars(1)">⭐</span>
-                    <span style="cursor:pointer; font-size:24px;" onclick="setReviewStars(2)">⭐</span>
-                    <span style="cursor:pointer; font-size:24px;" onclick="setReviewStars(3)">⭐</span>
-                    <span style="cursor:pointer; font-size:24px;" onclick="setReviewStars(4)">⭐</span>
-                    <span style="cursor:pointer; font-size:24px;" onclick="setReviewStars(5)">⭐</span>
+                <div class="form-group">
+                    <label>Скриншоты (ссылки через запятую, до 20, необязательно)</label>
+                    <input type="text" id="sendImages" placeholder="https://...">
+                    <div style="margin-top:6px;font-size:11px;color:var(--muted);">Разрешены: youtube.com, youtu.be, radikal.cloud, allwebs.ru, postimages.org, ru.imgbb.com</div>
                 </div>
-                <input type="text" class="form-control" id="review-links" placeholder="Медиа ссылки (через запятую)">
-                <textarea class="form-control" id="review-text" placeholder="Текст отзыва"></textarea>
-                <button class="btn" onclick="submitReview()">Отправить отзыв</button>
-                <div class="feed-grid" id="reviews-list-container"></div>
+                <div class="form-group">
+                    <label>Сервер</label>
+                    <select id="sendServer"></select>
+                </div>
+                <button class="btn w-full" id="sendSubmitBtn">Отправить на модерацию</button>
             </div>
-        </div>
-    </div>
+            <h3 style="margin:16px 0 8px;font-weight:800;">📦 Мои объявления</h3>
+            <div id="myAdsList"></div>
+        </section>
+        <section class="section" id="section-admin">
+            <h2 style="margin-bottom:12px;font-weight:800;">🛡️ Админ-панель</h2>
+            <div id="adminPanelContent"></div>
+        </section>
+        <section class="section" id="section-all">
+            <h2 style="margin-bottom:12px;font-weight:800;">☰ Все разделы</h2>
+            <div class="grid-tiles" id="allTiles"></div>
+        </section>
+    </main>
 
-    <div class="modal-overlay" id="modal-appeal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Апелляция</span>
-                <button class="close-modal" onclick="closeModal('modal-appeal')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <select class="form-control" id="appeal-reason"></select>
-                <input type="text" class="form-control" id="appeal-evidence" placeholder="Доказательства (ссылки через запятую)">
-                <button class="btn" onclick="submitAppeal()">Отправить апелляцию</button>
-            </div>
-        </div>
-    </div>
+    <nav class="nav-bar" id="navBar">
+        <button class="nav-item active" data-section="home">
+            <span class="nav-icon">🏠</span>
+            <span>Главная</span>
+        </button>
+        <button class="nav-item" data-section="cart">
+            <span class="nav-icon">🛒</span>
+            <span>Корзина</span>
+        </button>
+        <button class="nav-item" data-section="send">
+            <span class="nav-icon">➕</span>
+            <span>Отправка</span>
+        </button>
+        <button class="nav-item hidden" id="adminNavBtn" data-section="admin">
+            <span class="nav-icon">🛡️</span>
+            <span>Админ</span>
+        </button>
+        <button class="nav-item" data-section="all">
+            <span class="nav-icon">☰</span>
+            <span>Все разделы</span>
+        </button>
+    </nav>
 
-    <div class="modal-overlay" id="modal-admin-edit">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span>Редактирование объявления</span>
-                <button class="close-modal" onclick="closeModal('modal-admin-edit')">✕</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <input type="hidden" id="edit-ad-id">
-                <input type="text" class="form-control" id="edit-ad-title" placeholder="Название">
-                <input type="text" class="form-control" id="edit-ad-price" placeholder="Цена">
-                <textarea class="form-control" id="edit-ad-desc" placeholder="Описание"></textarea>
-                <button class="btn" onclick="saveAdminEdit()">Сохранить</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="fullscreen-overlay hidden" id="screen-no-username">
-        <h2>Требуется Username</h2>
-        <p>Для использования приложения установите Username в настройках Telegram профиля.</p>
-        <button class="btn" onclick="checkUserAccess()">Проверить снова</button>
-    </div>
-
-    <div class="fullscreen-overlay hidden" id="screen-banned">
-        <h2>Доступ ограничен</h2>
-        <p>Ваш аккаунт забанен в системе Arizona RP.</p>
-        <button class="btn" onclick="window.open('https://t.me/bounqy31', '_blank')">Связаться с поддержкой</button>
-    </div>
-
-    <div class="fullscreen-overlay hidden" id="screen-tutorial">
-        <h2 id="tut-title">Обучение</h2>
-        <p id="tut-desc">Добро пожаловать в Arizona RP Маркетплейс!</p>
-        <button class="btn" id="tut-btn" onclick="nextTutorialStep()">Продолжить (60с)</button>
-    </div>
+    <div id="modalContainer"></div>
 
     <script>
-        // Глобальные константы и переменные
-        const OWNER_USERNAME = 'bounqy';
-        const ADMIN_USERNAMES = ['bounqy', 'admin_test'];
-        const ALL_SERVERS = Array.from({length: 34}, (_, i) => `Сервер ${i+1}`);
-        const ALL_CATEGORIES = [
-            '💍 Аксессуары и вещи', '🚗 Транспорт', '🏠 Недвижимость', 
-            '💼 Бизнесы', '🔫 Оружие и материалы', '👕 Одежда', '📱 Электроника'
-        ];
-        const APPEAL_REASONS = [
-            'Ошибка модерации', 'Товар актуален', 'Неверный бан', 'Другая причина',
-            'Случайное удаление', 'Спорный момент', 'Жалоба на админа', 'Пересмотр', 'Вопрос по сделке', 'Прочее'
-        ];
-        const ALLOWED_DOMAINS = ['youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com'];
+        (function() {
+            // ===== Глобальные константы =====
+            const OWNER_USERNAME = 'bounqy';
+            const ALL_SERVERS = [
+                '🌵 Arizona RP 01', '🌵 Arizona RP 02', '🌵 Arizona RP 03', '🌵 Arizona RP 04', '🌵 Arizona RP 05',
+                '🌵 Arizona RP 06', '🌵 Arizona RP 07', '🌵 Arizona RP 08', '🌵 Arizona RP 09', '🌵 Arizona RP 10',
+                '🌵 Arizona RP 11', '🌵 Arizona RP 12', '🌵 Arizona RP 13', '🌵 Arizona RP 14', '🌵 Arizona RP 15',
+                '🌵 Arizona RP 16', '🌵 Arizona RP 17', '🌵 Arizona RP 18', '🌵 Arizona RP 19', '🌵 Arizona RP 20',
+                '🌵 Arizona RP 21', '🌵 Arizona RP 22', '🌵 Arizona RP 23', '🌵 Arizona RP 24', '🌵 Arizona RP 25',
+                '🌵 Arizona RP 26', '🌵 Arizona RP 27', '🌵 Arizona RP 28', '🌵 Arizona RP 29', '🌵 Arizona RP 30',
+                '🌵 Arizona RP 31', '🌵 Arizona RP 32', '🌵 Arizona RP 33', '🌵 Arizona RP 34', '🌵 Arizona RP 35',
+                '🌵 Arizona RP 36', '🌵 Arizona RP 37'
+            ];
+            const ALL_CATEGORIES = [
+                { id: 'accessories', label: '💍 Аксессуары и вещи' },
+                { id: 'transport', label: '🚗 Транспорт' },
+                { id: 'realestate', label: '🏠 Недвижимость' },
+                { id: 'business', label: '💼 Бизнесы' },
+                { id: 'weapons', label: '🔫 Оружие и материалы' },
+                { id: 'clothing', label: '👕 Одежда' },
+                { id: 'electronics', label: '📱 Электроника' }
+            ];
+            const APPEAL_REASONS = [
+                'Несправедливая блокировка',
+                'Ошибка модерации',
+                'Объявление удалили по ошибке',
+                'Нарушение правил другой стороной',
+                'Техническая проблема',
+                'Возврат средств',
+                'Жалоба на пользователя',
+                'Взлом аккаунта',
+                'Другое',
+                'Не знаю'
+            ];
+            const ALLOWED_DOMAINS = [
+                'youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com'
+            ];
+            const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co'; // Замените при необходимости
+            const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO'; // Замените при необходимости
 
-        // Supabase конфиг (заменить при необходимости)
-        const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        let tg = window.Telegram?.WebApp || null;
-        let currentUser = { id: 123456789, username: 'testuser', first_name: 'Тест' };
-        let currentUserServer = 'Сервер 1';
-        let sfxEnabled = true;
-        let currentReviewStars = 5;
-        let activeDetailAdId = null;
-        let tutorialStep = 0;
-        let tutorialTimer = 60;
-
-        // Инициализация Telegram WebApp
-        if (tg) {
-            tg.expand();
-            tg.ready();
-            if (tg.initDataUnsafe?.user) {
-                currentUser = tg.initDataUnsafe.user;
-            }
-        }
-
-        // Управление темами
-        function toggleTheme() {
-            const current = document.documentElement.getAttribute('data-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('theme', next);
-            playSFX();
-        }
-        (function initTheme() {
-            const saved = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', saved);
-        })();
-
-        // Таймаут для Supabase
-        async function withTimeout(promise, timeoutMs = 5000) {
-            let timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeoutMs));
-            return Promise.race([promise, timeout]);
-        }
-
-        // Форматирование цен
-        function formatPrice(val) {
-            let num = parseInt(val) || 0;
-            if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'ккк';
-            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'кк';
-            if (num >= 1000) return (num / 1000).toFixed(1) + 'к';
-            return num.toString();
-        }
-
-        function parsePriceToNumber(str) {
-            if (!str) return 0;
-            str = str.toLowerCase().trim();
-            let mult = 1;
-            if (str.endsWith('ккк')) { mult = 1000000000; str = str.slice(0, -3); }
-            else if (str.endsWith('кк')) { mult = 1000000; str = str.slice(0, -2); }
-            else if (str.endsWith('к')) { mult = 1000; str = str.slice(0, -1); }
-            return (parseFloat(str) || 0) * mult;
-        }
-
-        // Валидация ссылок
-        function isAllowedLink(url) {
+            // ===== Инициализация Telegram WebApp =====
+            let tg = null;
+            let currentUser = { id: 123456789, username: 'testuser', first_name: 'Тест' };
             try {
-                let parsed = new URL(url.trim());
-                return ALLOWED_DOMAINS.some(domain => parsed.hostname.includes(domain));
-            } catch(e) {
-                return false;
-            }
-        }
-
-        function checkLinksString(str) {
-            if (!str) return true;
-            let links = str.split(',').map(s => s.trim()).filter(Boolean);
-            if (links.length > 20) return false;
-            return links.every(l => isAllowedLink(l));
-        }
-
-        // Web Audio API SFX
-        function playSFX() {
-            if (!sfxEnabled) return;
-            try {
-                let ctx = new (window.AudioContext || window.webkitAudioContext)();
-                let osc = ctx.createOscillator();
-                let gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.frequency.setValueAtTime(440, ctx.currentTime);
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.1);
-            } catch(e) {}
-        }
-
-        function toggleSFX() {
-            sfxEnabled = !sfxEnabled;
-            document.getElementById('sfx-toggle-btn').innerText = sfxEnabled ? 'Включены' : 'Выключены';
-            playSFX();
-        }
-
-        // Навигация по вкладкам
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
-            playSFX();
-            if (tabId === 'tab-home') loadFeed();
-            if (tabId === 'tab-cart') loadCart();
-            if (tabId === 'tab-admin') loadAdminPending();
-        }
-
-        function setActiveNav(index) {
-            document.querySelectorAll('.bottom-nav .nav-item').forEach((btn, idx) => {
-                if (idx === index) btn.classList.add('active');
-                else btn.classList.remove('active');
-            });
-        }
-
-        // Модальные окна
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
-            playSFX();
-            if (id === 'modal-catalog') renderCatalogGrid();
-            if (id === 'modal-my-ads') loadMyAds();
-            if (id === 'modal-looks') loadLooks();
-            if (id === 'modal-travel') loadTravel();
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-            playSFX();
-        }
-
-        // Проверка доступа и юзернейма
-        async function checkUserAccess() {
-            if (!currentUser.username) {
-                document.getElementById('screen-no-username').classList.remove('hidden');
-                return;
-            }
-            document.getElementById('screen-no-username').classList.add('hidden');
-
-            try {
-                let { data, error } = await withTimeout(supabaseClient.from('users').select('*').eq('id', currentUser.id.toString()).single());
-                if (data) {
-                    if (data.banned) {
-                        document.getElementById('screen-banned').classList.remove('hidden');
-                        return;
+                if (window.Telegram && window.Telegram.WebApp) {
+                    tg = window.Telegram.WebApp;
+                    tg.expand();
+                    tg.ready();
+                    const initData = tg.initDataUnsafe || {};
+                    if (initData.user) {
+                        currentUser = {
+                            id: initData.user.id || currentUser.id,
+                            username: initData.user.username || '',
+                            first_name: initData.user.first_name || currentUser.first_name
+                        };
                     }
-                    if (data.is_admin || ADMIN_USERNAMES.includes(currentUser.username) || currentUser.username === OWNER_USERNAME) {
-                        document.getElementById('nav-admin-btn').classList.remove('hidden');
-                    }
+                }
+            } catch (e) { console.warn('Telegram WebApp not available', e); }
+
+            // ===== Инициализация Supabase =====
+            let supabase = null;
+            try {
+                if (window.supabase && window.supabase.createClient) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 } else {
-                    // Создаем пользователя
-                    await supabaseClient.from('users').insert({
-                        id: currentUser.id.toString(),
-                        username: currentUser.username,
-                        display_name: currentUser.first_name,
-                        banned: false,
-                        is_admin: ADMIN_USERNAMES.includes(currentUser.username) || currentUser.username === OWNER_USERNAME
-                    });
-                    if (ADMIN_USERNAMES.includes(currentUser.username) || currentUser.username === OWNER_USERNAME) {
-                        document.getElementById('nav-admin-btn').classList.remove('hidden');
+                    console.warn('Supabase JS not loaded');
+                }
+            } catch (e) { console.warn('Supabase init error', e); }
+
+            // ===== Глобальное состояние =====
+            let currentSection = 'home';
+            let currentTheme = localStorage.getItem('theme') || 'light';
+            let sfxEnabled = localStorage.getItem('sfx') !== 'off';
+            let currentFilterCategory = null;
+            let currentUserServer = ALL_SERVERS[0];
+            let currentUserData = null;
+            let isAdmin = false;
+            let isOwner = false;
+            let lastAdSubmitTime = 0;
+            let wakeLock = null;
+            let audioCtx = null;
+            let bgMusic = null;
+            let musicStarted = false;
+            let gameState = {
+                money: 0,
+                clickPower: 1,
+                clickCost: 50,
+                autoIncome: 0,
+                autoCost: 200,
+                proCost: 800,
+                shopCost: 3000,
+                eliteCost: 10000,
+                oilCost: 35000,
+                cryptoCost: 150000,
+                scrapCost: 500,
+                elitePurchased: false
+            };
+            let realtimeChannel = null;
+            let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+            let appealAdId = null;
+            let cartAds = [];
+            let myAds = [];
+            let pendingAds = [];
+            let homeAds = [];
+            let currentAdForDetail = null;
+            let tutorialCompleted = localStorage.getItem('tutorialDone') === 'true';
+            let adminTutorialCompleted = localStorage.getItem('adminTutorialDone') === 'true';
+
+            // ===== Вспомогательные функции =====
+            function withTimeout(promise, ms = 5000) {
+                return Promise.race([
+                    promise,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+                ]);
+            }
+
+            function playSfx(type = 'click') {
+                if (!sfxEnabled) return;
+                try {
+                    if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    const freqs = { click: 800, success: 1200, error: 300, buy: 1000 };
+                    const freq = freqs[type] || 600;
+                    osc.frequency.value = freq;
+                    osc.type = 'sine';
+                    gain.gain.value = 0.1;
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.15);
+                } catch (e) {}
+            }
+
+            function saveTheme() { localStorage.setItem('theme', currentTheme); }
+            function applyTheme() {
+                document.documentElement.setAttribute('data-theme', currentTheme);
+                document.body.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg');
+            }
+
+            function formatPrice(value) {
+                if (!value) return '0';
+                let num = typeof value === 'string' ? value.toLowerCase() : value.toString();
+                if (num.includes('к')) {
+                    let parts = num.split('к');
+                    let base = parseFloat(parts[0]) || 0;
+                    let kCount = (num.match(/к/g) || []).length;
+                    if (kCount === 1) base *= 1000;
+                    else if (kCount === 2) base *= 1000000;
+                    else if (kCount === 3) base *= 1000000000;
+                    return base;
+                }
+                num = parseInt(num) || 0;
+                if (num >= 1000000000) return (num / 1000000000).toFixed(num % 1000000000 === 0 ? 0 : 2) + 'ккк';
+                if (num >= 1000000) return (num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1) + 'кк';
+                if (num >= 1000) return (num / 1000).toFixed(num % 1000 === 0 ? 0 : 1) + 'к';
+                return num.toString();
+            }
+
+            function parsePriceToNumber(str) {
+                if (!str) return 0;
+                str = str.toLowerCase().trim();
+                let num = parseInt(str.replace(/[^0-9]/g, '')) || 0;
+                let kCount = (str.match(/к/g) || []).length;
+                if (kCount === 1) num *= 1000;
+                else if (kCount === 2) num *= 1000000;
+                else if (kCount === 3) num *= 1000000000;
+                return num;
+            }
+
+            function formatPriceInput(input) {
+                let val = input.value.toLowerCase().replace(/[^0-9к]/g, '');
+                if (!val) { input.value = ''; return; }
+                let num = parseInt(val.replace(/к/g, '')) || 0;
+                let kCount = (val.match(/к/g) || []).length;
+                if (kCount === 1) num *= 1000;
+                else if (kCount === 2) num *= 1000000;
+                else if (kCount === 3) num *= 1000000000;
+                input.value = formatPrice(num);
+            }
+
+            function isAllowedLink(url) {
+                try {
+                    const u = new URL(url);
+                    const host = u.hostname.replace('www.', '');
+                    return ALLOWED_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+                } catch (e) { return false; }
+            }
+
+            function checkLinksString(str) {
+                if (!str.trim()) return { valid: true, links: [] };
+                const links = str.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                if (links.length > 20) return { valid: false, message: 'Максимум 20 ссылок' };
+                for (let link of links) {
+                    if (!isAllowedLink(link)) {
+                        return { valid: false, message: `Ссылка ${link} не разрешена` };
                     }
                 }
-            } catch(e) {}
-
-            // Проверка туториала
-            if (!localStorage.getItem('tutorial_passed')) {
-                document.getElementById('screen-tutorial').classList.remove('hidden');
-                startTutorialTimer();
+                return { valid: true, links };
             }
-        }
 
-        function startTutorialTimer() {
-            let btn = document.getElementById('tut-btn');
-            btn.disabled = true;
-            let interval = setInterval(() => {
-                tutorialTimer--;
-                if (tutorialTimer > 0) {
-                    btn.innerText = `Продолжить (${tutorialTimer}с)`;
-                } else {
-                    clearInterval(interval);
-                    btn.innerText = 'Продолжить';
-                    btn.disabled = false;
-                }
-            }, 1000);
-        }
-
-        function nextTutorialStep() {
-            tutorialStep++;
-            if (tutorialStep === 1) {
-                document.getElementById('tut-title').innerText = 'Размещение';
-                document.getElementById('tut-desc').innerText = 'Создавайте объявления о покупке и продаже в пару кликов!';
-                tutorialTimer = 10;
-                startTutorialTimer();
-            } else if (tutorialStep === 2) {
-                document.getElementById('tut-title').innerText = 'Безопасность';
-                document.getElementById('tut-desc').innerText = 'Следите за правилами и используйте проверенные ссылки.';
-                tutorialTimer = 10;
-                startTutorialTimer();
-            } else {
-                localStorage.setItem('tutorial_passed', 'true');
-                document.getElementById('screen-tutorial').classList.add('hidden');
-            }
-        }
-
-        // Загрузка ленты
-        async function loadFeed() {
-            try {
-                let { data, error } = await withTimeout(supabaseClient.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false }));
-                let container = document.getElementById('feed-container');
-                container.innerHTML = '';
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--muted-color);">Объявлений пока нет</div>';
-                    return;
-                }
-                data.forEach(ad => {
-                    let images = ad.images ? ad.images.split(',') : [];
-                    let firstImg = images[0] || 'https://via.placeholder.com/100';
-                    let card = document.createElement('div');
-                    card.className = 'ad-card';
-                    card.onclick = () => openAdDetail(ad.id);
-                    card.innerHTML = `
-                        <img src="${firstImg}" class="ad-image" alt="item">
-                        <div class="ad-info">
-                            <div>
-                                <div class="ad-badges">
-                                    <span class="badge badge-type">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
-                                    <span class="badge badge-server">${ad.server}</span>
-                                    <span class="badge badge-category">${ad.category}</span>
-                                </div>
-                                <div class="ad-title">${ad.item_name}</div>
-                            </div>
-                            <div>
-                                <div class="ad-price">${formatPrice(ad.price)}</div>
-                                <div class="ad-footer">
-                                    <span>ID: ${ad.author_id}</span>
-                                    <span>${new Date(ad.created_at).toLocaleDateString()}</span>
-                                </div>
-                            </div>
+            function showModal(html, onClose) {
+                const container = document.getElementById('modalContainer');
+                container.innerHTML = `
+                    <div class="modal-overlay" id="modalOverlay">
+                        <div class="modal" id="modalBox">
+                            <button class="modal-close" id="modalCloseBtn">✕</button>
+                            ${html}
                         </div>
-                    `;
-                    container.appendChild(card);
-                });
-            } catch(e) {}
-        }
-
-        // Инициализация формы отправки
-        function initCreateForm() {
-            let catSelect = document.getElementById('create-category');
-            catSelect.innerHTML = ALL_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-            let srvSelect = document.getElementById('create-server');
-            srvSelect.innerHTML = ALL_SERVERS.map(s => `<option value="${s}">${s}</option>`).join('');
-        }
-        initCreateForm();
-
-        async function submitAd() {
-            let mode = document.getElementById('create-mode').value;
-            let category = document.getElementById('create-category').value;
-            let title = document.getElementById('create-title').value;
-            let priceRaw = document.getElementById('create-price').value;
-            let desc = document.getElementById('create-desc').value;
-            let images = document.getElementById('create-images').value;
-            let server = document.getElementById('create-server').value;
-
-            if (!title || !priceRaw) {
-                alert('Заполните обязательные поля');
-                return;
-            }
-            if (!checkLinksString(images)) {
-                alert('Недопустимые домены в ссылках!');
-                return;
-            }
-
-            let price = parsePriceToNumber(priceRaw);
-
-            try {
-                let { error } = await supabaseClient.from('ads').insert({
-                    mode, category, item_name: title, price, description: desc,
-                    images, server, author_id: currentUser.id.toString(), status: 'pending'
-                });
-                if (error) throw error;
-                alert('Объявление отправлено на модерацию!');
-                switchTab('tab-home');
-                setActiveNav(0);
-            } catch(e) {
-                alert('Ошибка при отправке');
-            }
-        }
-
-        // Детальная страница
-        async function openAdDetail(id) {
-            activeDetailAdId = id;
-            try {
-                let { data: ad } = await supabaseClient.from('ads').select('*').eq('id', id).single();
-                if (!ad) return;
-
-                let body = document.getElementById('detail-body');
-                let images = ad.images ? ad.images.split(',') : [];
-                body.innerHTML = `
-                    <div class="ad-badges">
-                        <span class="badge badge-type">${ad.mode === 'sell' ? 'Продажа' : 'Покупка'}</span>
-                        <span class="badge badge-server">${ad.server}</span>
-                        <span class="badge badge-category">${ad.category}</span>
-                    </div>
-                    <h2>${ad.item_name}</h2>
-                    <div style="font-size: 22px; font-weight: 700; color: var(--gold-color);">${formatPrice(ad.price)}</div>
-                    <div style="display: flex; gap: 8px; overflow-x: auto;">
-                        ${images.map(img => `<img src="${img}" style="width:150px; height:150px; object-fit:cover; border-radius:8px;">`).join('')}
-                    </div>
-                    <p>${ad.description || 'Нет описания'}</p>
-                    <div style="font-size: 12px; color: var(--muted-color);">Автор ID: ${ad.author_id}</div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
-                        <button class="btn" onclick="window.open('https://t.me/${currentUser.username}', '_blank')">💬 Написать</button>
-                        <button class="btn btn-secondary" onclick="toggleCart(${ad.id})">🛒 Корзина</button>
-                        <button class="btn btn-secondary" onclick="openReviews(${ad.id})">⭐ Отзывы</button>
-                        ${ad.author_id === currentUser.id.toString() ? `<button class="btn btn-danger" onclick="deleteAd(${ad.id})">🗑 Удалить</button>` : ''}
                     </div>
                 `;
-                openModal('modal-ad-detail');
-            } catch(e) {}
-        }
-
-        async function toggleCart(adId) {
-            try {
-                let { data } = await supabaseClient.from('favorites').select('*').eq('user_id', currentUser.id.toString()).eq('ad_id', adId).single();
-                if (data) {
-                    await supabaseClient.from('favorites').delete().eq('user_id', currentUser.id.toString()).eq('ad_id', adId);
-                    alert('Убрано из корзины');
-                } else {
-                    await supabaseClient.from('favorites').insert({ user_id: currentUser.id.toString(), ad_id: adId });
-                    alert('Добавлено в корзину');
+                const overlay = document.getElementById('modalOverlay');
+                const closeBtn = document.getElementById('modalCloseBtn');
+                function closeModal() {
+                    overlay.remove();
+                    if (onClose) onClose();
                 }
-            } catch(e) {}
-        }
-
-        async function deleteAd(id) {
-            try {
-                await supabaseClient.from('ads').update({ status: 'deleted' }).eq('id', id);
-                closeModal('modal-ad-detail');
-                loadFeed();
-                alert('Объявление удалено');
-            } catch(e) {}
-        }
-
-        // Корзина
-        async function loadCart() {
-            try {
-                let { data: favs } = await supabaseClient.from('favorites').select('ad_id').eq('user_id', currentUser.id.toString());
-                let container = document.getElementById('cart-container');
-                container.innerHTML = '';
-                if (!favs || favs.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--muted-color);">Корзина пуста</div>';
-                    return;
-                }
-                let adIds = favs.map(f => f.ad_id);
-                let { data: ads } = await supabaseClient.from('ads').select('*').in('id', adIds);
-                
-                ads.forEach(ad => {
-                    let images = ad.images ? ad.images.split(',') : [];
-                    let firstImg = images[0] || 'https://via.placeholder.com/100';
-                    let statusBadge = ad.status === 'approved' ? '<span class="badge" style="background:#34C759; color:white;">🟢 Висит</span>' : '<span class="badge badge-danger">🔴 Удалена</span>';
-                    let card = document.createElement('div');
-                    card.className = 'ad-card';
-                    card.innerHTML = `
-                        <img src="${firstImg}" class="ad-image" alt="item">
-                        <div class="ad-info">
-                            <div>
-                                <div class="ad-badges">${statusBadge}</div>
-                                <div class="ad-title">${ad.item_name}</div>
-                            </div>
-                            <div class="ad-price">${formatPrice(ad.price)}</div>
-                        </div>
-                    `;
-                    container.appendChild(card);
+                closeBtn.addEventListener('click', closeModal);
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) closeModal();
                 });
-            } catch(e) {}
-        }
-
-        // Мои объявления
-        async function loadMyAds() {
-            try {
-                let { data } = await supabaseClient.from('ads').select('*').eq('author_id', currentUser.id.toString());
-                let container = document.getElementById('my-ads-container');
-                container.innerHTML = '';
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--muted-color);">У вас нет объявлений</div>';
-                    return;
-                }
-                data.forEach(ad => {
-                    let card = document.createElement('div');
-                    card.className = 'ad-card';
-                    card.innerHTML = `
-                        <div class="ad-info">
-                            <div class="ad-title">${ad.item_name} (${ad.status})</div>
-                            <div class="ad-price">${formatPrice(ad.price)}</div>
-                            <button class="btn btn-danger" style="margin-top:8px; padding:4px 8px; font-size:11px;" onclick="permanentDeleteAd(${ad.id})">🗑 Удалить навсегда</button>
-                            ${ad.status === 'deleted' ? `<button class="btn btn-secondary" style="margin-top:4px; padding:4px 8px; font-size:11px;" onclick="openAppeal(${ad.id})">📨 Апелляция</button>` : ''}
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            } catch(e) {}
-        }
-
-        async function permanentDeleteAd(id) {
-            try {
-                await supabaseClient.from('ads').delete().eq('id', id);
-                loadMyAds();
-            } catch(e) {}
-        }
-
-        // Каталог
-        function renderCatalogGrid() {
-            let grid = document.getElementById('catalog-grid');
-            grid.innerHTML = ALL_CATEGORIES.map(cat => `
-                <div class="section-tile" onclick="filterByCategory('${cat}')">
-                    <span class="icon">📂</span>
-                    <span class="title">${cat}</span>
-                </div>
-            `).join('');
-        }
-
-        async function filterByCategory(cat) {
-            closeModal('modal-catalog');
-            try {
-                let { data } = await supabaseClient.from('ads').select('*').eq('status', 'approved').eq('category', cat);
-                let container = document.getElementById('feed-container');
-                container.innerHTML = '';
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--muted-color);">В категории нет объявлений</div>';
-                    return;
-                }
-                data.forEach(ad => {
-                    let firstImg = ad.images ? ad.images.split(',')[0] : 'https://via.placeholder.com/100';
-                    let card = document.createElement('div');
-                    card.className = 'ad-card';
-                    card.onclick = () => openAdDetail(ad.id);
-                    card.innerHTML = `
-                        <img src="${firstImg}" class="ad-image" alt="item">
-                        <div class="ad-info">
-                            <div class="ad-title">${ad.item_name}</div>
-                            <div class="ad-price">${formatPrice(ad.price)}</div>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            } catch(e) {}
-        }
-
-        // Игра Барыга
-        let barygaData = { money: 0, click_power: 1, click_cost: 50, auto_income: 0, auto_cost: 200 };
-        async function loadBaryga() {
-            try {
-                let { data } = await supabaseClient.from('baryga').select('*').eq('user_id', currentUser.id.toString()).single();
-                if (data) barygaData = data;
-                updateBarygaUI();
-            } catch(e) {}
-        }
-        function updateBarygaUI() {
-            document.getElementById('clicker-money').innerText = `💰 ${Math.floor(barygaData.money)}`;
-            let upgradesHtml = `
-                <div class="upgrade-item"><span>Клик +1 (${barygaData.click_cost})</span> <button class="btn" onclick="buyUpgrade('click')">Купить</button></div>
-                <div class="upgrade-item"><span>Авто +5/сек (${barygaData.auto_cost})</span> <button class="btn" onclick="buyUpgrade('auto')">Купить</button></div>
-            `;
-            document.getElementById('clicker-upgrades').innerHTML = upgradesHtml;
-        }
-        function clickerTap() {
-            barygaData.money += barygaData.click_power;
-            updateBarygaUI();
-            playSFX();
-        }
-        async function buyUpgrade(type) {
-            if (type === 'click' && barygaData.money >= barygaData.click_cost) {
-                barygaData.money -= barygaData.click_cost;
-                barygaData.click_power += 1;
-                barygaData.click_cost *= 2;
-            } else if (type === 'auto' && barygaData.money >= barygaData.auto_cost) {
-                barygaData.money -= barygaData.auto_cost;
-                barygaData.auto_income += 5;
-                barygaData.auto_cost *= 2;
+                return { overlay, closeModal };
             }
-            updateBarygaUI();
-            try {
-                await supabaseClient.from('baryga').upsert({ user_id: currentUser.id.toString(), ...barygaData });
-            } catch(e) {}
-        }
-        setInterval(() => {
-            if (barygaData.auto_income > 0) {
-                barygaData.money += barygaData.auto_income / 10;
-                updateBarygaUI();
-            }
-        }, 100);
 
-        // Поиск
-        async function executeSearch(type) {
-            let query = document.getElementById('search-modal-input').value;
-            let container = document.getElementById('search-results-container');
-            container.innerHTML = '';
-            try {
-                if (type === 'item') {
-                    let { data } = await supabaseClient.from('ads').select('*').ilike('item_name', `%${query}%`);
-                    data.forEach(ad => {
-                        let card = document.createElement('div');
-                        card.className = 'ad-card';
-                        card.onclick = () => { closeModal('modal-search'); openAdDetail(ad.id); };
-                        card.innerHTML = `<div class="ad-info"><div class="ad-title">${ad.item_name}</div><div class="ad-price">${formatPrice(ad.price)}</div></div>`;
-                        container.appendChild(card);
-                    });
-                } else {
-                    let { data } = await supabaseClient.from('users').select('*').ilike('username', `%${query}%`).single();
-                    if (data) {
-                        container.innerHTML = `<div>Пользователь: @${data.username} (${data.display_name})</div>`;
-                    } else {
-                        container.innerHTML = `<div>Не найдено</div>`;
+            function showAlert(title, message, type = 'info') {
+                const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+                showModal(`
+                    <div style="text-align:center;">
+                        <div style="font-size:48px;margin-bottom:12px;">${icon}</div>
+                        <h3 class="modal-title" style="text-align:center;">${title}</h3>
+                        <p style="color:var(--muted);margin-bottom:16px;">${message}</p>
+                        <button class="btn w-full" id="alertOkBtn">ОК</button>
+                    </div>
+                `);
+                document.getElementById('alertOkBtn').addEventListener('click', () => {
+                    document.getElementById('modalOverlay').remove();
+                });
+            }
+
+            function showConfirm(title, message, onConfirm) {
+                showModal(`
+                    <div style="text-align:center;">
+                        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+                        <h3 class="modal-title" style="text-align:center;">${title}</h3>
+                        <p style="color:var(--muted);margin-bottom:16px;">${message}</p>
+                        <div class="flex-between gap-12">
+                            <button class="btn secondary w-full" id="confirmCancelBtn">Отмена</button>
+                            <button class="btn danger w-full" id="confirmOkBtn">Подтвердить</button>
+                        </div>
+                    </div>
+                `);
+                document.getElementById('confirmCancelBtn').addEventListener('click', () => {
+                    document.getElementById('modalOverlay').remove();
+                });
+                document.getElementById('confirmOkBtn').addEventListener('click', () => {
+                    document.getElementById('modalOverlay').remove();
+                    onConfirm();
+                });
+            }
+
+            function requestWakeLock() {
+                try {
+                    if ('wakeLock' in navigator) {
+                        navigator.wakeLock.request('screen').then(lock => {
+                            wakeLock = lock;
+                        }).catch(() => {});
+                    }
+                } catch (e) {}
+            }
+
+            function setupBackgroundMusic() {
+                try {
+                    const audio = new Audio();
+                    audio.loop = true;
+                    audio.volume = 0.3;
+                    audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+                    bgMusic = audio;
+                    document.addEventListener('click', () => {
+                        if (!musicStarted && bgMusic) {
+                            bgMusic.play().catch(() => {});
+                            musicStarted = true;
+                        }
+                    }, { once: true });
+                } catch (e) {}
+            }
+
+            // ===== Навигация =====
+            function switchSection(section) {
+                currentSection = section;
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                document.getElementById('section-' + section).classList.add('active');
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                const navBtn = document.querySelector(`.nav-item[data-section="${section}"]`);
+                if (navBtn) navBtn.classList.add('active');
+                if (section === 'home') loadHomeFeed();
+                if (section === 'cart') loadCart();
+                if (section === 'send') { populateSendForm(); loadMyAds(); }
+                if (section === 'admin') {
+                    loadAdminPanel();
+                    if (isAdmin && !adminTutorialCompleted) {
+                        showAdminTutorial();
                     }
                 }
-            } catch(e) {}
-        }
-
-        // Лента луков
-        async function publishLook() {
-            let title = document.getElementById('look-title').value;
-            let image = document.getElementById('look-image').value;
-            if (!title || !image) return;
-            try {
-                await supabaseClient.from('fashion').insert({ author_id: currentUser.id.toString(), title, image });
-                loadLooks();
-            } catch(e) {}
-        }
-        async function loadLooks() {
-            try {
-                let { data } = await supabaseClient.from('fashion').select('*');
-                let container = document.getElementById('looks-container');
-                container.innerHTML = data.map(l => `<div><img src="${l.image}" style="width:100%; border-radius:8px;"><div>${l.title}</div></div>`).join('');
-            } catch(e) {}
-        }
-
-        // Попутчики
-        async function publishTravel() {
-            let activity = document.getElementById('travel-activity').value;
-            let desc = document.getElementById('travel-desc').value;
-            if (!activity) return;
-            try {
-                await supabaseClient.from('travel').insert({ author_id: currentUser.id.toString(), activity, description: desc });
-                loadTravel();
-            } catch(e) {}
-        }
-        async function loadTravel() {
-            try {
-                let { data } = await supabaseClient.from('travel').select('*');
-                let container = document.getElementById('travel-container');
-                container.innerHTML = data.map(t => `<div style="border:1px solid var(--border-color); padding:8px; border-radius:8px;"><b>${t.activity}</b><p>${t.description}</p></div>`).join('');
-            } catch(e) {}
-        }
-
-        // Музыка
-        let audioPlaying = false;
-        function toggleAudioPlayback() {
-            let audio = document.getElementById('bg-audio');
-            if (audioPlaying) { audio.pause(); audioPlaying = false; }
-            else { audio.play(); audioPlaying = true; }
-        }
-        function resetAudio() {
-            let audio = document.getElementById('bg-audio');
-            audio.currentTime = 0;
-            audio.pause();
-            audioPlaying = false;
-        }
-        function loadCustomAudio(event) {
-            let file = event.target.files[0];
-            if (file) {
-                let audio = document.getElementById('bg-audio');
-                audio.src = URL.createObjectURL(file);
-                audio.play();
-                audioPlaying = true;
+                if (section === 'all') loadAllTiles();
+                playSfx('click');
+                requestWakeLock();
             }
-        }
 
-        // Сброс данных
-        function resetAllData() {
-            localStorage.clear();
-            location.reload();
-        }
-
-        // Админ-панель
-        async function loadAdminPending() {
-            try {
-                let { data } = await supabaseClient.from('ads').select('*').eq('status', 'pending');
-                let container = document.getElementById('admin-pending-container');
-                container.innerHTML = '';
-                if (!data || data.length === 0) {
-                    container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--muted-color);">Нет объявлений на модерации</div>';
+            // ===== Работа с данными =====
+            async function loadCurrentUserData() {
+                if (!supabase) return;
+                try {
+                    const { data, error } = await withTimeout(
+                        supabase.from('users').select('*').eq('id', currentUser.id.toString()).maybeSingle()
+                    );
+                    if (error) throw error;
+                    if (data) {
+                        currentUserData = data;
+                        if (data.display_name) currentUser.first_name = data.display_name;
+                    } else {
+                        const newUser = {
+                            id: currentUser.id.toString(),
+                            username: currentUser.username || '',
+                            display_name: currentUser.first_name || currentUser.username || '',
+                            banned: false,
+                            is_admin: false
+                        };
+                        await withTimeout(supabase.from('users').insert(newUser));
+                        currentUserData = newUser;
+                    }
+                    isAdmin = (currentUserData && currentUserData.is_admin) || (currentUser.username === OWNER_USERNAME);
+                    isOwner = currentUser.username === OWNER_USERNAME;
+                    if (isAdmin) {
+                        document.getElementById('adminNavBtn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('adminNavBtn').classList.add('hidden');
+                    }
+                    if (currentUserData && currentUserData.banned) {
+                        showBanScreen();
+                    }
+                } catch (e) {
+                    console.warn('loadCurrentUserData error', e);
+                    isAdmin = (currentUser.username === OWNER_USERNAME);
+                    isOwner = isAdmin;
+                    if (isAdmin) document.getElementById('adminNavBtn').classList.remove('hidden');
                 }
-                data.forEach(ad => {
-                    let card = document.createElement('div');
-                    card.className = 'ad-card';
-                    card.innerHTML = `
-                        <div class="ad-info">
-                            <div class="ad-title">${ad.item_name}</div>
-                            <div class="ad-price">${formatPrice(ad.price)}</div>
-                            <div style="display: flex; gap: 4px; margin-top: 8px;">
-                                <button class="btn" style="padding:4px 8px; font-size:11px;" onclick="moderateAd(${ad.id}, 'approved')">✅</button>
-                                <button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="moderateAd(${ad.id}, 'deleted')">❌</button>
+            }
+
+            async function loadHomeFeed() {
+                if (!supabase) return;
+                const container = document.getElementById('homeFeed');
+                container.innerHTML = '<div class="empty-state">Загрузка...</div>';
+                try {
+                    let query = supabase.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false });
+                    if (currentFilterCategory) {
+                        query = query.eq('category', currentFilterCategory);
+                    }
+                    const { data, error } = await withTimeout(query);
+                    if (error) throw error;
+                    homeAds = data || [];
+                    renderHomeFeed();
+                } catch (e) {
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+                }
+            }
+
+            function renderHomeFeed() {
+                const container = document.getElementById('homeFeed');
+                if (!homeAds.length) {
+                    container.innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
+                    return;
+                }
+                let html = '';
+                homeAds.forEach(ad => {
+                    const firstImg = ad.images ? ad.images.split(',')[0].trim() : '';
+                    const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
+                    const catLabel = ALL_CATEGORIES.find(c => c.id === ad.category)?.label || ad.category;
+                    html += `
+                        <div class="card ad-card" data-ad-id="${ad.id}">
+                            ${firstImg ? `<img class="ad-card-img" src="${firstImg}" onerror="this.style.display='none'" alt="">` : '<div class="ad-card-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;">📦</div>'}
+                            <div class="ad-card-info">
+                                <div class="ad-card-title">${ad.item_name || 'Без названия'}</div>
+                                <div class="ad-card-price">${formatPrice(ad.price)}</div>
+                                <div class="ad-card-badges">
+                                    ${modeBadge}
+                                    <span class="badge server">${ad.server}</span>
+                                    <span class="badge category">${catLabel}</span>
+                                </div>
+                                <div class="ad-card-author">Автор: ${ad.author_id}</div>
                             </div>
                         </div>
                     `;
-                    container.appendChild(card);
                 });
+                container.innerHTML = html;
+                container.querySelectorAll('.ad-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const id = card.dataset.adId;
+                        const ad = homeAds.find(a => a.id == id);
+                        if (ad) openAdDetail(ad);
+                    });
+                });
+            }
 
-                if (currentUser.username === OWNER_USERNAME) {
-                    document.getElementById('owner-panel').classList.remove('hidden');
+            async function loadCart() {
+                const container = document.getElementById('cartList');
+                container.innerHTML = '<div class="empty-state">Загрузка...</div>';
+                if (!supabase) return;
+                try {
+                    const { data: favs, error: favErr } = await withTimeout(
+                        supabase.from('favorites').select('ad_id').eq('user_id', currentUser.id.toString())
+                    );
+                    if (favErr) throw favErr;
+                    const adIds = favs.map(f => f.ad_id);
+                    if (!adIds.length) {
+                        container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
+                        cartAds = [];
+                        return;
+                    }
+                    const { data: ads, error: adsErr } = await withTimeout(
+                        supabase.from('ads').select('*').in('id', adIds).order('created_at', { ascending: false })
+                    );
+                    if (adsErr) throw adsErr;
+                    cartAds = ads || [];
+                    if (!cartAds.length) {
+                        container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
+                        return;
+                    }
+                    let html = '';
+                    cartAds.forEach(ad => {
+                        const isLive = ad.status === 'approved';
+                        const statusBadge = isLive ? '<span class="badge status-approved">🟢 Висит</span>' : '<span class="badge status-deleted">🔴 Удалена</span>';
+                        html += `
+                            <div class="card" data-ad-id="${ad.id}">
+                                <div class="flex-between">
+                                    <div>
+                                        <div style="font-weight:700;">${ad.item_name}</div>
+                                        <div style="font-size:13px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                                        ${statusBadge}
+                                    </div>
+                                    <button class="btn danger" data-remove-cart="${ad.id}">Убрать</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                    container.querySelectorAll('[data-remove-cart]').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const adId = btn.dataset.removeCart;
+                            await withTimeout(supabase.from('favorites').delete().eq('user_id', currentUser.id.toString()).eq('ad_id', adId));
+                            playSfx('click');
+                            loadCart();
+                        });
+                    });
+                    container.querySelectorAll('.card[data-ad-id]').forEach(card => {
+                        card.addEventListener('click', (e) => {
+                            if (e.target.tagName === 'BUTTON') return;
+                            const id = card.dataset.adId;
+                            const ad = cartAds.find(a => a.id == id);
+                            if (ad) openAdDetail(ad);
+                        });
+                    });
+                } catch (e) {
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
                 }
-            } catch(e) {}
-        }
+            }
 
-        async function moderateAd(id, status) {
-            try {
-                await supabaseClient.from('ads').update({ status }).eq('id', id);
-                loadAdminPending();
-            } catch(e) {}
-        }
+            function populateSendForm() {
+                const catSelect = document.getElementById('sendCategory');
+                catSelect.innerHTML = ALL_CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
+                const serverSelect = document.getElementById('sendServer');
+                serverSelect.innerHTML = ALL_SERVERS.map(s => `<option value="${s}">${s}</option>`).join('');
+                serverSelect.value = currentUserServer;
+                const priceInput = document.getElementById('sendPrice');
+                priceInput.addEventListener('input', () => formatPriceInput(priceInput));
+            }
 
-        async function adminAction(action) {
-            let target = document.getElementById('admin-target-user').value;
-            if (!target) return;
-            try {
-                let { data: user } = await supabaseClient.from('users').select('*').eq('username', target).single();
-                if (!user) { alert('Пользователь не найден'); return; }
-                if (action === 'ban') await supabaseClient.from('users').update({ banned: true }).eq('id', user.id);
-                if (action === 'unban') await supabaseClient.from('users').update({ banned: false }).eq('id', user.id);
-                if (action === 'make_admin') await supabaseClient.from('users').update({ is_admin: true }).eq('id', user.id);
-                if (action === 'remove_admin') await supabaseClient.from('users').update({ is_admin: false }).eq('id', user.id);
-                alert('Успешно');
-            } catch(e) {}
-        }
+            async function loadMyAds() {
+                const container = document.getElementById('myAdsList');
+                container.innerHTML = '<div class="empty-state">Загрузка...</div>';
+                if (!supabase) return;
+                try {
+                    const { data, error } = await withTimeout(
+                        supabase.from('ads').select('*').eq('author_id', currentUser.id.toString()).order('created_at', { ascending: false })
+                    );
+                    if (error) throw error;
+                    myAds = data || [];
+                    if (!myAds.length) {
+                        container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>';
+                        return;
+                    }
+                    let html = '';
+                    myAds.forEach(ad => {
+                        let statusBadge = '';
+                        if (ad.status === 'pending') statusBadge = '<span class="badge status-pending">На модерации</span>';
+                        else if (ad.status === 'deleted') statusBadge = '<span class="badge status-deleted">Удалено</span>';
+                        else statusBadge = '<span class="badge status-approved">🟢 Висит</span>';
+                        html += `
+                            <div class="card">
+                                <div class="flex-between">
+                                    <div>
+                                        <div style="font-weight:700;">${ad.item_name}</div>
+                                        <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                                        <div style="margin-top:4px;">${statusBadge}</div>
+                                    </div>
+                                    <div class="flex-between gap-8">
+                                        <button class="btn danger" data-delete-ad="${ad.id}">🗑 Удалить навсегда</button>
+                                        ${ad.status === 'deleted' ? `<button class="btn gold" data-appeal-ad="${ad.id}">📨 Апелляция</button>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                    container.querySelectorAll('[data-delete-ad]').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const id = btn.dataset.deleteAd;
+                            showConfirm('Удаление', 'Удалить объявление навсегда?', async () => {
+                                await withTimeout(supabase.from('ads').delete().eq('id', id));
+                                await withTimeout(supabase.from('favorites').delete().eq('ad_id', id));
+                                playSfx('click');
+                                loadMyAds();
+                            });
+                        });
+                    });
+                    container.querySelectorAll('[data-appeal-ad]').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            appealAdId = btn.dataset.appealAd;
+                            openAppealModal();
+                        });
+                    });
+                } catch (e) {
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+                }
+            }
 
-        async function adminClearFeed() {
-            try {
-                await supabaseClient.from('ads').delete().neq('id', 0);
-                alert('Лента очищена');
-            } catch(e) {}
-        }
+            async function loadAdminPanel() {
+                const container = document.getElementById('adminPanelContent');
+                if (!supabase || !isAdmin) {
+                    container.innerHTML = '<div class="empty-state">Нет доступа</div>';
+                    return;
+                }
+                container.innerHTML = '<div class="empty-state">Загрузка...</div>';
+                try {
+                    const { data: pendingData, error: pendingErr } = await withTimeout(
+                        supabase.from('ads').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+                    );
+                    if (pendingErr) throw pendingErr;
+                    pendingAds = pendingData || [];
+                    let html = '<h3 style="margin-bottom:12px;">Объявления на модерации</h3>';
+                    if (!pendingAds.length) {
+                        html += '<div class="empty-state">Нет объявлений на модерации</div>';
+                    } else {
+                        pendingAds.forEach(ad => {
+                            html += `
+                                <div class="card" style="margin-bottom:8px;">
+                                    <div style="font-weight:700;">${ad.item_name}</div>
+                                    <div style="font-size:12px;color:var(--muted);">${ad.server} • ${ad.author_id} • ${formatPrice(ad.price)}</div>
+                                    <div style="font-size:12px;color:var(--muted);">${ad.description || ''}</div>
+                                    <div class="flex-between gap-8 mt-8">
+                                        <button class="btn success" data-approve="${ad.id}" style="background:#34c759;">✅ Одобрить</button>
+                                        <button class="btn danger" data-reject="${ad.id}">❌ Отклонить</button>
+                                        <button class="btn secondary" data-edit-ad="${ad.id}">✏️</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                    if (isOwner) {
+                        html += `
+                            <h3 style="margin:20px 0 8px;">Управление пользователями</h3>
+                            <div class="form-group">
+                                <input type="text" id="adminUsernameInput" placeholder="username без @">
+                            </div>
+                            <div class="flex-between gap-8 mb-8">
+                                <button class="btn danger w-full" id="adminBanBtn">Забанить</button>
+                                <button class="btn success w-full" id="adminUnbanBtn" style="background:#34c759;">Разбанить</button>
+                            </div>
+                            <div class="flex-between gap-8 mb-8">
+                                <button class="btn w-full" id="adminMakeAdminBtn">Сделать админом</button>
+                                <button class="btn secondary w-full" id="adminRemoveAdminBtn">Снять админа</button>
+                            </div>
+                            <button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>
+                        `;
+                    }
+                    container.innerHTML = html;
+                    container.querySelectorAll('[data-approve]').forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            const id = btn.dataset.approve;
+                            await withTimeout(supabase.from('ads').update({ status: 'approved' }).eq('id', id));
+                            playSfx('success');
+                            loadAdminPanel();
+                            loadHomeFeed();
+                        });
+                    });
+                    container.querySelectorAll('[data-reject]').forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            const id = btn.dataset.reject;
+                            await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', id));
+                            playSfx('click');
+                            loadAdminPanel();
+                        });
+                    });
+                    container.querySelectorAll('[data-edit-ad]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const id = btn.dataset.editAd;
+                            const ad = pendingAds.find(a => a.id == id);
+                            if (ad) openAdminEditModal(ad);
+                        });
+                    });
+                    if (isOwner) {
+                        document.getElementById('adminBanBtn').addEventListener('click', () => adminUserAction('ban'));
+                        document.getElementById('adminUnbanBtn').addEventListener('click', () => adminUserAction('unban'));
+                        document.getElementById('adminMakeAdminBtn').addEventListener('click', () => adminUserAction('make_admin'));
+                        document.getElementById('adminRemoveAdminBtn').addEventListener('click', () => adminUserAction('remove_admin'));
+                        document.getElementById('adminClearFeedBtn').addEventListener('click', async () => {
+                            showConfirm('Очистка', 'Удалить ВСЕ объявления из ленты?', async () => {
+                                await withTimeout(supabase.from('ads').delete().neq('id', 0));
+                                await withTimeout(supabase.from('favorites').delete().neq('user_id', '0'));
+                                playSfx('click');
+                                loadAdminPanel();
+                                loadHomeFeed();
+                            });
+                        });
+                    }
+                } catch (e) {
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+                }
+            }
 
-        // Отзывы
-        function setReviewStars(stars) { currentReviewStars = stars; }
-        async function openReviews(adId) {
-            activeDetailAdId = adId;
-            openModal('modal-reviews');
-            try {
-                let { data } = await supabaseClient.from('reviews').select('*').eq('ad_id', adId);
-                let container = document.getElementById('reviews-list-container');
-                container.innerHTML = data.map(r => `<div><b>${r.author_id} (${r.stars}⭐)</b><p>${r.text}</p></div>`).join('');
-            } catch(e) {}
-        }
-        async function submitReview() {
-            let text = document.getElementById('review-text').value;
-            let links = document.getElementById('review-links').value;
-            if (!checkLinksString(links)) { alert('Недопустимые ссылки'); return; }
-            try {
-                await supabaseClient.from('reviews').insert({
-                    ad_id: activeDetailAdId, author_id: currentUser.id.toString(), stars: currentReviewStars, text, media_links: links
+            async function adminUserAction(action) {
+                const username = document.getElementById('adminUsernameInput').value.trim().replace('@', '');
+                if (!username) { showAlert('Ошибка', 'Введите username'); return; }
+                try {
+                    const { data: user, error } = await withTimeout(
+                        supabase.from('users').select('*').eq('username', username).maybeSingle()
+                    );
+                    if (error) throw error;
+                    if (!user) {
+                        showAlert('Ошибка', 'Пользователь не найден');
+                        return;
+                    }
+                    let updates = {};
+                    if (action === 'ban') updates.banned = true;
+                    else if (action === 'unban') updates.banned = false;
+                    else if (action === 'make_admin') updates.is_admin = true;
+                    else if (action === 'remove_admin') updates.is_admin = false;
+                    await withTimeout(supabase.from('users').update(updates).eq('id', user.id));
+                    playSfx('success');
+                    showAlert('Успех', 'Действие выполнено');
+                    loadAdminPanel();
+                } catch (e) {
+                    showAlert('Ошибка', 'Не удалось выполнить');
+                }
+            }
+
+            function loadAllTiles() {
+                const container = document.getElementById('allTiles');
+                const tiles = [
+                    { icon: '📦', label: 'Мои объявления', action: () => switchSection('send') },
+                    { icon: '📂', label: 'Каталог', action: openCatalogModal },
+                    { icon: '🎮', label: 'Игра «Барыга»', action: openBarygaGame },
+                    { icon: '🔍', label: 'Поиск', action: openSearchModal },
+                    { icon: '📸', label: 'Лента «Луков»', action: openFashionModal },
+                    { icon: '🤝', label: 'Попутчики', action: openTravelModal },
+                    { icon: '🎵', label: 'Музыка', action: openMusicModal },
+                    { icon: '⚙️', label: 'Настройки', action: openSettingsModal },
+                    { icon: '📩', label: 'Менеджер', action: openManagerModal },
+                    { icon: '💬', label: 'Переписки', action: openChatsModal }
+                ];
+                container.innerHTML = tiles.map(t => `
+                    <div class="grid-tile" data-action="${t.label}">
+                        <span class="tile-icon">${t.icon}</span>
+                        ${t.label}
+                    </div>
+                `).join('');
+                container.querySelectorAll('.grid-tile').forEach(tile => {
+                    tile.addEventListener('click', () => {
+                        const label = tile.dataset.action;
+                        const found = tiles.find(t => t.label === label);
+                        if (found) found.action();
+                    });
                 });
-                alert('Отзыв отправлен');
-                closeModal('modal-reviews');
-            } catch(e) {}
-        }
+            }
 
-        // Апелляция
-        function openAppeal(adId) {
-            activeDetailAdId = adId;
-            let select = document.getElementById('appeal-reason');
-            select.innerHTML = APPEAL_REASONS.map(r => `<option value="${r}">${r}</option>`).join('');
-            openModal('modal-appeal');
-        }
-        async function submitAppeal() {
-            let reason = document.getElementById('appeal-reason').value;
-            let evidence = document.getElementById('appeal-evidence').value;
-            try {
-                await supabaseClient.from('appeals').insert({
-                    ad_id: activeDetailAdId, author_id: currentUser.id.toString(), reason, evidence, status: 'pending'
+            function openCatalogModal() {
+                let html = '<h3 class="modal-title">📂 Каталог</h3><div class="category-grid">';
+                ALL_CATEGORIES.forEach(cat => {
+                    html += `<div class="category-tile" data-cat="${cat.id}"><span class="cat-icon">${cat.label.split(' ')[0]}</span>${cat.label}</div>`;
                 });
-                alert('Апелляция отправлена');
-                closeModal('modal-appeal');
-            } catch(e) {}
-        }
+                html += '</div>';
+                const { overlay } = showModal(html);
+                overlay.querySelectorAll('.category-tile').forEach(tile => {
+                    tile.addEventListener('click', () => {
+                        currentFilterCategory = tile.dataset.cat;
+                        overlay.remove();
+                        switchSection('home');
+                    });
+                });
+            }
 
-        // Запуск при загрузке
-        window.onload = () => {
-            checkUserAccess();
-            loadFeed();
-            loadBaryga();
-        };
+            // ===== Детальная страница объявления =====
+            async function openAdDetail(ad) {
+                currentAdForDetail = ad;
+                let galleryHtml = '';
+                const images = ad.images ? ad.images.split(',').map(s => s.trim()).filter(s => s) : [];
+                if (images.length) {
+                    galleryHtml = '<div class="image-gallery">' + images.map(img => `<img src="${img}" onerror="this.style.display='none'">`).join('') + '</div>';
+                }
+                const catLabel = ALL_CATEGORIES.find(c => c.id === ad.category)?.label || ad.category;
+                const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
+                let statusHtml = '';
+                if (ad.status === 'pending') statusHtml = '<div class="empty-state">Объявление находится на модерации</div>';
+                else if (ad.status === 'deleted') {
+                    statusHtml = '<div class="empty-state">Объявление удалено</div>';
+                    if (ad.author_id === currentUser.id.toString()) {
+                        statusHtml += '<button class="btn gold w-full mt-8" id="detailAppealBtn">📨 Апелляция</button>';
+                    }
+                } else {
+                    statusHtml = `
+                        <button class="btn w-full mb-8" id="detailContactBtn">💬 Написать / Вернул</button>
+                        <button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button>
+                        <button class="btn secondary w-full mb-8" id="detailReviewsBtn">⭐ Отзывы</button>
+                        ${ad.author_id === currentUser.id.toString() ? '<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить объявление</button>' : ''}
+                    `;
+                }
+                const isFav = await checkIfInCart(ad.id);
+                showModal(`
+                    <h3 class="modal-title">${ad.item_name}</h3>
+                    <div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>
+                    ${galleryHtml}
+                    <div style="font-size:24px;font-weight:900;color:var(--accent);margin-bottom:8px;">${formatPrice(ad.price)}</div>
+                    <p style="color:var(--muted);margin-bottom:12px;">${ad.description || 'Нет описания'}</p>
+                    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Автор: <span style="color:var(--text);cursor:pointer;" id="detailAuthorLink">${ad.author_id}</span></div>
+                    ${statusHtml}
+                    <div id="detailReviewsSection"></div>
+                    <h4 style="margin:16px 0 8px;">Похожие объявления</h4>
+                    <div id="detailSimilarAds"></div>
+                `);
+                const overlay = document.getElementById('modalOverlay');
+                if (ad.status === 'approved') {
+                    document.getElementById('detailContactBtn').addEventListener('click', () => {
+                        const username = ad.author_id;
+                        const url = `https://t.me/${username}`;
+                        window.open(url, '_blank');
+                    });
+                    const cartBtn = document.getElementById('detailCartToggleBtn');
+                    cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 Корзина';
+                    cartBtn.addEventListener('click', async () => {
+                        if (isFav) {
+                            await withTimeout(supabase.from('favorites').delete().eq('user_id', currentUser.id.toString()).eq('ad_id', ad.id));
+                            cartBtn.textContent = '🛒 Корзина';
+                        } else {
+                            await withTimeout(supabase.from('favorites').insert({ user_id: currentUser.id.toString(), ad_id: ad.id }));
+                            cartBtn.textContent = '🛒 Убрать из корзины';
+                        }
+                        playSfx('click');
+                        loadCart();
+                    });
+                    document.getElementById('detailReviewsBtn').addEventListener('click', () => {
+                        openReviewsModal(ad.id);
+                    });
+                    if (ad.author_id === currentUser.id.toString()) {
+                        document.getElementById('detailDeleteBtn').addEventListener('click', async () => {
+                            showConfirm('Удаление', 'Удалить объявление?', async () => {
+                                await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', ad.id));
+                                playSfx('click');
+                                overlay.remove();
+                                loadHomeFeed();
+                            });
+                        });
+                    }
+                }
+                if (ad.status === 'deleted' && ad.author_id === currentUser.id.toString()) {
+                    const appealBtn = document.getElementById('detailAppealBtn');
+                    if (appealBtn) appealBtn.addEventListener('click', () => {
+                        appealAdId = ad.id;
+                        openAppealModal();
+                    });
+                }
+                document.getElementById('detailAuthorLink').addEventListener('click', () => {
+                    openProfileModal(ad.author_id);
+                });
+                loadReviews(ad.id);
+                loadSimilarAds(ad.category, ad.id);
+            }
+
+            async function checkIfInCart(adId) {
+                if (!supabase) return false;
+                try {
+                    const { data } = await withTimeout(
+                        supabase.from('favorites').select('*').eq('user_id', currentUser.id.toString()).eq('ad_id', adId).maybeSingle()
+                    );
+                    return !!data;
+                } catch (e) { return false; }
+            }
+
+            async function loadReviews(adId) {
+                const container = document.getElementById('detailReviewsSection');
+                if (!container) return;
+                try {
+                    const { data: reviews, error } = await withTimeout(
+                        supabase.from('reviews').select('*').eq('ad_id', adId).order('created_at', { ascending: false })
+                    );
+                    if (error) throw error;
+                    const reviewsData = reviews || [];
+                    if (!reviewsData.length) {
+                        container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Отзывов пока нет</p>';
+                        return;
+                    }
+                    const avg = reviewsData.reduce((s, r) => s + r.stars, 0) / reviewsData.length;
+                    let html = `<div style="font-size:20px;font-weight:800;margin-bottom:8px;">⭐ ${avg.toFixed(1)} (${reviewsData.length})</div>`;
+                    html += '<div class="progress-bar mb-12"><div class="progress-fill" style="width:' + (avg / 5 * 100) + '%;"></div></div>';
+                    reviewsData.forEach(r => {
+                        const canEdit = r.author_id === currentUser.id.toString() && (Date.now() - new Date(r.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000;
+                        html += `
+                            <div class="review-item">
+                                <div style="font-weight:600;">${r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span></div>
+                                <div style="font-size:12px;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('ru-RU')}</div>
+                                <p style="font-size:13px;margin:4px 0;">${r.text || ''}</p>
+                                ${r.media_links ? `<div style="font-size:11px;color:var(--accent);">${r.media_links}</div>` : ''}
+                                ${canEdit ? `<div class="flex-between gap-8 mt-8"><button class="btn secondary" data-edit-review="${r.id}">✏️</button><button class="btn danger" data-delete-review="${r.id}">🗑</button></div>` : ''}
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                    container.querySelectorAll('[data-edit-review]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const rev = reviewsData.find(r => r.id == btn.dataset.editReview);
+                            if (rev) openEditReviewModal(rev);
+                        });
+                    });
+                    container.querySelectorAll('[data-delete-review]').forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            await withTimeout(supabase.from('reviews').delete().eq('id', btn.dataset.deleteReview));
+                            playSfx('click');
+                            loadReviews(adId);
+                        });
+                    });
+                } catch (e) {
+                    container.innerHTML = '<p style="color:var(--muted);">Не удалось загрузить отзывы</p>';
+                }
+            }
+
+            async function loadSimilarAds(category, currentAdId) {
+                const container = document.getElementById('detailSimilarAds');
+                if (!container) return;
+                try {
+                    const { data } = await withTimeout(
+                        supabase.from('ads').select('*').eq('status', 'approved').eq('category', category).neq('id', currentAdId).limit(3).order('created_at', { ascending: false })
+                    );
+                    const similar = data || [];
+                    if (!similar.length) {
+                        container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Похожих нет</p>';
+                        return;
+                    }
+                    container.innerHTML = similar.map(ad => `
+                        <div class="card" style="cursor:pointer;" data-sim="${ad.id}">
+                            <span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}
+                        </div>
+                    `).join('');
+                    container.querySelectorAll('[data-sim]').forEach(el => {
+                        el.addEventListener('click', () => {
+                            const id = el.dataset.sim;
+                            const found = similar.find(a => a.id == id);
+                            if (found) {
+                                const overlay = document.getElementById('modalOverlay');
+                                if (overlay) overlay.remove();
+                                openAdDetail(found);
+                            }
+                        });
+                    });
+                } catch (e) {}
+            }
+
+            // ===== Отзывы =====
+            function openReviewsModal(adId) {
+                showModal(`
+                    <h3 class="modal-title">⭐ Отзывы</h3>
+                    <div class="form-group">
+                        <label>Оценка</label>
+                        <div class="star-rating" id="reviewStars">
+                            ${[1,2,3,4,5].map(i => `<span data-star="${i}">☆</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ссылки (до 20, через запятую)</label>
+                        <input type="text" id="reviewMedia" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>Текст отзыва</label>
+                        <textarea id="reviewText" placeholder="Ваш отзыв"></textarea>
+                    </div>
+                    <button class="btn w-full" id="reviewSubmitBtn">Отправить отзыв</button>
+                `);
+                let selectedStars = 0;
+                const starsContainer = document.getElementById('reviewStars');
+                starsContainer.querySelectorAll('span').forEach(span => {
+                    span.addEventListener('click', () => {
+                        selectedStars = parseInt(span.dataset.star);
+                        updateStars(starsContainer, selectedStars);
+                    });
+                });
+                document.getElementById('reviewSubmitBtn').addEventListener('click', async () => {
+                    if (!selectedStars) { showAlert('Ошибка', 'Выберите оценку'); return; }
+                    const text = document.getElementById('reviewText').value.trim();
+                    const media = document.getElementById('reviewMedia').value.trim();
+                    const linkCheck = checkLinksString(media);
+                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+                    try {
+                        await withTimeout(supabase.from('reviews').insert({
+                            ad_id: adId,
+                            author_id: currentUser.id.toString(),
+                            stars: selectedStars,
+                            text: text,
+                            media_links: media,
+                            created_at: new Date().toISOString()
+                        }));
+                        playSfx('success');
+                        showAlert('Успех', 'Отзыв отправлен');
+                        document.getElementById('modalOverlay').remove();
+                        loadReviews(adId);
+                    } catch (e) {
+                        showAlert('Ошибка', 'Не удалось отправить');
+                    }
+                });
+            }
+
+            function updateStars(container, selected) {
+                container.querySelectorAll('span').forEach(span => {
+                    span.textContent = parseInt(span.dataset.star) <= selected ? '★' : '☆';
+                    span.classList.toggle('active', parseInt(span.dataset.star) <= selected);
+                });
+            }
+
+            function openEditReviewModal(review) {
+                showModal(`
+                    <h3 class="modal-title">✏️ Редактировать отзыв</h3>
+                    <div class="form-group">
+                        <label>Оценка</label>
+                        <div class="star-rating" id="editReviewStars">
+                            ${[1,2,3,4,5].map(i => `<span data-star="${i}" class="${i <= review.stars ? 'active' : ''}">${i <= review.stars ? '★' : '☆'}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ссылки</label>
+                        <input type="text" id="editReviewMedia" value="${review.media_links || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Текст</label>
+                        <textarea id="editReviewText">${review.text || ''}</textarea>
+                    </div>
+                    <button class="btn w-full" id="editReviewSubmitBtn">Сохранить</button>
+                `);
+                let selectedStars = review.stars;
+                const starsContainer = document.getElementById('editReviewStars');
+                starsContainer.querySelectorAll('span').forEach(span => {
+                    span.addEventListener('click', () => {
+                        selectedStars = parseInt(span.dataset.star);
+                        updateStars(starsContainer, selectedStars);
+                    });
+                });
+                document.getElementById('editReviewSubmitBtn').addEventListener('click', async () => {
+                    const text = document.getElementById('editReviewText').value.trim();
+                    const media = document.getElementById('editReviewMedia').value.trim();
+                    const linkCheck = checkLinksString(media);
+                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+                    await withTimeout(supabase.from('reviews').update({ stars: selectedStars, text, media_links: media }).eq('id', review.id));
+                    playSfx('success');
+                    document.getElementById('modalOverlay').remove();
+                    loadReviews(review.ad_id);
+                });
+            }
+
+            // ===== Апелляции =====
+            function openAppealModal() {
+                if (!appealAdId) return;
+                showModal(`
+                    <h3 class="modal-title">📨 Апелляция</h3>
+                    <div class="form-group">
+                        <label>Причина</label>
+                        <select id="appealReason">${APPEAL_REASONS.map(r => `<option value="${r}">${r}</option>`).join('')}</select>
+                    </div>
+                    <div class="form-group">
+                        <label>Доказательства (ссылки до 20)</label>
+                        <input type="text" id="appealEvidence" placeholder="https://...">
+                    </div>
+                    <button class="btn w-full" id="appealSubmitBtn">Отправить</button>
+                `);
+                document.getElementById('appealSubmitBtn').addEventListener('click', async () => {
+                    const reason = document.getElementById('appealReason').value;
+                    const evidence = document.getElementById('appealEvidence').value.trim();
+                    const linkCheck = checkLinksString(evidence);
+                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+                    try {
+                        await withTimeout(supabase.from('appeals').insert({
+                            ad_id: appealAdId,
+                            author_id: currentUser.id.toString(),
+                            reason: reason,
+                            evidence: evidence,
+                            status: 'pending',
+                            created_at: new Date().toISOString()
+                        }));
+                        playSfx('success');
+                        showAlert('Успех', 'Апелляция отправлена');
+                        document.getElementById('modalOverlay').remove();
+                    } catch (e) {
+                        showAlert('Ошибка', 'Не удалось отправить');
+                    }
+                });
+            }
+
+            // ===== Игра Барыга =====
+            async function loadGameState() {
+                if (!supabase) return;
+                try {
+                    const { data } = await withTimeout(
+                        supabase.from('baryga').select('*').eq('user_id', currentUser.id.toString()).maybeSingle()
+                    );
+                    if (data) {
+                        gameState = { ...gameState, ...data };
+                    } else {
+                        await withTimeout(supabase.from('baryga').insert({ user_id: currentUser.id.toString(), money: 0, click_power: 1, click_cost: 50, auto_income: 0, auto_cost: 200, pro_cost: 800, shop_cost: 3000, elite_cost: 10000, oil_cost: 35000, crypto_cost: 150000, scrap_cost: 500 }));
+                    }
+                } catch (e) {}
+            }
+
+            function openBarygaGame() {
+                loadGameState().then(() => {
+                    showModal(`
+                        <h3 class="modal-title">🎮 Игра «Барыга»</h3>
+                        <div style="text-align:center;font-size:24px;font-weight:900;margin-bottom:8px;">💰 ${formatPrice(gameState.money)}</div>
+                        <div class="game-click-area" id="gameClickArea">
+                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23FF9900'/%3E%3Ctext x='50' y='60' font-size='40' text-anchor='middle' fill='white'%3E💰%3C/text%3E%3C/svg%3E" alt="Клик">
+                        </div>
+                        <div style="font-size:12px;color:var(--muted);text-align:center;">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div>
+                        <div class="mt-12" id="gameUpgrades">
+                            ${renderUpgrades()}
+                        </div>
+                    `);
+                    const clickArea = document.getElementById('gameClickArea');
+                    clickArea.addEventListener('click', () => {
+                        gameState.money += gameState.clickPower;
+                        updateGameUI();
+                        playSfx('click');
+                        saveGameState();
+                        clickArea.style.transform = 'scale(0.9)';
+                        setTimeout(() => clickArea.style.transform = '', 100);
+                    });
+                    setInterval(() => {
+                        if (gameState.autoIncome > 0) {
+                            gameState.money += gameState.autoIncome / 10;
+                            updateGameUI();
+                            saveGameState();
+                        }
+                    }, 100);
+                });
+            }
+
+            function renderUpgrades() {
+                const upgrades = [
+                    { name: 'Клик +1', cost: gameState.clickCost, key: 'clickCost', action: () => { gameState.clickPower += 1; gameState.clickCost *= 2; } },
+                    { name: 'Авто +5/сек', cost: gameState.autoCost, key: 'autoCost', action: () => { gameState.autoIncome += 5; gameState.autoCost *= 2; } },
+                    { name: 'Про +20/сек', cost: gameState.proCost, key: 'proCost', action: () => { gameState.autoIncome += 20; gameState.proCost *= 2; } },
+                    { name: 'Магазин +50/сек', cost: gameState.shopCost, key: 'shopCost', action: () => { gameState.autoIncome += 50; gameState.shopCost *= 2; } },
+                    { name: 'Элита: клик +10', cost: gameState.eliteCost, key: 'eliteCost', action: () => { gameState.clickPower += 10; gameState.eliteCost *= 2; gameState.elitePurchased = true; } },
+                    { name: 'Нефть +200/сек', cost: gameState.oilCost, key: 'oilCost', action: () => { gameState.autoIncome += 200; gameState.oilCost *= 2; } },
+                    { name: 'Крипта +1000/сек', cost: gameState.cryptoCost, key: 'cryptoCost', action: () => { gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
+                    { name: 'Скупка лома +500/сек', cost: gameState.scrapCost, key: 'scrapCost', action: () => { gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
+                ];
+                return upgrades.map((u, i) => `
+                    <div class="upgrade-card">
+                        <div class="upgrade-info">
+                            <div class="upgrade-name">${u.name}</div>
+                            <div class="upgrade-cost">💰 ${formatPrice(u.cost)}</div>
+                        </div>
+                        <button class="btn secondary" data-upgrade="${i}" ${gameState.money < u.cost ? 'disabled' : ''}>Купить</button>
+                    </div>
+                `).join('');
+            }
+
+            function updateGameUI() {
+                const moneyEl = document.querySelector('#gameClickArea')?.parentElement?.querySelector('div');
+                if (moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money);
+                const upgradesContainer = document.getElementById('gameUpgrades');
+                if (upgradesContainer) upgradesContainer.innerHTML = renderUpgrades();
+                document.querySelectorAll('[data-upgrade]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const idx = parseInt(btn.dataset.upgrade);
+                        const upgrades = [
+                            { cost: gameState.clickCost, action: () => { gameState.clickPower += 1; gameState.clickCost *= 2; } },
+                            { cost: gameState.autoCost, action: () => { gameState.autoIncome += 5; gameState.autoCost *= 2; } },
+                            { cost: gameState.proCost, action: () => { gameState.autoIncome += 20; gameState.proCost *= 2; } },
+                            { cost: gameState.shopCost, action: () => { gameState.autoIncome += 50; gameState.shopCost *= 2; } },
+                            { cost: gameState.eliteCost, action: () => { gameState.clickPower += 10; gameState.eliteCost *= 2; gameState.elitePurchased = true; } },
+                            { cost: gameState.oilCost, action: () => { gameState.autoIncome += 200; gameState.oilCost *= 2; } },
+                            { cost: gameState.cryptoCost, action: () => { gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
+                            { cost: gameState.scrapCost, action: () => { gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
+                        ];
+                        const upgrade = upgrades[idx];
+                        if (gameState.money >= upgrade.cost) {
+                            gameState.money -= upgrade.cost;
+                            upgrade.action();
+                            updateGameUI();
+                            saveGameState();
+                            playSfx('buy');
+                        }
+                    });
+                });
+            }
+
+            async function saveGameState() {
+                if (!supabase) return;
+                try {
+                    await withTimeout(supabase.from('baryga').update({
+                        money: gameState.money,
+                        click_power: gameState.clickPower,
+                        click_cost: gameState.clickCost,
+                        auto_income: gameState.autoIncome,
+                        auto_cost: gameState.autoCost,
+                        pro_cost: gameState.proCost,
+                        shop_cost: gameState.shopCost,
+                        elite_cost: gameState.eliteCost,
+                        oil_cost: gameState.oilCost,
+                        crypto_cost: gameState.cryptoCost,
+                        scrap_cost: gameState.scrapCost
+                    }).eq('user_id', currentUser.id.toString()));
+                } catch (e) {}
+            }
+
+            // ===== Поиск =====
+            function openSearchModal() {
+                showModal(`
+                    <h3 class="modal-title">🔍 Поиск</h3>
+                    <div class="form-group">
+                        <input type="text" id="searchInput" placeholder="Введите запрос...">
+                    </div>
+                    <div class="flex-between gap-8 mb-12">
+                        <button class="btn w-full" id="searchItemBtn">📦 Предмет</button>
+                        <button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button>
+                    </div>
+                    <div id="searchSuggestions"></div>
+                    <div id="searchHistory"></div>
+                    <div id="searchResults"></div>
+                `);
+                const input = document.getElementById('searchInput');
+                const suggestions = document.getElementById('searchSuggestions');
+                const results = document.getElementById('searchResults');
+                const history = document.getElementById('searchHistory');
+                function renderHistory() {
+                    if (!searchHistory.length) { history.innerHTML = ''; return; }
+                    history.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">История:</div>' + searchHistory.map(h => `<span class="badge" style="cursor:pointer;margin:2px;" data-hist="${h}">${h}</span>`).join('');
+                    history.querySelectorAll('[data-hist]').forEach(el => {
+                        el.addEventListener('click', () => {
+                            input.value = el.dataset.hist;
+                            input.dispatchEvent(new Event('input'));
+                        });
+                    });
+                }
+                renderHistory();
+                input.addEventListener('input', async () => {
+                    const q = input.value.trim().toLowerCase();
+                    if (!q) { suggestions.innerHTML = ''; results.innerHTML = ''; return; }
+                    try {
+                        const { data } = await withTimeout(
+                            supabase.from('ads').select('*').eq('status', 'approved').ilike('item_name', `%${q}%`).limit(5)
+                        );
+                        const items = data || [];
+                        suggestions.innerHTML = items.map(ad => `<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('');
+                        suggestions.querySelectorAll('[data-sug]').forEach(el => {
+                            el.addEventListener('click', () => {
+                                const id = el.dataset.sug;
+                                const ad = items.find(a => a.id == id);
+                                if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
+                            });
+                        });
+                    } catch (e) { suggestions.innerHTML = ''; }
+                });
+                document.getElementById('searchItemBtn').addEventListener('click', async () => {
+                    const q = input.value.trim();
+                    if (!q) return;
+                    if (!searchHistory.includes(q)) {
+                        searchHistory.unshift(q);
+                        if (searchHistory.length > 10) searchHistory.pop();
+                        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+                        renderHistory();
+                    }
+                    try {
+                        const { data } = await withTimeout(
+                            supabase.from('ads').select('*').eq('status', 'approved').or(`item_name.ilike.%${q}%,description.ilike.%${q}%`).limit(20)
+                        );
+                        results.innerHTML = '<div style="font-weight:700;margin:8px 0;">Результаты:</div>' + (data && data.length ? data.map(ad => `<div class="card" style="cursor:pointer;" data-res="${ad.id}">${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('') : '<div class="empty-state">Ничего не найдено</div>');
+                        results.querySelectorAll('[data-res]').forEach(el => {
+                            el.addEventListener('click', () => {
+                                const id = el.dataset.res;
+                                const found = data.find(a => a.id == id);
+                                if (found) { document.getElementById('modalOverlay').remove(); openAdDetail(found); }
+                            });
+                        });
+                    } catch (e) {}
+                });
+                document.getElementById('searchProfileBtn').addEventListener('click', () => {
+                    const username = input.value.trim().replace('@', '');
+                    if (username) {
+                        document.getElementById('modalOverlay').remove();
+                        openProfileModal(username);
+                    }
+                });
+            }
+
+            // ===== Профиль =====
+            function openProfileModal(username) {
+                showModal(`
+                    <h3 class="modal-title">👤 Профиль</h3>
+                    <div style="text-align:center;margin-bottom:16px;">
+                        <div style="width:80px;height:80px;border-radius:50%;background:var(--border);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:40px;">👤</div>
+                        <div style="font-weight:800;font-size:18px;">@${username}</div>
+                    </div>
+                    <div class="flex-between gap-8">
+                        <button class="btn secondary w-full" id="profileFollowBtn">❤️ Подписаться</button>
+                        <button class="btn w-full" id="profileContactBtn">💬 Написать</button>
+                    </div>
+                `);
+                document.getElementById('profileFollowBtn').addEventListener('click', () => {
+                    playSfx('click');
+                    showAlert('Скоро', 'Функция в разработке');
+                });
+                document.getElementById('profileContactBtn').addEventListener('click', () => {
+                    window.open(`https://t.me/${username}`, '_blank');
+                });
+            }
+
+            // ===== Лента Луков =====
+            function openFashionModal() {
+                showModal(`
+                    <h3 class="modal-title">📸 Лента «Луков»</h3>
+                    <div class="form-group">
+                        <label>Название сета</label>
+                        <input type="text" id="fashionTitle" placeholder="Название">
+                    </div>
+                    <div class="form-group">
+                        <label>Ссылка на скриншот</label>
+                        <input type="text" id="fashionImage" placeholder="https://...">
+                    </div>
+                    <button class="btn w-full mb-12" id="fashionSubmitBtn">Опубликовать</button>
+                    <div id="fashionList"></div>
+                `);
+                loadFashion();
+                document.getElementById('fashionSubmitBtn').addEventListener('click', async () => {
+                    const title = document.getElementById('fashionTitle').value.trim();
+                    const image = document.getElementById('fashionImage').value.trim();
+                    if (!title || !image) { showAlert('Ошибка', 'Заполните все поля'); return; }
+                    if (!isAllowedLink(image)) { showAlert('Ошибка', 'Ссылка не разрешена'); return; }
+                    try {
+                        await withTimeout(supabase.from('fashion').insert({ author_id: currentUser.id.toString(), title, image, created_at: new Date().toISOString() }));
+                        playSfx('success');
+                        loadFashion();
+                        document.getElementById('fashionTitle').value = '';
+                        document.getElementById('fashionImage').value = '';
+                    } catch (e) { showAlert('Ошибка', 'Не удалось опубликовать'); }
+                });
+            }
+
+            async function loadFashion() {
+                const container = document.getElementById('fashionList');
+                if (!container) return;
+                try {
+                    const { data } = await withTimeout(supabase.from('fashion').select('*').order('created_at', { ascending: false }).limit(50));
+                    const items = data || [];
+                    if (!items.length) {
+                        container.innerHTML = '<div class="empty-state">Сетов пока нет</div>';
+                        return;
+                    }
+                    container.innerHTML = items.map(item => `
+                        <div class="card">
+                            <div style="font-weight:700;">${item.title}</div>
+                            <div style="font-size:12px;color:var(--muted);">Автор: ${item.author_id}</div>
+                            <img src="${item.image}" style="width:100%;border-radius:8px;margin-top:8px;" onerror="this.style.display='none'">
+                            ${item.author_id === currentUser.id.toString() ? `<button class="btn danger mt-8" data-del-fashion="${item.id}">Удалить</button>` : ''}
+                        </div>
+                    `).join('');
+                    container.querySelectorAll('[data-del-fashion]').forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            await withTimeout(supabase.from('fashion').delete().eq('id', btn.dataset.delFashion));
+                            playSfx('click');
+                            loadFashion();
+                        });
+                    });
+                } catch (e) {}
+            }
+
+            // ===== Попутчики =====
+            function openTravelModal() {
+                showModal(`
+                    <h3 class="modal-title">🤝 Попутчики</h3>
+                    <div class="form-group">
+                        <label>Куда идёте</label>
+                        <input type="text" id="travelActivity" placeholder="Активность">
+                    </div>
+                    <div class="form-group">
+                        <label>Условия</label>
+                        <textarea id="travelDescription" placeholder="Описание"></textarea>
+                    </div>
+                    <button class="btn w-full mb-12" id="travelSubmitBtn">Опубликовать</button>
+                    <div id="travelList"></div>
+                `);
+                loadTravel();
+                document.getElementById('travelSubmitBtn').addEventListener('click', async () => {
+                    const activity = document.getElementById('travelActivity').value.trim();
+                    const description = document.getElementById('travelDescription').value.trim();
+                    if (!activity || !description) { showAlert('Ошибка', 'Заполните все поля'); return; }
+                    try {
+                        await withTimeout(supabase.from('travel').insert({ author_id: currentUser.id.toString(), activity, description, created_at: new Date().toISOString() }));
+                        playSfx('success');
+                        loadTravel();
+                        document.getElementById('travelActivity').value = '';
+                        document.getElementById('travelDescription').value = '';
+                    } catch (e) { showAlert('Ошибка', 'Не удалось опубликовать'); }
+                });
+            }
+
+            async function loadTravel() {
+                const container = document.getElementById('travelList');
+                if (!container) return;
+                try {
+                    const { data } = await withTimeout(supabase.from('travel').select('*').order('created_at', { ascending: false }).limit(50));
+                    const items = data || [];
+                    if (!items.length) {
+                        container.innerHTML = '<div class="empty-state">Заявок пока нет</div>';
+                        return;
+                    }
+                    container.innerHTML = items.map(item => `
+                        <div class="card">
+                            <div style="font-weight:700;">${item.activity}</div>
+                            <div style="font-size:12px;color:var(--muted);">Автор: ${item.author_id}</div>
+                            <p style="font-size:13px;">${item.description}</p>
+                            ${item.author_id === currentUser.id.toString() ? `<button class="btn danger mt-8" data-del-travel="${item.id}">Удалить</button>` : ''}
+                        </div>
+                    `).join('');
+                    container.querySelectorAll('[data-del-travel]').forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            await withTimeout(supabase.from('travel').delete().eq('id', btn.dataset.delTravel));
+                            playSfx('click');
+                            loadTravel();
+                        });
+                    });
+                } catch (e) {}
+            }
+
+            // ===== Музыка =====
+            function openMusicModal() {
+                showModal(`
+                    <h3 class="modal-title">🎵 Музыка</h3>
+                    <div class="flex-between gap-8 mb-12">
+                        <button class="btn w-full" id="musicToggleBtn">${musicStarted && bgMusic && !bgMusic.paused ? '⏸ Пауза' : '▶️ Играть'}</button>
+                        <button class="btn secondary w-full" id="musicResetBtn">🔄 Сброс</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Загрузить свой аудиофайл</label>
+                        <input type="file" id="musicFileInput" accept="audio/*">
+                    </div>
+                `);
+                document.getElementById('musicToggleBtn').addEventListener('click', () => {
+                    if (!bgMusic) { setupBackgroundMusic(); }
+                    if (bgMusic.paused) {
+                        bgMusic.play().catch(() => {});
+                        musicStarted = true;
+                        document.getElementById('musicToggleBtn').textContent = '⏸ Пауза';
+                    } else {
+                        bgMusic.pause();
+                        document.getElementById('musicToggleBtn').textContent = '▶️ Играть';
+                    }
+                });
+                document.getElementById('musicResetBtn').addEventListener('click', () => {
+                    if (bgMusic) {
+                        bgMusic.pause();
+                        bgMusic.currentTime = 0;
+                    }
+                    musicStarted = false;
+                    document.getElementById('musicToggleBtn').textContent = '▶️ Играть';
+                });
+                document.getElementById('musicFileInput').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file && bgMusic) {
+                        const url = URL.createObjectURL(file);
+                        bgMusic.src = url;
+                        bgMusic.play().catch(() => {});
+                        musicStarted = true;
+                        document.getElementById('musicToggleBtn').textContent = '⏸ Пауза';
+                    }
+                });
+            }
+
+            // ===== Настройки =====
+            function openSettingsModal() {
+                showModal(`
+                    <h3 class="modal-title">⚙️ Настройки</h3>
+                    <div class="flex-between mb-8">
+                        <span>Звуковые эффекты</span>
+                        <button class="btn secondary" id="sfxToggleBtn">${sfxEnabled ? 'Включены' : 'Выключены'}</button>
+                    </div>
+                    <button class="btn danger w-full mt-12" id="resetDataBtn">🗑 Сбросить все данные</button>
+                `);
+                document.getElementById('sfxToggleBtn').addEventListener('click', () => {
+                    sfxEnabled = !sfxEnabled;
+                    localStorage.setItem('sfx', sfxEnabled ? 'on' : 'off');
+                    document.getElementById('sfxToggleBtn').textContent = sfxEnabled ? 'Включены' : 'Выключены';
+                    playSfx('click');
+                });
+                document.getElementById('resetDataBtn').addEventListener('click', () => {
+                    showConfirm('Сброс', 'Сбросить все данные и перезагрузить?', async () => {
+                        try {
+                            if (supabase) {
+                                await withTimeout(supabase.from('favorites').delete().eq('user_id', currentUser.id.toString()));
+                                await withTimeout(supabase.from('reviews').delete().eq('author_id', currentUser.id.toString()));
+                                await withTimeout(supabase.from('appeals').delete().eq('author_id', currentUser.id.toString()));
+                                await withTimeout(supabase.from('fashion').delete().eq('author_id', currentUser.id.toString()));
+                                await withTimeout(supabase.from('travel').delete().eq('author_id', currentUser.id.toString()));
+                                await withTimeout(supabase.from('baryga').delete().eq('user_id', currentUser.id.toString()));
+                                await withTimeout(supabase.from('ads').delete().eq('author_id', currentUser.id.toString()));
+                            }
+                        } catch (e) {}
+                        localStorage.clear();
+                        location.reload();
+                    });
+                });
+            }
+
+            // ===== Менеджер =====
+            function openManagerModal() {
+                showModal(`
+                    <h3 class="modal-title">📩 Менеджер</h3>
+                    <p style="color:var(--muted);margin-bottom:16px;">Связь с менеджером:</p>
+                    <button class="btn w-full mb-8" id="managerTgBtn">Telegram</button>
+                    <button class="btn secondary w-full" id="managerVkBtn">VK</button>
+                `);
+                document.getElementById('managerTgBtn').addEventListener('click', () => window.open('https://t.me/bounqy31', '_blank'));
+                document.getElementById('managerVkBtn').addEventListener('click', () => window.open('https://vk.com/bountyarz', '_blank'));
+            }
+
+            // ===== Переписки =====
+            function openChatsModal() {
+                showModal(`
+                    <h3 class="modal-title">💬 Переписки</h3>
+                    <div class="empty-state">В разработке</div>
+                    <button class="btn w-full mt-12" id="chatsTgBtn">Перейти в Telegram</button>
+                `);
+                document.getElementById('chatsTgBtn').addEventListener('click', () => window.open('https://t.me/arizona_coin_bot', '_blank'));
+            }
+
+            // ===== Логотип =====
+            function openLogoModal() {
+                showModal(`
+                    <h3 class="modal-title">Arizona RP</h3>
+                    <p style="color:var(--muted);margin-bottom:16px;">Официальные ссылки:</p>
+                    <button class="btn w-full mb-8" id="logoBotBtn">🤖 Бот</button>
+                    <button class="btn secondary w-full" id="logoChannelBtn">📢 Канал</button>
+                `);
+                document.getElementById('logoBotBtn').addEventListener('click', () => window.open('https://t.me/arizona_coin_bot', '_blank'));
+                document.getElementById('logoChannelBtn').addEventListener('click', () => window.open('https://t.me/Bounty_Squad31', '_blank'));
+            }
+
+            // ===== Туториалы =====
+            function showTutorial() {
+                if (tutorialCompleted) return;
+                const slides = [
+                    { title: 'Добро пожаловать!', text: 'Это Arizona RP — площадка для объявлений. Здесь вы можете покупать и продавать виртуальные предметы и услуги на серверах Arizona RP. Изучите основные разделы.' },
+                    { title: 'Главная', text: 'На главной отображаются все одобренные объявления. Нажмите на объявление, чтобы увидеть детали, связаться с продавцом, добавить в корзину или оставить отзыв.' },
+                    { title: 'Корзина', text: 'Сохраняйте понравившиеся объявления в корзину, чтобы быстро вернуться к ним позже. Статусы показывают, активно ли объявление.' },
+                    { title: 'Отправка объявления', text: 'Создавайте свои объявления: укажите тип сделки, категорию, название, цену, описание, скриншоты (необязательно) и сервер. Объявление попадает на модерацию.' },
+                    { title: 'Мои объявления', text: 'В разделе «Отправка» вы можете видеть все свои объявления, удалять их навсегда и подавать апелляцию, если объявление было удалено.' },
+                    { title: 'Каталог', text: 'Используйте каталог для фильтрации объявлений по категориям: аксессуары, транспорт, недвижимость, бизнесы и другие.' },
+                    { title: 'Игра «Барыга»', text: 'Кликайте по монете, зарабатывайте виртуальные деньги и улучшайте клик и пассивный доход. Прогресс сохраняется в вашем аккаунте.' },
+                    { title: 'Поиск', text: 'Ищите объявления по названию или описанию, а также находите профили пользователей по username.' },
+                    { title: 'Лента «Луков»', text: 'Публикуйте свои модные сеты со скриншотами и смотрите, что публикуют другие игроки.' },
+                    { title: 'Попутчики', text: 'Ищите напарников для активностей: укажите, куда идёте и условия, и дождитесь откликов.' },
+                    { title: 'Музыка и настройки', text: 'Включайте фоновую музыку, загружайте свою, настраивайте звуковые эффекты и сбрасывайте данные.' },
+                    { title: 'Менеджер и переписки', text: 'Свяжитесь с менеджером через Telegram или VK. Раздел переписок пока в разработке, но вы можете перейти в Telegram.' },
+                    { title: 'Готовы?', text: 'Вы изучили все основные разделы! Нажмите «Начать», чтобы перейти к использованию.' }
+                ];
+                let currentSlide = 0;
+                const overlay = document.createElement('div');
+                overlay.className = 'tutorial-overlay';
+                overlay.id = 'tutorialOverlay';
+                function renderSlide() {
+                    const slide = slides[currentSlide];
+                    const isLast = currentSlide === slides.length - 1;
+                    const isFirst = currentSlide === 0;
+                    const btnDisabled = isFirst && !tutorialTimerDone;
+                    overlay.innerHTML = `
+                        <div class="tutorial-slide">
+                            <h2>${slide.title}</h2>
+                            <p>${slide.text}</p>
+                            ${isFirst && !tutorialTimerDone ? '<div style="font-size:20px;font-weight:900;color:var(--accent);margin-bottom:16px;" id="tutorialTimer">60</div>' : ''}
+                            <div class="flex-between gap-12">
+                                <button class="btn secondary" id="tutorialPrevBtn" ${isFirst ? 'disabled' : ''}>Назад</button>
+                                <button class="btn" id="tutorialNextBtn" ${btnDisabled ? 'disabled' : ''}>${isLast ? 'Начать' : 'Продолжить'}</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+                    if (isFirst && !tutorialTimerDone) {
+                        let timer = 60;
+                        const timerEl = document.getElementById('tutorialTimer');
+                        const interval = setInterval(() => {
+                            timer--;
+                            if (timerEl) timerEl.textContent = timer;
+                            if (timer <= 0) {
+                                clearInterval(interval);
+                                tutorialTimerDone = true;
+                                const nextBtn = document.getElementById('tutorialNextBtn');
+                                if (nextBtn) nextBtn.disabled = false;
+                                if (timerEl) timerEl.remove();
+                            }
+                        }, 1000);
+                    }
+                    document.getElementById('tutorialPrevBtn').addEventListener('click', () => {
+                        if (currentSlide > 0) { currentSlide--; overlay.remove(); renderSlide(); }
+                    });
+                    document.getElementById('tutorialNextBtn').addEventListener('click', () => {
+                        if (isLast) {
+                            tutorialCompleted = true;
+                            localStorage.setItem('tutorialDone', 'true');
+                            overlay.remove();
+                        } else {
+                            currentSlide++;
+                            overlay.remove();
+                            renderSlide();
+                        }
+                    });
+                }
+                let tutorialTimerDone = false;
+                renderSlide();
+            }
+
+            function showAdminTutorial() {
+                if (!isAdmin || adminTutorialCompleted) return;
+                const slides = [
+                    { title: 'Админ-панель', text: 'Здесь вы можете модерировать объявления: одобрять или отклонять их.' },
+                    { title: 'Редактирование', text: 'Используйте ✏️ для редактирования объявления перед одобрением.' },
+                    { title: 'Пользователи', text: 'Владелец может банить, разбанивать, назначать и снимать администраторов.' },
+                    { title: 'Очистка ленты', text: 'Владелец может полностью очистить ленту объявлений.' },
+                    { title: 'Готово!', text: 'Вы готовы к работе. Нажмите «Завершить».' }
+                ];
+                let currentSlide = 0;
+                const overlay = document.createElement('div');
+                overlay.className = 'tutorial-overlay';
+                overlay.id = 'adminTutorialOverlay';
+                function renderSlide() {
+                    const slide = slides[currentSlide];
+                    const isLast = currentSlide === slides.length - 1;
+                    const isFirst = currentSlide === 0;
+                    const btnDisabled = isLast && !adminTimerDone;
+                    overlay.innerHTML = `
+                        <div class="tutorial-slide">
+                            <h2>${slide.title}</h2>
+                            <p>${slide.text}</p>
+                            ${isLast && !adminTimerDone ? '<div style="font-size:20px;font-weight:900;color:var(--accent);margin-bottom:16px;" id="adminTutorialTimer">60</div>' : ''}
+                            <div class="flex-between gap-12">
+                                <button class="btn secondary" id="adminTutorialPrevBtn" ${isFirst ? 'disabled' : ''}>Назад</button>
+                                <button class="btn" id="adminTutorialNextBtn" ${btnDisabled ? 'disabled' : ''}>${isLast ? 'Завершить' : 'Продолжить'}</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+                    if (isLast && !adminTimerDone) {
+                        let timer = 60;
+                        const timerEl = document.getElementById('adminTutorialTimer');
+                        const interval = setInterval(() => {
+                            timer--;
+                            if (timerEl) timerEl.textContent = timer;
+                            if (timer <= 0) {
+                                clearInterval(interval);
+                                adminTimerDone = true;
+                                const nextBtn = document.getElementById('adminTutorialNextBtn');
+                                if (nextBtn) nextBtn.disabled = false;
+                                if (timerEl) timerEl.remove();
+                            }
+                        }, 1000);
+                    }
+                    document.getElementById('adminTutorialPrevBtn').addEventListener('click', () => {
+                        if (currentSlide > 0) { currentSlide--; overlay.remove(); renderSlide(); }
+                    });
+                    document.getElementById('adminTutorialNextBtn').addEventListener('click', () => {
+                        if (isLast) {
+                            adminTutorialCompleted = true;
+                            localStorage.setItem('adminTutorialDone', 'true');
+                            overlay.remove();
+                        } else {
+                            currentSlide++;
+                            overlay.remove();
+                            renderSlide();
+                        }
+                    });
+                }
+                let adminTimerDone = false;
+                renderSlide();
+            }
+
+            function showBanScreen() {
+                const overlay = document.createElement('div');
+                overlay.className = 'fullscreen-overlay';
+                overlay.innerHTML = `
+                    <div style="font-size:64px;margin-bottom:16px;">🚫</div>
+                    <h2 style="font-weight:900;margin-bottom:8px;">Вы заблокированы</h2>
+                    <p style="color:var(--muted);margin-bottom:16px;">Для разблокировки свяжитесь с администрацией</p>
+                    <button class="btn mb-8" id="banTgBtn">Telegram</button>
+                    <button class="btn secondary" id="banVkBtn">VK</button>
+                `;
+                document.body.appendChild(overlay);
+                document.getElementById('banTgBtn').addEventListener('click', () => window.open('https://t.me/bounqy31', '_blank'));
+                document.getElementById('banVkBtn').addEventListener('click', () => window.open('https://vk.com/bountyarz', '_blank'));
+            }
+
+            function showNoUsernameScreen() {
+                if (currentUser.username) return;
+                const overlay = document.createElement('div');
+                overlay.className = 'fullscreen-overlay';
+                overlay.innerHTML = `
+                    <div style="font-size:64px;margin-bottom:16px;">👤</div>
+                    <h2 style="font-weight:900;margin-bottom:8px;">Установите username</h2>
+                    <p style="color:var(--muted);margin-bottom:16px;">Для использования приложения необходимо установить username в Telegram</p>
+                    <p style="color:var(--muted);font-size:13px;">Настройки → Изменить профиль → Имя пользователя</p>
+                `;
+                document.body.appendChild(overlay);
+            }
+
+            // ===== Realtime =====
+            function setupRealtime() {
+                if (!supabase) return;
+                try {
+                    realtimeChannel = supabase.channel('ads-changes')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'ads' }, (payload) => {
+                            if (currentSection === 'home') loadHomeFeed();
+                            if (currentSection === 'send') loadMyAds();
+                            if (currentSection === 'admin') loadAdminPanel();
+                            if (currentSection === 'cart') loadCart();
+                        })
+                        .subscribe();
+                } catch (e) {}
+            }
+
+            // ===== Отправка объявления =====
+            document.getElementById('sendSubmitBtn').addEventListener('click', async () => {
+                if (!supabase) { showAlert('Ошибка', 'Нет подключения к базе'); return; }
+                const now = new Date();
+                const hour = now.getUTCHours() + 3; // МСК
+                const isAdminUser = isAdmin || isOwner;
+                if (!isAdminUser && (hour < 9 || hour >= 22)) {
+                    showAlert('Ошибка', 'Отправка возможна только с 09:00 до 22:00 МСК');
+                    return;
+                }
+                if (!isAdminUser && Date.now() - lastAdSubmitTime < 120000) {
+                    showAlert('Ошибка', 'Кулдаун 2 минуты между объявлениями');
+                    return;
+                }
+                const type = document.getElementById('sendType').value;
+                const category = document.getElementById('sendCategory').value;
+                const name = document.getElementById('sendName').value.trim();
+                const priceStr = document.getElementById('sendPrice').value.trim();
+                const description = document.getElementById('sendDescription').value.trim();
+                const imagesStr = document.getElementById('sendImages').value.trim();
+                const server = document.getElementById('sendServer').value;
+                if (!name || !priceStr || !description) {
+                    showAlert('Ошибка', 'Заполните обязательные поля (название, цена, описание)');
+                    return;
+                }
+                const price = parsePriceToNumber(priceStr);
+                if (price <= 0) { showAlert('Ошибка', 'Некорректная цена'); return; }
+                const linkCheck = checkLinksString(imagesStr);
+                if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+                try {
+                    await withTimeout(supabase.from('ads').insert({
+                        mode: type,
+                        category: category,
+                        item_name: name,
+                        price: price,
+                        description: description,
+                        images: linkCheck.links.join(','),
+                        server: server,
+                        author_id: currentUser.id.toString(),
+                        status: 'pending',
+                        created_at: new Date().toISOString()
+                    }));
+                    lastAdSubmitTime = Date.now();
+                    playSfx('success');
+                    showAlert('Успех', 'Объявление отправлено на модерацию');
+                    document.getElementById('sendName').value = '';
+                    document.getElementById('sendPrice').value = '';
+                    document.getElementById('sendDescription').value = '';
+                    document.getElementById('sendImages').value = '';
+                    loadMyAds();
+                } catch (e) {
+                    showAlert('Ошибка', 'Не удалось отправить');
+                }
+            });
+
+            // ===== Админ редактирование =====
+            function openAdminEditModal(ad) {
+                showModal(`
+                    <h3 class="modal-title">✏️ Редактировать объявление</h3>
+                    <div class="form-group">
+                        <label>Название</label>
+                        <input type="text" id="adminEditName" value="${ad.item_name}">
+                    </div>
+                    <div class="form-group">
+                        <label>Цена</label>
+                        <input type="text" id="adminEditPrice" value="${formatPrice(ad.price)}">
+                    </div>
+                    <div class="form-group">
+                        <label>Описание</label>
+                        <textarea id="adminEditDescription">${ad.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Ссылки</label>
+                        <input type="text" id="adminEditImages" value="${ad.images || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Сервер</label>
+                        <select id="adminEditServer">${ALL_SERVERS.map(s => `<option value="${s}" ${s === ad.server ? 'selected' : ''}>${s}</option>`).join('')}</select>
+                    </div>
+                    <button class="btn w-full" id="adminEditSaveBtn">Сохранить и одобрить</button>
+                `);
+                document.getElementById('adminEditSaveBtn').addEventListener('click', async () => {
+                    const name = document.getElementById('adminEditName').value.trim();
+                    const price = parsePriceToNumber(document.getElementById('adminEditPrice').value);
+                    const description = document.getElementById('adminEditDescription').value.trim();
+                    const images = document.getElementById('adminEditImages').value.trim();
+                    const server = document.getElementById('adminEditServer').value;
+                    const linkCheck = checkLinksString(images);
+                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+                    await withTimeout(supabase.from('ads').update({
+                        item_name: name,
+                        price: price,
+                        description: description,
+                        images: linkCheck.links.join(','),
+                        server: server,
+                        status: 'approved'
+                    }).eq('id', ad.id));
+                    playSfx('success');
+                    document.getElementById('modalOverlay').remove();
+                    loadAdminPanel();
+                    loadHomeFeed();
+                });
+            }
+
+            // ===== Настройка цен в форме =====
+            const sendPriceInput = document.getElementById('sendPrice');
+            sendPriceInput.addEventListener('input', () => formatPriceInput(sendPriceInput));
+
+            // ===== Инициализация приложения =====
+            async function initApp() {
+                applyTheme();
+                setupBackgroundMusic();
+                if (!currentUser.username) {
+                    showNoUsernameScreen();
+                    return;
+                }
+                await loadCurrentUserData();
+                if (currentUserData && currentUserData.banned) {
+                    showBanScreen();
+                    return;
+                }
+                showTutorial();
+                switchSection('home');
+                setupRealtime();
+                setupEventListeners();
+                requestWakeLock();
+            }
+
+            function setupEventListeners() {
+                document.querySelectorAll('.nav-item').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        switchSection(btn.dataset.section);
+                    });
+                });
+                document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+                    saveTheme();
+                    applyTheme();
+                    playSfx('click');
+                });
+                document.getElementById('logoBtn').addEventListener('click', openLogoModal);
+                document.getElementById('globalSearchInput').addEventListener('focus', () => {
+                    document.getElementById('globalSearchInput').blur();
+                    openSearchModal();
+                });
+                window.addEventListener('resize', () => {
+                    if (currentSection === 'home') renderHomeFeed();
+                });
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        requestWakeLock();
+                    }
+                });
+            }
+
+            // Запуск
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initApp);
+            } else {
+                initApp();
+            }
+        })();
     </script>
 </body>
-</html>
+    </html>

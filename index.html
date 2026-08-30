@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Arizona RP — Улучшенная синхронизация</title>
+    <title>Arizona RP</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* ============ CSS ПЕРЕМЕННЫЕ И БАЗОВЫЕ СТИЛИ ============ */
         :root {
             --bg: #FFFFFF;
             --card: #FFFFFF;
@@ -24,7 +23,6 @@
             --nav-height: 60px;
             --header-height: 56px;
             --font: 'Montserrat', sans-serif;
-            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         [data-theme="dark"] {
             --bg: #1C1C1E;
@@ -47,13 +45,11 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
-            transition: background var(--transition), color var(--transition);
+            transition: background 0.3s, color 0.3s;
             overflow-x: hidden;
             user-select: none;
             -webkit-user-select: none;
             touch-action: manipulation;
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior-y: contain;
         }
         .container {
             max-width: var(--container-width);
@@ -61,26 +57,34 @@
             padding: 0 12px;
             padding-top: calc(var(--header-height) + 10px);
             padding-bottom: calc(var(--nav-height) + 20px);
-            transition: max-width var(--transition);
-            will-change: transform;
+            transition: max-width 0.3s;
         }
         @media (min-width: 768px) {
-            :root { --container-width: 720px; }
+            :root {
+                --container-width: 720px;
+            }
             .ads-grid {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
                 gap: 12px;
             }
-            .ad-card { width: 100%; }
+            .ad-card {
+                width: 100%;
+            }
         }
         @media (min-width: 1024px) {
-            :root { --container-width: 1200px; }
-            .ads-grid { grid-template-columns: repeat(3, 1fr); }
+            :root {
+                --container-width: 1200px;
+            }
+            .ads-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
-        /* Шапка */
         .header {
             position: fixed;
-            top: 0; left: 0; right: 0;
+            top: 0;
+            left: 0;
+            right: 0;
             z-index: 100;
             background: var(--bg);
             border-bottom: 1px solid var(--border);
@@ -89,21 +93,27 @@
             padding: 8px 12px;
             height: var(--header-height);
             gap: 8px;
-            transition: background var(--transition), border-color var(--transition);
+            transition: background 0.3s, border-color 0.3s;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            will-change: transform;
         }
         .header-logo {
-            width: 36px; height: 36px;
+            width: 36px;
+            height: 36px;
             border-radius: 8px;
             overflow: hidden;
             flex-shrink: 0;
             cursor: pointer;
-            transition: transform var(--transition);
+            transition: transform 0.2s;
         }
-        .header-logo:active { transform: scale(0.9); }
-        .header-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .header-logo:active {
+            transform: scale(0.9);
+        }
+        .header-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
         .header-title {
             font-weight: 800;
             font-size: 18px;
@@ -111,7 +121,10 @@
             white-space: nowrap;
             flex-shrink: 0;
         }
-        .header-search { flex: 1; min-width: 0; }
+        .header-search {
+            flex: 1;
+            min-width: 0;
+        }
         .header-search input {
             width: 100%;
             padding: 8px 12px;
@@ -121,10 +134,14 @@
             color: var(--text);
             font-size: 14px;
             outline: none;
-            transition: border-color var(--transition), background var(--transition), color var(--transition);
+            transition: border-color 0.3s, background 0.3s, color 0.3s;
         }
-        .header-search input::placeholder { color: var(--muted); }
-        .header-search input:focus { border-color: var(--accent); }
+        .header-search input::placeholder {
+            color: var(--muted);
+        }
+        .header-search input:focus {
+            border-color: var(--accent);
+        }
         .theme-toggle {
             background: none;
             border: none;
@@ -132,14 +149,17 @@
             cursor: pointer;
             padding: 4px;
             border-radius: 8px;
-            transition: transform var(--transition);
+            transition: transform 0.2s;
             flex-shrink: 0;
         }
-        .theme-toggle:active { transform: scale(0.9); }
-        /* Навигация */
+        .theme-toggle:active {
+            transform: scale(0.9);
+        }
         .nav-bar {
             position: fixed;
-            bottom: 0; left: 0; right: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
             z-index: 100;
             background: var(--bg);
             border-top: 1px solid var(--border);
@@ -148,7 +168,7 @@
             align-items: center;
             height: var(--nav-height);
             padding-bottom: env(safe-area-inset-bottom);
-            transition: background var(--transition), border-color var(--transition);
+            transition: background 0.3s, border-color 0.3s;
         }
         .nav-item {
             display: flex;
@@ -164,29 +184,33 @@
             cursor: pointer;
             padding: 4px 8px;
             border-radius: 8px;
-            transition: color var(--transition), transform var(--transition), background var(--transition);
+            transition: color 0.3s, transform 0.2s, background 0.2s;
             flex: 1;
             max-width: 80px;
             min-height: var(--btn-min-height);
         }
-        .nav-item .nav-icon { font-size: 22px; line-height: 1; }
+        .nav-item .nav-icon {
+            font-size: 22px;
+            line-height: 1;
+        }
         .nav-item.active {
             color: var(--accent);
             background: rgba(0, 91, 255, 0.08);
         }
-        .nav-item:active { transform: scale(0.92); }
-        /* Секции */
+        .nav-item:active {
+            transform: scale(0.92);
+        }
         .section {
             display: none;
             animation: fadeIn 0.25s ease;
-            contain: content;
         }
-        .section.active { display: block; }
+        .section.active {
+            display: block;
+        }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        /* Карточки */
         .card {
             background: var(--card);
             border-radius: var(--radius);
@@ -194,11 +218,12 @@
             box-shadow: var(--shadow);
             padding: 12px;
             margin-bottom: 10px;
-            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition), transform 0.15s;
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s;
             cursor: pointer;
-            will-change: transform;
         }
-        .card:active { transform: scale(0.98); }
+        .card:active {
+            transform: scale(0.98);
+        }
         .ad-card {
             display: flex;
             gap: 10px;
@@ -212,7 +237,10 @@
             background: var(--border);
             flex-shrink: 0;
         }
-        .ad-card-info { flex: 1; min-width: 0; }
+        .ad-card-info {
+            flex: 1;
+            min-width: 0;
+        }
         .ad-card-title {
             font-weight: 700;
             font-size: 15px;
@@ -253,7 +281,6 @@
             font-size: 11px;
             color: var(--muted);
         }
-        /* Кнопки */
         .btn {
             display: inline-flex;
             align-items: center;
@@ -267,17 +294,15 @@
             font-weight: 700;
             font-size: 14px;
             cursor: pointer;
-            transition: transform var(--transition), opacity var(--transition), background var(--transition);
+            transition: transform 0.2s, opacity 0.2s, background 0.3s;
             touch-action: manipulation;
             min-height: var(--btn-min-height);
-            will-change: transform;
         }
         .btn:active { transform: scale(0.96); }
         .btn.secondary { background: var(--border); color: var(--text); }
         .btn.danger { background: #ff3b30; color: #fff; }
         .btn.gold { background: var(--gold); color: #1a1a1a; }
         .btn:disabled { opacity: 0.5; pointer-events: none; }
-        /* Модальные окна */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -288,8 +313,6 @@
             justify-content: center;
             animation: fadeIn 0.2s;
             padding: 16px;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
         }
         .modal {
             background: var(--card);
@@ -303,9 +326,7 @@
             padding: 20px;
             position: relative;
             animation: slideUp 0.3s ease;
-            transition: background var(--transition), border-color var(--transition);
-            -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
+            transition: background 0.3s, border-color 0.3s;
         }
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(30px); }
@@ -322,7 +343,7 @@
             padding: 4px;
             line-height: 1;
             z-index: 5;
-            transition: transform var(--transition);
+            transition: transform 0.2s;
         }
         .modal-close:active { transform: scale(0.9); }
         .modal-title {
@@ -350,7 +371,7 @@
             color: var(--text);
             font-size: 14px;
             outline: none;
-            transition: border-color var(--transition), background var(--transition), color var(--transition);
+            transition: border-color 0.3s, background 0.3s, color 0.3s;
             font-family: var(--font);
         }
         .form-group textarea { min-height: 80px; resize: vertical; }
@@ -363,21 +384,23 @@
             color: var(--muted);
             font-weight: 500;
         }
-        /* Туториал */
-        .tutorial-overlay {
+        .tutorial-overlay, .fullscreen-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: var(--bg);
-            z-index: 300;
+            z-index: 500;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 24px;
             text-align: center;
-            transition: background var(--transition);
+            transition: background 0.3s;
         }
-        .tutorial-slide { max-width: 420px; width: 100%; }
+        .tutorial-slide {
+            max-width: 420px;
+            width: 100%;
+        }
         .tutorial-slide h2 {
             font-weight: 900;
             font-size: 24px;
@@ -389,32 +412,17 @@
             line-height: 1.6;
             margin-bottom: 20px;
         }
-        .fullscreen-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--bg);
-            z-index: 400;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            padding: 24px;
-            text-align: center;
-            transition: background var(--transition);
-        }
-        /* Звёзды */
         .star-rating {
             display: flex;
             gap: 4px;
             font-size: 28px;
             cursor: pointer;
         }
-        .star-rating span { color: var(--border); transition: color var(--transition), transform var(--transition); }
+        .star-rating span { color: var(--border); transition: color 0.2s, transform 0.2s; }
         .star-rating span.active { color: var(--gold); }
         .star-rating span:hover { transform: scale(1.2); }
         .review-item { border-bottom: 1px solid var(--border); padding: 10px 0; }
         .review-item:last-child { border-bottom: none; }
-        /* Игра */
         .game-click-area {
             width: 100%;
             max-width: 250px;
@@ -424,11 +432,10 @@
             border-radius: 50%;
             overflow: hidden;
             border: 4px solid var(--border);
-            transition: transform 0.1s, border-color var(--transition);
+            transition: transform 0.1s, border-color 0.3s;
             user-select: none;
             -webkit-user-select: none;
             touch-action: manipulation;
-            will-change: transform;
         }
         .game-click-area:active { transform: scale(0.92); }
         .game-click-area img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
@@ -441,14 +448,13 @@
             border-radius: var(--radius);
             margin-bottom: 8px;
             background: var(--card);
-            transition: background var(--transition), border-color var(--transition);
+            transition: background 0.3s, border-color 0.3s;
         }
         .upgrade-info { flex: 1; }
         .upgrade-name { font-weight: 700; font-size: 14px; }
         .upgrade-cost { font-size: 12px; color: var(--muted); }
         .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 6px 0; }
         .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
-        /* Категории */
         .category-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .category-tile {
             padding: 12px 8px;
@@ -459,14 +465,12 @@
             cursor: pointer;
             font-weight: 600;
             font-size: 11px;
-            transition: transform var(--transition), border-color var(--transition), background var(--transition);
+            transition: transform 0.2s, border-color 0.3s, background 0.3s;
         }
         .category-tile:active { transform: scale(0.95); }
         .category-tile .cat-icon { font-size: 24px; display: block; margin-bottom: 4px; }
-        /* Поиск */
-        .search-suggestion { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: background var(--transition); }
+        .search-suggestion { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
         .search-suggestion:hover, .search-suggestion:active { background: var(--border); }
-        /* Сетки */
         .grid-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         .grid-tile {
             padding: 16px;
@@ -477,42 +481,14 @@
             cursor: pointer;
             font-weight: 700;
             font-size: 13px;
-            transition: transform var(--transition), border-color var(--transition), background var(--transition);
+            transition: transform 0.2s, border-color 0.3s, background 0.3s;
         }
         .grid-tile:active { transform: scale(0.95); }
         .grid-tile .tile-icon { font-size: 32px; display: block; margin-bottom: 8px; }
-        /* Галерея */
-        .image-gallery {
-            display: flex;
-            overflow-x: auto;
-            gap: 8px;
-            margin-bottom: 12px;
-            scroll-snap-type: x mandatory;
-            -webkit-overflow-scrolling: touch;
-        }
-        .image-gallery img {
-            width: 200px;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 8px;
-            scroll-snap-align: start;
-            flex-shrink: 0;
-            background: var(--border);
-        }
-        /* Админка */
-        .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .admin-table th, .admin-table td { padding: 8px; text-align: left; border-bottom: 1px solid var(--border); }
-        .admin-table th { font-weight: 700; color: var(--muted); }
-        /* Прочее */
-        @media (max-width: 480px) {
-            .modal { padding: 16px; }
-            .grid-tiles { grid-template-columns: repeat(2, 1fr); }
-            .category-grid { grid-template-columns: repeat(2, 1fr); }
-        }
+        .image-gallery { display: flex; overflow-x: auto; gap: 8px; margin-bottom: 12px; scroll-snap-type: x mandatory; }
+        .image-gallery img { width: 200px; height: 150px; object-fit: cover; border-radius: 8px; scroll-snap-align: start; flex-shrink: 0; background: var(--border); }
         .hidden { display: none !important; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .text-muted { color: var(--muted); }
-        .text-accent { color: var(--accent); }
         .mt-8 { margin-top: 8px; }
         .mt-12 { margin-top: 12px; }
         .mb-8 { margin-bottom: 8px; }
@@ -520,9 +496,6 @@
         .w-full { width: 100%; }
         .gap-8 { gap: 8px; }
         .gap-12 { gap: 12px; }
-        .text-center { text-align: center; }
-        .relative { position: relative; }
-        .overflow-hidden { overflow: hidden; }
     </style>
 </head>
 <body>
@@ -537,9 +510,8 @@
         <button class="theme-toggle" id="themeToggleBtn" title="Переключить тему">🌓</button>
     </header>
     <main class="container" id="mainContainer">
-        <!-- Секции -->
         <section class="section active" id="section-home">
-            <div id="homeFeed" class="ads-grid"></div>
+            <div class="ads-grid" id="homeFeed"></div>
         </section>
         <section class="section" id="section-cart">
             <h2 style="margin-bottom:12px;font-weight:800;">🛒 Корзина</h2>
@@ -617,12 +589,9 @@
         </button>
     </nav>
     <div id="modalContainer"></div>
-
+    <div id="tutorialContainer"></div>
     <script>
         (function() {
-            'use strict';
-
-            // ===== КОНСТАНТЫ =====
             const OWNER_USERNAME = 'bounqy';
             const ALL_SERVERS = [
                 'Phoenix', 'Tucson', 'Scottdale', 'Chandler', 'Brainburg', 'Saint-Rose', 'Mesa', 'Red-Rock', 'Yuma',
@@ -651,7 +620,6 @@
             const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
 
-            // ===== ИНИЦИАЛИЗАЦИЯ =====
             let tg = null;
             let currentUser = { id: 123456789, username: 'testuser', first_name: 'Тест' };
             try {
@@ -677,7 +645,6 @@
                 }
             } catch (e) { console.warn('Supabase init error', e); }
 
-            // ===== ГЛОБАЛЬНОЕ СОСТОЯНИЕ =====
             let currentSection = 'home';
             let currentTheme = localStorage.getItem('theme') || 'light';
             let sfxEnabled = localStorage.getItem('sfx') !== 'off';
@@ -696,7 +663,6 @@
                 shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000, scrapCost: 500,
                 elitePurchased: false
             };
-            let realtimeChannel = null;
             let searchHistory = JSON.parse(localStorage.getItem('searchHistory') || '[]');
             let appealAdId = null;
             let cartAds = [];
@@ -704,14 +670,9 @@
             let pendingAds = [];
             let pendingAppeals = [];
             let homeAds = [];
-            let tutorialCompleted = localStorage.getItem('tutorialDone') === 'true';
-            let adminTutorialCompleted = localStorage.getItem('adminTutorialDone') === 'true';
-            let homePage = 0;
-            const HOME_PAGE_SIZE = 20;
-            let isLoadingHome = false;
-            let hasMoreHome = true;
 
-            // ===== УТИЛИТЫ =====
+            const userIdentifier = currentUser.username ? `@${currentUser.username}` : `ID: ${currentUser.id}`;
+
             function withTimeout(promise, ms = 8000) {
                 return Promise.race([
                     promise,
@@ -722,7 +683,7 @@
             function playSfx(type = 'click') {
                 if (!sfxEnabled) return;
                 try {
-                    if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
                     osc.connect(gain);
@@ -737,11 +698,17 @@
                 } catch (e) {}
             }
 
-            function saveTheme() { localStorage.setItem('theme', currentTheme); }
-
             function applyTheme() {
                 document.documentElement.setAttribute('data-theme', currentTheme);
             }
+            applyTheme();
+
+            document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('theme', currentTheme);
+                applyTheme();
+                playSfx('click');
+            });
 
             function formatPrice(value) {
                 if (!value) return '0';
@@ -759,17 +726,6 @@
                 if (num >= 1000000) return (num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1) + 'кк';
                 if (num >= 1000) return (num / 1000).toFixed(num % 1000 === 0 ? 0 : 1) + 'к';
                 return num.toString();
-            }
-
-            function parsePriceToNumber(str) {
-                if (!str) return 0;
-                str = str.toLowerCase().trim();
-                let num = parseInt(str.replace(/[^0-9]/g, '')) || 0;
-                let kCount = (str.match(/к/g) || []).length;
-                if (kCount === 1) num *= 1000;
-                else if (kCount === 2) num *= 1000000;
-                else if (kCount === 3) num *= 1000000000;
-                return num;
             }
 
             function formatPriceInput(input) {
@@ -799,12 +755,6 @@
                     if (!isAllowedLink(link)) return { valid: false, message: `Ссылка ${link} не разрешена` };
                 }
                 return { valid: true, links };
-            }
-
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
             }
 
             function showModal(html, onClose) {
@@ -865,20 +815,119 @@
                 } catch (e) {}
             }
 
-            function setupBackgroundMusic() {
-                try {
-                    const audio = new Audio();
-                    audio.loop = true;
-                    audio.volume = 0.3;
-                    audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-                    bgMusic = audio;
-                    document.addEventListener('click', () => {
-                        if (!musicStarted && bgMusic) { bgMusic.play().catch(() => {}); musicStarted = true; }
-                    }, { once: true });
-                } catch (e) {}
+            // ===== Туториалы =====
+            function checkTutorials() {
+                const userKey = currentUser.username || currentUser.id;
+                const tutorialDone = localStorage.getItem(`arizona_${userKey}_tutorial_completed`) === '1';
+                if (!tutorialDone) {
+                    showUserTutorial(userKey);
+                }
             }
 
-            // ===== НАВИГАЦИЯ =====
+            function showUserTutorial(userKey) {
+                const slides = [
+                    { title: '⚠️ Предупреждение', text: 'Мы не несём ответственности за скам… Запрещена продажа/покупка аккаунтов… Продолжая использование, вы соглашаетесь.', btn: 'Продолжить', timer: 60 },
+                    { title: 'Добро пожаловать!', text: 'Общее описание приложения для размещения объявлений.', btn: 'Далее', timer: 0 },
+                    { title: '🏠 Главная', text: 'Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности, отзывы и написать продавцу.', btn: 'Далее', timer: 0 },
+                    { title: '🛒 Корзина', text: 'Сохраняйте понравившиеся объявления, нажимая на значок корзины. Они будут храниться здесь.', btn: 'Далее', timer: 0 },
+                    { title: '➕ Отправка', text: 'Создавайте свои объявления: выберите тип, категорию, укажите название, цену, описание и сервер. После отправки оно попадёт на модерацию.', btn: 'Далее', timer: 0 },
+                    { title: '☰ Все разделы', text: 'Здесь находятся дополнительные возможности: «Мои объявления», «Каталог», игра «Барыга», «Лента луков», «Попутчики», музыка, настройки и связь с менеджером.', btn: 'Далее', timer: 0 },
+                    { title: '🔍 Поиск', text: 'Используйте строку поиска вверху, чтобы быстро находить товары или профили игроков.', btn: 'Понятно', timer: 0 }
+                ];
+                let currentSlide = 0;
+                const container = document.getElementById('tutorialContainer');
+
+                function renderSlide() {
+                    const slide = slides[currentSlide];
+                    const isFirstOrLast = currentSlide === 0 || currentSlide === slides.length - 1;
+                    container.innerHTML = `
+                        <div class="tutorial-overlay">
+                            <div class="tutorial-slide">
+                                <h2>${slide.title}</h2>
+                                <p>${slide.text}</p>
+                                <button class="btn w-full" id="tutorialNextBtn" ${slide.timer > 0 ? 'disabled' : ''}>${slide.btn} ${slide.timer > 0 ? '(60с)' : ''}</button>
+                            </div>
+                        </div>
+                    `;
+                    const btn = document.getElementById('tutorialNextBtn');
+                    let timeLeft = slide.timer;
+                    if (timeLeft > 0) {
+                        const interval = setInterval(() => {
+                            timeLeft--;
+                            if (timeLeft > 0) {
+                                btn.textContent = `${slide.btn} (${timeLeft}с)`;
+                            } else {
+                                clearInterval(interval);
+                                btn.disabled = false;
+                                btn.textContent = slide.btn;
+                            }
+                        }, 1000);
+                    }
+                    btn.addEventListener('click', () => {
+                        currentSlide++;
+                        if (currentSlide < slides.length) {
+                            renderSlide();
+                        } else {
+                            localStorage.setItem(`arizona_${userKey}_tutorial_completed`, '1');
+                            container.innerHTML = '';
+                        }
+                    });
+                }
+                renderSlide();
+            }
+
+            function showAdminTutorial() {
+                const userKey = currentUser.username || currentUser.id;
+                const slides = [
+                    { title: '🔧 Админ-панель: обзор', text: 'Здесь вы управляете объявлениями. Просмотр, одобрение, отклонение, редактирование заявок.', btn: 'Далее', timer: 60 },
+                    { title: '✅ Одобрение и отклонение', text: 'Кнопка «Одобрить» публикует в ленте, «Отклонить» помечает как удалённое у продавца.', btn: 'Далее', timer: 0 },
+                    { title: '✏️ Редактирование', text: 'Кнопка «✏️» открывает окно для изменения названия, цены, описания, скриншотов и сервера перед одобрением.', btn: 'Далее', timer: 0 },
+                    { title: '⚖️ Управление пользователями', text: `Владелец (${OWNER_USERNAME}) может банить, разбанивать, назначать и снимать админов. Забаненные не могут войти.`, btn: 'Далее', timer: 0 },
+                    { title: '📨 Апелляции', text: 'Продавцы могут подавать апелляции на отклонённые объявления. Вы можете их одобрить или отклонить. Также доступна очистка всей ленты.', btn: 'Далее', timer: 0 },
+                    { title: '🛡️ Дополнительно', text: 'Вы можете редактировать любое объявление перед публикацией, а также полностью очистить ленту. Все изменения сохраняются автоматически.', btn: 'Закрыть', timer: 60 }
+                ];
+                let currentSlide = 0;
+                const container = document.getElementById('tutorialContainer');
+
+                function renderSlide() {
+                    const slide = slides[currentSlide];
+                    container.innerHTML = `
+                        <div class="tutorial-overlay">
+                            <div class="tutorial-slide">
+                                <h2>${slide.title}</h2>
+                                <p>${slide.text}</p>
+                                <button class="btn w-full" id="adminTutNextBtn" ${slide.timer > 0 ? 'disabled' : ''}>${slide.btn} ${slide.timer > 0 ? '(60с)' : ''}</button>
+                            </div>
+                        </div>
+                    `;
+                    const btn = document.getElementById('adminTutNextBtn');
+                    let timeLeft = slide.timer;
+                    if (timeLeft > 0) {
+                        const interval = setInterval(() => {
+                            timeLeft--;
+                            if (timeLeft > 0) {
+                                btn.textContent = `${slide.btn} (${timeLeft}с)`;
+                            } else {
+                                clearInterval(interval);
+                                btn.disabled = false;
+                                btn.textContent = slide.btn;
+                            }
+                        }, 1000);
+                    }
+                    btn.addEventListener('click', () => {
+                        currentSlide++;
+                        if (currentSlide < slides.length) {
+                            renderSlide();
+                        } else {
+                            localStorage.setItem(`arizona_${userKey}_admin_tutorial_completed`, '1');
+                            container.innerHTML = '';
+                        }
+                    });
+                }
+                renderSlide();
+            }
+
+            // ===== Навигация =====
             function switchSection(section) {
                 currentSection = section;
                 document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -886,23 +935,30 @@
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 const navBtn = document.querySelector(`.nav-item[data-section="${section}"]`);
                 if (navBtn) navBtn.classList.add('active');
-                switch (section) {
-                    case 'home': loadHomeFeed(true); break;
-                    case 'cart': loadCart(); break;
-                    case 'send': populateSendForm(); loadMyAds(); break;
-                    case 'admin':
-                        loadAdminPanel();
-                        if (isAdmin && !adminTutorialCompleted) showAdminTutorial();
-                        break;
-                    case 'all': loadAllTiles(); break;
+
+                if (section === 'home') loadHomeFeed();
+                if (section === 'cart') loadCart();
+                if (section === 'send') { populateSendForm(); loadMyAds(); }
+                if (section === 'admin') {
+                    loadAdminPanel();
+                    const userKey = currentUser.username || currentUser.id;
+                    const adminTutDone = localStorage.getItem(`arizona_${userKey}_admin_tutorial_completed`) === '1';
+                    if (isAdmin && !adminTutDone) showAdminTutorial();
                 }
+                if (section === 'all') loadAllTiles();
                 playSfx('click');
                 requestWakeLock();
-                // Прокрутка вверх
-                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
 
-            // ===== ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ =====
+            document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const sec = btn.dataset.section;
+                    if (sec === 'admin' && !isAdmin) return;
+                    switchSection(sec);
+                });
+            });
+
+            // ===== Загрузка данных пользователя и проверка бана =====
             async function loadCurrentUserData() {
                 if (!supabase) return;
                 try {
@@ -919,12 +975,7 @@
                             username: currentUser.username || '',
                             display_name: currentUser.first_name || currentUser.username || '',
                             banned: false,
-                            is_admin: false,
-                            reputation: 0,
-                            level: 1,
-                            avatar_url: '',
-                            bio: '',
-                            created_at: new Date().toISOString()
+                            is_admin: currentUser.username === OWNER_USERNAME
                         };
                         await withTimeout(supabase.from('users').insert(newUser));
                         currentUserData = newUser;
@@ -936,7 +987,9 @@
                     } else {
                         document.getElementById('adminNavBtn').classList.add('hidden');
                     }
-                    if (currentUserData && currentUserData.banned) showBanScreen();
+                    if (currentUserData && currentUserData.banned) {
+                        showBanScreen();
+                    }
                 } catch (e) {
                     console.warn('loadCurrentUserData error', e);
                     isAdmin = (currentUser.username === OWNER_USERNAME);
@@ -945,98 +998,75 @@
                 }
             }
 
-            // ===== ГЛАВНАЯ ЛЕНТА (с пагинацией и оптимизацией) =====
-            async function loadHomeFeed(reset = false) {
+            function showBanScreen() {
+                document.body.innerHTML = `
+                    <div class="fullscreen-overlay">
+                        <h1 style="color:#ff3b30;margin-bottom:12px;">🚫 Вы забанены</h1>
+                        <p style="color:var(--muted);">Ваш аккаунт заблокирован администрацией.</p>
+                    </div>
+                `;
+            }
+
+            // ===== Главная лента =====
+            async function loadHomeFeed() {
                 if (!supabase) {
                     document.getElementById('homeFeed').innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
                     return;
                 }
                 const container = document.getElementById('homeFeed');
-                if (reset) {
-                    homePage = 0;
-                    hasMoreHome = true;
-                    container.innerHTML = '<div class="empty-state">Загрузка...</div>';
-                }
-                if (!hasMoreHome || isLoadingHome) return;
-                isLoadingHome = true;
+                container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
-                    let query = supabase.from('ads')
-                        .select('*')
-                        .eq('status', 'approved')
-                        .order('created_at', { ascending: false })
-                        .range(homePage * HOME_PAGE_SIZE, (homePage + 1) * HOME_PAGE_SIZE - 1);
+                    let query = supabase.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false });
                     if (currentFilterCategory) query = query.eq('category', currentFilterCategory);
                     const { data, error } = await withTimeout(query);
                     if (error) throw error;
-                    const newAds = data || [];
-                    if (newAds.length < HOME_PAGE_SIZE) hasMoreHome = false;
-                    if (reset) {
-                        homeAds = newAds;
-                    } else {
-                        homeAds = homeAds.concat(newAds);
-                    }
-                    homePage++;
-                    renderHomeFeed(reset);
+                    homeAds = data || [];
+                    renderHomeFeed();
                 } catch (e) {
                     console.warn('loadHomeFeed error', e);
-                    if (reset) container.innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
-                } finally {
-                    isLoadingHome = false;
+                    container.innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
                 }
             }
 
-            function renderHomeFeed(reset = false) {
+            function renderHomeFeed() {
                 const container = document.getElementById('homeFeed');
                 if (!homeAds.length) {
                     container.innerHTML = '<div class="empty-state">Объявлений пока нет</div>';
                     return;
                 }
-                if (reset) container.innerHTML = '';
-                const fragment = document.createDocumentFragment();
-                const startIndex = reset ? 0 : (homePage - 1) * HOME_PAGE_SIZE;
-                const adsToRender = reset ? homeAds : homeAds.slice(startIndex);
-                adsToRender.forEach(ad => {
+                let html = '';
+                homeAds.forEach(ad => {
                     const firstImg = ad.images ? ad.images.split(',')[0].trim() : '';
                     const imgSrc = firstImg || DEFAULT_AD_IMAGE;
                     const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
                     const catLabel = ALL_CATEGORIES.find(c => c.id === ad.category)?.label || ad.category;
-                    const card = document.createElement('div');
-                    card.className = 'card ad-card';
-                    card.dataset.adId = ad.id;
-                    card.innerHTML = `
-                        <img class="ad-card-img" src="${imgSrc}" loading="lazy" onerror="this.src='${DEFAULT_AD_IMAGE}'" alt="">
-                        <div class="ad-card-info">
-                            <div class="ad-card-title">${escapeHtml(ad.item_name || 'Без названия')}</div>
-                            <div class="ad-card-price">${formatPrice(ad.price)}</div>
-                            <div class="ad-card-badges">
-                                ${modeBadge}
-                                <span class="badge server">${escapeHtml(ad.server)}</span>
-                                <span class="badge category">${escapeHtml(catLabel)}</span>
+                    html += `
+                        <div class="card ad-card" data-ad-id="${ad.id}">
+                            <img class="ad-card-img" src="${imgSrc}" onerror="this.src='${DEFAULT_AD_IMAGE}'" alt="">
+                            <div class="ad-card-info">
+                                <div class="ad-card-title">${ad.item_name || 'Без названия'}</div>
+                                <div class="ad-card-price">${formatPrice(ad.price)}</div>
+                                <div class="ad-card-badges">
+                                    ${modeBadge}
+                                    <span class="badge server">${ad.server}</span>
+                                    <span class="badge category">${catLabel}</span>
+                                </div>
+                                <div class="ad-card-author">Автор: ${ad.author_id}</div>
                             </div>
-                            <div class="ad-card-author">Автор: @${escapeHtml(ad.author_username || ad.author_id)}</div>
                         </div>
                     `;
-                    card.addEventListener('click', () => openAdDetail(ad));
-                    fragment.appendChild(card);
                 });
-                container.appendChild(fragment);
-                // Добавляем кнопку "Загрузить еще"
-                if (hasMoreHome && homeAds.length >= HOME_PAGE_SIZE) {
-                    let loadMoreBtn = container.querySelector('.load-more-btn');
-                    if (!loadMoreBtn) {
-                        loadMoreBtn = document.createElement('button');
-                        loadMoreBtn.className = 'btn secondary w-full load-more-btn';
-                        loadMoreBtn.textContent = 'Загрузить еще';
-                        loadMoreBtn.addEventListener('click', () => loadHomeFeed(false));
-                        container.appendChild(loadMoreBtn);
-                    }
-                } else {
-                    const loadMoreBtn = container.querySelector('.load-more-btn');
-                    if (loadMoreBtn) loadMoreBtn.remove();
-                }
+                container.innerHTML = html;
+                container.querySelectorAll('.ad-card').forEach(card => {
+                    card.addEventListener('click', () => {
+                        const id = card.dataset.adId;
+                        const ad = homeAds.find(a => a.id == id);
+                        if (ad) openAdDetail(ad);
+                    });
+                });
             }
 
-            // ===== КОРЗИНА =====
+            // ===== Корзина =====
             async function loadCart() {
                 const container = document.getElementById('cartList');
                 if (!supabase) {
@@ -1064,42 +1094,48 @@
                         container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
                         return;
                     }
-                    const fragment = document.createDocumentFragment();
+                    let html = '';
                     cartAds.forEach(ad => {
                         const isLive = ad.status === 'approved';
                         const statusBadge = isLive ? '<span class="badge status-approved">🟢 Висит</span>' : '<span class="badge status-deleted">🔴 Удалена</span>';
-                        const card = document.createElement('div');
-                        card.className = 'card';
-                        card.dataset.adId = ad.id;
-                        card.innerHTML = `
-                            <div class="flex-between">
-                                <div>
-                                    <div style="font-weight:700;">${escapeHtml(ad.item_name)}</div>
-                                    <div style="font-size:13px;color:var(--muted);">${escapeHtml(ad.server)} • ${formatPrice(ad.price)}</div>
-                                    ${statusBadge}
+                        html += `
+                            <div class="card" data-ad-id="${ad.id}">
+                                <div class="flex-between">
+                                    <div>
+                                        <div style="font-weight:700;">${ad.item_name}</div>
+                                        <div style="font-size:13px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                                        ${statusBadge}
+                                    </div>
+                                    <button class="btn danger" data-remove-cart="${ad.id}">Убрать</button>
                                 </div>
-                                <button class="btn danger" data-remove-cart="${ad.id}">Убрать</button>
                             </div>
                         `;
-                        card.querySelector('[data-remove-cart]').addEventListener('click', async (e) => {
+                    });
+                    container.innerHTML = html;
+                    container.querySelectorAll('[data-remove-cart]').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
                             e.stopPropagation();
-                            await withTimeout(supabase.from('favorites').delete().eq('user_id', currentUser.id.toString()).eq('ad_id', ad.id));
+                            const adId = btn.dataset.removeCart;
+                            await withTimeout(supabase.from('favorites').delete().eq('user_id', currentUser.id.toString()).eq('ad_id', adId));
                             playSfx('click');
                             loadCart();
                         });
-                        card.addEventListener('click', (e) => {
-                            if (e.target.tagName !== 'BUTTON') openAdDetail(ad);
-                        });
-                        fragment.appendChild(card);
                     });
-                    container.innerHTML = '';
-                    container.appendChild(fragment);
+                    container.querySelectorAll('.card[data-ad-id]').forEach(card => {
+                        card.addEventListener('click', (e) => {
+                            if (e.target.tagName === 'BUTTON') return;
+                            const id = card.dataset.adId;
+                            const ad = cartAds.find(a => a.id == id);
+                            if (ad) openAdDetail(ad);
+                        });
+                    });
                 } catch (e) {
+                    console.warn('loadCart error', e);
                     container.innerHTML = '<div class="empty-state">Корзина пуста</div>';
                 }
             }
 
-            // ===== ФОРМА ОТПРАВКИ =====
+            // ===== Отправка объявления =====
             function populateSendForm() {
                 const catSelect = document.getElementById('sendCategory');
                 catSelect.innerHTML = ALL_CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
@@ -1112,6 +1148,71 @@
             }
             function formatPriceInputHandler(e) { formatPriceInput(e.target); }
 
+            document.getElementById('sendSubmitBtn').addEventListener('click', async () => {
+                const mode = document.getElementById('sendType').value;
+                const category = document.getElementById('sendCategory').value;
+                const itemName = document.getElementById('sendName').value.trim();
+                const priceRaw = document.getElementById('sendPrice').value.trim();
+                const description = document.getElementById('sendDescription').value.trim();
+                const images = document.getElementById('sendImages').value.trim();
+                const server = document.getElementById('sendServer').value;
+
+                if (!itemName) { showAlert('Ошибка', 'Введите название'); return; }
+                if (!priceRaw) { showAlert('Ошибка', 'Введите цену'); return; }
+                if (!description) { showAlert('Ошибка', 'Введите описание'); return; }
+
+                // Проверка времени 09:00 - 22:00 МСК
+                const now = new Date();
+                const mskHour = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' })).getHours();
+                if (mskHour < 9 || mskHour >= 22) {
+                    showAlert('Ошибка', 'Объявления принимаются только с 09:00 до 22:00 по МСК');
+                    return;
+                }
+
+                // Кулдаун 2 минуты
+                if (Date.now() - lastAdSubmitTime < 120000) {
+                    showAlert('Ошибка', 'Подождите 2 минуты перед отправкой следующего объявления');
+                    return;
+                }
+
+                const linkCheck = checkLinksString(images);
+                if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+
+                const priceNum = parsePriceToNumber(priceRaw);
+                const newAd = {
+                    mode, category, item_name: itemName, price: priceNum,
+                    description, images, server,
+                    author_id: userIdentifier,
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                };
+
+                try {
+                    await withTimeout(supabase.from('ads').insert(newAd));
+                    lastAdSubmitTime = Date.now();
+                    playSfx('success');
+                    showAlert('Успех', 'Ваше объявление отправлено на модерацию', 'success');
+                    document.getElementById('sendName').value = '';
+                    document.getElementById('sendPrice').value = '';
+                    document.getElementById('sendDescription').value = '';
+                    document.getElementById('sendImages').value = '';
+                    loadMyAds();
+                } catch (e) {
+                    showAlert('Ошибка', 'Не удалось отправить объявление');
+                }
+            });
+
+            function parsePriceToNumber(str) {
+                if (!str) return 0;
+                str = str.toLowerCase().trim();
+                let num = parseInt(str.replace(/[^0-9]/g, '')) || 0;
+                let kCount = (str.match(/к/g) || []).length;
+                if (kCount === 1) num *= 1000;
+                else if (kCount === 2) num *= 1000000;
+                else if (kCount === 3) num *= 1000000000;
+                return num;
+            }
+
             async function loadMyAds() {
                 const container = document.getElementById('myAdsList');
                 if (!supabase) {
@@ -1121,7 +1222,7 @@
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
                     const { data, error } = await withTimeout(
-                        supabase.from('ads').select('*').eq('author_id', currentUser.id.toString()).order('created_at', { ascending: false })
+                        supabase.from('ads').select('*').eq('author_id', userIdentifier).order('created_at', { ascending: false })
                     );
                     if (error) throw error;
                     myAds = data || [];
@@ -1129,53 +1230,55 @@
                         container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>';
                         return;
                     }
-                    const fragment = document.createDocumentFragment();
+                    let html = '';
                     myAds.forEach(ad => {
                         let statusBadge = '';
                         if (ad.status === 'pending') statusBadge = '<span class="badge status-pending">На модерации</span>';
                         else if (ad.status === 'deleted') statusBadge = '<span class="badge status-deleted">Удалено</span>';
                         else statusBadge = '<span class="badge status-approved">🟢 Висит</span>';
-                        const card = document.createElement('div');
-                        card.className = 'card';
-                        card.innerHTML = `
-                            <div class="flex-between">
-                                <div>
-                                    <div style="font-weight:700;">${escapeHtml(ad.item_name)}</div>
-                                    <div style="font-size:12px;color:var(--muted);">${escapeHtml(ad.server)} • ${formatPrice(ad.price)}</div>
-                                    <div style="margin-top:4px;">${statusBadge}</div>
-                                </div>
-                                <div class="flex-between gap-8">
-                                    <button class="btn danger" data-delete-ad="${ad.id}">🗑 Удалить</button>
-                                    ${ad.status === 'deleted' ? `<button class="btn gold" data-appeal-ad="${ad.id}">📨 Апелляция</button>` : ''}
+                        html += `
+                            <div class="card">
+                                <div class="flex-between">
+                                    <div>
+                                        <div style="font-weight:700;">${ad.item_name}</div>
+                                        <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                                        <div style="margin-top:4px;">${statusBadge}</div>
+                                    </div>
+                                    <div class="flex-between gap-8">
+                                        <button class="btn danger" data-delete-ad="${ad.id}">🗑 Удалить</button>
+                                        ${ad.status === 'deleted' ? `<button class="btn gold" data-appeal-ad="${ad.id}">📨 Апелляция</button>` : ''}
+                                    </div>
                                 </div>
                             </div>
                         `;
-                        card.querySelector('[data-delete-ad]').addEventListener('click', async (e) => {
+                    });
+                    container.innerHTML = html;
+                    container.querySelectorAll('[data-delete-ad]').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
                             e.stopPropagation();
+                            const id = btn.dataset.deleteAd;
                             showConfirm('Удаление', 'Удалить объявление навсегда?', async () => {
-                                await withTimeout(supabase.from('ads').delete().eq('id', ad.id));
-                                await withTimeout(supabase.from('favorites').delete().eq('ad_id', ad.id));
+                                await withTimeout(supabase.from('ads').delete().eq('id', id));
+                                await withTimeout(supabase.from('favorites').delete().eq('ad_id', id));
                                 playSfx('click');
                                 loadMyAds();
                             });
                         });
-                        if (ad.status === 'deleted') {
-                            card.querySelector('[data-appeal-ad]').addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                appealAdId = ad.id;
-                                openAppealModal();
-                            });
-                        }
-                        fragment.appendChild(card);
                     });
-                    container.innerHTML = '';
-                    container.appendChild(fragment);
+                    container.querySelectorAll('[data-appeal-ad]').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            appealAdId = btn.dataset.appealAd;
+                            openAppealModal();
+                        });
+                    });
                 } catch (e) {
+                    console.warn('loadMyAds error', e);
                     container.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>';
                 }
             }
 
-            // ===== АДМИН-ПАНЕЛЬ =====
+            // ===== Админка =====
             async function loadAdminPanel() {
                 const container = document.getElementById('adminPanelContent');
                 if (!supabase || !isAdmin) {
@@ -1203,9 +1306,9 @@
                         pendingAds.forEach(ad => {
                             html += `
                                 <div class="card" style="margin-bottom:8px;">
-                                    <div style="font-weight:700;">${escapeHtml(ad.item_name)}</div>
-                                    <div style="font-size:12px;color:var(--muted);">${escapeHtml(ad.server)} • @${escapeHtml(ad.author_username || ad.author_id)} • ${formatPrice(ad.price)}</div>
-                                    <div style="font-size:12px;color:var(--muted);">${escapeHtml(ad.description || '')}</div>
+                                    <div style="font-weight:700;">${ad.item_name}</div>
+                                    <div style="font-size:12px;color:var(--muted);">${ad.server} • ${ad.author_id} • ${formatPrice(ad.price)}</div>
+                                    <div style="font-size:12px;color:var(--muted);">${ad.description || ''}</div>
                                     <div class="flex-between gap-8 mt-8">
                                         <button class="btn success" data-approve="${ad.id}" style="background:#34c759;">✅ Одобрить</button>
                                         <button class="btn danger" data-reject="${ad.id}">❌ Отклонить</button>
@@ -1224,9 +1327,9 @@
                             html += `
                                 <div class="card" style="margin-bottom:8px;">
                                     <div style="font-weight:700;">Объявление ID: ${appeal.ad_id}</div>
-                                    <div style="font-size:12px;color:var(--muted);">Автор: @${escapeHtml(appeal.author_username || appeal.author_id)}</div>
-                                    <div style="font-size:12px;color:var(--muted);">Причина: ${escapeHtml(appeal.reason)}</div>
-                                    ${appeal.evidence ? `<div style="font-size:11px;color:var(--accent);">Доказательства: ${escapeHtml(appeal.evidence)}</div>` : ''}
+                                    <div style="font-size:12px;color:var(--muted);">Автор: ${appeal.author_id}</div>
+                                    <div style="font-size:12px;color:var(--muted);">Причина: ${appeal.reason}</div>
+                                    ${appeal.evidence ? `<div style="font-size:11px;color:var(--accent);">Доказательства: ${appeal.evidence}</div>` : ''}
                                     <div class="flex-between gap-8 mt-8">
                                         <button class="btn success" data-approve-appeal="${appeal.id}" style="background:#34c759;">✅ Одобрить</button>
                                         <button class="btn danger" data-reject-appeal="${appeal.id}">❌ Отклонить</button>
@@ -1240,7 +1343,7 @@
                         html += `
                             <h3 style="margin:20px 0 8px;">Управление пользователями</h3>
                             <div class="form-group">
-                                <input type="text" id="adminUsernameInput" placeholder="username без @">
+                                <input type="text" id="adminUsernameInput" placeholder="username или ID">
                             </div>
                             <div class="flex-between gap-8 mb-8">
                                 <button class="btn danger w-full" id="adminBanBtn">Забанить</button>
@@ -1251,18 +1354,15 @@
                                 <button class="btn secondary w-full" id="adminRemoveAdminBtn">Снять админа</button>
                             </div>
                             <button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>
-                            <h4 style="margin:20px 0 8px;">Жалобы на объявления</h4>
-                            <div id="adminReportsList"></div>
                         `;
                     }
 
                     container.innerHTML = html;
 
-                    // Обработчики объявлений
                     container.querySelectorAll('[data-approve]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('ads').update({ status: 'approved' }).eq('id', btn.dataset.approve));
-                            playSfx('success'); loadAdminPanel(); loadHomeFeed(true);
+                            playSfx('success'); loadAdminPanel(); loadHomeFeed();
                         });
                     });
                     container.querySelectorAll('[data-reject]').forEach(btn => {
@@ -1277,8 +1377,6 @@
                             if (ad) openAdminEditModal(ad);
                         });
                     });
-
-                    // Обработчики апелляций
                     container.querySelectorAll('[data-approve-appeal]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('appeals').update({ status: 'approved' }).eq('id', btn.dataset.approveAppeal));
@@ -1291,8 +1389,6 @@
                             playSfx('click'); loadAdminPanel();
                         });
                     });
-
-                    // Владелец
                     if (isOwner) {
                         document.getElementById('adminBanBtn').addEventListener('click', () => adminUserAction('ban'));
                         document.getElementById('adminUnbanBtn').addEventListener('click', () => adminUserAction('unban'));
@@ -1302,130 +1398,78 @@
                             showConfirm('Очистка', 'Удалить ВСЕ объявления из ленты?', async () => {
                                 await withTimeout(supabase.from('ads').delete().neq('id', 0));
                                 await withTimeout(supabase.from('favorites').delete().neq('user_id', '0'));
-                                playSfx('click'); loadAdminPanel(); loadHomeFeed(true);
+                                playSfx('click'); loadAdminPanel(); loadHomeFeed();
                             });
                         });
-                        loadAdminReports();
                     }
                 } catch (e) {
+                    console.warn('loadAdminPanel error', e);
                     container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
                 }
             }
 
-            async function loadAdminReports() {
-                const container = document.getElementById('adminReportsList');
-                if (!container) return;
-                try {
-                    const { data, error } = await withTimeout(
-                        supabase.from('reports').select('*').eq('status', 'pending').order('created_at', { ascending: false })
-                    );
-                    if (error) throw error;
-                    const reports = data || [];
-                    if (!reports.length) {
-                        container.innerHTML = '<div class="empty-state">Жалоб нет</div>';
-                        return;
-                    }
-                    container.innerHTML = reports.map(report => `
-                        <div class="card">
-                            <div style="font-size:12px;color:var(--muted);">Объявление ID: ${report.ad_id} • Автор жалобы: @${escapeHtml(report.reporter_username)}</div>
-                            <div>Причина: ${escapeHtml(report.reason)}</div>
-                            <div class="flex-between gap-8 mt-8">
-                                <button class="btn success" data-resolve-report="${report.id}" style="background:#34c759;">Решено</button>
-                                <button class="btn danger" data-dismiss-report="${report.id}">Отклонить</button>
-                            </div>
-                        </div>
-                    `).join('');
-                    container.querySelectorAll('[data-resolve-report]').forEach(btn => {
-                        btn.addEventListener('click', async () => {
-                            await withTimeout(supabase.from('reports').update({ status: 'resolved' }).eq('id', btn.dataset.resolveReport));
-                            playSfx('success'); loadAdminReports();
-                        });
-                    });
-                    container.querySelectorAll('[data-dismiss-report]').forEach(btn => {
-                        btn.addEventListener('click', async () => {
-                            await withTimeout(supabase.from('reports').update({ status: 'dismissed' }).eq('id', btn.dataset.dismissReport));
-                            playSfx('click'); loadAdminReports();
-                        });
-                    });
-                } catch (e) {
-                    container.innerHTML = '<div class="empty-state">Ошибка загрузки жалоб</div>';
-                }
-            }
-
             async function adminUserAction(action) {
-                const username = document.getElementById('adminUsernameInput').value.trim().replace('@', '');
-                if (!username) { showAlert('Ошибка', 'Введите username'); return; }
+                const target = document.getElementById('adminUsernameInput').value.trim();
+                if (!target) { showAlert('Ошибка', 'Введите username или ID'); return; }
                 try {
-                    const { data: user, error } = await withTimeout(
-                        supabase.from('users').select('*').eq('username', username).maybeSingle()
-                    );
+                    let query = supabase.from('users').select('*');
+                    if (target.startsWith('@')) {
+                        query = query.eq('username', target.replace('@', ''));
+                    } else if (!isNaN(target)) {
+                        query = query.eq('id', target);
+                    } else {
+                        query = query.eq('username', target);
+                    }
+                    const { data: user, error } = await withTimeout(query.maybeSingle());
                     if (error) throw error;
                     if (!user) { showAlert('Ошибка', 'Пользователь не найден'); return; }
+
                     let updates = {};
                     if (action === 'ban') updates.banned = true;
                     else if (action === 'unban') updates.banned = false;
                     else if (action === 'make_admin') updates.is_admin = true;
                     else if (action === 'remove_admin') updates.is_admin = false;
+
                     await withTimeout(supabase.from('users').update(updates).eq('id', user.id));
                     playSfx('success'); showAlert('Успех', 'Действие выполнено'); loadAdminPanel();
                 } catch (e) { showAlert('Ошибка', 'Не удалось выполнить'); }
             }
 
-            // ===== ВСЕ РАЗДЕЛЫ =====
-            function loadAllTiles() {
-                const container = document.getElementById('allTiles');
-                const tiles = [
-                    { icon: '📦', label: 'Мои объявления', action: () => switchSection('send') },
-                    { icon: '📂', label: 'Каталог', action: openCatalogModal },
-                    { icon: '🎮', label: 'Игра «Барыга»', action: openBarygaGame },
-                    { icon: '🔍', label: 'Поиск', action: openSearchModal },
-                    { icon: '📸', label: 'Лента «Луков»', action: openFashionModal },
-                    { icon: '🤝', label: 'Попутчики', action: openTravelModal },
-                    { icon: '🎵', label: 'Музыка', action: openMusicModal },
-                    { icon: '⚙️', label: 'Настройки', action: openSettingsModal },
-                    { icon: '📩', label: 'Менеджер', action: openManagerModal },
-                    { icon: '💬', label: 'Переписки', action: openChatsModal },
-                    { icon: '👤', label: 'Мой профиль', action: openMyProfileModal },
-                    { icon: '🛡️', label: 'Репорты', action: openReportModal }
-                ];
-                container.innerHTML = tiles.map(t => `
-                    <div class="grid-tile" data-action="${t.label}">
-                        <span class="tile-icon">${t.icon}</span>
-                        ${t.label}
-                    </div>
-                `).join('');
-                container.querySelectorAll('.grid-tile').forEach(tile => {
-                    tile.addEventListener('click', () => {
-                        const found = tiles.find(t => t.label === tile.dataset.action);
-                        if (found) found.action();
-                    });
+            function openAdminEditModal(ad) {
+                showModal(`
+                    <h3 class="modal-title">✏️ Редактирование объявления</h3>
+                    <div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name || ''}"></div>
+                    <div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price || ''}"></div>
+                    <div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description || ''}</textarea></div>
+                    <div class="form-group"><label>Скриншоты</label><input type="text" id="editAdminImgs" value="${ad.images || ''}"></div>
+                    <button class="btn w-full" id="editAdminSaveBtn">Сохранить и одобрить</button>
+                `);
+                document.getElementById('editAdminSaveBtn').addEventListener('click', async () => {
+                    const item_name = document.getElementById('editAdminName').value.trim();
+                    const price = parsePriceToNumber(document.getElementById('editAdminPrice').value);
+                    const description = document.getElementById('editAdminDesc').value.trim();
+                    const images = document.getElementById('editAdminImgs').value.trim();
+
+                    const linkCheck = checkLinksString(images);
+                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
+
+                    await withTimeout(supabase.from('ads').update({
+                        item_name, price, description, images, status: 'approved'
+                    }).eq('id', ad.id));
+
+                    playSfx('success');
+                    document.getElementById('modalOverlay').remove();
+                    loadAdminPanel();
+                    loadHomeFeed();
                 });
             }
 
-            // ===== КАТАЛОГ =====
-            function openCatalogModal() {
-                let html = '<h3 class="modal-title">📂 Каталог</h3><div class="category-grid">';
-                ALL_CATEGORIES.forEach(cat => {
-                    html += `<div class="category-tile" data-cat="${cat.id}"><span class="cat-icon">${cat.label.split(' ')[0]}</span>${cat.label}</div>`;
-                });
-                html += '</div>';
-                const { overlay } = showModal(html);
-                overlay.querySelectorAll('.category-tile').forEach(tile => {
-                    tile.addEventListener('click', () => {
-                        currentFilterCategory = tile.dataset.cat;
-                        overlay.remove();
-                        switchSection('home');
-                        loadHomeFeed(true);
-                    });
-                });
-            }
-
-            // ===== ДЕТАЛИ ОБЪЯВЛЕНИЯ =====
+            // ===== Детали объявления =====
             async function openAdDetail(ad) {
                 let galleryHtml = '';
                 const images = ad.images ? ad.images.split(',').map(s => s.trim()).filter(s => s) : [];
                 if (images.length) {
-                    galleryHtml = '<div class="image-gallery">' + images.map(img => `<img src="${img}" loading="lazy" onerror="this.style.display='none'">`).join('') + '</div>';
+                    galleryHtml = '<div class="image-gallery">' + images.map(img => `<img src="${img}" onerror="this.style.display='none'">`).join('') + '</div>';
                 }
                 const catLabel = ALL_CATEGORIES.find(c => c.id === ad.category)?.label || ad.category;
                 const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
@@ -1433,26 +1477,25 @@
                 if (ad.status === 'pending') statusHtml = '<div class="empty-state">Объявление находится на модерации</div>';
                 else if (ad.status === 'deleted') {
                     statusHtml = '<div class="empty-state">Объявление удалено</div>';
-                    if (ad.author_id === currentUser.id.toString()) {
+                    if (ad.author_id === userIdentifier) {
                         statusHtml += '<button class="btn gold w-full mt-8" id="detailAppealBtn">📨 Апелляция</button>';
                     }
                 } else {
                     statusHtml = `
-                        <button class="btn w-full mb-8" id="detailContactBtn">💬 Написать</button>
+                        <button class="btn w-full mb-8" id="detailContactBtn">💬 Написать / Связаться</button>
                         <button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button>
                         <button class="btn secondary w-full mb-8" id="detailReviewsBtn">⭐ Отзывы</button>
-                        <button class="btn secondary w-full mb-8" id="detailReportBtn">🚩 Пожаловаться</button>
-                        ${ad.author_id === currentUser.id.toString() ? '<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить объявление</button>' : ''}
+                        ${ad.author_id === userIdentifier ? '<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить объявление</button>' : ''}
                     `;
                 }
                 const isFav = await checkIfInCart(ad.id);
                 showModal(`
-                    <h3 class="modal-title">${escapeHtml(ad.item_name)}</h3>
-                    <div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${escapeHtml(ad.server)}</span><span class="badge category">${escapeHtml(catLabel)}</span></div>
+                    <h3 class="modal-title">${ad.item_name}</h3>
+                    <div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>
                     ${galleryHtml}
                     <div style="font-size:24px;font-weight:900;color:var(--accent);margin-bottom:8px;">${formatPrice(ad.price)}</div>
-                    <p style="color:var(--muted);margin-bottom:12px;">${escapeHtml(ad.description || 'Нет описания')}</p>
-                    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Автор: <span style="color:var(--text);cursor:pointer;" id="detailAuthorLink">@${escapeHtml(ad.author_username || ad.author_id)}</span></div>
+                    <p style="color:var(--muted);margin-bottom:12px;">${ad.description || 'Нет описания'}</p>
+                    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Автор: <span style="color:var(--text);cursor:pointer;" id="detailAuthorLink">${ad.author_id}</span></div>
                     ${statusHtml}
                     <div id="detailReviewsSection"></div>
                     <h4 style="margin:16px 0 8px;">Похожие объявления</h4>
@@ -1461,14 +1504,19 @@
                 const overlay = document.getElementById('modalOverlay');
                 if (ad.status === 'approved') {
                     document.getElementById('detailContactBtn').addEventListener('click', () => {
-                        window.open(`https://t.me/${ad.author_username || ad.author_id}`, '_blank');
+                        let contact = ad.author_id;
+                        if (contact.startsWith('@')) {
+                            window.open(`https://t.me/${contact.replace('@', '')}`, '_blank');
+                        } else {
+                            showAlert('Контакт', `Автор: ${contact}`);
+                        }
                     });
                     const cartBtn = document.getElementById('detailCartToggleBtn');
-                    cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 В корзину';
+                    cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 Корзина';
                     cartBtn.addEventListener('click', async () => {
                         if (isFav) {
                             await withTimeout(supabase.from('favorites').delete().eq('user_id', currentUser.id.toString()).eq('ad_id', ad.id));
-                            cartBtn.textContent = '🛒 В корзину';
+                            cartBtn.textContent = '🛒 Корзина';
                         } else {
                             await withTimeout(supabase.from('favorites').insert({ user_id: currentUser.id.toString(), ad_id: ad.id }));
                             cartBtn.textContent = '🛒 Убрать из корзины';
@@ -1476,21 +1524,20 @@
                         playSfx('click'); loadCart();
                     });
                     document.getElementById('detailReviewsBtn').addEventListener('click', () => openReviewsModal(ad.id));
-                    document.getElementById('detailReportBtn').addEventListener('click', () => openReportModal(ad.id));
-                    if (ad.author_id === currentUser.id.toString()) {
+                    if (ad.author_id === userIdentifier) {
                         document.getElementById('detailDeleteBtn').addEventListener('click', async () => {
                             showConfirm('Удаление', 'Удалить объявление?', async () => {
                                 await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', ad.id));
-                                playSfx('click'); overlay.remove(); loadHomeFeed(true);
+                                playSfx('click'); overlay.remove(); loadHomeFeed();
                             });
                         });
                     }
                 }
-                if (ad.status === 'deleted' && ad.author_id === currentUser.id.toString()) {
+                if (ad.status === 'deleted' && ad.author_id === userIdentifier) {
                     const appealBtn = document.getElementById('detailAppealBtn');
                     if (appealBtn) appealBtn.addEventListener('click', () => { appealAdId = ad.id; openAppealModal(); });
                 }
-                document.getElementById('detailAuthorLink').addEventListener('click', () => openProfileModal(ad.author_id, ad.author_username));
+                document.getElementById('detailAuthorLink').addEventListener('click', () => openProfileModal(ad.author_id));
                 loadReviews(ad.id);
                 loadSimilarAds(ad.category, ad.id);
             }
@@ -1505,7 +1552,7 @@
                 } catch (e) { return false; }
             }
 
-            // ===== ОТЗЫВЫ =====
+            // ===== Отзывы =====
             async function loadReviews(adId) {
                 const container = document.getElementById('detailReviewsSection');
                 if (!container) return;
@@ -1523,13 +1570,13 @@
                     let html = `<div style="font-size:20px;font-weight:800;margin-bottom:8px;">⭐ ${avg.toFixed(1)} (${reviewsData.length})</div>`;
                     html += '<div class="progress-bar mb-12"><div class="progress-fill" style="width:' + (avg / 5 * 100) + '%;"></div></div>';
                     reviewsData.forEach(r => {
-                        const canEdit = r.author_id === currentUser.id.toString() && (Date.now() - new Date(r.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000;
+                        const canEdit = r.author_id === userIdentifier && (Date.now() - new Date(r.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000;
                         html += `
                             <div class="review-item">
-                                <div style="font-weight:600;">@${escapeHtml(r.author_username || r.author_id)} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span></div>
+                                <div style="font-weight:600;">${r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span></div>
                                 <div style="font-size:12px;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('ru-RU')}</div>
-                                <p style="font-size:13px;margin:4px 0;">${escapeHtml(r.text || '')}</p>
-                                ${r.media_links ? `<div style="font-size:11px;color:var(--accent);">${escapeHtml(r.media_links)}</div>` : ''}
+                                <p style="font-size:13px;margin:4px 0;">${r.text || ''}</p>
+                                ${r.media_links ? `<div style="font-size:11px;color:var(--accent);">${r.media_links}</div>` : ''}
                                 ${canEdit ? `<div class="flex-between gap-8 mt-8"><button class="btn secondary" data-edit-review="${r.id}">✏️</button><button class="btn danger" data-delete-review="${r.id}">🗑</button></div>` : ''}
                             </div>
                         `;
@@ -1566,7 +1613,7 @@
                     }
                     container.innerHTML = similar.map(ad => `
                         <div class="card" style="cursor:pointer;" data-sim="${ad.id}">
-                            <span style="font-weight:700;">${escapeHtml(ad.item_name)}</span> • ${formatPrice(ad.price)}
+                            <span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}
                         </div>
                     `).join('');
                     container.querySelectorAll('[data-sim]').forEach(el => {
@@ -1617,10 +1664,8 @@
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
                     try {
                         await withTimeout(supabase.from('reviews').insert({
-                            ad_id: adId, author_id: currentUser.id.toString(),
-                            author_username: currentUser.username || '',
-                            stars: selectedStars, text: text, media_links: media,
-                            created_at: new Date().toISOString()
+                            ad_id: adId, author_id: userIdentifier, stars: selectedStars,
+                            text: text, media_links: media, created_at: new Date().toISOString()
                         }));
                         playSfx('success'); showAlert('Успех', 'Отзыв отправлен');
                         document.getElementById('modalOverlay').remove();
@@ -1647,11 +1692,11 @@
                     </div>
                     <div class="form-group">
                         <label>Ссылки</label>
-                        <input type="text" id="editReviewMedia" value="${escapeHtml(review.media_links || '')}">
+                        <input type="text" id="editReviewMedia" value="${review.media_links || ''}">
                     </div>
                     <div class="form-group">
                         <label>Текст</label>
-                        <textarea id="editReviewText">${escapeHtml(review.text || '')}</textarea>
+                        <textarea id="editReviewText">${review.text || ''}</textarea>
                     </div>
                     <button class="btn w-full" id="editReviewSubmitBtn">Сохранить</button>
                 `);
@@ -1674,7 +1719,6 @@
                 });
             }
 
-            // ===== АПЕЛЛЯЦИИ =====
             function openAppealModal() {
                 if (!appealAdId) return;
                 showModal(`
@@ -1696,10 +1740,8 @@
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
                     try {
                         await withTimeout(supabase.from('appeals').insert({
-                            ad_id: appealAdId, author_id: currentUser.id.toString(),
-                            author_username: currentUser.username || '',
-                            reason: reason, evidence: evidence,
-                            status: 'pending', created_at: new Date().toISOString()
+                            ad_id: appealAdId, author_id: userIdentifier, reason: reason,
+                            evidence: evidence, status: 'pending', created_at: new Date().toISOString()
                         }));
                         playSfx('success'); showAlert('Успех', 'Апелляция отправлена');
                         document.getElementById('modalOverlay').remove();
@@ -1707,7 +1749,7 @@
                 });
             }
 
-            // ===== ИГРА БАРЫГА =====
+            // ===== Барыга Игра =====
             async function loadGameState() {
                 if (!supabase) return;
                 try {
@@ -1742,8 +1784,7 @@
                         clickArea.style.transform = 'scale(0.9)';
                         setTimeout(() => clickArea.style.transform = '', 100);
                     });
-                    // Автодоход
-                    window.gameInterval = setInterval(() => {
+                    setInterval(() => {
                         if (gameState.autoIncome > 0) {
                             gameState.money += gameState.autoIncome / 10;
                             updateGameUI();
@@ -1779,32 +1820,30 @@
                 const moneyEl = document.getElementById('gameMoneyDisplay');
                 if (moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money);
                 const upgradesContainer = document.getElementById('gameUpgrades');
-                if (upgradesContainer) {
-                    upgradesContainer.innerHTML = renderUpgrades();
-                    upgradesContainer.querySelectorAll('[data-upgrade]').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const idx = parseInt(btn.dataset.upgrade);
-                            const upgrades = [
-                                { cost: gameState.clickCost, action: () => { gameState.clickPower += 1; gameState.clickCost *= 2; } },
-                                { cost: gameState.autoCost, action: () => { gameState.autoIncome += 5; gameState.autoCost *= 2; } },
-                                { cost: gameState.proCost, action: () => { gameState.autoIncome += 20; gameState.proCost *= 2; } },
-                                { cost: gameState.shopCost, action: () => { gameState.autoIncome += 50; gameState.shopCost *= 2; } },
-                                { cost: gameState.eliteCost, action: () => { gameState.clickPower += 10; gameState.eliteCost *= 2; gameState.elitePurchased = true; } },
-                                { cost: gameState.oilCost, action: () => { gameState.autoIncome += 200; gameState.oilCost *= 2; } },
-                                { cost: gameState.cryptoCost, action: () => { gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
-                                { cost: gameState.scrapCost, action: () => { gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
-                            ];
-                            const upgrade = upgrades[idx];
-                            if (gameState.money >= upgrade.cost) {
-                                gameState.money -= upgrade.cost;
-                                upgrade.action();
-                                updateGameUI();
-                                saveGameState();
-                                playSfx('buy');
-                            }
-                        });
+                if (upgradesContainer) upgradesContainer.innerHTML = renderUpgrades();
+                document.querySelectorAll('[data-upgrade]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const idx = parseInt(btn.dataset.upgrade);
+                        const upgrades = [
+                            { cost: gameState.clickCost, action: () => { gameState.clickPower += 1; gameState.clickCost *= 2; } },
+                            { cost: gameState.autoCost, action: () => { gameState.autoIncome += 5; gameState.autoCost *= 2; } },
+                            { cost: gameState.proCost, action: () => { gameState.autoIncome += 20; gameState.proCost *= 2; } },
+                            { cost: gameState.shopCost, action: () => { gameState.autoIncome += 50; gameState.shopCost *= 2; } },
+                            { cost: gameState.eliteCost, action: () => { gameState.clickPower += 10; gameState.eliteCost *= 2; gameState.elitePurchased = true; } },
+                            { cost: gameState.oilCost, action: () => { gameState.autoIncome += 200; gameState.oilCost *= 2; } },
+                            { cost: gameState.cryptoCost, action: () => { gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
+                            { cost: gameState.scrapCost, action: () => { gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
+                        ];
+                        const upgrade = upgrades[idx];
+                        if (gameState.money >= upgrade.cost) {
+                            gameState.money -= upgrade.cost;
+                            upgrade.action();
+                            updateGameUI();
+                            saveGameState();
+                            playSfx('buy');
+                        }
                     });
-                }
+                });
             }
 
             async function saveGameState() {
@@ -1819,7 +1858,7 @@
                 } catch (e) {}
             }
 
-            // ===== ПОИСК =====
+            // ===== Поиск =====
             function openSearchModal() {
                 showModal(`
                     <h3 class="modal-title">🔍 Поиск</h3>
@@ -1838,6 +1877,7 @@
                 const suggestions = document.getElementById('searchSuggestions');
                 const results = document.getElementById('searchResults');
                 const history = document.getElementById('searchHistory');
+
                 function renderHistory() {
                     if (!searchHistory.length) { history.innerHTML = ''; return; }
                     history.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">История:</div>' + searchHistory.map(h => `<span class="badge" style="cursor:pointer;margin:2px;" data-hist="${h}">${h}</span>`).join('');
@@ -1849,664 +1889,188 @@
                     });
                 }
                 renderHistory();
-                // Debounce для поиска
-                let debounceTimer;
-                input.addEventListener('input', () => {
-                    clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(async () => {
-                        const q = input.value.trim().toLowerCase();
-                        if (!q) { suggestions.innerHTML = ''; results.innerHTML = ''; return; }
-                        try {
-                            const { data } = await withTimeout(
-                                supabase.from('ads').select('*').eq('status', 'approved').ilike('item_name', `%${q}%`).limit(5)
-                            );
-                            const items = data || [];
-                            suggestions.innerHTML = items.map(ad => `<div class="search-suggestion" data-sug="${ad.id}">📦 ${escapeHtml(ad.item_name)} • ${formatPrice(ad.price)}</div>`).join('');
-                            suggestions.querySelectorAll('[data-sug]').forEach(el => {
-                                el.addEventListener('click', () => {
-                                    const ad = items.find(a => a.id == el.dataset.sug);
-                                    if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
-                                });
-                            });
-                        } catch (e) { suggestions.innerHTML = ''; }
-                    }, 300);
-                });
-                document.getElementById('searchItemBtn').addEventListener('click', async () => {
-                    const q = input.value.trim();
-                    if (!q) return;
-                    if (!searchHistory.includes(q)) {
-                        searchHistory.unshift(q);
-                        if (searchHistory.length > 10) searchHistory.pop();
-                        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-                        renderHistory();
-                    }
+
+                input.addEventListener('input', async () => {
+                    const q = input.value.trim().toLowerCase();
+                    if (!q) { suggestions.innerHTML = ''; results.innerHTML = ''; return; }
                     try {
                         const { data } = await withTimeout(
-                            supabase.from('ads').select('*').eq('status', 'approved').or(`item_name.ilike.%${q}%,description.ilike.%${q}%`).limit(20)
+                            supabase.from('ads').select('*').eq('status', 'approved').ilike('item_name', `%${q}%`).limit(5)
                         );
-                        results.innerHTML = '<div style="font-weight:700;margin:8px 0;">Результаты:</div>' + (data && data.length ? data.map(ad => `<div class="card" style="cursor:pointer;" data-res="${ad.id}">${escapeHtml(ad.item_name)} • ${formatPrice(ad.price)}</div>`).join('') : '<div class="empty-state">Ничего не найдено</div>');
-                        results.querySelectorAll('[data-res]').forEach(el => {
+                        const items = data || [];
+                        suggestions.innerHTML = items.map(ad => `<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('');
+                        suggestions.querySelectorAll('[data-sug]').forEach(el => {
                             el.addEventListener('click', () => {
-                                const ad = data.find(a => a.id == el.dataset.res);
+                                const ad = items.find(a => a.id == el.dataset.sug);
+                                if (ad) {
+                                    if (!searchHistory.includes(q)) {
+                                        searchHistory.unshift(q);
+                                        if (searchHistory.length > 10) searchHistory.pop();
+                                        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+                                    }
+                                    document.getElementById('modalOverlay').remove();
+                                    openAdDetail(ad);
+                                }
+                            });
+                        });
+                    } catch (e) {}
+                });
+
+                document.getElementById('searchItemBtn').addEventListener('click', async () => {
+                    const q = input.value.trim().toLowerCase();
+                    if (!q) return;
+                    try {
+                        const { data } = await withTimeout(
+                            supabase.from('ads').select('*').eq('status', 'approved').ilike('item_name', `%${q}%`)
+                        );
+                        const items = data || [];
+                        if (!items.length) { results.innerHTML = '<div class="empty-state">Ничего не найдено</div>'; return; }
+                        results.innerHTML = items.map(ad => `
+                            <div class="card" data-res-id="${ad.id}">
+                                <div style="font-weight:700;">${ad.item_name}</div>
+                                <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                            </div>
+                        `).join('');
+                        results.querySelectorAll('[data-res-id]').forEach(card => {
+                            card.addEventListener('click', () => {
+                                const ad = items.find(a => a.id == card.dataset.resId);
                                 if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
                             });
                         });
                     } catch (e) {}
                 });
-                document.getElementById('searchProfileBtn').addEventListener('click', () => {
-                    const username = input.value.trim().replace('@', '');
-                    if (username) { document.getElementById('modalOverlay').remove(); openProfileModal(null, username); }
+
+                document.getElementById('searchProfileBtn').addEventListener('click', async () => {
+                    const q = input.value.trim();
+                    if (!q) return;
+                    openProfileModal(q);
                 });
             }
 
-            // ===== ПРОФИЛЬ =====
-            function openProfileModal(userId, username) {
-                const displayName = username || (userId ? 'ID: ' + userId : 'Пользователь');
+            async function openProfileModal(authorId) {
                 showModal(`
-                    <h3 class="modal-title">👤 Профиль</h3>
-                    <div style="text-align:center;margin-bottom:16px;">
-                        <div style="width:80px;height:80px;border-radius:50%;background:var(--border);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:40px;">👤</div>
-                        <div style="font-weight:800;font-size:18px;">@${escapeHtml(displayName)}</div>
-                    </div>
-                    <div class="flex-between gap-8">
-                        <button class="btn secondary w-full" id="profileFollowBtn">❤️ Подписаться</button>
-                        <button class="btn w-full" id="profileContactBtn">💬 Написать</button>
-                    </div>
+                    <h3 class="modal-title">👤 Профиль: ${authorId}</h3>
+                    <div id="profileAdsList"><div class="empty-state">Загрузка...</div></div>
                 `);
-                document.getElementById('profileFollowBtn').addEventListener('click', () => { playSfx('click'); showAlert('Скоро', 'Функция в разработке'); });
-                document.getElementById('profileContactBtn').addEventListener('click', () => window.open(`https://t.me/${displayName.replace('@', '')}`, '_blank'));
-            }
-
-            function openMyProfileModal() {
-                showModal(`
-                    <h3 class="modal-title">👤 Мой профиль</h3>
-                    <div style="text-align:center;margin-bottom:16px;">
-                        <div style="width:80px;height:80px;border-radius:50%;background:var(--border);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:40px;">👤</div>
-                        <div style="font-weight:800;font-size:18px;">@${escapeHtml(currentUser.username || currentUser.id)}</div>
-                        <div style="font-size:13px;color:var(--muted);">Уровень: ${currentUserData?.level || 1} | Репутация: ${currentUserData?.reputation || 0}</div>
-                        <p style="font-size:13px;color:var(--muted);margin-top:8px;">${escapeHtml(currentUserData?.bio || 'Нет описания')}</p>
-                    </div>
-                    <div class="form-group">
-                        <label>Описание профиля</label>
-                        <textarea id="profileBio">${escapeHtml(currentUserData?.bio || '')}</textarea>
-                    </div>
-                    <button class="btn w-full" id="profileSaveBtn">Сохранить</button>
-                `);
-                document.getElementById('profileSaveBtn').addEventListener('click', async () => {
-                    const bio = document.getElementById('profileBio').value.trim();
-                    if (supabase) {
-                        await withTimeout(supabase.from('users').update({ bio }).eq('id', currentUser.id.toString()));
-                        currentUserData.bio = bio;
+                try {
+                    const { data } = await withTimeout(
+                        supabase.from('ads').select('*').eq('status', 'approved').eq('author_id', authorId).order('created_at', { ascending: false })
+                    );
+                    const ads = data || [];
+                    const container = document.getElementById('profileAdsList');
+                    if (!ads.length) {
+                        container.innerHTML = '<div class="empty-state">У пользователя нет активных объявлений</div>';
+                        return;
                     }
-                    playSfx('success');
-                    document.getElementById('modalOverlay').remove();
-                });
+                    container.innerHTML = ads.map(ad => `
+                        <div class="card" data-prof-ad="${ad.id}">
+                            <div style="font-weight:700;">${ad.item_name}</div>
+                            <div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div>
+                        </div>
+                    `).join('');
+                    container.querySelectorAll('[data-prof-ad]').forEach(card => {
+                        card.addEventListener('click', () => {
+                            const ad = ads.find(a => a.id == card.dataset.profAd);
+                            if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
+                        });
+                    });
+                } catch (e) {
+                    document.getElementById('profileAdsList').innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+                }
             }
 
-            // ===== РЕПОРТЫ =====
-            function openReportModal(adId = null) {
-                showModal(`
-                    <h3 class="modal-title">🚩 Пожаловаться</h3>
-                    ${adId ? `<input type="hidden" id="reportAdId" value="${adId}">` : '<div class="form-group"><label>ID объявления (если есть)</label><input type="text" id="reportAdId" placeholder="ID"></div>'}
-                    <div class="form-group">
-                        <label>Причина</label>
-                        <select id="reportReason">
-                            <option value="spam">Спам</option>
-                            <option value="scam">Мошенничество</option>
-                            <option value="offensive">Оскорбление</option>
-                            <option value="illegal">Запрещённый товар</option>
-                            <option value="other">Другое</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Дополнительно</label>
-                        <textarea id="reportText" placeholder="Опишите проблему"></textarea>
-                    </div>
-                    <button class="btn w-full" id="reportSubmitBtn">Отправить жалобу</button>
-                `);
-                document.getElementById('reportSubmitBtn').addEventListener('click', async () => {
-                    const adId = document.getElementById('reportAdId').value.trim();
-                    const reason = document.getElementById('reportReason').value;
-                    const text = document.getElementById('reportText').value.trim();
-                    if (!reason) { showAlert('Ошибка', 'Укажите причину'); return; }
-                    try {
-                        await withTimeout(supabase.from('reports').insert({
-                            ad_id: adId || null,
-                            reporter_id: currentUser.id.toString(),
-                            reporter_username: currentUser.username || '',
-                            reason: reason,
-                            text: text,
-                            status: 'pending',
-                            created_at: new Date().toISOString()
-                        }));
-                        playSfx('success'); showAlert('Успех', 'Жалоба отправлена');
-                        document.getElementById('modalOverlay').remove();
-                    } catch (e) { showAlert('Ошибка', 'Не удалось отправить'); }
-                });
-            }
-
-            // ===== МОДА (ЛУКИ) =====
+            // ===== Дополнительные разделы (Луки, Попутчики, Музыка, Настройки, Менеджер, Чаты) =====
             function openFashionModal() {
-                showModal(`
-                    <h3 class="modal-title">📸 Лента «Луков»</h3>
-                    <div class="form-group">
-                        <label>Название сета</label>
-                        <input type="text" id="fashionTitle" placeholder="Название">
-                    </div>
-                    <div class="form-group">
-                        <label>Ссылка на скриншот</label>
-                        <input type="text" id="fashionImage" placeholder="https://...">
-                    </div>
-                    <button class="btn w-full mb-12" id="fashionSubmitBtn">Опубликовать</button>
-                    <div id="fashionList"></div>
-                `);
-                loadFashion();
-                document.getElementById('fashionSubmitBtn').addEventListener('click', async () => {
-                    const title = document.getElementById('fashionTitle').value.trim();
-                    const image = document.getElementById('fashionImage').value.trim();
-                    if (!title || !image) { showAlert('Ошибка', 'Заполните все поля'); return; }
-                    if (!isAllowedLink(image)) { showAlert('Ошибка', 'Ссылка не разрешена'); return; }
-                    try {
-                        await withTimeout(supabase.from('fashion').insert({ author_id: currentUser.id.toString(), author_username: currentUser.username || '', title, image, created_at: new Date().toISOString() }));
-                        playSfx('success'); loadFashion();
-                        document.getElementById('fashionTitle').value = '';
-                        document.getElementById('fashionImage').value = '';
-                    } catch (e) { showAlert('Ошибка', 'Не удалось опубликовать'); }
-                });
+                showModal(`<h3 class="modal-title">📸 Лента «Луков»</h3><div class="empty-state">Раздел в разработке</div>`);
             }
-
-            async function loadFashion() {
-                const container = document.getElementById('fashionList');
-                if (!container) return;
-                try {
-                    const { data } = await withTimeout(supabase.from('fashion').select('*').order('created_at', { ascending: false }).limit(50));
-                    const items = data || [];
-                    if (!items.length) { container.innerHTML = '<div class="empty-state">Сетов пока нет</div>'; return; }
-                    container.innerHTML = items.map(item => `
-                        <div class="card">
-                            <div style="font-weight:700;">${escapeHtml(item.title)}</div>
-                            <div style="font-size:12px;color:var(--muted);">Автор: @${escapeHtml(item.author_username || item.author_id)}</div>
-                            <img src="${item.image}" loading="lazy" style="width:100%;border-radius:8px;margin-top:8px;" onerror="this.style.display='none'">
-                            ${item.author_id === currentUser.id.toString() ? `<button class="btn danger mt-8" data-del-fashion="${item.id}">Удалить</button>` : ''}
-                        </div>
-                    `).join('');
-                    container.querySelectorAll('[data-del-fashion]').forEach(btn => {
-                        btn.addEventListener('click', async () => {
-                            await withTimeout(supabase.from('fashion').delete().eq('id', btn.dataset.delFashion));
-                            playSfx('click'); loadFashion();
-                        });
-                    });
-                } catch (e) {}
-            }
-
-            // ===== ПОПУТЧИКИ =====
             function openTravelModal() {
-                showModal(`
-                    <h3 class="modal-title">🤝 Попутчики</h3>
-                    <div class="form-group">
-                        <label>Куда идёте</label>
-                        <input type="text" id="travelActivity" placeholder="Активность">
-                    </div>
-                    <div class="form-group">
-                        <label>Условия</label>
-                        <textarea id="travelDescription" placeholder="Описание"></textarea>
-                    </div>
-                    <button class="btn w-full mb-12" id="travelSubmitBtn">Опубликовать</button>
-                    <div id="travelList"></div>
-                `);
-                loadTravel();
-                document.getElementById('travelSubmitBtn').addEventListener('click', async () => {
-                    const activity = document.getElementById('travelActivity').value.trim();
-                    const description = document.getElementById('travelDescription').value.trim();
-                    if (!activity || !description) { showAlert('Ошибка', 'Заполните все поля'); return; }
-                    try {
-                        await withTimeout(supabase.from('travel').insert({ author_id: currentUser.id.toString(), author_username: currentUser.username || '', activity, description, created_at: new Date().toISOString() }));
-                        playSfx('success'); loadTravel();
-                        document.getElementById('travelActivity').value = '';
-                        document.getElementById('travelDescription').value = '';
-                    } catch (e) { showAlert('Ошибка', 'Не удалось опубликовать'); }
-                });
+                showModal(`<h3 class="modal-title">🤝 Попутчики</h3><div class="empty-state">Раздел в разработке</div>`);
             }
-
-            async function loadTravel() {
-                const container = document.getElementById('travelList');
-                if (!container) return;
-                try {
-                    const { data } = await withTimeout(supabase.from('travel').select('*').order('created_at', { ascending: false }).limit(50));
-                    const items = data || [];
-                    if (!items.length) { container.innerHTML = '<div class="empty-state">Заявок пока нет</div>'; return; }
-                    container.innerHTML = items.map(item => `
-                        <div class="card">
-                            <div style="font-weight:700;">${escapeHtml(item.activity)}</div>
-                            <div style="font-size:12px;color:var(--muted);">Автор: @${escapeHtml(item.author_username || item.author_id)}</div>
-                            <p style="font-size:13px;">${escapeHtml(item.description)}</p>
-                            ${item.author_id === currentUser.id.toString() ? `<button class="btn danger mt-8" data-del-travel="${item.id}">Удалить</button>` : ''}
-                        </div>
-                    `).join('');
-                    container.querySelectorAll('[data-del-travel]').forEach(btn => {
-                        btn.addEventListener('click', async () => {
-                            await withTimeout(supabase.from('travel').delete().eq('id', btn.dataset.delTravel));
-                            playSfx('click'); loadTravel();
-                        });
-                    });
-                } catch (e) {}
-            }
-
-            // ===== МУЗЫКА =====
             function openMusicModal() {
-                showModal(`
-                    <h3 class="modal-title">🎵 Музыка</h3>
-                    <div class="flex-between gap-8 mb-12">
-                        <button class="btn w-full" id="musicToggleBtn">${musicStarted && bgMusic && !bgMusic.paused ? '⏸ Пауза' : '▶️ Играть'}</button>
-                        <button class="btn secondary w-full" id="musicResetBtn">🔄 Сброс</button>
-                    </div>
-                    <div class="form-group">
-                        <label>Загрузить свой аудиофайл</label>
-                        <input type="file" id="musicFileInput" accept="audio/*">
-                    </div>
-                `);
-                document.getElementById('musicToggleBtn').addEventListener('click', () => {
-                    if (!bgMusic) setupBackgroundMusic();
-                    if (bgMusic.paused) { bgMusic.play().catch(() => {}); musicStarted = true; document.getElementById('musicToggleBtn').textContent = '⏸ Пауза'; }
-                    else { bgMusic.pause(); document.getElementById('musicToggleBtn').textContent = '▶️ Играть'; }
-                });
-                document.getElementById('musicResetBtn').addEventListener('click', () => {
-                    if (bgMusic) { bgMusic.pause(); bgMusic.currentTime = 0; }
-                    musicStarted = false; document.getElementById('musicToggleBtn').textContent = '▶️ Играть';
-                });
-                document.getElementById('musicFileInput').addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file && bgMusic) {
-                        const url = URL.createObjectURL(file);
-                        bgMusic.src = url; bgMusic.play().catch(() => {});
-                        musicStarted = true; document.getElementById('musicToggleBtn').textContent = '⏸ Пауза';
-                    }
-                });
+                showModal(`<h3 class="modal-title">🎵 Музыка</h3><div class="empty-state">Раздел в разработке</div>`);
             }
-
-            // ===== НАСТРОЙКИ =====
             function openSettingsModal() {
                 showModal(`
                     <h3 class="modal-title">⚙️ Настройки</h3>
-                    <div class="flex-between mb-8">
-                        <span>Звуковые эффекты</span>
-                        <button class="btn secondary" id="sfxToggleBtn">${sfxEnabled ? 'Включены' : 'Выключены'}</button>
+                    <div class="form-group flex-between">
+                        <label>Звуки (SFX)</label>
+                        <input type="checkbox" id="settingsSfxToggle" ${sfxEnabled ? 'checked' : ''} style="width:auto;">
                     </div>
-                    <div class="flex-between mb-8">
-                        <span>Тёмная тема</span>
-                        <button class="btn secondary" id="themeToggleBtnModal">${currentTheme === 'dark' ? 'Включена' : 'Выключена'}</button>
-                    </div>
-                    <button class="btn danger w-full mt-12" id="resetDataBtn">🗑 Сбросить все данные</button>
                 `);
-                document.getElementById('sfxToggleBtn').addEventListener('click', () => {
-                    sfxEnabled = !sfxEnabled;
+                document.getElementById('settingsSfxToggle').addEventListener('change', (e) => {
+                    sfxEnabled = e.target.checked;
                     localStorage.setItem('sfx', sfxEnabled ? 'on' : 'off');
-                    document.getElementById('sfxToggleBtn').textContent = sfxEnabled ? 'Включены' : 'Выключены';
-                    playSfx('click');
-                });
-                document.getElementById('themeToggleBtnModal').addEventListener('click', () => {
-                    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-                    saveTheme(); applyTheme();
-                    document.getElementById('themeToggleBtnModal').textContent = currentTheme === 'dark' ? 'Включена' : 'Выключена';
-                });
-                document.getElementById('resetDataBtn').addEventListener('click', () => {
-                    showConfirm('Сброс', 'Сбросить все данные и перезагрузить?', async () => {
-                        try {
-                            if (supabase) {
-                                await withTimeout(supabase.from('favorites').delete().eq('user_id', currentUser.id.toString()));
-                                await withTimeout(supabase.from('reviews').delete().eq('author_id', currentUser.id.toString()));
-                                await withTimeout(supabase.from('appeals').delete().eq('author_id', currentUser.id.toString()));
-                                await withTimeout(supabase.from('fashion').delete().eq('author_id', currentUser.id.toString()));
-                                await withTimeout(supabase.from('travel').delete().eq('author_id', currentUser.id.toString()));
-                                await withTimeout(supabase.from('baryga').delete().eq('user_id', currentUser.id.toString()));
-                                await withTimeout(supabase.from('ads').delete().eq('author_id', currentUser.id.toString()));
-                                await withTimeout(supabase.from('reports').delete().eq('reporter_id', currentUser.id.toString()));
-                            }
-                        } catch (e) {}
-                        localStorage.clear(); location.reload();
-                    });
                 });
             }
-
-            // ===== МЕНЕДЖЕР И ЧАТЫ =====
             function openManagerModal() {
-                showModal(`
-                    <h3 class="modal-title">📩 Менеджер</h3>
-                    <p style="color:var(--muted);margin-bottom:16px;">Связь с менеджером:</p>
-                    <button class="btn w-full mb-8" id="managerTgBtn">Telegram</button>
-                    <button class="btn secondary w-full" id="managerVkBtn">VK</button>
-                `);
-                document.getElementById('managerTgBtn').addEventListener('click', () => window.open('https://t.me/bounqy31', '_blank'));
-                document.getElementById('managerVkBtn').addEventListener('click', () => window.open('https://vk.com/bountyarz', '_blank'));
+                showModal(`<h3 class="modal-title">📩 Связь с менеджером</h3><p style="color:var(--muted);">Напишите владельцу: <a href="https://t.me/${OWNER_USERNAME}" target="_blank" style="color:var(--accent);">@${OWNER_USERNAME}</a></p>`);
             }
             function openChatsModal() {
-                showModal(`
-                    <h3 class="modal-title">💬 Переписки</h3>
-                    <div class="empty-state">В разработке</div>
-                    <button class="btn w-full mt-12" id="chatsTgBtn">Перейти в Telegram</button>
-                `);
-                document.getElementById('chatsTgBtn').addEventListener('click', () => window.open('https://t.me/arizona_coin_bot', '_blank'));
-            }
-            function openLogoModal() {
-                showModal(`
-                    <h3 class="modal-title">Arizona RP</h3>
-                    <p style="color:var(--muted);margin-bottom:16px;">Официальные ссылки:</p>
-                    <button class="btn w-full mb-8" id="logoBotBtn">🤖 Бот</button>
-                    <button class="btn secondary w-full" id="logoChannelBtn">📢 Канал</button>
-                `);
-                document.getElementById('logoBotBtn').addEventListener('click', () => window.open('https://t.me/arizona_coin_bot', '_blank'));
-                document.getElementById('logoChannelBtn').addEventListener('click', () => window.open('https://t.me/Bounty_Squad31', '_blank'));
+                showModal(`<h3 class="modal-title">💬 Переписки</h3><div class="empty-state">Раздел в разработке</div>`);
             }
 
-            // ===== ТУТОРИАЛЫ =====
-            function showTutorial() {
-                if (tutorialCompleted) return;
-                const slides = [
-                    { title: 'Добро пожаловать!', text: 'Это Arizona RP — площадка для объявлений. Здесь вы можете покупать и продавать виртуальные предметы и услуги на серверах Arizona RP. Изучите основные разделы.' },
-                    { title: 'Главная', text: 'На главной отображаются все одобренные объявления. Нажмите на объявление, чтобы увидеть детали, связаться с продавцом, добавить в корзину или оставить отзыв.' },
-                    { title: 'Корзина', text: 'Сохраняйте понравившиеся объявления в корзину, чтобы быстро вернуться к ним позже. Статусы показывают, активно ли объявление.' },
-                    { title: 'Отправка объявления', text: 'Создавайте свои объявления: укажите тип сделки, категорию, название, цену, описание, скриншоты (необязательно) и сервер. Объявление попадает на модерацию.' },
-                    { title: 'Мои объявления', text: 'В разделе «Отправка» вы можете видеть все свои объявления, удалять их навсегда и подавать апелляцию, если объявление было удалено.' },
-                    { title: 'Каталог', text: 'Используйте каталог для фильтрации объявлений по категориям: аксессуары, транспорт, недвижимость, бизнесы и другие.' },
-                    { title: 'Игра «Барыга»', text: 'Кликайте по монете, зарабатывайте виртуальные деньги и улучшайте клик и пассивный доход. Прогресс сохраняется в вашем аккаунте.' },
-                    { title: 'Поиск', text: 'Ищите объявления по названию или описанию, а также находите профили пользователей по username.' },
-                    { title: 'Лента «Луков»', text: 'Публикуйте свои модные сеты со скриншотами и смотрите, что публикуют другие игроки.' },
-                    { title: 'Попутчики', text: 'Ищите напарников для активностей: укажите, куда идёте и условия, и дождитесь откликов.' },
-                    { title: 'Музыка и настройки', text: 'Включайте фоновую музыку, загружайте свою, настраивайте звуковые эффекты и сбрасывайте данные.' },
-                    { title: 'Менеджер и переписки', text: 'Свяжитесь с менеджером через Telegram или VK. Раздел переписок пока в разработке, но вы можете перейти в Telegram.' },
-                    { title: 'Готовы?', text: 'Вы изучили все основные разделы! Нажмите «Начать», чтобы перейти к использованию.' }
+            function loadAllTiles() {
+                const container = document.getElementById('allTiles');
+                const tiles = [
+                    { icon: '📦', label: 'Мои объявления', action: () => switchSection('send') },
+                    { icon: '📂', label: 'Каталог', action: openCatalogModal },
+                    { icon: '🎮', label: 'Игра «Барыга»', action: openBarygaGame },
+                    { icon: '🔍', label: 'Поиск', action: openSearchModal },
+                    { icon: '📸', label: 'Лента «Луков»', action: openFashionModal },
+                    { icon: '🤝', label: 'Попутчики', action: openTravelModal },
+                    { icon: '🎵', label: 'Музыка', action: openMusicModal },
+                    { icon: '⚙️', label: 'Настройки', action: openSettingsModal },
+                    { icon: '📩', label: 'Менеджер', action: openManagerModal },
+                    { icon: '💬', label: 'Переписки', action: openChatsModal }
                 ];
-                let currentSlide = 0;
-                const overlay = document.createElement('div');
-                overlay.className = 'tutorial-overlay';
-                overlay.id = 'tutorialOverlay';
-                let tutorialTimerDone = false;
-                function renderSlide() {
-                    const slide = slides[currentSlide];
-                    const isLast = currentSlide === slides.length - 1;
-                    const isFirst = currentSlide === 0;
-                    const btnDisabled = isFirst && !tutorialTimerDone;
-                    overlay.innerHTML = `
-                        <div class="tutorial-slide">
-                            <h2>${slide.title}</h2>
-                            <p>${slide.text}</p>
-                            ${isFirst && !tutorialTimerDone ? '<div style="font-size:20px;font-weight:900;color:var(--accent);margin-bottom:16px;" id="tutorialTimer">60</div>' : ''}
-                            <div class="flex-between gap-12">
-                                <button class="btn secondary" id="tutorialPrevBtn" ${isFirst ? 'disabled' : ''}>Назад</button>
-                                <button class="btn" id="tutorialNextBtn" ${btnDisabled ? 'disabled' : ''}>${isLast ? 'Начать' : 'Продолжить'}</button>
-                            </div>
-                        </div>
-                    `;
-                    document.body.appendChild(overlay);
-                    if (isFirst && !tutorialTimerDone) {
-                        let timer = 60;
-                        const timerEl = document.getElementById('tutorialTimer');
-                        const interval = setInterval(() => {
-                            timer--;
-                            if (timerEl) timerEl.textContent = timer;
-                            if (timer <= 0) {
-                                clearInterval(interval); tutorialTimerDone = true;
-                                const nextBtn = document.getElementById('tutorialNextBtn');
-                                if (nextBtn) nextBtn.disabled = false;
-                                if (timerEl) timerEl.remove();
-                            }
-                        }, 1000);
-                    }
-                    document.getElementById('tutorialPrevBtn').addEventListener('click', () => {
-                        if (currentSlide > 0) { currentSlide--; overlay.remove(); renderSlide(); }
+                container.innerHTML = tiles.map(t => `
+                    <div class="grid-tile" data-action="${t.label}">
+                        <span class="tile-icon">${t.icon}</span>
+                        ${t.label}
+                    </div>
+                `).join('');
+                container.querySelectorAll('.grid-tile').forEach(tile => {
+                    tile.addEventListener('click', () => {
+                        const found = tiles.find(t => t.label === tile.dataset.action);
+                        if (found) found.action();
                     });
-                    document.getElementById('tutorialNextBtn').addEventListener('click', () => {
-                        if (isLast) { tutorialCompleted = true; localStorage.setItem('tutorialDone', 'true'); overlay.remove(); }
-                        else { currentSlide++; overlay.remove(); renderSlide(); }
-                    });
-                }
-                renderSlide();
+                });
             }
 
-            function showAdminTutorial() {
-                if (!isAdmin || adminTutorialCompleted) return;
-                const slides = [
-                    { title: 'Админ-панель', text: 'Здесь вы можете модерировать объявления: одобрять или отклонять их.' },
-                    { title: 'Редактирование', text: 'Используйте ✏️ для редактирования объявления перед одобрением.' },
-                    { title: 'Апелляции', text: 'Обрабатывайте апелляции пользователей: одобряйте или отклоняйте.' },
-                    { title: 'Пользователи', text: 'Владелец может банить, разбанивать, назначать и снимать администраторов.' },
-                    { title: 'Очистка ленты', text: 'Владелец может полностью очистить ленту объявлений.' },
-                    { title: 'Готово!', text: 'Вы готовы к работе. Нажмите «Завершить».' }
-                ];
-                let currentSlide = 0;
-                const overlay = document.createElement('div');
-                overlay.className = 'tutorial-overlay';
-                overlay.id = 'adminTutorialOverlay';
-                let adminTimerDone = false;
-                function renderSlide() {
-                    const slide = slides[currentSlide];
-                    const isLast = currentSlide === slides.length - 1;
-                    const isFirst = currentSlide === 0;
-                    const btnDisabled = isLast && !adminTimerDone;
-                    overlay.innerHTML = `
-                        <div class="tutorial-slide">
-                            <h2>${slide.title}</h2>
-                            <p>${slide.text}</p>
-                            ${isLast && !adminTimerDone ? '<div style="font-size:20px;font-weight:900;color:var(--accent);margin-bottom:16px;" id="adminTutorialTimer">60</div>' : ''}
-                            <div class="flex-between gap-12">
-                                <button class="btn secondary" id="adminTutorialPrevBtn" ${isFirst ? 'disabled' : ''}>Назад</button>
-                                <button class="btn" id="adminTutorialNextBtn" ${btnDisabled ? 'disabled' : ''}>${isLast ? 'Завершить' : 'Продолжить'}</button>
-                            </div>
-                        </div>
-                    `;
-                    document.body.appendChild(overlay);
-                    if (isLast && !adminTimerDone) {
-                        let timer = 60;
-                        const timerEl = document.getElementById('adminTutorialTimer');
-                        const interval = setInterval(() => {
-                            timer--;
-                            if (timerEl) timerEl.textContent = timer;
-                            if (timer <= 0) {
-                                clearInterval(interval); adminTimerDone = true;
-                                const nextBtn = document.getElementById('adminTutorialNextBtn');
-                                if (nextBtn) nextBtn.disabled = false;
-                                if (timerEl) timerEl.remove();
-                            }
-                        }, 1000);
-                    }
-                    document.getElementById('adminTutorialPrevBtn').addEventListener('click', () => {
-                        if (currentSlide > 0) { currentSlide--; overlay.remove(); renderSlide(); }
+            function openCatalogModal() {
+                let html = '<h3 class="modal-title">📂 Каталог</h3><div class="category-grid">';
+                ALL_CATEGORIES.forEach(cat => {
+                    html += `<div class="category-tile" data-cat="${cat.id}"><span class="cat-icon">${cat.label.split(' ')[0]}</span>${cat.label}</div>`;
+                });
+                html += '</div>';
+                const { overlay } = showModal(html);
+                overlay.querySelectorAll('.category-tile').forEach(tile => {
+                    tile.addEventListener('click', () => {
+                        currentFilterCategory = tile.dataset.cat;
+                        overlay.remove();
+                        switchSection('home');
                     });
-                    document.getElementById('adminTutorialNextBtn').addEventListener('click', () => {
-                        if (isLast) { adminTutorialCompleted = true; localStorage.setItem('adminTutorialDone', 'true'); overlay.remove(); }
-                        else { currentSlide++; overlay.remove(); renderSlide(); }
-                    });
-                }
-                renderSlide();
+                });
             }
 
-            function showBanScreen() {
-                const overlay = document.createElement('div');
-                overlay.className = 'fullscreen-overlay';
-                overlay.innerHTML = `
-                    <div style="font-size:64px;margin-bottom:16px;">🚫</div>
-                    <h2 style="font-weight:900;margin-bottom:8px;">Вы заблокированы</h2>
-                    <p style="color:var(--muted);margin-bottom:16px;">Для разблокировки свяжитесь с администрацией</p>
-                    <button class="btn mb-8" id="banTgBtn">Telegram</button>
-                    <button class="btn secondary" id="banVkBtn">VK</button>
-                `;
-                document.body.appendChild(overlay);
-                document.getElementById('banTgBtn').addEventListener('click', () => window.open('https://t.me/bounqy31', '_blank'));
-                document.getElementById('banVkBtn').addEventListener('click', () => window.open('https://vk.com/bountyarz', '_blank'));
-            }
-            function showNoUsernameScreen() {
-                if (currentUser.username) return;
-                const overlay = document.createElement('div');
-                overlay.className = 'fullscreen-overlay';
-                overlay.innerHTML = `
-                    <div style="font-size:64px;margin-bottom:16px;">👤</div>
-                    <h2 style="font-weight:900;margin-bottom:8px;">Установите username</h2>
-                    <p style="color:var(--muted);margin-bottom:16px;">Для использования приложения необходимо установить username в Telegram</p>
-                    <p style="color:var(--muted);font-size:13px;">Настройки → Изменить профиль → Имя пользователя</p>
-                `;
-                document.body.appendChild(overlay);
-            }
-
-            // ===== REALTIME =====
-            function setupRealtime() {
-                if (!supabase) return;
-                try {
-                    realtimeChannel = supabase.channel('ads-changes')
-                        .on('postgres_changes', { event: '*', schema: 'public', table: 'ads' }, () => {
-                            if (currentSection === 'home') loadHomeFeed(true);
-                            if (currentSection === 'send') loadMyAds();
-                            if (currentSection === 'admin') loadAdminPanel();
-                            if (currentSection === 'cart') loadCart();
-                        })
-                        .subscribe();
-                } catch (e) {}
-            }
-
-            // ===== ОТПРАВКА ОБЪЯВЛЕНИЯ =====
-            document.getElementById('sendSubmitBtn').addEventListener('click', async () => {
-                if (!supabase) { showAlert('Ошибка', 'Нет подключения к базе'); return; }
-                const now = new Date();
-                const hour = now.getUTCHours() + 3;
-                const isAdminUser = isAdmin || isOwner;
-                if (!isAdminUser && (hour < 9 || hour >= 22)) {
-                    showAlert('Ошибка', 'Отправка возможна только с 09:00 до 22:00 МСК');
-                    return;
-                }
-                if (!isAdminUser && Date.now() - lastAdSubmitTime < 120000) {
-                    showAlert('Ошибка', 'Кулдаун 2 минуты между объявлениями');
-                    return;
-                }
-                const type = document.getElementById('sendType').value;
-                const category = document.getElementById('sendCategory').value;
-                const name = document.getElementById('sendName').value.trim();
-                const priceStr = document.getElementById('sendPrice').value.trim();
-                const description = document.getElementById('sendDescription').value.trim();
-                const imagesStr = document.getElementById('sendImages').value.trim();
-                const server = document.getElementById('sendServer').value;
-                if (!name || !priceStr || !description) {
-                    showAlert('Ошибка', 'Заполните обязательные поля (название, цена, описание)');
-                    return;
-                }
-                const price = parsePriceToNumber(priceStr);
-                if (price <= 0) { showAlert('Ошибка', 'Некорректная цена'); return; }
-                const linkCheck = checkLinksString(imagesStr);
-                if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                try {
-                    await withTimeout(supabase.from('ads').insert({
-                        mode: type, category: category, item_name: name, price: price,
-                        description: description, images: linkCheck.links.join(','), server: server,
-                        author_id: currentUser.id.toString(), author_username: currentUser.username || '',
-                        status: 'pending', created_at: new Date().toISOString()
-                    }));
-                    lastAdSubmitTime = Date.now();
-                    playSfx('success');
-                    showAlert('Успех', 'Объявление отправлено на модерацию');
-                    document.getElementById('sendName').value = '';
-                    document.getElementById('sendPrice').value = '';
-                    document.getElementById('sendDescription').value = '';
-                    document.getElementById('sendImages').value = '';
-                    loadMyAds();
-                } catch (e) { showAlert('Ошибка', 'Не удалось отправить'); }
+            document.getElementById('logoBtn').addEventListener('click', () => {
+                currentFilterCategory = null;
+                switchSection('home');
             });
 
-            // ===== РЕДАКТИРОВАНИЕ АДМИНОМ =====
-            function openAdminEditModal(ad) {
-                showModal(`
-                    <h3 class="modal-title">✏️ Редактировать объявление</h3>
-                    <div class="form-group">
-                        <label>Название</label>
-                        <input type="text" id="adminEditName" value="${escapeHtml(ad.item_name)}">
-                    </div>
-                    <div class="form-group">
-                        <label>Цена</label>
-                        <input type="text" id="adminEditPrice" value="${formatPrice(ad.price)}">
-                    </div>
-                    <div class="form-group">
-                        <label>Описание</label>
-                        <textarea id="adminEditDescription">${escapeHtml(ad.description || '')}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Ссылки</label>
-                        <input type="text" id="adminEditImages" value="${escapeHtml(ad.images || '')}">
-                    </div>
-                    <div class="form-group">
-                        <label>Сервер</label>
-                        <select id="adminEditServer">${ALL_SERVERS.map(s => `<option value="${s}" ${s === ad.server ? 'selected' : ''}>${s}</option>`).join('')}</select>
-                    </div>
-                    <button class="btn w-full" id="adminEditSaveBtn">Сохранить и одобрить</button>
-                `);
-                document.getElementById('adminEditSaveBtn').addEventListener('click', async () => {
-                    const name = document.getElementById('adminEditName').value.trim();
-                    const price = parsePriceToNumber(document.getElementById('adminEditPrice').value);
-                    const description = document.getElementById('adminEditDescription').value.trim();
-                    const images = document.getElementById('adminEditImages').value.trim();
-                    const server = document.getElementById('adminEditServer').value;
-                    const linkCheck = checkLinksString(images);
-                    if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
-                    await withTimeout(supabase.from('ads').update({
-                        item_name: name, price: price, description: description,
-                        images: linkCheck.links.join(','), server: server, status: 'approved'
-                    }).eq('id', ad.id));
-                    playSfx('success');
-                    document.getElementById('modalOverlay').remove();
-                    loadAdminPanel(); loadHomeFeed(true);
-                });
-            }
+            document.getElementById('globalSearchInput').addEventListener('focus', () => {
+                openSearchModal();
+            });
 
-            // ===== ИНИЦИАЛИЗАЦИЯ =====
+            // Инициализация приложения
             async function initApp() {
-                applyTheme();
-                setupBackgroundMusic();
-                if (!currentUser.username) {
-                    showNoUsernameScreen();
-                    return;
-                }
                 await loadCurrentUserData();
-                if (currentUserData && currentUserData.banned) {
-                    showBanScreen();
-                    return;
-                }
-                showTutorial();
+                checkTutorials();
                 switchSection('home');
-                setupRealtime();
-                setupEventListeners();
-                requestWakeLock();
             }
 
-            function setupEventListeners() {
-                document.querySelectorAll('.nav-item').forEach(btn => {
-                    btn.addEventListener('click', () => switchSection(btn.dataset.section));
-                });
-                document.getElementById('themeToggleBtn').addEventListener('click', () => {
-                    currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-                    saveTheme(); applyTheme(); playSfx('click');
-                });
-                document.getElementById('logoBtn').addEventListener('click', openLogoModal);
-                document.getElementById('globalSearchInput').addEventListener('focus', () => {
-                    document.getElementById('globalSearchInput').blur();
-                    openSearchModal();
-                });
-                window.addEventListener('resize', () => {
-                    if (currentSection === 'home') renderHomeFeed(true);
-                });
-                document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === 'visible') requestWakeLock();
-                });
-                // Очистка интервала игры при закрытии модалки
-                document.addEventListener('click', (e) => {
-                    if (e.target.id === 'modalCloseBtn' && window.gameInterval) {
-                        clearInterval(window.gameInterval);
-                        delete window.gameInterval;
-                    }
-                });
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initApp);
-            } else {
-                initApp();
-            }
+            initApp();
         })();
     </script>
 </body>
-    </html>
+</html>

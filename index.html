@@ -720,7 +720,7 @@
 <body>
     <header class="header" id="appHeader">
         <div class="header-logo" id="logoBtn">
-            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='16' fill='%23005BFF'/%3E%3Ctext x='16' y='22' font-size='16' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'%3EAZ%3C/text%3E%3C/svg%3E" alt="Arizona RP">
+            <img src="https://i.postimg.cc/gj4dLNfB/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP">
         </div>
         <div class="header-title">Arizona RP</div>
         <div class="header-search">
@@ -817,14 +817,10 @@
             // ===== Глобальные константы =====
             const OWNER_USERNAME = 'bounqy';
             const ALL_SERVERS = [
-                '🌵 Arizona RP 01', '🌵 Arizona RP 02', '🌵 Arizona RP 03', '🌵 Arizona RP 04', '🌵 Arizona RP 05',
-                '🌵 Arizona RP 06', '🌵 Arizona RP 07', '🌵 Arizona RP 08', '🌵 Arizona RP 09', '🌵 Arizona RP 10',
-                '🌵 Arizona RP 11', '🌵 Arizona RP 12', '🌵 Arizona RP 13', '🌵 Arizona RP 14', '🌵 Arizona RP 15',
-                '🌵 Arizona RP 16', '🌵 Arizona RP 17', '🌵 Arizona RP 18', '🌵 Arizona RP 19', '🌵 Arizona RP 20',
-                '🌵 Arizona RP 21', '🌵 Arizona RP 22', '🌵 Arizona RP 23', '🌵 Arizona RP 24', '🌵 Arizona RP 25',
-                '🌵 Arizona RP 26', '🌵 Arizona RP 27', '🌵 Arizona RP 28', '🌵 Arizona RP 29', '🌵 Arizona RP 30',
-                '🌵 Arizona RP 31', '🌵 Arizona RP 32', '🌵 Arizona RP 33', '🌵 Arizona RP 34', '🌵 Arizona RP 35',
-                '🌵 Arizona RP 36', '🌵 Arizona RP 37'
+                'Phoenix', 'Tucson', 'Scottdale', 'Chandler', 'Brainburg', 'Saint-Rose', 'Mesa', 'Red-Rock', 'Yuma',
+                'Surprise', 'Prescott', 'Glendale', 'Kingman', 'Winslow', 'Payson', 'Gilbert', 'Show-Low', 'Casa-Grande',
+                'Page', 'Sun-City', 'Queen-Creek', 'Sedona', 'Holiday', 'Wednesday', 'Yava', 'Faraway', 'Bumble-Bee',
+                'Christmas', 'Mirage', 'Love', 'Drake', 'Space', 'Home', 'Mobile I', 'Mobile II', 'Mobile III'
             ];
             const ALL_CATEGORIES = [
                 { id: 'accessories', label: '💍 Аксессуары и вещи' },
@@ -850,8 +846,9 @@
             const ALLOWED_DOMAINS = [
                 'youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com'
             ];
-            const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co'; // Замените при необходимости
-            const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO'; // Замените при необходимости
+            const DEFAULT_AD_IMAGE = 'https://i.postimg.cc/zDwTPKwq/0465dd7cc4f5446e5e908000ec4379bb.jpg';
+            const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co';
+            const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
 
             // ===== Инициализация Telegram WebApp =====
             let tg = null;
@@ -877,8 +874,6 @@
             try {
                 if (window.supabase && window.supabase.createClient) {
                     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                } else {
-                    console.warn('Supabase JS not loaded');
                 }
             } catch (e) { console.warn('Supabase init error', e); }
 
@@ -897,17 +892,8 @@
             let bgMusic = null;
             let musicStarted = false;
             let gameState = {
-                money: 0,
-                clickPower: 1,
-                clickCost: 50,
-                autoIncome: 0,
-                autoCost: 200,
-                proCost: 800,
-                shopCost: 3000,
-                eliteCost: 10000,
-                oilCost: 35000,
-                cryptoCost: 150000,
-                scrapCost: 500,
+                money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800,
+                shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000, scrapCost: 500,
                 elitePurchased: false
             };
             let realtimeChannel = null;
@@ -917,7 +903,6 @@
             let myAds = [];
             let pendingAds = [];
             let homeAds = [];
-            let currentAdForDetail = null;
             let tutorialCompleted = localStorage.getItem('tutorialDone') === 'true';
             let adminTutorialCompleted = localStorage.getItem('adminTutorialDone') === 'true';
 
@@ -938,8 +923,7 @@
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
                     const freqs = { click: 800, success: 1200, error: 300, buy: 1000 };
-                    const freq = freqs[type] || 600;
-                    osc.frequency.value = freq;
+                    osc.frequency.value = freqs[type] || 600;
                     osc.type = 'sine';
                     gain.gain.value = 0.1;
                     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
@@ -951,15 +935,13 @@
             function saveTheme() { localStorage.setItem('theme', currentTheme); }
             function applyTheme() {
                 document.documentElement.setAttribute('data-theme', currentTheme);
-                document.body.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg');
             }
 
             function formatPrice(value) {
                 if (!value) return '0';
                 let num = typeof value === 'string' ? value.toLowerCase() : value.toString();
                 if (num.includes('к')) {
-                    let parts = num.split('к');
-                    let base = parseFloat(parts[0]) || 0;
+                    let base = parseFloat(num.split('к')[0]) || 0;
                     let kCount = (num.match(/к/g) || []).length;
                     if (kCount === 1) base *= 1000;
                     else if (kCount === 2) base *= 1000000;
@@ -1008,9 +990,7 @@
                 const links = str.split(',').map(s => s.trim()).filter(s => s.length > 0);
                 if (links.length > 20) return { valid: false, message: 'Максимум 20 ссылок' };
                 for (let link of links) {
-                    if (!isAllowedLink(link)) {
-                        return { valid: false, message: `Ссылка ${link} не разрешена` };
-                    }
+                    if (!isAllowedLink(link)) return { valid: false, message: `Ссылка ${link} не разрешена` };
                 }
                 return { valid: true, links };
             }
@@ -1032,9 +1012,7 @@
                     if (onClose) onClose();
                 }
                 closeBtn.addEventListener('click', closeModal);
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) closeModal();
-                });
+                overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
                 return { overlay, closeModal };
             }
 
@@ -1048,9 +1026,7 @@
                         <button class="btn w-full" id="alertOkBtn">ОК</button>
                     </div>
                 `);
-                document.getElementById('alertOkBtn').addEventListener('click', () => {
-                    document.getElementById('modalOverlay').remove();
-                });
+                document.getElementById('alertOkBtn').addEventListener('click', () => document.getElementById('modalOverlay').remove());
             }
 
             function showConfirm(title, message, onConfirm) {
@@ -1065,21 +1041,14 @@
                         </div>
                     </div>
                 `);
-                document.getElementById('confirmCancelBtn').addEventListener('click', () => {
-                    document.getElementById('modalOverlay').remove();
-                });
-                document.getElementById('confirmOkBtn').addEventListener('click', () => {
-                    document.getElementById('modalOverlay').remove();
-                    onConfirm();
-                });
+                document.getElementById('confirmCancelBtn').addEventListener('click', () => document.getElementById('modalOverlay').remove());
+                document.getElementById('confirmOkBtn').addEventListener('click', () => { document.getElementById('modalOverlay').remove(); onConfirm(); });
             }
 
             function requestWakeLock() {
                 try {
                     if ('wakeLock' in navigator) {
-                        navigator.wakeLock.request('screen').then(lock => {
-                            wakeLock = lock;
-                        }).catch(() => {});
+                        navigator.wakeLock.request('screen').then(lock => { wakeLock = lock; }).catch(() => {});
                     }
                 } catch (e) {}
             }
@@ -1092,10 +1061,7 @@
                     audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
                     bgMusic = audio;
                     document.addEventListener('click', () => {
-                        if (!musicStarted && bgMusic) {
-                            bgMusic.play().catch(() => {});
-                            musicStarted = true;
-                        }
+                        if (!musicStarted && bgMusic) { bgMusic.play().catch(() => {}); musicStarted = true; }
                     }, { once: true });
                 } catch (e) {}
             }
@@ -1113,9 +1079,7 @@
                 if (section === 'send') { populateSendForm(); loadMyAds(); }
                 if (section === 'admin') {
                     loadAdminPanel();
-                    if (isAdmin && !adminTutorialCompleted) {
-                        showAdminTutorial();
-                    }
+                    if (isAdmin && !adminTutorialCompleted) showAdminTutorial();
                 }
                 if (section === 'all') loadAllTiles();
                 playSfx('click');
@@ -1151,9 +1115,7 @@
                     } else {
                         document.getElementById('adminNavBtn').classList.add('hidden');
                     }
-                    if (currentUserData && currentUserData.banned) {
-                        showBanScreen();
-                    }
+                    if (currentUserData && currentUserData.banned) showBanScreen();
                 } catch (e) {
                     console.warn('loadCurrentUserData error', e);
                     isAdmin = (currentUser.username === OWNER_USERNAME);
@@ -1168,15 +1130,13 @@
                 container.innerHTML = '<div class="empty-state">Загрузка...</div>';
                 try {
                     let query = supabase.from('ads').select('*').eq('status', 'approved').order('created_at', { ascending: false });
-                    if (currentFilterCategory) {
-                        query = query.eq('category', currentFilterCategory);
-                    }
+                    if (currentFilterCategory) query = query.eq('category', currentFilterCategory);
                     const { data, error } = await withTimeout(query);
                     if (error) throw error;
                     homeAds = data || [];
                     renderHomeFeed();
                 } catch (e) {
-                    container.innerHTML = '<div class="empty-state">Ошибка загрузки</div>';
+                    container.innerHTML = '<div class="empty-state">Ошибка загрузки. Проверьте подключение.</div>';
                 }
             }
 
@@ -1189,11 +1149,12 @@
                 let html = '';
                 homeAds.forEach(ad => {
                     const firstImg = ad.images ? ad.images.split(',')[0].trim() : '';
+                    const imgSrc = firstImg || DEFAULT_AD_IMAGE;
                     const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
                     const catLabel = ALL_CATEGORIES.find(c => c.id === ad.category)?.label || ad.category;
                     html += `
                         <div class="card ad-card" data-ad-id="${ad.id}">
-                            ${firstImg ? `<img class="ad-card-img" src="${firstImg}" onerror="this.style.display='none'" alt="">` : '<div class="ad-card-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;">📦</div>'}
+                            <img class="ad-card-img" src="${imgSrc}" onerror="this.src='${DEFAULT_AD_IMAGE}'" alt="">
                             <div class="ad-card-info">
                                 <div class="ad-card-title">${ad.item_name || 'Без названия'}</div>
                                 <div class="ad-card-price">${formatPrice(ad.price)}</div>
@@ -1288,8 +1249,11 @@
                 serverSelect.innerHTML = ALL_SERVERS.map(s => `<option value="${s}">${s}</option>`).join('');
                 serverSelect.value = currentUserServer;
                 const priceInput = document.getElementById('sendPrice');
-                priceInput.addEventListener('input', () => formatPriceInput(priceInput));
+                priceInput.removeEventListener('input', formatPriceInputHandler);
+                priceInput.addEventListener('input', formatPriceInputHandler);
             }
+
+            function formatPriceInputHandler(e) { formatPriceInput(e.target); }
 
             async function loadMyAds() {
                 const container = document.getElementById('myAdsList');
@@ -1404,25 +1368,19 @@
                     container.innerHTML = html;
                     container.querySelectorAll('[data-approve]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            const id = btn.dataset.approve;
-                            await withTimeout(supabase.from('ads').update({ status: 'approved' }).eq('id', id));
-                            playSfx('success');
-                            loadAdminPanel();
-                            loadHomeFeed();
+                            await withTimeout(supabase.from('ads').update({ status: 'approved' }).eq('id', btn.dataset.approve));
+                            playSfx('success'); loadAdminPanel(); loadHomeFeed();
                         });
                     });
                     container.querySelectorAll('[data-reject]').forEach(btn => {
                         btn.addEventListener('click', async () => {
-                            const id = btn.dataset.reject;
-                            await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', id));
-                            playSfx('click');
-                            loadAdminPanel();
+                            await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', btn.dataset.reject));
+                            playSfx('click'); loadAdminPanel();
                         });
                     });
                     container.querySelectorAll('[data-edit-ad]').forEach(btn => {
                         btn.addEventListener('click', () => {
-                            const id = btn.dataset.editAd;
-                            const ad = pendingAds.find(a => a.id == id);
+                            const ad = pendingAds.find(a => a.id == btn.dataset.editAd);
                             if (ad) openAdminEditModal(ad);
                         });
                     });
@@ -1435,9 +1393,7 @@
                             showConfirm('Очистка', 'Удалить ВСЕ объявления из ленты?', async () => {
                                 await withTimeout(supabase.from('ads').delete().neq('id', 0));
                                 await withTimeout(supabase.from('favorites').delete().neq('user_id', '0'));
-                                playSfx('click');
-                                loadAdminPanel();
-                                loadHomeFeed();
+                                playSfx('click'); loadAdminPanel(); loadHomeFeed();
                             });
                         });
                     }
@@ -1454,22 +1410,15 @@
                         supabase.from('users').select('*').eq('username', username).maybeSingle()
                     );
                     if (error) throw error;
-                    if (!user) {
-                        showAlert('Ошибка', 'Пользователь не найден');
-                        return;
-                    }
+                    if (!user) { showAlert('Ошибка', 'Пользователь не найден'); return; }
                     let updates = {};
                     if (action === 'ban') updates.banned = true;
                     else if (action === 'unban') updates.banned = false;
                     else if (action === 'make_admin') updates.is_admin = true;
                     else if (action === 'remove_admin') updates.is_admin = false;
                     await withTimeout(supabase.from('users').update(updates).eq('id', user.id));
-                    playSfx('success');
-                    showAlert('Успех', 'Действие выполнено');
-                    loadAdminPanel();
-                } catch (e) {
-                    showAlert('Ошибка', 'Не удалось выполнить');
-                }
+                    playSfx('success'); showAlert('Успех', 'Действие выполнено'); loadAdminPanel();
+                } catch (e) { showAlert('Ошибка', 'Не удалось выполнить'); }
             }
 
             function loadAllTiles() {
@@ -1494,8 +1443,7 @@
                 `).join('');
                 container.querySelectorAll('.grid-tile').forEach(tile => {
                     tile.addEventListener('click', () => {
-                        const label = tile.dataset.action;
-                        const found = tiles.find(t => t.label === label);
+                        const found = tiles.find(t => t.label === tile.dataset.action);
                         if (found) found.action();
                     });
                 });
@@ -1517,9 +1465,7 @@
                 });
             }
 
-            // ===== Детальная страница объявления =====
             async function openAdDetail(ad) {
-                currentAdForDetail = ad;
                 let galleryHtml = '';
                 const images = ad.images ? ad.images.split(',').map(s => s.trim()).filter(s => s) : [];
                 if (images.length) {
@@ -1558,9 +1504,7 @@
                 const overlay = document.getElementById('modalOverlay');
                 if (ad.status === 'approved') {
                     document.getElementById('detailContactBtn').addEventListener('click', () => {
-                        const username = ad.author_id;
-                        const url = `https://t.me/${username}`;
-                        window.open(url, '_blank');
+                        window.open(`https://t.me/${ad.author_id}`, '_blank');
                     });
                     const cartBtn = document.getElementById('detailCartToggleBtn');
                     cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 Корзина';
@@ -1572,33 +1516,23 @@
                             await withTimeout(supabase.from('favorites').insert({ user_id: currentUser.id.toString(), ad_id: ad.id }));
                             cartBtn.textContent = '🛒 Убрать из корзины';
                         }
-                        playSfx('click');
-                        loadCart();
+                        playSfx('click'); loadCart();
                     });
-                    document.getElementById('detailReviewsBtn').addEventListener('click', () => {
-                        openReviewsModal(ad.id);
-                    });
+                    document.getElementById('detailReviewsBtn').addEventListener('click', () => openReviewsModal(ad.id));
                     if (ad.author_id === currentUser.id.toString()) {
                         document.getElementById('detailDeleteBtn').addEventListener('click', async () => {
                             showConfirm('Удаление', 'Удалить объявление?', async () => {
                                 await withTimeout(supabase.from('ads').update({ status: 'deleted' }).eq('id', ad.id));
-                                playSfx('click');
-                                overlay.remove();
-                                loadHomeFeed();
+                                playSfx('click'); overlay.remove(); loadHomeFeed();
                             });
                         });
                     }
                 }
                 if (ad.status === 'deleted' && ad.author_id === currentUser.id.toString()) {
                     const appealBtn = document.getElementById('detailAppealBtn');
-                    if (appealBtn) appealBtn.addEventListener('click', () => {
-                        appealAdId = ad.id;
-                        openAppealModal();
-                    });
+                    if (appealBtn) appealBtn.addEventListener('click', () => { appealAdId = ad.id; openAppealModal(); });
                 }
-                document.getElementById('detailAuthorLink').addEventListener('click', () => {
-                    openProfileModal(ad.author_id);
-                });
+                document.getElementById('detailAuthorLink').addEventListener('click', () => openProfileModal(ad.author_id));
                 loadReviews(ad.id);
                 loadSimilarAds(ad.category, ad.id);
             }
@@ -1651,8 +1585,7 @@
                     container.querySelectorAll('[data-delete-review]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('reviews').delete().eq('id', btn.dataset.deleteReview));
-                            playSfx('click');
-                            loadReviews(adId);
+                            playSfx('click'); loadReviews(adId);
                         });
                     });
                 } catch (e) {
@@ -1679,8 +1612,7 @@
                     `).join('');
                     container.querySelectorAll('[data-sim]').forEach(el => {
                         el.addEventListener('click', () => {
-                            const id = el.dataset.sim;
-                            const found = similar.find(a => a.id == id);
+                            const found = similar.find(a => a.id == el.dataset.sim);
                             if (found) {
                                 const overlay = document.getElementById('modalOverlay');
                                 if (overlay) overlay.remove();
@@ -1691,7 +1623,6 @@
                 } catch (e) {}
             }
 
-            // ===== Отзывы =====
             function openReviewsModal(adId) {
                 showModal(`
                     <h3 class="modal-title">⭐ Отзывы</h3>
@@ -1727,20 +1658,13 @@
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
                     try {
                         await withTimeout(supabase.from('reviews').insert({
-                            ad_id: adId,
-                            author_id: currentUser.id.toString(),
-                            stars: selectedStars,
-                            text: text,
-                            media_links: media,
-                            created_at: new Date().toISOString()
+                            ad_id: adId, author_id: currentUser.id.toString(), stars: selectedStars,
+                            text: text, media_links: media, created_at: new Date().toISOString()
                         }));
-                        playSfx('success');
-                        showAlert('Успех', 'Отзыв отправлен');
+                        playSfx('success'); showAlert('Успех', 'Отзыв отправлен');
                         document.getElementById('modalOverlay').remove();
                         loadReviews(adId);
-                    } catch (e) {
-                        showAlert('Ошибка', 'Не удалось отправить');
-                    }
+                    } catch (e) { showAlert('Ошибка', 'Не удалось отправить'); }
                 });
             }
 
@@ -1784,13 +1708,11 @@
                     const linkCheck = checkLinksString(media);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
                     await withTimeout(supabase.from('reviews').update({ stars: selectedStars, text, media_links: media }).eq('id', review.id));
-                    playSfx('success');
-                    document.getElementById('modalOverlay').remove();
+                    playSfx('success'); document.getElementById('modalOverlay').remove();
                     loadReviews(review.ad_id);
                 });
             }
 
-            // ===== Апелляции =====
             function openAppealModal() {
                 if (!appealAdId) return;
                 showModal(`
@@ -1812,23 +1734,15 @@
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
                     try {
                         await withTimeout(supabase.from('appeals').insert({
-                            ad_id: appealAdId,
-                            author_id: currentUser.id.toString(),
-                            reason: reason,
-                            evidence: evidence,
-                            status: 'pending',
-                            created_at: new Date().toISOString()
+                            ad_id: appealAdId, author_id: currentUser.id.toString(), reason: reason,
+                            evidence: evidence, status: 'pending', created_at: new Date().toISOString()
                         }));
-                        playSfx('success');
-                        showAlert('Успех', 'Апелляция отправлена');
+                        playSfx('success'); showAlert('Успех', 'Апелляция отправлена');
                         document.getElementById('modalOverlay').remove();
-                    } catch (e) {
-                        showAlert('Ошибка', 'Не удалось отправить');
-                    }
+                    } catch (e) { showAlert('Ошибка', 'Не удалось отправить'); }
                 });
             }
 
-            // ===== Игра Барыга =====
             async function loadGameState() {
                 if (!supabase) return;
                 try {
@@ -1847,14 +1761,12 @@
                 loadGameState().then(() => {
                     showModal(`
                         <h3 class="modal-title">🎮 Игра «Барыга»</h3>
-                        <div style="text-align:center;font-size:24px;font-weight:900;margin-bottom:8px;">💰 ${formatPrice(gameState.money)}</div>
+                        <div style="text-align:center;font-size:24px;font-weight:900;margin-bottom:8px;" id="gameMoneyDisplay">💰 ${formatPrice(gameState.money)}</div>
                         <div class="game-click-area" id="gameClickArea">
                             <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23FF9900'/%3E%3Ctext x='50' y='60' font-size='40' text-anchor='middle' fill='white'%3E💰%3C/text%3E%3C/svg%3E" alt="Клик">
                         </div>
                         <div style="font-size:12px;color:var(--muted);text-align:center;">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div>
-                        <div class="mt-12" id="gameUpgrades">
-                            ${renderUpgrades()}
-                        </div>
+                        <div class="mt-12" id="gameUpgrades">${renderUpgrades()}</div>
                     `);
                     const clickArea = document.getElementById('gameClickArea');
                     clickArea.addEventListener('click', () => {
@@ -1877,14 +1789,14 @@
 
             function renderUpgrades() {
                 const upgrades = [
-                    { name: 'Клик +1', cost: gameState.clickCost, key: 'clickCost', action: () => { gameState.clickPower += 1; gameState.clickCost *= 2; } },
-                    { name: 'Авто +5/сек', cost: gameState.autoCost, key: 'autoCost', action: () => { gameState.autoIncome += 5; gameState.autoCost *= 2; } },
-                    { name: 'Про +20/сек', cost: gameState.proCost, key: 'proCost', action: () => { gameState.autoIncome += 20; gameState.proCost *= 2; } },
-                    { name: 'Магазин +50/сек', cost: gameState.shopCost, key: 'shopCost', action: () => { gameState.autoIncome += 50; gameState.shopCost *= 2; } },
-                    { name: 'Элита: клик +10', cost: gameState.eliteCost, key: 'eliteCost', action: () => { gameState.clickPower += 10; gameState.eliteCost *= 2; gameState.elitePurchased = true; } },
-                    { name: 'Нефть +200/сек', cost: gameState.oilCost, key: 'oilCost', action: () => { gameState.autoIncome += 200; gameState.oilCost *= 2; } },
-                    { name: 'Крипта +1000/сек', cost: gameState.cryptoCost, key: 'cryptoCost', action: () => { gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
-                    { name: 'Скупка лома +500/сек', cost: gameState.scrapCost, key: 'scrapCost', action: () => { gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
+                    { name: 'Клик +1', cost: gameState.clickCost, action: () => { gameState.clickPower += 1; gameState.clickCost *= 2; } },
+                    { name: 'Авто +5/сек', cost: gameState.autoCost, action: () => { gameState.autoIncome += 5; gameState.autoCost *= 2; } },
+                    { name: 'Про +20/сек', cost: gameState.proCost, action: () => { gameState.autoIncome += 20; gameState.proCost *= 2; } },
+                    { name: 'Магазин +50/сек', cost: gameState.shopCost, action: () => { gameState.autoIncome += 50; gameState.shopCost *= 2; } },
+                    { name: 'Элита: клик +10', cost: gameState.eliteCost, action: () => { gameState.clickPower += 10; gameState.eliteCost *= 2; gameState.elitePurchased = true; } },
+                    { name: 'Нефть +200/сек', cost: gameState.oilCost, action: () => { gameState.autoIncome += 200; gameState.oilCost *= 2; } },
+                    { name: 'Крипта +1000/сек', cost: gameState.cryptoCost, action: () => { gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
+                    { name: 'Скупка лома +500/сек', cost: gameState.scrapCost, action: () => { gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
                 ];
                 return upgrades.map((u, i) => `
                     <div class="upgrade-card">
@@ -1898,7 +1810,7 @@
             }
 
             function updateGameUI() {
-                const moneyEl = document.querySelector('#gameClickArea')?.parentElement?.querySelector('div');
+                const moneyEl = document.getElementById('gameMoneyDisplay');
                 if (moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money);
                 const upgradesContainer = document.getElementById('gameUpgrades');
                 if (upgradesContainer) upgradesContainer.innerHTML = renderUpgrades();
@@ -1931,22 +1843,14 @@
                 if (!supabase) return;
                 try {
                     await withTimeout(supabase.from('baryga').update({
-                        money: gameState.money,
-                        click_power: gameState.clickPower,
-                        click_cost: gameState.clickCost,
-                        auto_income: gameState.autoIncome,
-                        auto_cost: gameState.autoCost,
-                        pro_cost: gameState.proCost,
-                        shop_cost: gameState.shopCost,
-                        elite_cost: gameState.eliteCost,
-                        oil_cost: gameState.oilCost,
-                        crypto_cost: gameState.cryptoCost,
-                        scrap_cost: gameState.scrapCost
+                        money: gameState.money, click_power: gameState.clickPower, click_cost: gameState.clickCost,
+                        auto_income: gameState.autoIncome, auto_cost: gameState.autoCost, pro_cost: gameState.proCost,
+                        shop_cost: gameState.shopCost, elite_cost: gameState.eliteCost, oil_cost: gameState.oilCost,
+                        crypto_cost: gameState.cryptoCost, scrap_cost: gameState.scrapCost
                     }).eq('user_id', currentUser.id.toString()));
                 } catch (e) {}
             }
 
-            // ===== Поиск =====
             function openSearchModal() {
                 showModal(`
                     <h3 class="modal-title">🔍 Поиск</h3>
@@ -1987,8 +1891,7 @@
                         suggestions.innerHTML = items.map(ad => `<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('');
                         suggestions.querySelectorAll('[data-sug]').forEach(el => {
                             el.addEventListener('click', () => {
-                                const id = el.dataset.sug;
-                                const ad = items.find(a => a.id == id);
+                                const ad = items.find(a => a.id == el.dataset.sug);
                                 if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
                             });
                         });
@@ -2010,23 +1913,18 @@
                         results.innerHTML = '<div style="font-weight:700;margin:8px 0;">Результаты:</div>' + (data && data.length ? data.map(ad => `<div class="card" style="cursor:pointer;" data-res="${ad.id}">${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('') : '<div class="empty-state">Ничего не найдено</div>');
                         results.querySelectorAll('[data-res]').forEach(el => {
                             el.addEventListener('click', () => {
-                                const id = el.dataset.res;
-                                const found = data.find(a => a.id == id);
-                                if (found) { document.getElementById('modalOverlay').remove(); openAdDetail(found); }
+                                const ad = data.find(a => a.id == el.dataset.res);
+                                if (ad) { document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
                             });
                         });
                     } catch (e) {}
                 });
                 document.getElementById('searchProfileBtn').addEventListener('click', () => {
                     const username = input.value.trim().replace('@', '');
-                    if (username) {
-                        document.getElementById('modalOverlay').remove();
-                        openProfileModal(username);
-                    }
+                    if (username) { document.getElementById('modalOverlay').remove(); openProfileModal(username); }
                 });
             }
 
-            // ===== Профиль =====
             function openProfileModal(username) {
                 showModal(`
                     <h3 class="modal-title">👤 Профиль</h3>
@@ -2039,16 +1937,10 @@
                         <button class="btn w-full" id="profileContactBtn">💬 Написать</button>
                     </div>
                 `);
-                document.getElementById('profileFollowBtn').addEventListener('click', () => {
-                    playSfx('click');
-                    showAlert('Скоро', 'Функция в разработке');
-                });
-                document.getElementById('profileContactBtn').addEventListener('click', () => {
-                    window.open(`https://t.me/${username}`, '_blank');
-                });
+                document.getElementById('profileFollowBtn').addEventListener('click', () => { playSfx('click'); showAlert('Скоро', 'Функция в разработке'); });
+                document.getElementById('profileContactBtn').addEventListener('click', () => window.open(`https://t.me/${username}`, '_blank'));
             }
 
-            // ===== Лента Луков =====
             function openFashionModal() {
                 showModal(`
                     <h3 class="modal-title">📸 Лента «Луков»</h3>
@@ -2071,8 +1963,7 @@
                     if (!isAllowedLink(image)) { showAlert('Ошибка', 'Ссылка не разрешена'); return; }
                     try {
                         await withTimeout(supabase.from('fashion').insert({ author_id: currentUser.id.toString(), title, image, created_at: new Date().toISOString() }));
-                        playSfx('success');
-                        loadFashion();
+                        playSfx('success'); loadFashion();
                         document.getElementById('fashionTitle').value = '';
                         document.getElementById('fashionImage').value = '';
                     } catch (e) { showAlert('Ошибка', 'Не удалось опубликовать'); }
@@ -2085,10 +1976,7 @@
                 try {
                     const { data } = await withTimeout(supabase.from('fashion').select('*').order('created_at', { ascending: false }).limit(50));
                     const items = data || [];
-                    if (!items.length) {
-                        container.innerHTML = '<div class="empty-state">Сетов пока нет</div>';
-                        return;
-                    }
+                    if (!items.length) { container.innerHTML = '<div class="empty-state">Сетов пока нет</div>'; return; }
                     container.innerHTML = items.map(item => `
                         <div class="card">
                             <div style="font-weight:700;">${item.title}</div>
@@ -2100,14 +1988,12 @@
                     container.querySelectorAll('[data-del-fashion]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('fashion').delete().eq('id', btn.dataset.delFashion));
-                            playSfx('click');
-                            loadFashion();
+                            playSfx('click'); loadFashion();
                         });
                     });
                 } catch (e) {}
             }
 
-            // ===== Попутчики =====
             function openTravelModal() {
                 showModal(`
                     <h3 class="modal-title">🤝 Попутчики</h3>
@@ -2129,8 +2015,7 @@
                     if (!activity || !description) { showAlert('Ошибка', 'Заполните все поля'); return; }
                     try {
                         await withTimeout(supabase.from('travel').insert({ author_id: currentUser.id.toString(), activity, description, created_at: new Date().toISOString() }));
-                        playSfx('success');
-                        loadTravel();
+                        playSfx('success'); loadTravel();
                         document.getElementById('travelActivity').value = '';
                         document.getElementById('travelDescription').value = '';
                     } catch (e) { showAlert('Ошибка', 'Не удалось опубликовать'); }
@@ -2143,10 +2028,7 @@
                 try {
                     const { data } = await withTimeout(supabase.from('travel').select('*').order('created_at', { ascending: false }).limit(50));
                     const items = data || [];
-                    if (!items.length) {
-                        container.innerHTML = '<div class="empty-state">Заявок пока нет</div>';
-                        return;
-                    }
+                    if (!items.length) { container.innerHTML = '<div class="empty-state">Заявок пока нет</div>'; return; }
                     container.innerHTML = items.map(item => `
                         <div class="card">
                             <div style="font-weight:700;">${item.activity}</div>
@@ -2158,14 +2040,12 @@
                     container.querySelectorAll('[data-del-travel]').forEach(btn => {
                         btn.addEventListener('click', async () => {
                             await withTimeout(supabase.from('travel').delete().eq('id', btn.dataset.delTravel));
-                            playSfx('click');
-                            loadTravel();
+                            playSfx('click'); loadTravel();
                         });
                     });
                 } catch (e) {}
             }
 
-            // ===== Музыка =====
             function openMusicModal() {
                 showModal(`
                     <h3 class="modal-title">🎵 Музыка</h3>
@@ -2179,37 +2059,24 @@
                     </div>
                 `);
                 document.getElementById('musicToggleBtn').addEventListener('click', () => {
-                    if (!bgMusic) { setupBackgroundMusic(); }
-                    if (bgMusic.paused) {
-                        bgMusic.play().catch(() => {});
-                        musicStarted = true;
-                        document.getElementById('musicToggleBtn').textContent = '⏸ Пауза';
-                    } else {
-                        bgMusic.pause();
-                        document.getElementById('musicToggleBtn').textContent = '▶️ Играть';
-                    }
+                    if (!bgMusic) setupBackgroundMusic();
+                    if (bgMusic.paused) { bgMusic.play().catch(() => {}); musicStarted = true; document.getElementById('musicToggleBtn').textContent = '⏸ Пауза'; }
+                    else { bgMusic.pause(); document.getElementById('musicToggleBtn').textContent = '▶️ Играть'; }
                 });
                 document.getElementById('musicResetBtn').addEventListener('click', () => {
-                    if (bgMusic) {
-                        bgMusic.pause();
-                        bgMusic.currentTime = 0;
-                    }
-                    musicStarted = false;
-                    document.getElementById('musicToggleBtn').textContent = '▶️ Играть';
+                    if (bgMusic) { bgMusic.pause(); bgMusic.currentTime = 0; }
+                    musicStarted = false; document.getElementById('musicToggleBtn').textContent = '▶️ Играть';
                 });
                 document.getElementById('musicFileInput').addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (file && bgMusic) {
                         const url = URL.createObjectURL(file);
-                        bgMusic.src = url;
-                        bgMusic.play().catch(() => {});
-                        musicStarted = true;
-                        document.getElementById('musicToggleBtn').textContent = '⏸ Пауза';
+                        bgMusic.src = url; bgMusic.play().catch(() => {});
+                        musicStarted = true; document.getElementById('musicToggleBtn').textContent = '⏸ Пауза';
                     }
                 });
             }
 
-            // ===== Настройки =====
             function openSettingsModal() {
                 showModal(`
                     <h3 class="modal-title">⚙️ Настройки</h3>
@@ -2238,13 +2105,11 @@
                                 await withTimeout(supabase.from('ads').delete().eq('author_id', currentUser.id.toString()));
                             }
                         } catch (e) {}
-                        localStorage.clear();
-                        location.reload();
+                        localStorage.clear(); location.reload();
                     });
                 });
             }
 
-            // ===== Менеджер =====
             function openManagerModal() {
                 showModal(`
                     <h3 class="modal-title">📩 Менеджер</h3>
@@ -2256,7 +2121,6 @@
                 document.getElementById('managerVkBtn').addEventListener('click', () => window.open('https://vk.com/bountyarz', '_blank'));
             }
 
-            // ===== Переписки =====
             function openChatsModal() {
                 showModal(`
                     <h3 class="modal-title">💬 Переписки</h3>
@@ -2266,7 +2130,6 @@
                 document.getElementById('chatsTgBtn').addEventListener('click', () => window.open('https://t.me/arizona_coin_bot', '_blank'));
             }
 
-            // ===== Логотип =====
             function openLogoModal() {
                 showModal(`
                     <h3 class="modal-title">Arizona RP</h3>
@@ -2278,7 +2141,6 @@
                 document.getElementById('logoChannelBtn').addEventListener('click', () => window.open('https://t.me/Bounty_Squad31', '_blank'));
             }
 
-            // ===== Туториалы =====
             function showTutorial() {
                 if (tutorialCompleted) return;
                 const slides = [
@@ -2324,8 +2186,7 @@
                             timer--;
                             if (timerEl) timerEl.textContent = timer;
                             if (timer <= 0) {
-                                clearInterval(interval);
-                                tutorialTimerDone = true;
+                                clearInterval(interval); tutorialTimerDone = true;
                                 const nextBtn = document.getElementById('tutorialNextBtn');
                                 if (nextBtn) nextBtn.disabled = false;
                                 if (timerEl) timerEl.remove();
@@ -2336,15 +2197,8 @@
                         if (currentSlide > 0) { currentSlide--; overlay.remove(); renderSlide(); }
                     });
                     document.getElementById('tutorialNextBtn').addEventListener('click', () => {
-                        if (isLast) {
-                            tutorialCompleted = true;
-                            localStorage.setItem('tutorialDone', 'true');
-                            overlay.remove();
-                        } else {
-                            currentSlide++;
-                            overlay.remove();
-                            renderSlide();
-                        }
+                        if (isLast) { tutorialCompleted = true; localStorage.setItem('tutorialDone', 'true'); overlay.remove(); }
+                        else { currentSlide++; overlay.remove(); renderSlide(); }
                     });
                 }
                 let tutorialTimerDone = false;
@@ -2388,8 +2242,7 @@
                             timer--;
                             if (timerEl) timerEl.textContent = timer;
                             if (timer <= 0) {
-                                clearInterval(interval);
-                                adminTimerDone = true;
+                                clearInterval(interval); adminTimerDone = true;
                                 const nextBtn = document.getElementById('adminTutorialNextBtn');
                                 if (nextBtn) nextBtn.disabled = false;
                                 if (timerEl) timerEl.remove();
@@ -2400,15 +2253,8 @@
                         if (currentSlide > 0) { currentSlide--; overlay.remove(); renderSlide(); }
                     });
                     document.getElementById('adminTutorialNextBtn').addEventListener('click', () => {
-                        if (isLast) {
-                            adminTutorialCompleted = true;
-                            localStorage.setItem('adminTutorialDone', 'true');
-                            overlay.remove();
-                        } else {
-                            currentSlide++;
-                            overlay.remove();
-                            renderSlide();
-                        }
+                        if (isLast) { adminTutorialCompleted = true; localStorage.setItem('adminTutorialDone', 'true'); overlay.remove(); }
+                        else { currentSlide++; overlay.remove(); renderSlide(); }
                     });
                 }
                 let adminTimerDone = false;
@@ -2443,12 +2289,11 @@
                 document.body.appendChild(overlay);
             }
 
-            // ===== Realtime =====
             function setupRealtime() {
                 if (!supabase) return;
                 try {
                     realtimeChannel = supabase.channel('ads-changes')
-                        .on('postgres_changes', { event: '*', schema: 'public', table: 'ads' }, (payload) => {
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'ads' }, () => {
                             if (currentSection === 'home') loadHomeFeed();
                             if (currentSection === 'send') loadMyAds();
                             if (currentSection === 'admin') loadAdminPanel();
@@ -2458,11 +2303,10 @@
                 } catch (e) {}
             }
 
-            // ===== Отправка объявления =====
             document.getElementById('sendSubmitBtn').addEventListener('click', async () => {
                 if (!supabase) { showAlert('Ошибка', 'Нет подключения к базе'); return; }
                 const now = new Date();
-                const hour = now.getUTCHours() + 3; // МСК
+                const hour = now.getUTCHours() + 3;
                 const isAdminUser = isAdmin || isOwner;
                 if (!isAdminUser && (hour < 9 || hour >= 22)) {
                     showAlert('Ошибка', 'Отправка возможна только с 09:00 до 22:00 МСК');
@@ -2489,16 +2333,9 @@
                 if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
                 try {
                     await withTimeout(supabase.from('ads').insert({
-                        mode: type,
-                        category: category,
-                        item_name: name,
-                        price: price,
-                        description: description,
-                        images: linkCheck.links.join(','),
-                        server: server,
-                        author_id: currentUser.id.toString(),
-                        status: 'pending',
-                        created_at: new Date().toISOString()
+                        mode: type, category: category, item_name: name, price: price,
+                        description: description, images: linkCheck.links.join(','), server: server,
+                        author_id: currentUser.id.toString(), status: 'pending', created_at: new Date().toISOString()
                     }));
                     lastAdSubmitTime = Date.now();
                     playSfx('success');
@@ -2508,12 +2345,9 @@
                     document.getElementById('sendDescription').value = '';
                     document.getElementById('sendImages').value = '';
                     loadMyAds();
-                } catch (e) {
-                    showAlert('Ошибка', 'Не удалось отправить');
-                }
+                } catch (e) { showAlert('Ошибка', 'Не удалось отправить'); }
             });
 
-            // ===== Админ редактирование =====
             function openAdminEditModal(ad) {
                 showModal(`
                     <h3 class="modal-title">✏️ Редактировать объявление</h3>
@@ -2548,25 +2382,18 @@
                     const linkCheck = checkLinksString(images);
                     if (!linkCheck.valid) { showAlert('Ошибка', linkCheck.message); return; }
                     await withTimeout(supabase.from('ads').update({
-                        item_name: name,
-                        price: price,
-                        description: description,
-                        images: linkCheck.links.join(','),
-                        server: server,
-                        status: 'approved'
+                        item_name: name, price: price, description: description,
+                        images: linkCheck.links.join(','), server: server, status: 'approved'
                     }).eq('id', ad.id));
                     playSfx('success');
                     document.getElementById('modalOverlay').remove();
-                    loadAdminPanel();
-                    loadHomeFeed();
+                    loadAdminPanel(); loadHomeFeed();
                 });
             }
 
-            // ===== Настройка цен в форме =====
             const sendPriceInput = document.getElementById('sendPrice');
             sendPriceInput.addEventListener('input', () => formatPriceInput(sendPriceInput));
 
-            // ===== Инициализация приложения =====
             async function initApp() {
                 applyTheme();
                 setupBackgroundMusic();
@@ -2588,15 +2415,11 @@
 
             function setupEventListeners() {
                 document.querySelectorAll('.nav-item').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        switchSection(btn.dataset.section);
-                    });
+                    btn.addEventListener('click', () => switchSection(btn.dataset.section));
                 });
                 document.getElementById('themeToggleBtn').addEventListener('click', () => {
                     currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-                    saveTheme();
-                    applyTheme();
-                    playSfx('click');
+                    saveTheme(); applyTheme(); playSfx('click');
                 });
                 document.getElementById('logoBtn').addEventListener('click', openLogoModal);
                 document.getElementById('globalSearchInput').addEventListener('focus', () => {
@@ -2607,13 +2430,10 @@
                     if (currentSection === 'home') renderHomeFeed();
                 });
                 document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === 'visible') {
-                        requestWakeLock();
-                    }
+                    if (document.visibilityState === 'visible') requestWakeLock();
                 });
             }
 
-            // Запуск
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', initApp);
             } else {
@@ -2622,4 +2442,4 @@
         })();
     </script>
 </body>
-    </html>
+</html>

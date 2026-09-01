@@ -257,13 +257,13 @@
         <section class="section" id="section-send">
             <h2 style="margin-bottom:12px;font-weight:800;">➕ Отправка объявления</h2>
             <div class="card">
-                <div class="form-group"><label>Тип сделки</label><select id="sendType"><option value="sell">Продажа</option><option value="buy">Покупка</option></select></div>
-                <div class="form-group"><label>Категория</label><select id="sendCategory"></select></div>
+                <div class="form-group"><label>Тип сделки</label><button class="btn secondary w-full" id="sendTypeBtn">Продажа</button></div>
+                <div class="form-group"><label>Категория</label><button class="btn secondary w-full" id="sendCategoryBtn">Выберите категорию</button></div>
                 <div class="form-group"><label>Название</label><input type="text" id="sendName" placeholder="Введите название"></div>
                 <div class="form-group"><label>Цена</label><input type="text" id="sendPrice" placeholder="Например: 5к или 1000000" inputmode="text"></div>
                 <div class="form-group"><label>Описание</label><textarea id="sendDescription" placeholder="Подробное описание"></textarea></div>
                 <div class="form-group"><label>Скриншоты (ссылки через запятую, до 20, необязательно)</label><input type="text" id="sendImages" placeholder="https://..."><div style="margin-top:6px;font-size:11px;color:var(--muted);">Разрешены: youtube.com, youtu.be, radikal.cloud, allwebs.ru, postimages.org, ru.imgbb.com</div></div>
-                <div class="form-group"><label>Сервер</label><select id="sendServer"></select></div>
+                <div class="form-group"><label>Сервер</label><button class="btn secondary w-full" id="sendServerBtn">Выберите сервер</button></div>
                 <button class="btn w-full" id="sendSubmitBtn">Отправить объявление</button>
             </div>
             <h3 style="margin:16px 0 8px;font-weight:800;">📦 Мои объявления</h3>
@@ -618,7 +618,7 @@
             }
 
             // =========================================================================
-            // 7. АУТЕНТИФИКАЦИЯ (без запрета на регистрацию bounqy)
+            // 7. АУТЕНТИФИКАЦИЯ (исправлено: проверка telegram_id при восстановлении)
             // =========================================================================
             async function checkAuth() {
                 if (!supabaseClient) {
@@ -633,12 +633,17 @@
                             5000
                         );
                         if (!error && data) {
-                            if (data.banned) { showBanScreen(); return; }
-                            currentAuthUser = data;
-                            await loadUserSettingsAndProgress();
-                            hidePreloader();
-                            await initApp();
-                            return;
+                            // Проверяем, что сохранённый аккаунт соответствует текущему Telegram ID
+                            if (data.telegram_id !== currentUser.id) {
+                                localStorage.removeItem('arizona_current_user');
+                            } else {
+                                if (data.banned) { showBanScreen(); return; }
+                                currentAuthUser = data;
+                                await loadUserSettingsAndProgress();
+                                hidePreloader();
+                                await initApp();
+                                return;
+                            }
                         } else {
                             localStorage.removeItem('arizona_current_user');
                         }
@@ -1075,7 +1080,7 @@
 
                 if (section === 'home') loadHomeFeed();
                 if (section === 'cart') loadCart();
-                if (section === 'send') { populateSendForm(); loadMyAds(); }
+                if (section === 'send') { initSendForm(); loadMyAds(); }
                 if (section === 'admin') {
                     if (isAdmin) {
                         checkAdminPassword();
@@ -1278,7 +1283,6 @@
                     const { data, error } = await withTimeout(query, 8000);
                     if (error) throw error;
                     const newAds = data || [];
-                    // Фильтруем истёкшие объявления
                     const validAds = newAds.filter(ad => !ad.expires_at || new Date(ad.expires_at) > new Date());
                     if (reset) homeAds = validAds;
                     else homeAds = [...homeAds, ...validAds];
@@ -1302,7 +1306,6 @@
                     const imgSrc = firstImg || DEFAULT_AD_IMAGE;
                     const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
                     const catLabel = ALL_CATEGORIES.find(c => c.id === ad.category)?.label || ad.category;
-                    // Таймер автоудаления
                     const expiresAt = ad.expires_at ? new Date(ad.expires_at) : null;
                     let countdownHtml = '';
                     if (expiresAt) {
@@ -1424,28 +1427,65 @@
             }
 
             // =========================================================================
-            // 15. ОТПРАВКА ОБЪЯВЛЕНИЯ
+            // 15. ОТПРАВКА ОБЪЯВЛЕНИЯ (кастомные кнопки)
             // =========================================================================
-            function populateSendForm() {
-                const catSelect = document.getElementById('sendCategory');
-                catSelect.innerHTML = ALL_CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
-                const serverSelect = document.getElementById('sendServer');
-                serverSelect.innerHTML = ALL_SERVERS.map(s => `<option value="${s}">${s}</option>`).join('');
-                serverSelect.value = currentUserServer;
+            let sendFormData = { type: 'sell', category: null, server: null };
+
+            function initSendForm() {
                 const priceInput = document.getElementById('sendPrice');
                 priceInput.removeEventListener('input', formatPriceInputHandler);
                 priceInput.addEventListener('input', formatPriceInputHandler);
+
+                document.getElementById('sendTypeBtn').addEventListener('click', () => {
+                    showModal(`
+                        <h3 class="modal-title">Тип сделки</h3>
+                        <div class="grid-tiles">
+                            <div class="grid-tile" data-type="sell">Продажа</div>
+                            <div class="grid-tile" data-type="buy">Покупка</div>
+                        </div>
+                    `);
+                    document.querySelectorAll('#modalOverlay [data-type]').forEach(t => t.addEventListener('click', () => {
+                        sendFormData.type = t.dataset.type;
+                        document.getElementById('sendTypeBtn').textContent = t.dataset.type === 'sell' ? 'Продажа' : 'Покупка';
+                        document.getElementById('modalOverlay').remove();
+                    }));
+                });
+
+                document.getElementById('sendCategoryBtn').addEventListener('click', () => {
+                    showModal(`
+                        <h3 class="modal-title">Категория</h3>
+                        <div class="grid-tiles">
+                            ${ALL_CATEGORIES.map(c => `<div class="grid-tile" data-cat="${c.id}">${c.label}</div>`).join('')}
+                        </div>
+                    `);
+                    document.querySelectorAll('#modalOverlay [data-cat]').forEach(t => t.addEventListener('click', () => {
+                        sendFormData.category = t.dataset.cat;
+                        document.getElementById('sendCategoryBtn').textContent = ALL_CATEGORIES.find(c => c.id === t.dataset.cat).label;
+                        document.getElementById('modalOverlay').remove();
+                    }));
+                });
+
+                document.getElementById('sendServerBtn').addEventListener('click', () => {
+                    showModal(`
+                        <h3 class="modal-title">Сервер</h3>
+                        <div class="grid-tiles">
+                            ${ALL_SERVERS.map(s => `<div class="grid-tile" data-server="${s}">${s}</div>`).join('')}
+                        </div>
+                    `);
+                    document.querySelectorAll('#modalOverlay [data-server]').forEach(t => t.addEventListener('click', () => {
+                        sendFormData.server = t.dataset.server;
+                        document.getElementById('sendServerBtn').textContent = t.dataset.server;
+                        document.getElementById('modalOverlay').remove();
+                    }));
+                });
             }
 
             document.getElementById('sendSubmitBtn').addEventListener('click', async () => {
                 if (!currentAuthUser) { showAlert('Ошибка', 'Вы не авторизованы'); return; }
-                const mode = document.getElementById('sendType').value;
-                const category = document.getElementById('sendCategory').value;
                 const itemName = document.getElementById('sendName').value.trim();
                 const priceRaw = document.getElementById('sendPrice').value.trim();
                 const description = document.getElementById('sendDescription').value.trim();
                 const images = document.getElementById('sendImages').value.trim();
-                const server = document.getElementById('sendServer').value;
 
                 if (!itemName || !priceRaw || !description) {
                     showAlert('Ошибка', 'Заполните все обязательные поля');
@@ -1463,15 +1503,19 @@
                         return;
                     }
                 }
+                if (!sendFormData.category || !sendFormData.server) {
+                    showAlert('Ошибка', 'Выберите категорию и сервер');
+                    return;
+                }
 
                 const newAd = {
-                    mode,
-                    category,
+                    mode: sendFormData.type,
+                    category: sendFormData.category,
                     item_name: itemName,
                     price: parsePriceToNumber(priceRaw),
                     description,
                     images,
-                    server,
+                    server: sendFormData.server,
                     author_id: currentAuthUser.id,
                     author_username: currentAuthUser.username,
                     status: 'pending',
@@ -2092,7 +2136,7 @@
             }
 
             // =========================================================================
-            // 20. ИГРА «БАРЫГА» (оптимизированная)
+            // 20. ИГРА «БАРЫГА» (автосохранение, без кнопок)
             // =========================================================================
             async function loadGameState() {
                 if (!currentAuthUser) return;
@@ -2142,11 +2186,7 @@
                         </div>
                         <div style="font-size:12px;color:var(--muted);text-align:center;" id="gameStatsDisplay">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div>
                         <div class="mt-12" id="gameUpgradesContainer"></div>
-                        <div class="mt-8 flex-between gap-8">
-                            <button class="btn secondary" id="gameResetBtn">🔄 Сброс</button>
-                            <button class="btn danger" id="gameSaveBtn">💾 Сохранить</button>
-                        </div>
-                    `);
+                    `, () => saveGameState());
 
                     const clickArea = document.getElementById('gameClickArea');
                     const upgradesContainer = document.getElementById('gameUpgradesContainer');
@@ -2192,20 +2232,7 @@
                         }
                     });
 
-                    document.getElementById('gameResetBtn').addEventListener('click', () => {
-                        showConfirm('Сброс', 'Сбросить прогресс игры?', async () => {
-                            gameState = { money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800, shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000, scrapCost: 500, last_seen: new Date().toISOString() };
-                            await supabaseClient.from('baryga').update(gameState).eq('user_id', currentAuthUser.id);
-                            updateGameUIFast();
-                            upgradesContainer.innerHTML = renderUpgrades();
-                            playSfx('click');
-                        });
-                    });
-
-                    document.getElementById('gameSaveBtn').addEventListener('click', () => {
-                        saveGameState();
-                        showToast('Сохранено', 'success');
-                    });
+                    // Сохранение при закрытии модального окна обеспечивается через onClose (см. showModal)
                 });
             }
 
@@ -2236,8 +2263,7 @@
                 if (moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money);
                 const statsEl = document.getElementById('gameStatsDisplay');
                 if (statsEl) statsEl.textContent = `Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек`;
-                const upgrades = getUpgradesList();
-                upgrades.forEach((u, i) => {
+                getUpgradesList().forEach((u, i) => {
                     const btn = document.querySelector(`[data-upgrade="${i}"]`);
                     const costEl = document.querySelector(`[data-cost-idx="${i}"]`);
                     if (btn && costEl) {
@@ -2673,16 +2699,29 @@
             }
 
             // =========================================================================
-            // 27. МЕНЕДЖЕР
+            // 27. МЕНЕДЖЕР (исправлено: только менеджер @bounqy31 и ВК сообщество)
             // =========================================================================
             function openManagerModal() {
                 showModal(`
                     <h3 class="modal-title">👨‍💼 Менеджер / Поддержка</h3>
-                    <p style="color:var(--muted);margin-bottom:16px;">Свяжитесь с администрацией для решения вопросов.</p>
-                    <button class="btn w-full" id="managerContactBtn">📨 Написать в Telegram</button>
+                    <div class="links-list">
+                        <div class="link-item" data-link="https://t.me/bounqy31">
+                            <span class="link-icon">👨‍💼</span>
+                            <span class="link-label">Менеджер</span>
+                            <span class="link-value">@bounqy31</span>
+                        </div>
+                        <div class="link-item" data-link="https://vk.com/bountyarz">
+                            <span class="link-icon">👥</span>
+                            <span class="link-label">ВК сообщество</span>
+                            <span class="link-value">@bountyarz</span>
+                        </div>
+                    </div>
                 `);
-                document.getElementById('managerContactBtn').addEventListener('click', () => {
-                    window.open(`https://t.me/${OWNER_USERNAME}`, '_blank');
+                document.querySelectorAll('.link-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        window.open(item.dataset.link, '_blank');
+                        document.getElementById('modalOverlay').remove();
+                    });
                 });
             }
 
@@ -2789,7 +2828,6 @@
                 if (currentSection === 'home') loadHomeFeed();
             });
 
-            // Настройка выбора сервера после загрузки DOM
             document.addEventListener('DOMContentLoaded', () => {
                 setupServerSelector();
             });

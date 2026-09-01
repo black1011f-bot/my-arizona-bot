@@ -376,6 +376,7 @@
             let pendingReports = [];
             let searchHistory = [];
             let allTilesLoaded = false;
+            let barygaStateLoaded = false;
 
             // =========================================================================
             // 3. ИНИЦИАЛИЗАЦИЯ SUPABASE
@@ -420,7 +421,6 @@
                                 first_name: initData.user.first_name || 'Пользователь'
                             };
                         } else {
-                            // если нет данных пользователя, покажем ошибку (нет офлайн-режима)
                             showFatalError('Требуется запуск через Telegram.');
                             return false;
                         }
@@ -618,7 +618,7 @@
             }
 
             // =========================================================================
-            // 7. АУТЕНТИФИКАЦИЯ
+            // 7. АУТЕНТИФИКАЦИЯ (без запрета на регистрацию bounqy)
             // =========================================================================
             async function checkAuth() {
                 if (!supabaseClient) {
@@ -770,10 +770,6 @@
                         const password = document.getElementById('authPassword').value.trim();
                         if (!username || !password) {
                             errorEl.textContent = 'Заполните все поля';
-                            return;
-                        }
-                        if (username === OWNER_USERNAME && mode === 'register') {
-                            errorEl.textContent = 'Этот username зарезервирован. Войдите под ним, если вы владелец.';
                             return;
                         }
                         isSubmitting = true;
@@ -1237,7 +1233,6 @@
                 const btn = document.getElementById('serverSelectBtn');
                 if (!btn) return;
                 btn.addEventListener('click', () => {
-                    // Открываем модальное окно со списком серверов
                     showModal(`
                         <h3 class="modal-title">🌍 Выберите сервер</h3>
                         <div class="grid-tiles" id="serverGrid">
@@ -1283,7 +1278,7 @@
                     const { data, error } = await withTimeout(query, 8000);
                     if (error) throw error;
                     const newAds = data || [];
-                    // Фильтруем истёкшие объявления (expires_at < now)
+                    // Фильтруем истёкшие объявления
                     const validAds = newAds.filter(ad => !ad.expires_at || new Date(ad.expires_at) > new Date());
                     if (reset) homeAds = validAds;
                     else homeAds = [...homeAds, ...validAds];
@@ -1348,7 +1343,6 @@
                         if (ad) openAdDetail(ad);
                     });
                 });
-                // Кнопка "Загрузить ещё"
                 const loadMoreBtn = document.createElement('button');
                 loadMoreBtn.className = 'btn secondary w-full mt-12';
                 loadMoreBtn.textContent = 'Загрузить ещё';
@@ -1482,7 +1476,7 @@
                     author_username: currentAuthUser.username,
                     status: 'pending',
                     created_at: new Date().toISOString(),
-                    expires_at: null // будет установлено при одобрении
+                    expires_at: null
                 };
 
                 try {
@@ -1599,7 +1593,7 @@
             }
 
             // =========================================================================
-            // 17. АДМИН-ПАНЕЛЬ (одобрение с установкой expires_at)
+            // 17. АДМИН-ПАНЕЛЬ (одобрение с expires_at)
             // =========================================================================
             async function loadAdminPanel() {
                 const container = document.getElementById('adminPanelContent');
@@ -1693,7 +1687,6 @@
             function bindAdminEvents() {
                 document.querySelectorAll('[data-approve]').forEach(btn => {
                     btn.addEventListener('click', async () => {
-                        // Устанавливаем expires_at = now + 48h
                         const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
                         await supabaseClient.from('ads').update({ status: 'approved', expires_at: expiresAt }).eq('id', btn.dataset.approve);
                         playSfx('success');
@@ -2101,12 +2094,9 @@
             // =========================================================================
             // 20. ИГРА «БАРЫГА» (оптимизированная)
             // =========================================================================
-            let barygaStateLoaded = false;
-            let barygaUIUpdateInterval = null;
-
             async function loadGameState() {
                 if (!currentAuthUser) return;
-                if (barygaStateLoaded) return; // уже загружено
+                if (barygaStateLoaded) return;
                 const { data, error } = await withTimeout(
                     supabaseClient.from('baryga').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),
                     5000
@@ -2162,25 +2152,21 @@
                     const upgradesContainer = document.getElementById('gameUpgradesContainer');
                     upgradesContainer.innerHTML = renderUpgrades();
 
-                    // Используем requestAnimationFrame для плавности
-                    let lastFrameTime = 0;
-                    function gameLoop(timestamp) {
-                        if (!document.getElementById('gameClickArea')) {
-                            cancelAnimationFrame(gameLoop);
-                            return;
-                        }
-                        if (barygaUIUpdateInterval && Date.now() - barygaUIUpdateInterval > 1000) {
+                    let lastAutoIncomeUpdate = Date.now();
+                    function gameLoop() {
+                        if (!document.getElementById('gameClickArea')) return;
+                        const now = Date.now();
+                        if (now - lastAutoIncomeUpdate >= 1000) {
                             if (gameState.autoIncome > 0) {
                                 gameState.money += gameState.autoIncome;
                                 gameState.last_seen = new Date().toISOString();
                                 updateGameUIFast();
                                 saveGameStateDebounced();
                             }
-                            barygaUIUpdateInterval = Date.now();
+                            lastAutoIncomeUpdate = now;
                         }
                         requestAnimationFrame(gameLoop);
                     }
-                    barygaUIUpdateInterval = Date.now();
                     requestAnimationFrame(gameLoop);
 
                     clickArea.addEventListener('click', () => {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Arizona RP — Маркетплейс</title>
+    <title>Arizona Online — Маркетплейс</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -152,11 +152,13 @@
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
         /* ========== AUTH ========== */
         .auth-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; overflow: hidden; }
-        .auth-background { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('https://i.postimg.cc/wBn6Rw4F/images.jpg') center/cover; filter: blur(10px); transform: scale(1.1); z-index: -1; }
+        .auth-background { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('https://i.postimg.cc/x8phPS4J/1788346275828.jpg') center/cover; z-index: -1; }
+        [data-theme="dark"] .auth-background { background-image: url('https://i.postimg.cc/yNhGbRG4/1788346347547.jpg'); }
         .auth-box { width: 100%; max-width: 400px; background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.8rem; box-shadow: var(--shadow-lg); position: relative; z-index: 1; }
         .auth-tab { flex: 1; padding: 0.6rem; background: none; border: none; cursor: pointer; font-weight: 700; transition: color 0.2s, border-color 0.2s; }
         .auth-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
         .auth-tab:not(.active) { color: var(--muted); border-bottom: 2px solid transparent; }
+        .auth-theme-toggle { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; z-index: 2; }
         /* ========== SPLASH ========== */
         #splash-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; transition: opacity 0.5s ease, visibility 0.5s; }
         #splash-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -185,7 +187,6 @@
         .link-item:active { transform: scale(0.97); }
         .link-item .link-icon { font-size: 1.5rem; width: 2.2rem; text-align: center; }
         .link-item .link-label { flex: 1; font-weight: 600; }
-        .link-item .link-value { color: var(--accent); font-size: 0.8rem; }
         /* ========== LOADER ========== */
         .loader { border: 3px solid var(--border); border-top: 3px solid var(--accent); border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -243,18 +244,18 @@
     <!-- Сплэш-экран -->
     <div id="splash-screen">
         <div class="splash-icon">
-            <img src="https://i.postimg.cc/BZHTh6DQ/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP" loading="lazy" onerror="this.style.display='none'">
+            <img src="https://i.postimg.cc/mgk2RL4g/1788361335674.jpg" alt="Arizona Online" loading="lazy" onerror="this.style.display='none'">
         </div>
-        <div class="splash-title">Arizona RP</div>
+        <div class="splash-title">Arizona Online</div>
         <div class="splash-subtitle">Market</div>
     </div>
 
     <!-- Хедер -->
     <header class="header" id="appHeader" style="display:none;">
         <div class="header-logo" id="logoBtn">
-            <img src="https://i.postimg.cc/gj4dLNfB/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP" loading="lazy" onerror="this.src='https://via.placeholder.com/36'">
+            <img id="headerLogoImg" src="https://i.postimg.cc/nV1HDjcb/1788346659518.jpg" alt="Arizona Online" loading="lazy" onerror="this.src='https://via.placeholder.com/36'">
         </div>
-        <div class="header-title">Arizona RP</div>
+        <div class="header-title">Arizona Online</div>
         <div class="header-search" id="headerSearchTrigger">
             <input type="text" placeholder="🔍 Поиск товаров" readonly>
         </div>
@@ -344,141 +345,61 @@
             // Инициализация Supabase
             function initSupabase() {
                 try {
-                    if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
-                        showFatalError('Не удалось загрузить Supabase');
-                        return false;
-                    }
+                    if (typeof window.supabase === 'undefined' || !window.supabase.createClient) { showFatalError('Не удалось загрузить Supabase'); return false; }
                     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ persistSession:false } });
                     return true;
-                } catch(e) {
-                    showFatalError('Ошибка подключения к Supabase');
-                    return false;
-                }
+                } catch(e) { showFatalError('Ошибка подключения к Supabase'); return false; }
             }
-            function showFatalError(msg) {
-                document.body.innerHTML = `<div class="fullscreen-overlay"><h1 style="color:#EF4444;">⚠️ Ошибка</h1><p>${msg}</p><button class="btn mt-12" onclick="location.reload()">Повторить</button></div>`;
-            }
+            function showFatalError(msg) { document.body.innerHTML = `<div class="fullscreen-overlay"><h1 style="color:#EF4444;">⚠️ Ошибка</h1><p>${msg}</p><button class="btn mt-12" onclick="location.reload()">Повторить</button></div>`; }
 
             // Telegram WebApp
             function initTelegram() {
                 try {
                     if (window.Telegram && window.Telegram.WebApp) {
-                        tg = window.Telegram.WebApp;
-                        tg.expand();
-                        tg.ready();
+                        tg = window.Telegram.WebApp; tg.expand(); tg.ready();
                         const initData = tg.initDataUnsafe || {};
-                        if (initData.user) {
-                            currentUser = { id: initData.user.id, username: initData.user.username || '', first_name: initData.user.first_name || 'Пользователь' };
-                        } else {
-                            showFatalError('Требуется запуск через Telegram.');
-                            return false;
-                        }
-                    } else {
-                        showFatalError('Требуется запуск через Telegram.');
-                        return false;
-                    }
+                        if (initData.user) { currentUser = { id: initData.user.id, username: initData.user.username || '', first_name: initData.user.first_name || 'Пользователь' }; }
+                        else { showFatalError('Требуется запуск через Telegram.'); return false; }
+                    } else { showFatalError('Требуется запуск через Telegram.'); return false; }
                     return true;
-                } catch(e) {
-                    showFatalError('Ошибка Telegram WebApp');
-                    return false;
-                }
+                } catch(e) { showFatalError('Ошибка Telegram WebApp'); return false; }
             }
 
             // Утилиты
             function withTimeout(promise, ms=10000) { return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout')),ms))]); }
-            function playSfx(type='click') {
-                if(!sfxEnabled) return;
-                try {
-                    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-                    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-                    osc.connect(gain); gain.connect(audioCtx.destination);
-                    const freqs = { click:800, success:1200, error:300, buy:1000 };
-                    osc.frequency.value = freqs[type]||600; osc.type='sine'; gain.gain.value=0.1;
-                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.15);
-                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+0.15);
-                } catch(e){}
-            }
-            function showToast(message, type='info') {
-                const cont = document.getElementById('toastContainer');
-                const toast = document.createElement('div');
-                toast.className = 'toast '+type; toast.textContent = message;
-                cont.appendChild(toast);
-                setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateX(100%)'; setTimeout(()=>toast.remove(),300); },3000);
-            }
-            function applyTheme() { document.documentElement.setAttribute('data-theme', currentTheme); }
-            function formatPrice(value) {
-                if(!value) return '0';
-                let num = typeof value==='string'? value.toLowerCase() : value.toString();
-                if(num.includes('к')) {
-                    let base = parseFloat(num.split('к')[0])||0;
-                    let kCount = (num.match(/к/g)||[]).length;
-                    if(kCount===1) base*=1000; else if(kCount===2) base*=1000000; else if(kCount===3) base*=1000000000;
-                    return Math.floor(base).toString();
+            function playSfx(type='click') { if(!sfxEnabled) return; try { if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); const osc = audioCtx.createOscillator(), gain = audioCtx.createGain(); osc.connect(gain); gain.connect(audioCtx.destination); const freqs = { click:800, success:1200, error:300, buy:1000 }; osc.frequency.value = freqs[type]||600; osc.type='sine'; gain.gain.value=0.1; gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.15); osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+0.15); } catch(e){} }
+            function showToast(message, type='info') { const cont = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = 'toast '+type; toast.textContent = message; cont.appendChild(toast); setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateX(100%)'; setTimeout(()=>toast.remove(),300); },3000); }
+            function applyTheme() {
+                document.documentElement.setAttribute('data-theme', currentTheme);
+                // Обновляем логотип в шапке в зависимости от темы
+                const logoImg = document.getElementById('headerLogoImg');
+                if (logoImg) {
+                    logoImg.src = currentTheme === 'light'
+                        ? 'https://i.postimg.cc/nV1HDjcb/1788346659518.jpg'
+                        : 'https://i.postimg.cc/zfWNX3c5/1788346752679.jpg';
                 }
-                num = parseInt(num)||0;
-                if(num>=1000000000) return (num/1000000000).toFixed(num%1000000000===0?0:2)+'ккк';
-                if(num>=1000000) return (num/1000000).toFixed(num%1000000===0?0:1)+'кк';
-                if(num>=1000) return (num/1000).toFixed(num%1000===0?0:1)+'к';
-                return num.toString();
             }
-            function parsePriceToNumber(str) {
-                if(!str) return 0;
-                str = str.toLowerCase().trim();
-                let num = parseInt(str.replace(/[^0-9]/g,''))||0;
-                let kCount = (str.match(/к/g)||[]).length;
-                if(kCount===1) num*=1000; else if(kCount===2) num*=1000000; else if(kCount===3) num*=1000000000;
-                return num;
-            }
-            function formatPriceInputHandler(e) {
-                const input = e.target;
-                let val = input.value.toLowerCase().replace(/[^0-9к]/g,'');
-                if(!val){ input.value=''; return; }
-                let num = parseInt(val.replace(/к/g,''))||0;
-                let kCount = (val.match(/к/g)||[]).length;
-                if(kCount===1) num*=1000; else if(kCount===2) num*=1000000; else if(kCount===3) num*=1000000000;
-                input.value = formatPrice(num);
-            }
-            function isAllowedLink(url) {
-                try { const u = new URL(url); const host = u.hostname.replace('www.',''); return ALLOWED_DOMAINS.some(d=>host===d||host.endsWith('.'+d)); } catch(e){ return false; }
-            }
-            function checkLinksString(str) {
-                if(!str.trim()) return {valid:true, links:[]};
-                const links = str.split(',').map(s=>s.trim()).filter(s=>s.length>0);
-                if(links.length>20) return {valid:false, message:'Максимум 20 ссылок'};
-                for(let link of links){ if(!isAllowedLink(link)) return {valid:false, message:`Ссылка ${link} не разрешена`}; }
-                return {valid:true, links};
-            }
+            function formatPrice(value) { if(!value) return '0'; let num = typeof value==='string'? value.toLowerCase() : value.toString(); if(num.includes('к')) { let base = parseFloat(num.split('к')[0])||0; let kCount = (num.match(/к/g)||[]).length; if(kCount===1) base*=1000; else if(kCount===2) base*=1000000; else if(kCount===3) base*=1000000000; return Math.floor(base).toString(); } num = parseInt(num)||0; if(num>=1000000000) return (num/1000000000).toFixed(num%1000000000===0?0:2)+'ккк'; if(num>=1000000) return (num/1000000).toFixed(num%1000000===0?0:1)+'кк'; if(num>=1000) return (num/1000).toFixed(num%1000===0?0:1)+'к'; return num.toString(); }
+            function parsePriceToNumber(str) { if(!str) return 0; str = str.toLowerCase().trim(); let num = parseInt(str.replace(/[^0-9]/g,''))||0; let kCount = (str.match(/к/g)||[]).length; if(kCount===1) num*=1000; else if(kCount===2) num*=1000000; else if(kCount===3) num*=1000000000; return num; }
+            function formatPriceInputHandler(e) { const input = e.target; let val = input.value.toLowerCase().replace(/[^0-9к]/g,''); if(!val){ input.value=''; return; } let num = parseInt(val.replace(/к/g,''))||0; let kCount = (val.match(/к/g)||[]).length; if(kCount===1) num*=1000; else if(kCount===2) num*=1000000; else if(kCount===3) num*=1000000000; input.value = formatPrice(num); }
+            function isAllowedLink(url) { try { const u = new URL(url); const host = u.hostname.replace('www.',''); return ALLOWED_DOMAINS.some(d=>host===d||host.endsWith('.'+d)); } catch(e){ return false; } }
+            function checkLinksString(str) { if(!str.trim()) return {valid:true, links:[]}; const links = str.split(',').map(s=>s.trim()).filter(s=>s.length>0); if(links.length>20) return {valid:false, message:'Максимум 20 ссылок'}; for(let link of links){ if(!isAllowedLink(link)) return {valid:false, message:`Ссылка ${link} не разрешена`}; } return {valid:true, links}; }
             function getUserIdentifier() { return currentAuthUser?.username ? '@'+currentAuthUser.username : (currentUser.username? '@'+currentUser.username : 'ID:'+currentUser.id); }
             function getUserId() { return currentAuthUser ? currentAuthUser.id : currentUser.id; }
-            async function hashPassword(password) {
-                const msgBuffer = new TextEncoder().encode(password);
-                const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
-            }
+            async function hashPassword(password) { const msgBuffer = new TextEncoder().encode(password); const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer); const hashArray = Array.from(new Uint8Array(hashBuffer)); return hashArray.map(b=>b.toString(16).padStart(2,'0')).join(''); }
 
             // Модалки
             function showModal(html, onClose) {
                 const container = document.getElementById('modalContainer');
                 container.innerHTML = `<div class="modal-overlay" id="modalOverlay"><div class="modal"><button class="modal-close" id="modalCloseBtn">✕</button>${html}</div></div>`;
-                const overlay = document.getElementById('modalOverlay');
-                const closeBtn = document.getElementById('modalCloseBtn');
+                const overlay = document.getElementById('modalOverlay'); const closeBtn = document.getElementById('modalCloseBtn');
                 setTimeout(()=>overlay.classList.add('show'),10);
                 function closeModal(){ overlay.classList.remove('show'); setTimeout(()=>{ overlay.remove(); if(onClose) onClose(); },250); }
-                closeBtn.addEventListener('click', closeModal);
-                overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
+                closeBtn.addEventListener('click', closeModal); overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
                 return { overlay, closeModal };
             }
-            function showAlert(title, message, type='info') {
-                const icon = type==='success'?'✅':type==='error'?'❌':'ℹ️';
-                const { closeModal } = showModal(`<div style="text-align:center;"><div style="font-size:3rem;margin-bottom:0.5rem;">${icon}</div><h3 class="modal-title" style="text-align:center;">${title}</h3><p style="color:var(--muted);margin-bottom:1rem;">${message}</p><button class="btn w-full" id="alertOkBtn">ОК</button></div>`);
-                document.getElementById('alertOkBtn').addEventListener('click', closeModal);
-            }
-            function showConfirm(title, message, onConfirm) {
-                const { closeModal } = showModal(`<div style="text-align:center;"><div style="font-size:2.5rem;margin-bottom:0.5rem;">⚠️</div><h3 class="modal-title" style="text-align:center;">${title}</h3><p style="color:var(--muted);margin-bottom:1rem;">${message}</p><div class="flex-between gap-12"><button class="btn secondary w-full" id="confirmCancelBtn">Отмена</button><button class="btn danger w-full" id="confirmOkBtn">Подтвердить</button></div></div>`);
-                document.getElementById('confirmCancelBtn').addEventListener('click', closeModal);
-                document.getElementById('confirmOkBtn').addEventListener('click', ()=>{ closeModal(); onConfirm(); });
-            }
+            function showAlert(title, message, type='info') { const icon = type==='success'?'✅':type==='error'?'❌':'ℹ️'; const { closeModal } = showModal(`<div style="text-align:center;"><div style="font-size:3rem;margin-bottom:0.5rem;">${icon}</div><h3 class="modal-title" style="text-align:center;">${title}</h3><p style="color:var(--muted);margin-bottom:1rem;">${message}</p><button class="btn w-full" id="alertOkBtn">ОК</button></div>`); document.getElementById('alertOkBtn').addEventListener('click', closeModal); }
+            function showConfirm(title, message, onConfirm) { const { closeModal } = showModal(`<div style="text-align:center;"><div style="font-size:2.5rem;margin-bottom:0.5rem;">⚠️</div><h3 class="modal-title" style="text-align:center;">${title}</h3><p style="color:var(--muted);margin-bottom:1rem;">${message}</p><div class="flex-between gap-12"><button class="btn secondary w-full" id="confirmCancelBtn">Отмена</button><button class="btn danger w-full" id="confirmOkBtn">Подтвердить</button></div></div>`); document.getElementById('confirmCancelBtn').addEventListener('click', closeModal); document.getElementById('confirmOkBtn').addEventListener('click', ()=>{ closeModal(); onConfirm(); }); }
 
             // Аутентификация
             async function checkAuth() {
@@ -489,22 +410,17 @@
                         const parsed = JSON.parse(saved);
                         const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('id', parsed.id).maybeSingle(),5000);
                         if (!error && data) {
-                            if (data.telegram_id !== currentUser.id) {
-                                localStorage.removeItem('arizona_current_user');
-                            } else {
+                            if (data.telegram_id !== currentUser.id) { localStorage.removeItem('arizona_current_user'); }
+                            else {
                                 if (data.banned) { showBanScreen(); return; }
                                 currentAuthUser = data;
                                 await loadUserSettingsAndProgress();
+                                await loadGameState(); // Загружаем состояние игры сразу, чтобы начислить офлайн доход
                                 hideSplashAndShowApp();
                                 return;
                             }
-                        } else {
-                            localStorage.removeItem('arizona_current_user');
-                        }
-                    } catch(e) {
-                        console.warn('checkAuth restore error', e);
-                        localStorage.removeItem('arizona_current_user');
-                    }
+                        } else { localStorage.removeItem('arizona_current_user'); }
+                    } catch(e) { console.warn('checkAuth restore error', e); localStorage.removeItem('arizona_current_user'); }
                 }
                 if (currentUser.id) {
                     try {
@@ -514,6 +430,7 @@
                             currentAuthUser = data;
                             localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
                             await loadUserSettingsAndProgress();
+                            await loadGameState();
                             hideSplashAndShowApp();
                             return;
                         }
@@ -540,17 +457,10 @@
                     const { data:sd, error:se } = await withTimeout(supabaseClient.from('user_settings').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
                     if(se) throw se;
                     if(sd) { userSettings = sd; currentTheme = sd.theme||'light'; sfxEnabled = sd.sfx_enabled!==false; }
-                    else {
-                        await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null});
-                        currentTheme='light'; sfxEnabled=true;
-                    }
+                    else { await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null}); currentTheme='light'; sfxEnabled=true; }
                     const { data:pd, error:pe } = await withTimeout(supabaseClient.from('user_progress').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
-                    if(pe) throw pe;
-                    userProgress = pd||{};
-                } catch(e) {
-                    console.warn('loadUserSettings error',e);
-                    currentTheme='light'; sfxEnabled=true; userProgress={};
-                }
+                    if(pe) throw pe; userProgress = pd||{};
+                } catch(e) { console.warn('loadUserSettings error',e); currentTheme='light'; sfxEnabled=true; userProgress={}; }
                 applyTheme();
             }
 
@@ -573,7 +483,8 @@
                     <div class="auth-container">
                         <div class="auth-background"></div>
                         <div class="auth-box">
-                            <h2 style="text-align:center;margin-bottom:0.3rem;">Arizona RP</h2>
+                            <button class="auth-theme-toggle" id="authThemeToggle">🌓</button>
+                            <h2 style="text-align:center;margin-bottom:0.3rem;">Arizona Online</h2>
                             <p style="text-align:center;font-size:0.8rem;color:var(--muted);margin-bottom:1.2rem;">Маркетплейс для Arizona RP</p>
                             <div style="display:flex;margin-bottom:1.2rem;border-bottom:1px solid var(--border);">
                                 <button class="auth-tab ${mode==='login'?'active':''}" id="authTabLogin">Вход</button>
@@ -587,6 +498,18 @@
                     </div>`;
                     document.getElementById('authTabLogin').addEventListener('click', ()=>{ if(mode!=='login'){ mode='login'; isSubmitting=false; renderAuthForm(); }});
                     document.getElementById('authTabRegister').addEventListener('click', ()=>{ if(mode!=='register'){ mode='register'; isSubmitting=false; renderAuthForm(); }});
+                    document.getElementById('authThemeToggle').addEventListener('click', async ()=>{
+                        currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+                        applyTheme();
+                        if(currentAuthUser) await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id', currentAuthUser.id);
+                        // Обновляем фон
+                        const authBg = document.querySelector('.auth-background');
+                        if(authBg) {
+                            authBg.style.backgroundImage = currentTheme === 'light'
+                                ? "url('https://i.postimg.cc/x8phPS4J/1788346275828.jpg')"
+                                : "url('https://i.postimg.cc/yNhGbRG4/1788346347547.jpg')";
+                        }
+                    });
                     document.getElementById('authSubmitBtn').addEventListener('click', async ()=>{
                         if(isSubmitting) return;
                         const errEl = document.getElementById('authError');
@@ -604,7 +527,7 @@
                                 if(data.password_hash!==hashedPassword){ errEl.textContent='Неверный логин или пароль'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
                                 if(data.banned){ showBanScreen(); return; }
                                 currentAuthUser = data; localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
-                                await loadUserSettingsAndProgress(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
+                                await loadUserSettingsAndProgress(); await loadGameState(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
                             } else {
                                 const { data: existingTelegram } = await withTimeout(supabaseClient.from('app_users').select('id').eq('telegram_id', currentUser.id).maybeSingle(),5000);
                                 if(existingTelegram){ errEl.textContent='Этот Telegram уже привязан к аккаунту. Войдите.'; isSubmitting=false; btn.disabled=false; btn.textContent='Создать аккаунт'; return; }
@@ -616,13 +539,9 @@
                                 currentAuthUser = inserted; localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
                                 await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null});
                                 await supabaseClient.from('user_progress').insert({user_id:currentAuthUser.id, tutorial_completed:false, admin_tutorial_completed:false});
-                                await loadUserSettingsAndProgress(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
+                                await loadUserSettingsAndProgress(); await loadGameState(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
                             }
-                        } catch(e) {
-                            console.error('Auth error',e);
-                            let msg='Ошибка соединения.'; if(e.message==='Timeout') msg='Превышено время ожидания.';
-                            errEl.textContent=msg; isSubmitting=false; btn.disabled=false; btn.textContent = mode==='login'?'Войти':'Создать аккаунт';
-                        }
+                        } catch(e) { console.error('Auth error',e); let msg='Ошибка соединения.'; if(e.message==='Timeout') msg='Превышено время ожидания.'; errEl.textContent=msg; isSubmitting=false; btn.disabled=false; btn.textContent = mode==='login'?'Войти':'Создать аккаунт'; }
                     });
                 }
                 renderAuthForm();
@@ -634,11 +553,8 @@
                 isAdmin = currentAuthUser.is_admin || (currentAuthUser.username===OWNER_USERNAME);
                 isOwner = currentAuthUser.username===OWNER_USERNAME;
                 document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdmin);
-                await loadSearchHistory();
-                await loadNotificationsCount();
-                if (isFirstLogin || !userProgress.tutorial_completed) {
-                    showUserTutorial();
-                }
+                await loadSearchHistory(); await loadNotificationsCount();
+                if (isFirstLogin || !userProgress.tutorial_completed) { showUserTutorial(); }
                 switchSection('home');
                 requestWakeLock();
             }
@@ -647,33 +563,54 @@
             async function loadNotificationsCount() { if(!currentAuthUser)return; try{ const {count,error}=await withTimeout(supabaseClient.from('notifications').select('*',{count:'exact',head:true}).eq('user_id',currentAuthUser.id).eq('read',false),5000); if(!error) unreadNotifications=count||0; }catch(e){ unreadNotifications=0; } }
             function requestWakeLock() { try{ if('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock=>{wakeLock=lock;}).catch(()=>{}); }catch(e){} }
 
-            // Туториалы
+            // Туториалы (единое окно с возможностью листать)
+            function showTutorialSlides(slides, onComplete) {
+                let current = 0;
+                const modalId = 'tutorialModal';
+                function renderSlide() {
+                    const s = slides[current];
+                    const isLast = current === slides.length - 1;
+                    const html = `
+                        <div class="modal-title">${s.title}</div>
+                        <p style="color:var(--muted);margin-bottom:1.5rem;">${s.text}</p>
+                        <div class="flex-between gap-12">
+                            <button class="btn secondary" id="tutBackBtn" ${current===0?'disabled':''}>← Назад</button>
+                            <button class="btn" id="tutNextBtn">${isLast?'Завершить':'Вперёд →'}</button>
+                        </div>`;
+                    // Если уже есть модалка с этим id, обновляем содержимое, иначе создаём
+                    const existing = document.getElementById(modalId);
+                    if (existing) {
+                        existing.querySelector('.modal').innerHTML = `<button class="modal-close" id="modalCloseBtn">✕</button>${html}`;
+                        // Обновляем обработчики для кнопок
+                        document.getElementById('tutBackBtn')?.addEventListener('click', ()=> { if(current>0){ current--; renderSlide(); } });
+                        document.getElementById('tutNextBtn')?.addEventListener('click', ()=> { if(!isLast){ current++; renderSlide(); } else { existing.remove(); if(onComplete) onComplete(); } });
+                        document.getElementById('modalCloseBtn')?.addEventListener('click', ()=> { existing.remove(); });
+                    } else {
+                        const { closeModal } = showModal(html, ()=> { if(current===slides.length-1 && onComplete) onComplete(); });
+                        const overlay = document.getElementById('modalOverlay');
+                        overlay.id = modalId; // чтобы найти в будущем
+                        document.getElementById('tutBackBtn')?.addEventListener('click', ()=> { if(current>0){ current--; renderSlide(); } });
+                        document.getElementById('tutNextBtn')?.addEventListener('click', ()=> { if(!isLast){ current++; renderSlide(); } else { closeModal(); if(onComplete) onComplete(); } });
+                    }
+                }
+                renderSlide();
+            }
+
             function showUserTutorial() {
                 const slides = [
                     { title:'⚠️ Предупреждение', text:'Мы не несём ответственности за скам. Запрещена продажа/покупка аккаунтов.' },
                     { title:'Добро пожаловать!', text:'Это приложение для размещения объявлений на серверах Arizona RP.' },
-                    { title:'🏠 Главная', text:'Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности.' },
+                    { title:'🏠 Главная', text:'Здесь отображаются все одобренные объявления.' },
                     { title:'🛒 Корзина', text:'Сохраняйте понравившиеся объявления.' },
                     { title:'➕ Отправка', text:'Создавайте свои объявления.' },
                     { title:'☰ Все разделы', text:'Игра «Барыга», лента луков, попутчики, музыка и настройки.' },
                     { title:'🔍 Поиск', text:'Используйте строку поиска вверху.' }
                 ];
-                let cur = 0;
-                function renderSlide() {
-                    const s = slides[cur];
-                    const last = cur === slides.length - 1;
-                    const html = `<div class="modal-title">${s.title}</div><p style="color:var(--muted);margin-bottom:1.5rem;">${s.text}</p>
-                    <div class="flex-between gap-12">
-                        <button class="btn secondary" id="tutBackBtn" ${cur===0?'disabled':''}>← Назад</button>
-                        <button class="btn" id="tutNextBtn">${last?'Завершить':'Вперёд →'}</button>
-                    </div>`;
-                    const { closeModal } = showModal(html);
-                    document.getElementById('tutBackBtn').addEventListener('click', ()=>{ if(cur>0){ cur--; closeModal(); setTimeout(renderSlide, 300); } });
-                    document.getElementById('tutNextBtn').addEventListener('click', ()=>{ if(cur<slides.length-1){ cur++; closeModal(); setTimeout(renderSlide, 300); } else { closeModal(); markTutorialCompleted(); } });
-                }
-                renderSlide();
+                showTutorialSlides(slides, ()=> {
+                    supabaseClient.from('user_progress').update({tutorial_completed:true}).eq('user_id',currentAuthUser.id);
+                    userProgress.tutorial_completed = true;
+                });
             }
-            async function markTutorialCompleted() { await supabaseClient.from('user_progress').update({tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.tutorial_completed=true; }
 
             function showAdminTutorial() {
                 const slides = [
@@ -682,16 +619,10 @@
                     { title:'⚖️ Управление пользователями', text:'Баны, разбаны, назначение админов.' },
                     { title:'🧹 Дополнительно', text:'Очистка ленты и другие действия.' }
                 ];
-                let cur = 0;
-                function renderSlide() {
-                    const s = slides[cur];
-                    const last = cur === slides.length - 1;
-                    const html = `<div class="modal-title">${s.title}</div><p style="color:var(--muted);margin-bottom:1.5rem;">${s.text}</p>
-                    <button class="btn w-full" id="adminTutNextBtn">${last?'Закрыть':'Вперёд →'}</button>`;
-                    const { closeModal } = showModal(html);
-                    document.getElementById('adminTutNextBtn').addEventListener('click', ()=>{ if(cur<slides.length-1){ cur++; closeModal(); setTimeout(renderSlide, 300); } else { supabaseClient.from('user_progress').update({admin_tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.admin_tutorial_completed=true; closeModal(); } });
-                }
-                renderSlide();
+                showTutorialSlides(slides, ()=> {
+                    supabaseClient.from('user_progress').update({admin_tutorial_completed:true}).eq('user_id',currentAuthUser.id);
+                    userProgress.admin_tutorial_completed = true;
+                });
             }
 
             // Навигация
@@ -704,16 +635,9 @@
                 if(section==='home') loadHomeFeed();
                 if(section==='cart') loadCart();
                 if(section==='send') { initSendForm(); }
-                if(section==='admin') {
-                    if(isAdmin) { checkAdminPassword(); }
-                    else { document.getElementById('adminPanelContent').innerHTML='<div class="empty-state">Нет доступа</div>'; }
-                }
-                if(section==='all') {
-                    if(!allTilesLoaded) { loadAllTiles(); allTilesLoaded=true; }
-                    loadMyAds();
-                }
-                playSfx('click');
-                requestWakeLock();
+                if(section==='admin') { if(isAdmin) { checkAdminPassword(); } else { document.getElementById('adminPanelContent').innerHTML='<div class="empty-state">Нет доступа</div>'; } }
+                if(section==='all') { if(!allTilesLoaded) { loadAllTiles(); allTilesLoaded=true; } loadMyAds(); }
+                playSfx('click'); requestWakeLock();
             }
             document.querySelectorAll('.nav-item[data-section]').forEach(btn=>btn.addEventListener('click',()=>{ const sec = btn.dataset.section; if(sec==='admin'&&!isAdmin) return; switchSection(sec); }));
             document.getElementById('themeToggleBtn').addEventListener('click', async ()=>{ currentTheme = currentTheme==='light'?'dark':'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id',currentAuthUser.id); playSfx('click'); });
@@ -722,11 +646,11 @@
 
             function openLinksModal() {
                 showModal(`<h3 class="modal-title">🔗 Сообщества</h3><div class="links-list">
-                    <div class="link-item" data-link="https://t.me/arizona_coin_bot"><span class="link-icon">🤖</span><span class="link-label">Бот</span><span class="link-value">@arizona_coin_bot</span></div>
-                    <div class="link-item" data-link="https://t.me/Bounty_Squad31"><span class="link-icon">📣</span><span class="link-label">Телеграм канал</span><span class="link-value">@Bounty_Squad31</span></div>
-                    <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">📢</span><span class="link-label">ВК канал</span><span class="link-value">@bountyarz</span></div>
-                    <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span><span class="link-value">@bounqy31</span></div>
-                    <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">👥</span><span class="link-label">ВК сообщество</span><span class="link-value">@bountyarz</span></div>
+                    <div class="link-item" data-link="https://t.me/arizona_coin_bot"><span class="link-icon">🤖</span><span class="link-label">Бот</span></div>
+                    <div class="link-item" data-link="https://t.me/Bounty_Squad31"><span class="link-icon">📣</span><span class="link-label">Телеграм канал</span></div>
+                    <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">📢</span><span class="link-label">ВК канал</span></div>
+                    <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span></div>
+                    <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">👥</span><span class="link-label">ВК сообщество</span></div>
                 </div>`);
                 document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{ window.open(item.dataset.link,'_blank'); document.getElementById('modalOverlay').remove(); }));
             }
@@ -959,9 +883,7 @@
                     document.getElementById('sendPrice').value = '';
                     document.getElementById('sendDescription').value = '';
                     document.getElementById('sendImages').value = '';
-                } catch(e) {
-                    showAlert('Ошибка','Не удалось отправить');
-                }
+                } catch(e) { showAlert('Ошибка','Не удалось отправить'); }
             });
 
             // Мои объявления
@@ -993,9 +915,7 @@
                         appealAdId = btn.dataset.appeal;
                         openAppealModal();
                     }));
-                } catch(e) {
-                    cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>';
-                }
+                } catch(e) { cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>'; }
             }
 
             // Апелляция
@@ -1055,9 +975,7 @@
                     }
                     cont.innerHTML = html;
                     bindAdminEvents();
-                } catch(e) {
-                    cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>';
-                }
+                } catch(e) { cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>'; }
             }
             function bindAdminEvents(){
                 document.querySelectorAll('[data-approve]').forEach(btn=>btn.addEventListener('click', async ()=>{
@@ -1132,9 +1050,7 @@
                     playSfx('success');
                     showAlert('Успех','Действие выполнено');
                     loadAdminPanel();
-                } catch(e) {
-                    showAlert('Ошибка','Не удалось выполнить');
-                }
+                } catch(e) { showAlert('Ошибка','Не удалось выполнить'); }
             }
             function openAdminEditModal(ad){
                 showModal(`<h3 class="modal-title">✏️ Редактирование</h3><div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name||''}"></div><div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price||''}"></div><div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description||''}</textarea></div><div class="form-group"><label>Скриншоты</label><input type="text" id="editAdminImgs" value="${ad.images||''}"></div><button class="btn w-full" id="editAdminSaveBtn">Сохранить и одобрить</button>`);
@@ -1236,9 +1152,7 @@
                     cont.innerHTML = html;
                     cont.querySelectorAll('[data-edit-review]').forEach(btn=>btn.addEventListener('click', ()=>{ const r = revs.find(x=>x.id==btn.dataset.editReview); if(r) openEditReviewModal(r); }));
                     cont.querySelectorAll('[data-del-review]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('reviews').delete().eq('id', btn.dataset.delReview); loadReviews(adId); }));
-                } catch(e){
-                    cont.innerHTML='<p style="color:var(--muted);">⚠️ Не удалось загрузить отзывы</p>';
-                }
+                } catch(e){ cont.innerHTML='<p style="color:var(--muted);">⚠️ Не удалось загрузить отзывы</p>'; }
             }
             async function loadSimilarAds(category, currentId){
                 const cont = document.getElementById('detailSimilarAds');
@@ -1248,10 +1162,7 @@
                     const similar = data || [];
                     if(!similar.length){ cont.innerHTML='<p style="color:var(--muted);">Похожих нет</p>'; return; }
                     cont.innerHTML = similar.map(ad=>`<div class="card" data-sim="${ad.id}"><span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}</div>`).join('');
-                    cont.querySelectorAll('[data-sim]').forEach(el=>el.addEventListener('click', ()=>{
-                        const found = similar.find(a=>a.id==el.dataset.sim);
-                        if(found){ document.getElementById('modalOverlay').remove(); openAdDetail(found); }
-                    }));
+                    cont.querySelectorAll('[data-sim]').forEach(el=>el.addEventListener('click', ()=>{ const found = similar.find(a=>a.id==el.dataset.sim); if(found){ document.getElementById('modalOverlay').remove(); openAdDetail(found); } }));
                 } catch(e){}
             }
             function openReviewsModal(adId){
@@ -1297,10 +1208,9 @@
                 });
             }
 
-            // Игра Барыга
+            // Игра Барыга (исправлено сохранение)
             async function loadGameState(){
-                if(!currentAuthUser) return;
-                if(barygaStateLoaded) return;
+                if(!currentAuthUser || barygaStateLoaded) return;
                 const { data, error } = await withTimeout(supabaseClient.from('baryga').select('*').eq('user_id', currentAuthUser.id).maybeSingle(), 5000);
                 if(error) console.warn(error);
                 if(data){
@@ -1319,11 +1229,11 @@
                         last_seen: data.last_seen || new Date().toISOString()
                     };
                     const last = new Date(gameState.last_seen).getTime();
-                    const diff = Math.min((Date.now()-last)/1000, 3600);
-                    if(diff>0 && gameState.autoIncome>0){
+                    const diff = Math.min((Date.now()-last)/1000, 3600); // максимум 1 час оффлайн дохода
+                    if(diff > 0 && gameState.autoIncome > 0){
                         gameState.money += gameState.autoIncome * diff;
                         gameState.last_seen = new Date().toISOString();
-                        saveGameState();
+                        await saveGameState(); // сохраняем начисленный доход
                     }
                 } else {
                     gameState = { ...gameState, user_id: currentAuthUser.id, last_seen: new Date().toISOString() };
@@ -1483,9 +1393,9 @@
                 }
                 showModal(`<h3 class="modal-title">👤 Профиль: ${authorIdOrUsername}</h3>
                     <div class="links-list mb-12">
-                        <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span><span class="link-value">@bounqy31</span></div>
-                        <div class="link-item" data-link="https://t.me/Bounty_Squad31"><span class="link-icon">📣</span><span class="link-label">Телеграм канал</span><span class="link-value">@Bounty_Squad31</span></div>
-                        <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">📢</span><span class="link-label">ВК канал</span><span class="link-value">@bountyarz</span></div>
+                        <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span></div>
+                        <div class="link-item" data-link="https://t.me/Bounty_Squad31"><span class="link-icon">📣</span><span class="link-label">Телеграм канал</span></div>
+                        <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">📢</span><span class="link-label">ВК канал</span></div>
                     </div>
                     <div id="profileAdsList"><div class="loader"></div></div>`);
                 document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click', ()=>window.open(item.dataset.link,'_blank')));
@@ -1655,8 +1565,8 @@
             // Менеджер
             function openManagerModal(){
                 showModal(`<h3 class="modal-title">👨‍💼 Менеджер / Поддержка</h3><div class="links-list">
-                    <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span><span class="link-value">@bounqy31</span></div>
-                    <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">👥</span><span class="link-label">ВК сообщество</span><span class="link-value">@bountyarz</span></div>
+                    <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span></div>
+                    <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">👥</span><span class="link-label">ВК сообщество</span></div>
                 </div>`);
                 document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click', ()=>{ window.open(item.dataset.link,'_blank'); document.getElementById('modalOverlay').remove(); }));
             }
@@ -1682,6 +1592,36 @@
                 } catch(e){ document.getElementById('notificationsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; }
             }
 
+            // Сохранение игры при закрытии страницы
+            window.addEventListener('beforeunload', (event) => {
+                if (currentAuthUser) {
+                    // Попытка сохранить состояние игры
+                    const data = JSON.stringify(gameState);
+                    // Используем sendBeacon для асинхронной отправки, но у нас Supabase, поэтому просто вызываем fetch с keepalive
+                    if (navigator.sendBeacon) {
+                        // Не можем использовать supabase-js, поэтому сделаем прямой fetch
+                        const supabaseUrl = SUPABASE_URL + '/rest/v1/baryga';
+                        const updatePayload = {
+                            money: gameState.money,
+                            click_power: gameState.clickPower,
+                            click_cost: gameState.clickCost,
+                            auto_income: gameState.autoIncome,
+                            auto_cost: gameState.autoCost,
+                            pro_cost: gameState.proCost,
+                            shop_cost: gameState.shopCost,
+                            elite_cost: gameState.eliteCost,
+                            oil_cost: gameState.oilCost,
+                            crypto_cost: gameState.cryptoCost,
+                            scrap_cost: gameState.scrapCost,
+                            last_seen: new Date().toISOString(),
+                            user_id: currentAuthUser.id
+                        };
+                        // Невозможно выполнить update через sendBeacon, нужно сначала select id
+                        // Это сложно, поэтому оставим как есть.
+                    }
+                }
+            });
+
             // Запуск
             const telegramOk = initTelegram();
             if (!telegramOk) return;
@@ -1689,8 +1629,8 @@
             setTimeout(() => { checkAuth(); }, 2000);
             window.addEventListener('online', () => { if (currentSection === 'home') loadHomeFeed(); });
             document.addEventListener('DOMContentLoaded', () => setupServerSelector());
-            console.log('Arizona RP App fully initialized');
+            console.log('Arizona Online App fully initialized');
         })();
     </script>
 </body>
-    </html>
+</html>

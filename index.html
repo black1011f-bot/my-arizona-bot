@@ -8,6 +8,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* ===== Глобальные переменные ===== */
         :root {
             --bg: #F9FAFB;
             --card: #FFFFFF;
@@ -27,6 +28,7 @@
             --header-height: 60px;
             --font: 'Inter', sans-serif;
             --transition: 0.2s ease;
+            --base-font-size: 16px;
         }
         [data-theme="dark"] {
             --bg: #0F172A;
@@ -41,63 +43,82 @@
             --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 4px 6px -2px rgba(0,0,0,0.3);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; font-family: var(--font); }
+        html { font-size: var(--base-font-size); }
         body {
             background: var(--bg); color: var(--text); min-height: 100vh;
             transition: background 0.3s, color 0.3s; overflow-x: hidden;
             user-select: none; -webkit-user-select: none; touch-action: manipulation;
-            font-size: 15px;
+            font-size: clamp(0.875rem, 0.8rem + 0.5vw, 1rem);
         }
         .container {
-            max-width: var(--container-width); margin: 0 auto; padding: 0 16px;
-            padding-top: calc(var(--header-height) + 12px);
-            padding-bottom: calc(var(--nav-height) + 24px);
+            max-width: min(100% - 2rem, var(--container-width)); margin: 0 auto; padding: 0 1rem;
+            padding-top: calc(var(--header-height) + 1rem);
+            padding-bottom: calc(var(--nav-height) + 2rem);
             transition: max-width 0.3s;
         }
-        @media (min-width:768px) { :root { --container-width:720px; } .ads-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; } .ad-card { width:100%; } }
-        @media (min-width:1024px) { :root { --container-width:1200px; } .ads-grid { grid-template-columns:repeat(3,1fr); } }
-        @media (max-width:420px) {
-            .header-title { font-size:16px; } .header-logo { width:32px; height:32px; border-radius:8px; }
-            .nav-item .nav-icon { font-size:20px; } .nav-item { font-size:9px; min-height:40px; }
-            .ad-card-img { width:64px; height:84px; } .ad-card-title { font-size:14px; } .ad-card-price { font-size:15px; }
-            .card { padding:12px; } .modal { padding:16px; max-width:100%; } .grid-tiles { grid-template-columns:repeat(2,1fr); }
-            .btn { padding:10px 16px; font-size:13px; min-height:42px; }
-            .form-group input, .form-group select, .form-group textarea { padding:10px 12px; font-size:14px; }
+        /* ===== Адаптивные точки ===== */
+        @media (min-width: 768px) {
+            :root { --container-width: 720px; --base-font-size: 17px; }
+            .ads-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
+            .ad-card { width:100%; }
         }
-        @media (max-width:360px) {
-            .header-title { font-size:14px; } .nav-item .nav-icon { font-size:18px; } .nav-item { font-size:8px; min-height:36px; }
-            .ad-card-img { width:54px; height:70px; } .ad-card-title { font-size:12px; } .badge { font-size:9px; }
+        @media (min-width: 1024px) {
+            :root { --container-width: 1200px; --base-font-size: 18px; }
+            .ads-grid { grid-template-columns:repeat(3,1fr); }
         }
-        /* Header */
-        .header { position:fixed; top:0; left:0; right:0; z-index:100; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:10px 16px; height:var(--header-height); gap:10px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+        @media (max-width: 420px) {
+            :root { --base-font-size: 15px; --btn-min-height: 44px; --header-height: 56px; --nav-height: 60px; }
+            .header-title { font-size: clamp(1rem, 4vw, 1.3rem); }
+            .header-logo { width:32px; height:32px; border-radius:8px; }
+            .nav-item .nav-icon { font-size:20px; }
+            .nav-item { font-size: clamp(0.65rem, 2.5vw, 0.8rem); min-height:40px; }
+            .ad-card-img { width:64px; height:84px; }
+            .ad-card-title { font-size: clamp(0.8rem, 3vw, 1rem); }
+            .ad-card-price { font-size: clamp(0.9rem, 3.5vw, 1.1rem); }
+            .card { padding:0.8rem; }
+            .modal { padding:1rem; max-width:100%; }
+            .grid-tiles { grid-template-columns:repeat(2,1fr); gap:0.8rem; }
+            .btn { padding:0.7rem 1rem; font-size:0.85rem; min-height:42px; }
+            .form-group input, .form-group select, .form-group textarea { padding:0.7rem 0.9rem; font-size:0.9rem; }
+        }
+        @media (max-width: 360px) {
+            :root { --base-font-size: 14px; }
+            .header-title { font-size: clamp(0.9rem, 4vw, 1.1rem); }
+            .nav-item .nav-icon { font-size:18px; }
+            .nav-item { font-size:0.7rem; min-height:36px; }
+            .ad-card-img { width:54px; height:70px; }
+            .ad-card-title { font-size:0.75rem; }
+            .badge { font-size:0.65rem; padding:2px 8px; }
+        }
+        /* ===== Header ===== */
+        .header { position:fixed; top:0; left:0; right:0; z-index:100; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0.6rem 1rem; height:var(--header-height); gap:0.6rem; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
         .header-logo { width:36px; height:36px; border-radius:10px; overflow:hidden; flex-shrink:0; cursor:pointer; transition:transform 0.2s; }
-        .header-logo:active { transform:scale(0.9); }
-        .header-logo img { width:100%; height:100%; object-fit:cover; }
-        .header-title { font-weight:800; font-size:18px; white-space:nowrap; letter-spacing:-0.02em; }
+        .header-logo img { width:100%; height:100%; object-fit:cover; display:block; }
+        .header-title { font-weight:800; font-size:clamp(1rem, 4vw, 1.5rem); white-space:nowrap; letter-spacing:-0.02em; }
         .header-search { flex:1; min-width:0; cursor:pointer; }
-        .header-search input { width:100%; padding:10px 14px; border-radius:50px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:14px; outline:none; pointer-events:none; box-shadow:var(--shadow); }
-        .theme-toggle { background:none; border:none; font-size:22px; cursor:pointer; padding:4px; border-radius:8px; transition:transform 0.2s; flex-shrink:0; }
-        .theme-toggle:active { transform:scale(0.9); }
-        /* Bottom nav */
+        .header-search input { width:100%; padding:0.6rem 1rem; border-radius:50px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:0.9rem; outline:none; pointer-events:none; box-shadow:var(--shadow); }
+        .theme-toggle { background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0.2rem; border-radius:8px; flex-shrink:0; }
+        /* ===== Bottom nav ===== */
         .nav-bar { position:fixed; bottom:0; left:0; right:0; z-index:100; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-around; align-items:center; height:var(--nav-height); padding-bottom:env(safe-area-inset-bottom); }
-        .nav-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:none; border:none; color:var(--muted); font-size:10px; font-weight:600; cursor:pointer; padding:4px 6px; border-radius:12px; transition:color 0.2s, transform 0.1s; flex:1; max-width:80px; min-height:48px; }
-        .nav-item .nav-icon { font-size:22px; line-height:1; }
+        .nav-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:none; border:none; color:var(--muted); font-size:clamp(0.65rem, 2vw, 0.8rem); font-weight:600; cursor:pointer; padding:0.25rem 0.3rem; border-radius:12px; transition:color 0.2s, transform 0.1s; flex:1; max-width:80px; min-height:48px; }
+        .nav-item .nav-icon { font-size:clamp(1.2rem, 5vw, 1.6rem); line-height:1; }
         .nav-item.active { color:var(--accent); background:rgba(79,70,229,0.08); }
         .nav-item:active { transform:scale(0.92); }
-        /* Sections */
+        /* ===== Sections ===== */
         .section { display:none; opacity:0; transform:translateY(10px); transition:opacity 0.25s, transform 0.25s; }
         .section.active { display:block; opacity:1; transform:translateY(0); }
-        /* Cards */
-        .card { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow); padding:14px; margin-bottom:12px; transition:background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s; cursor:pointer; }
+        /* ===== Cards ===== */
+        .card { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow); padding:0.9rem; margin-bottom:0.9rem; transition:background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s; cursor:pointer; }
         .card:active { transform:scale(0.98); }
-        .card.inactive-card { background:rgba(128,128,128,0.06); opacity:0.7; }
-        [data-theme="dark"] .card.inactive-card { background:rgba(255,255,255,0.03); opacity:0.6; }
-        .ad-card { display:flex; gap:12px; align-items:flex-start; }
+        .card.inactive-card { opacity:0.7; background:rgba(128,128,128,0.06); }
+        [data-theme="dark"] .card.inactive-card { background:rgba(255,255,255,0.03); }
+        .ad-card { display:flex; gap:0.8rem; align-items:flex-start; }
         .ad-card-img { width:80px; height:100px; border-radius:12px; object-fit:cover; background:var(--border); flex-shrink:0; }
         .ad-card-info { flex:1; min-width:0; }
-        .ad-card-title { font-weight:700; font-size:15px; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .ad-card-price { font-weight:800; font-size:17px; color:var(--accent); margin-bottom:4px; }
-        .ad-card-badges { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:4px; }
-        .badge { padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; background:var(--border); color:var(--text); white-space:nowrap; }
+        .ad-card-title { font-weight:700; font-size:clamp(0.8rem, 2.5vw, 1rem); margin-bottom:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .ad-card-price { font-weight:800; font-size:clamp(0.9rem, 3vw, 1.2rem); color:var(--accent); margin-bottom:0.2rem; }
+        .ad-card-badges { display:flex; flex-wrap:wrap; gap:0.25rem; margin-bottom:0.2rem; }
+        .badge { padding:0.15rem 0.6rem; border-radius:20px; font-size:0.7rem; font-weight:700; background:var(--border); color:var(--text); white-space:nowrap; }
         .badge.sell { background:#10B981; color:#fff; }
         .badge.buy { background:#F97316; color:#fff; }
         .badge.server { background:var(--gold); color:#1a1a1a; }
@@ -105,11 +126,10 @@
         .badge.status-pending { background:#FBBF24; color:#1a1a1a; }
         .badge.status-deleted { background:#EF4444; color:#fff; }
         .badge.status-approved { background:#10B981; color:#fff; }
-        .badge.active { background:var(--accent); color:#fff; }
-        .ad-card-author { font-size:11px; color:var(--muted); }
-        .countdown-timer { font-size:11px; color:var(--muted); margin-top:4px; font-weight:500; }
-        /* Buttons */
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:12px 18px; border-radius:var(--radius-sm); border:none; background:var(--accent); color:#fff; font-weight:700; font-size:14px; cursor:pointer; transition:background 0.2s, transform 0.1s, opacity 0.2s; touch-action:manipulation; min-height:var(--btn-min-height); }
+        .ad-card-author { font-size:0.7rem; color:var(--muted); }
+        .countdown-timer { font-size:0.7rem; color:var(--muted); margin-top:0.2rem; font-weight:500; }
+        /* ===== Buttons ===== */
+        .btn { display:inline-flex; align-items:center; justify-content:center; gap:0.4rem; padding:0.7rem 1.1rem; border-radius:var(--radius-sm); border:none; background:var(--accent); color:#fff; font-weight:700; font-size:clamp(0.8rem, 2.5vw, 0.95rem); cursor:pointer; transition:background 0.2s, transform 0.1s, opacity 0.2s; touch-action:manipulation; min-height:var(--btn-min-height); }
         .btn:hover { background:var(--accent-hover); }
         .btn:active { transform:scale(0.97); }
         .btn.secondary { background:var(--border); color:var(--text); }
@@ -118,98 +138,96 @@
         .btn.success { background:#10B981; color:#fff; }
         .btn:disabled { opacity:0.5; pointer-events:none; }
         .btn.w-full { width:100%; }
-        .btn svg { width:18px; height:18px; fill:currentColor; }
-        /* Modal */
-        .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; opacity:0; transition:opacity 0.25s; backdrop-filter:blur(4px); }
+        /* ===== Modal ===== */
+        .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:center; justify-content:center; padding:1rem; opacity:0; transition:opacity 0.25s; backdrop-filter:blur(4px); }
         .modal-overlay.show { opacity:1; }
-        .modal { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow-lg); width:100%; max-width:480px; max-height:85vh; overflow-y:auto; padding:24px; position:relative; transform:translateY(20px); transition:transform 0.25s; }
+        .modal { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow-lg); width:100%; max-width:480px; max-height:85vh; overflow-y:auto; padding:1.5rem; position:relative; transform:translateY(20px); transition:transform 0.25s; }
         .modal-overlay.show .modal { transform:translateY(0); }
-        .modal-close { position:absolute; top:12px; right:12px; background:none; border:none; font-size:24px; cursor:pointer; color:var(--muted); padding:4px; line-height:1; z-index:5; }
-        .modal-title { font-weight:800; font-size:20px; margin-bottom:20px; padding-right:30px; letter-spacing:-0.02em; }
-        /* Forms */
-        .form-group { margin-bottom:16px; }
-        .form-group label { display:block; font-weight:600; font-size:13px; margin-bottom:6px; color:var(--muted); }
-        .form-group input, .form-group select, .form-group textarea { width:100%; padding:12px 14px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:14px; outline:none; transition:border-color 0.2s, background 0.3s; font-family:var(--font); }
+        .modal-close { position:absolute; top:0.7rem; right:0.7rem; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--muted); padding:0.2rem; line-height:1; z-index:5; }
+        .modal-title { font-weight:800; font-size:clamp(1rem, 3vw, 1.4rem); margin-bottom:1rem; padding-right:2rem; letter-spacing:-0.02em; }
+        /* ===== Forms ===== */
+        .form-group { margin-bottom:1rem; }
+        .form-group label { display:block; font-weight:600; font-size:0.8rem; margin-bottom:0.3rem; color:var(--muted); }
+        .form-group input, .form-group select, .form-group textarea { width:100%; padding:0.7rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:0.9rem; outline:none; transition:border-color 0.2s, background 0.3s; font-family:var(--font); }
         .form-group textarea { min-height:100px; resize:vertical; }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--accent); }
-        /* Empty state */
-        .empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-weight:500; }
-        /* Tutorial */
-        .tutorial-overlay, .fullscreen-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
-        .tutorial-slide { max-width:420px; width:100%; }
-        .tutorial-slide h2 { font-weight:900; font-size:24px; margin-bottom:12px; letter-spacing:-0.02em; }
-        .tutorial-slide p { font-size:15px; color:var(--muted); line-height:1.6; margin-bottom:24px; }
-        .tutorial-nav { display:flex; gap:10px; margin-top:20px; }
-        /* Star rating */
-        .star-rating { display:flex; gap:8px; font-size:32px; cursor:pointer; }
-        .star-rating span { color:var(--border); transition:color 0.2s, transform 0.2s; }
-        .star-rating span.active { color:var(--gold); }
-        .star-rating span:hover { transform:scale(1.2); }
-        /* Reviews */
-        .review-item { border-bottom:1px solid var(--border); padding:12px 0; }
-        .review-item:last-child { border-bottom:none; }
-        /* Game */
-        .game-click-area { width:100%; max-width:250px; aspect-ratio:1; margin:0 auto 20px; cursor:pointer; border-radius:50%; overflow:hidden; border:4px solid var(--border); transition:transform 0.1s, border-color 0.3s; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
-        .game-click-area:active { transform:scale(0.92); }
-        .game-click-area img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
-        /* Upgrades */
-        .upgrade-card { display:flex; justify-content:space-between; align-items:center; padding:14px; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:10px; background:var(--card); }
-        .upgrade-info { flex:1; }
-        .upgrade-name { font-weight:700; font-size:14px; }
-        .upgrade-cost { font-size:12px; color:var(--muted); }
-        /* Progress bar */
-        .progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin:6px 0; }
-        .progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; }
-        /* Grid tiles */
-        .grid-tiles { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
-        .grid-tile { padding:16px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); text-align:center; cursor:pointer; font-weight:700; font-size:13px; transition:transform 0.2s, border-color 0.2s, background 0.2s; }
-        .grid-tile:active { transform:scale(0.95); }
-        .grid-tile .tile-icon { font-size:32px; display:block; margin-bottom:8px; }
-        .grid-tile.active { border-color:var(--accent); background:rgba(79,70,229,0.08); }
-        /* Search */
-        .search-suggestion { padding:10px 14px; border-radius:8px; cursor:pointer; font-size:13px; transition:background 0.2s; }
-        .search-suggestion:hover, .search-suggestion:active { background:var(--border); }
-        /* Utilities */
-        .hidden { display:none!important; }
-        .flex-between { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-        .mt-8 { margin-top:8px; } .mt-12 { margin-top:12px; } .mb-8 { margin-bottom:8px; } .mb-12 { margin-bottom:12px; } .w-full { width:100%; } .gap-8 { gap:8px; } .gap-12 { gap:12px; } .text-center { text-align:center; }
-        /* Auth */
-        .auth-container { position:fixed; top:0; left:0; right:0; bottom:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; overflow:hidden; }
+        /* ===== Auth ===== */
+        .auth-container { position:fixed; top:0; left:0; right:0; bottom:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:1rem; overflow:hidden; }
         .auth-background { position:absolute; top:0; left:0; right:0; bottom:0; background:url('https://i.postimg.cc/wBn6Rw4F/images.jpg') center/cover; filter:blur(10px); transform:scale(1.1); z-index:-1; }
-        .auth-box { width:100%; max-width:400px; background:var(--card); border-radius:var(--radius); border:1px solid var(--border); padding:28px; box-shadow:var(--shadow-lg); position:relative; z-index:1; }
-        .auth-tab { flex:1; padding:10px; background:none; border:none; cursor:pointer; font-weight:700; transition:color 0.2s, border-color 0.2s; }
+        .auth-box { width:100%; max-width:400px; background:var(--card); border-radius:var(--radius); border:1px solid var(--border); padding:1.8rem; box-shadow:var(--shadow-lg); position:relative; z-index:1; }
+        .auth-tab { flex:1; padding:0.6rem; background:none; border:none; cursor:pointer; font-weight:700; transition:color 0.2s, border-color 0.2s; }
         .auth-tab.active { color:var(--accent); border-bottom:2px solid var(--accent); }
         .auth-tab:not(.active) { color:var(--muted); border-bottom:2px solid transparent; }
-        /* Preloader / Splash */
-        #splash-screen { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:3000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; transition:opacity 0.5s ease, visibility 0.5s; }
+        /* ===== Splash ===== */
+        #splash-screen { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:3000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.8rem; transition:opacity 0.5s ease, visibility 0.5s; }
         #splash-screen.hidden { opacity:0; visibility:hidden; pointer-events:none; }
-        .splash-icon { width:96px; height:96px; border-radius:24px; overflow:hidden; box-shadow:var(--shadow-lg); animation:splashZoom 1.2s ease-out; }
-        .splash-icon img { width:100%; height:100%; object-fit:cover; }
-        .splash-title { font-weight:900; font-size:28px; color:var(--text); letter-spacing:-0.02em; animation:splashFadeUp 1s ease 0.3s both; }
-        .splash-subtitle { font-size:16px; color:var(--muted); font-weight:600; animation:splashFadeUp 1s ease 0.6s both; }
+        .splash-icon { width:clamp(72px, 20vw, 120px); height:clamp(72px, 20vw, 120px); border-radius:24px; overflow:hidden; box-shadow:var(--shadow-lg); animation:splashZoom 1.2s ease-out; }
+        .splash-icon img { width:100%; height:100%; object-fit:cover; display:block; }
+        .splash-title { font-weight:900; font-size:clamp(1.5rem, 6vw, 2.5rem); color:var(--text); letter-spacing:-0.02em; animation:splashFadeUp 1s ease 0.3s both; }
+        .splash-subtitle { font-size:clamp(0.9rem, 3vw, 1.2rem); color:var(--muted); font-weight:600; animation:splashFadeUp 1s ease 0.6s both; }
         @keyframes splashZoom { 0% { transform:scale(0.3); opacity:0; } 100% { transform:scale(1); opacity:1; } }
         @keyframes splashFadeUp { 0% { transform:translateY(20px); opacity:0; } 100% { transform:translateY(0); opacity:1; } }
-        /* Toast */
-        .toast-container { position:fixed; top:70px; right:12px; z-index:999; display:flex; flex-direction:column; gap:8px; max-width:320px; }
-        .toast { background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 16px; box-shadow:var(--shadow-lg); font-size:13px; font-weight:500; color:var(--text); animation:slideIn 0.3s ease; }
+        /* ===== Toast ===== */
+        .toast-container { position:fixed; top:70px; right:1rem; z-index:999; display:flex; flex-direction:column; gap:0.5rem; max-width:320px; }
+        .toast { background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.8rem 1rem; box-shadow:var(--shadow-lg); font-size:0.8rem; font-weight:500; color:var(--text); animation:slideIn 0.3s ease; }
         .toast.success { border-left:4px solid #10B981; }
         .toast.error { border-left:4px solid #EF4444; }
         .toast.info { border-left:4px solid var(--accent); }
         @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
-        /* Links list */
-        .links-list { display:flex; flex-direction:column; gap:10px; }
-        .link-item { display:flex; align-items:center; gap:12px; padding:14px; background:var(--bg); border-radius:var(--radius-sm); border:1px solid var(--border); cursor:pointer; transition:transform 0.2s, background 0.2s; }
+        /* ===== Skeleton loading ===== */
+        .skeleton { background: linear-gradient(90deg, var(--border) 25%, var(--card) 50%, var(--border) 75%); background-size:200% 100%; animation:skeleton-loading 1.5s infinite; border-radius:var(--radius-sm); }
+        @keyframes skeleton-loading { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+        .img-skeleton { width:100%; height:100%; position:absolute; top:0; left:0; }
+        .img-container { position:relative; overflow:hidden; }
+        .img-container img { opacity:0; transition:opacity 0.3s; }
+        .img-container img.loaded { opacity:1; }
+        /* ===== Links list ===== */
+        .links-list { display:flex; flex-direction:column; gap:0.6rem; }
+        .link-item { display:flex; align-items:center; gap:0.8rem; padding:0.8rem; background:var(--bg); border-radius:var(--radius-sm); border:1px solid var(--border); cursor:pointer; transition:transform 0.2s, background 0.2s; }
         .link-item:active { transform:scale(0.97); }
-        .link-item .link-icon { font-size:24px; width:40px; text-align:center; }
+        .link-item .link-icon { font-size:1.5rem; width:2.2rem; text-align:center; }
         .link-item .link-label { flex:1; font-weight:600; }
-        .link-item .link-value { color:var(--accent); font-size:13px; }
-        /* Loader */
+        .link-item .link-value { color:var(--accent); font-size:0.8rem; }
+        /* ===== Loader ===== */
         .loader { border:3px solid var(--border); border-top:3px solid var(--accent); border-radius:50%; width:32px; height:32px; animation:spin 0.8s linear infinite; margin:20px auto; }
         @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
-        /* Scrollbar */
+        /* ===== Scrollbar ===== */
         ::-webkit-scrollbar { width:4px; height:4px; }
         ::-webkit-scrollbar-track { background:var(--border); border-radius:4px; }
         ::-webkit-scrollbar-thumb { background:var(--accent); border-radius:4px; }
+        /* ===== Game ===== */
+        .game-click-area { width:100%; max-width:250px; aspect-ratio:1; margin:0 auto 1rem; cursor:pointer; border-radius:50%; overflow:hidden; border:4px solid var(--border); transition:transform 0.1s, border-color 0.3s; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+        .game-click-area:active { transform:scale(0.92); }
+        .game-click-area img { width:100%; height:100%; object-fit:cover; pointer-events:none; display:block; }
+        /* ===== Upgrades ===== */
+        .upgrade-card { display:flex; justify-content:space-between; align-items:center; padding:0.8rem; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:0.6rem; background:var(--card); }
+        .upgrade-info { flex:1; }
+        .upgrade-name { font-weight:700; font-size:0.9rem; }
+        .upgrade-cost { font-size:0.75rem; color:var(--muted); }
+        /* ===== Star rating ===== */
+        .star-rating { display:flex; gap:0.4rem; font-size:2rem; cursor:pointer; }
+        .star-rating span { color:var(--border); transition:color 0.2s, transform 0.2s; }
+        .star-rating span.active { color:var(--gold); }
+        .star-rating span:hover { transform:scale(1.2); }
+        /* ===== Reviews ===== */
+        .review-item { border-bottom:1px solid var(--border); padding:0.6rem 0; }
+        .review-item:last-child { border-bottom:none; }
+        /* ===== Progress bar ===== */
+        .progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin:0.3rem 0; }
+        .progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; }
+        /* ===== Grid tiles ===== */
+        .grid-tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.8rem; }
+        .grid-tile { padding:1rem; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); text-align:center; cursor:pointer; font-weight:700; font-size:0.8rem; transition:transform 0.2s, border-color 0.2s, background 0.2s; }
+        .grid-tile:active { transform:scale(0.95); }
+        .grid-tile .tile-icon { font-size:2rem; display:block; margin-bottom:0.4rem; }
+        .grid-tile.active { border-color:var(--accent); background:rgba(79,70,229,0.08); }
+        /* ===== Search ===== */
+        .search-suggestion { padding:0.6rem 0.9rem; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:background 0.2s; }
+        .search-suggestion:hover, .search-suggestion:active { background:var(--border); }
+        /* ===== Utilities ===== */
+        .hidden { display:none!important; }
+        .flex-between { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; }
+        .mt-8 { margin-top:0.5rem; } .mt-12 { margin-top:0.8rem; } .mb-8 { margin-bottom:0.5rem; } .mb-12 { margin-bottom:0.8rem; } .w-full { width:100%; } .gap-8 { gap:0.5rem; } .gap-12 { gap:0.8rem; } .text-center { text-align:center; }
     </style>
 </head>
 <body>
@@ -217,7 +235,7 @@
     <!-- Сплэш-экран -->
     <div id="splash-screen">
         <div class="splash-icon">
-            <img src="https://i.postimg.cc/BZHTh6DQ/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP">
+            <img src="https://i.postimg.cc/BZHTh6DQ/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP" loading="lazy" onerror="this.style.display='none'">
         </div>
         <div class="splash-title">Arizona RP</div>
         <div class="splash-subtitle">Market</div>
@@ -226,7 +244,7 @@
     <!-- Хедер -->
     <header class="header" id="appHeader" style="display:none;">
         <div class="header-logo" id="logoBtn">
-            <img src="https://i.postimg.cc/gj4dLNfB/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP">
+            <img src="https://i.postimg.cc/gj4dLNfB/becbb63958da140ca4a1c73b8e0fce12-(2).jpg" alt="Arizona RP" loading="lazy" onerror="this.src='https://via.placeholder.com/36'">
         </div>
         <div class="header-title">Arizona RP</div>
         <div class="header-search" id="headerSearchTrigger">
@@ -238,36 +256,36 @@
     <!-- Основной контейнер -->
     <main class="container" id="mainContainer" style="display:none;">
         <section class="section active" id="section-home">
-            <div id="serverSelector" style="margin-bottom:16px;">
+            <div id="serverSelector" style="margin-bottom:1rem;">
                 <button class="btn secondary w-full" id="serverSelectBtn">🌐 Все сервера</button>
             </div>
             <div class="ads-grid" id="homeFeed"></div>
         </section>
         <section class="section" id="section-cart">
-            <h2 style="margin-bottom:16px;font-weight:800;">🛒 Корзина</h2>
+            <h2 style="margin-bottom:1rem;font-weight:800;">🛒 Корзина</h2>
             <div id="cartList"></div>
         </section>
         <section class="section" id="section-send">
-            <h2 style="margin-bottom:16px;font-weight:800;">➕ Отправка объявления</h2>
+            <h2 style="margin-bottom:1rem;font-weight:800;">➕ Отправка объявления</h2>
             <div class="card">
                 <div class="form-group"><label>Тип сделки</label><button class="btn secondary w-full" id="sendTypeBtn">Продажа</button></div>
                 <div class="form-group"><label>Категория</label><button class="btn secondary w-full" id="sendCategoryBtn">Выберите категорию</button></div>
                 <div class="form-group"><label>Название</label><input type="text" id="sendName" placeholder="Введите название"></div>
                 <div class="form-group"><label>Цена</label><input type="text" id="sendPrice" placeholder="Например: 5к или 1000000"></div>
                 <div class="form-group"><label>Описание</label><textarea id="sendDescription" placeholder="Подробное описание"></textarea></div>
-                <div class="form-group"><label>Скриншоты (ссылки через запятую)</label><input type="text" id="sendImages" placeholder="https://..."><div style="margin-top:6px;font-size:11px;color:var(--muted);">Разрешены: youtube.com, youtu.be, radikal.cloud, allwebs.ru, postimages.org, ru.imgbb.com</div></div>
+                <div class="form-group"><label>Скриншоты (ссылки через запятую)</label><input type="text" id="sendImages" placeholder="https://..."><div style="margin-top:0.3rem;font-size:0.7rem;color:var(--muted);">Разрешены: youtube.com, youtu.be, radikal.cloud, allwebs.ru, postimages.org, ru.imgbb.com</div></div>
                 <div class="form-group"><label>Сервер</label><button class="btn secondary w-full" id="sendServerBtn">Выберите сервер</button></div>
                 <button class="btn w-full" id="sendSubmitBtn">Отправить объявление</button>
             </div>
-            <h3 style="margin:20px 0 12px;font-weight:800;">📦 Мои объявления</h3>
+            <h3 style="margin:1rem 0 0.8rem;font-weight:800;">📦 Мои объявления</h3>
             <div id="myAdsList"></div>
         </section>
         <section class="section" id="section-admin">
-            <h2 style="margin-bottom:16px;font-weight:800;">🛡️ Админ-панель</h2>
+            <h2 style="margin-bottom:1rem;font-weight:800;">🛡️ Админ-панель</h2>
             <div id="adminPanelContent"></div>
         </section>
         <section class="section" id="section-all">
-            <h2 style="margin-bottom:16px;font-weight:800;">☰ Все разделы</h2>
+            <h2 style="margin-bottom:1rem;font-weight:800;">☰ Все разделы</h2>
             <div class="grid-tiles" id="allTiles"></div>
         </section>
     </main>
@@ -291,13 +309,10 @@
         (function() {
             'use strict';
 
-            // Константы
+            // ===================== КОНСТАНТЫ =====================
             const OWNER_USERNAME = 'bounqy';
             const ALL_SERVERS = [
-                'Phoenix', 'Tucson', 'Scottdale', 'Chandler', 'Brainburg', 'Saint-Rose', 'Mesa', 'Red-Rock', 'Yuma',
-                'Surprise', 'Prescott', 'Glendale', 'Kingman', 'Winslow', 'Payson', 'Gilbert', 'Show-Low', 'Casa-Grande',
-                'Page', 'Sun-City', 'Queen-Creek', 'Sedona', 'Holiday', 'Wednesday', 'Yava', 'Faraway', 'Bumble-Bee',
-                'Christmas', 'Mirage', 'Love', 'Drake', 'Space', 'Home', 'Mobile I', 'Mobile II', 'Mobile III'
+                'Phoenix','Tucson','Scottdale','Chandler','Brainburg','Saint-Rose','Mesa','Red-Rock','Yuma','Surprise','Prescott','Glendale','Kingman','Winslow','Payson','Gilbert','Show-Low','Casa-Grande','Page','Sun-City','Queen-Creek','Sedona','Holiday','Wednesday','Yava','Faraway','Bumble-Bee','Christmas','Mirage','Love','Drake','Space','Home','Mobile I','Mobile II','Mobile III'
             ];
             const ALL_CATEGORIES = [
                 { id: 'accessories', label: '💍 Аксессуары и вещи' },
@@ -309,241 +324,158 @@
                 { id: 'electronics', label: '📱 Электроника' }
             ];
             const APPEAL_REASONS = [
-                'Несправедливая блокировка', 'Ошибка модерации', 'Объявление удалили по ошибке',
-                'Нарушение правил другой стороной', 'Техническая проблема', 'Возврат средств',
-                'Жалоба на пользователя', 'Взлом аккаунта', 'Другое', 'Не знаю'
+                'Несправедливая блокировка','Ошибка модерации','Объявление удалили по ошибке','Нарушение правил другой стороной','Техническая проблема','Возврат средств','Жалоба на пользователя','Взлом аккаунта','Другое','Не знаю'
             ];
-            const ALLOWED_DOMAINS = ['youtube.com', 'youtu.be', 'radikal.cloud', 'allwebs.ru', 'postimages.org', 'ru.imgbb.com'];
+            const ALLOWED_DOMAINS = ['youtube.com','youtu.be','radikal.cloud','allwebs.ru','postimages.org','ru.imgbb.com'];
             const DEFAULT_AD_IMAGE = 'https://i.postimg.cc/zDwTPKwq/0465dd7cc4f5446e5e908000ec4379bb.jpg';
             const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
             const AD_EXPIRY_HOURS = 48;
 
-            // Глобальное состояние
-            let tg = null;
-            let supabaseClient = null;
-            let currentAuthUser = null;
-            let currentUser = { id: 0, username: '', first_name: '' };
-            let currentSection = 'home';
-            let currentTheme = 'light';
-            let sfxEnabled = true;
-            let currentFilterServer = null;
-            let currentUserServer = ALL_SERVERS[0];
-            let isAdmin = false;
-            let isOwner = false;
-            let audioCtx = null;
-            let saveGameTimeout = null;
-            let wakeLock = null;
-            let unreadNotifications = 0;
-            let userSettings = {};
-            let userProgress = {};
-
-            let gameState = {
-                money: 0, clickPower: 1, clickCost: 50, autoIncome: 0, autoCost: 200, proCost: 800,
-                shopCost: 3000, eliteCost: 10000, oilCost: 35000, cryptoCost: 150000, scrapCost: 500, last_seen: null
-            };
-
+            // ===================== ГЛОБАЛЬНОЕ СОСТОЯНИЕ =====================
+            let tg = null, supabaseClient = null, currentAuthUser = null;
+            let currentUser = { id:0, username:'', first_name:'' };
+            let currentSection = 'home', currentTheme = 'light', sfxEnabled = true;
+            let currentFilterServer = null, isAdmin = false, isOwner = false;
+            let audioCtx = null, saveGameTimeout = null, wakeLock = null, unreadNotifications = 0;
+            let userSettings = {}, userProgress = {};
+            let gameState = { money:0, clickPower:1, clickCost:50, autoIncome:0, autoCost:200, proCost:800, shopCost:3000, eliteCost:10000, oilCost:35000, cryptoCost:150000, scrapCost:500, last_seen:null };
             let homeAds = [], cartAds = [], myAds = [], pendingAds = [], pendingAppeals = [], pendingReports = [], searchHistory = [];
             let allTilesLoaded = false, barygaStateLoaded = false;
 
-            // Инициализация Supabase
+            // ===================== ИНИЦИАЛИЗАЦИЯ SUPABASE =====================
             function initSupabase() {
                 try {
                     if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
                         showFatalError('Не удалось загрузить Supabase');
                         return false;
                     }
-                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ persistSession:false } });
                     return true;
-                } catch (e) {
-                    showFatalError('Ошибка подключения к Supabase');
-                    return false;
-                }
+                } catch(e) { showFatalError('Ошибка подключения к Supabase'); return false; }
             }
             function showFatalError(msg) {
                 document.body.innerHTML = `<div class="fullscreen-overlay"><h1 style="color:#EF4444;">⚠️ Ошибка</h1><p>${msg}</p><button class="btn mt-12" onclick="location.reload()">Повторить</button></div>`;
             }
 
-            // Telegram WebApp
+            // ===================== TELEGRAM WEBAPP =====================
             function initTelegram() {
                 try {
                     if (window.Telegram && window.Telegram.WebApp) {
-                        tg = window.Telegram.WebApp;
-                        tg.expand();
-                        tg.ready();
+                        tg = window.Telegram.WebApp; tg.expand(); tg.ready();
                         const initData = tg.initDataUnsafe || {};
                         if (initData.user) {
-                            currentUser = {
-                                id: initData.user.id || 0,
-                                username: initData.user.username || '',
-                                first_name: initData.user.first_name || 'Пользователь'
-                            };
-                        } else {
-                            showFatalError('Требуется запуск через Telegram.');
-                            return false;
-                        }
-                    } else {
-                        showFatalError('Требуется запуск через Telegram.');
-                        return false;
-                    }
+                            currentUser = { id: initData.user.id, username: initData.user.username || '', first_name: initData.user.first_name || 'Пользователь' };
+                        } else { showFatalError('Требуется запуск через Telegram.'); return false; }
+                    } else { showFatalError('Требуется запуск через Telegram.'); return false; }
                     return true;
-                } catch (e) {
-                    showFatalError('Ошибка Telegram WebApp');
-                    return false;
-                }
+                } catch(e) { showFatalError('Ошибка Telegram WebApp'); return false; }
             }
 
-            // Утилиты
-            function withTimeout(promise, ms = 10000) {
-                return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), ms))]);
-            }
-            function playSfx(type = 'click') {
-                if (!sfxEnabled) return;
+            // ===================== УТИЛИТЫ =====================
+            function withTimeout(promise, ms=10000) { return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout')),ms))]); }
+            function playSfx(type='click') {
+                if(!sfxEnabled) return;
                 try {
-                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
                     const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
                     osc.connect(gain); gain.connect(audioCtx.destination);
-                    const freqs = { click: 800, success: 1200, error: 300, buy: 1000 };
-                    osc.frequency.value = freqs[type] || 600;
-                    osc.type = 'sine'; gain.gain.value = 0.1;
-                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
-                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.15);
-                } catch (e) {}
+                    const freqs = { click:800, success:1200, error:300, buy:1000 };
+                    osc.frequency.value = freqs[type]||600; osc.type='sine'; gain.gain.value=0.1;
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.15);
+                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+0.15);
+                } catch(e){}
             }
-            function showToast(message, type = 'info') {
+            function showToast(message, type='info') {
                 const cont = document.getElementById('toastContainer');
                 const toast = document.createElement('div');
-                toast.className = 'toast ' + type;
-                toast.textContent = message;
+                toast.className = 'toast '+type; toast.textContent = message;
                 cont.appendChild(toast);
-                setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
+                setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateX(100%)'; setTimeout(()=>toast.remove(),300); },3000);
             }
             function applyTheme() { document.documentElement.setAttribute('data-theme', currentTheme); }
             function formatPrice(value) {
-                if (!value) return '0';
-                let num = typeof value === 'string' ? value.toLowerCase() : value.toString();
-                if (num.includes('к')) {
-                    let base = parseFloat(num.split('к')[0]) || 0;
-                    let kCount = (num.match(/к/g) || []).length;
-                    if (kCount === 1) base *= 1000;
-                    else if (kCount === 2) base *= 1000000;
-                    else if (kCount === 3) base *= 1000000000;
+                if(!value) return '0';
+                let num = typeof value==='string'? value.toLowerCase() : value.toString();
+                if(num.includes('к')) {
+                    let base = parseFloat(num.split('к')[0])||0;
+                    let kCount = (num.match(/к/g)||[]).length;
+                    if(kCount===1) base*=1000; else if(kCount===2) base*=1000000; else if(kCount===3) base*=1000000000;
                     return Math.floor(base).toString();
                 }
-                num = parseInt(num) || 0;
-                if (num >= 1000000000) return (num / 1000000000).toFixed(num % 1000000000 === 0 ? 0 : 2) + 'ккк';
-                if (num >= 1000000) return (num / 1000000).toFixed(num % 1000000 === 0 ? 0 : 1) + 'кк';
-                if (num >= 1000) return (num / 1000).toFixed(num % 1000 === 0 ? 0 : 1) + 'к';
+                num = parseInt(num)||0;
+                if(num>=1000000000) return (num/1000000000).toFixed(num%1000000000===0?0:2)+'ккк';
+                if(num>=1000000) return (num/1000000).toFixed(num%1000000===0?0:1)+'кк';
+                if(num>=1000) return (num/1000).toFixed(num%1000===0?0:1)+'к';
                 return num.toString();
             }
             function parsePriceToNumber(str) {
-                if (!str) return 0;
+                if(!str) return 0;
                 str = str.toLowerCase().trim();
-                let num = parseInt(str.replace(/[^0-9]/g, '')) || 0;
-                let kCount = (str.match(/к/g) || []).length;
-                if (kCount === 1) num *= 1000;
-                else if (kCount === 2) num *= 1000000;
-                else if (kCount === 3) num *= 1000000000;
+                let num = parseInt(str.replace(/[^0-9]/g,''))||0;
+                let kCount = (str.match(/к/g)||[]).length;
+                if(kCount===1) num*=1000; else if(kCount===2) num*=1000000; else if(kCount===3) num*=1000000000;
                 return num;
             }
             function formatPriceInputHandler(e) {
                 const input = e.target;
-                let val = input.value.toLowerCase().replace(/[^0-9к]/g, '');
-                if (!val) { input.value = ''; return; }
-                let num = parseInt(val.replace(/к/g, '')) || 0;
-                let kCount = (val.match(/к/g) || []).length;
-                if (kCount === 1) num *= 1000; else if (kCount === 2) num *= 1000000; else if (kCount === 3) num *= 1000000000;
+                let val = input.value.toLowerCase().replace(/[^0-9к]/g,'');
+                if(!val){ input.value=''; return; }
+                let num = parseInt(val.replace(/к/g,''))||0;
+                let kCount = (val.match(/к/g)||[]).length;
+                if(kCount===1) num*=1000; else if(kCount===2) num*=1000000; else if(kCount===3) num*=1000000000;
                 input.value = formatPrice(num);
             }
             function isAllowedLink(url) {
-                try {
-                    const u = new URL(url);
-                    const host = u.hostname.replace('www.', '');
-                    return ALLOWED_DOMAINS.some(d => host === d || host.endsWith('.' + d));
-                } catch (e) { return false; }
+                try { const u = new URL(url); const host = u.hostname.replace('www.',''); return ALLOWED_DOMAINS.some(d=>host===d||host.endsWith('.'+d)); } catch(e){ return false; }
             }
             function checkLinksString(str) {
-                if (!str.trim()) return { valid: true, links: [] };
-                const links = str.split(',').map(s => s.trim()).filter(s => s.length > 0);
-                if (links.length > 20) return { valid: false, message: 'Максимум 20 ссылок' };
-                for (let link of links) { if (!isAllowedLink(link)) return { valid: false, message: `Ссылка ${link} не разрешена` }; }
-                return { valid: true, links };
+                if(!str.trim()) return {valid:true, links:[]};
+                const links = str.split(',').map(s=>s.trim()).filter(s=>s.length>0);
+                if(links.length>20) return {valid:false, message:'Максимум 20 ссылок'};
+                for(let link of links){ if(!isAllowedLink(link)) return {valid:false, message:`Ссылка ${link} не разрешена`}; }
+                return {valid:true, links};
             }
-            function getUserIdentifier() {
-                return currentAuthUser && currentAuthUser.username ? '@' + currentAuthUser.username : (currentUser.username ? '@' + currentUser.username : 'ID:' + currentUser.id);
-            }
+            function getUserIdentifier() { return currentAuthUser?.username ? '@'+currentAuthUser.username : (currentUser.username? '@'+currentUser.username : 'ID:'+currentUser.id); }
             function getUserId() { return currentAuthUser ? currentAuthUser.id : currentUser.id; }
             async function hashPassword(password) {
                 const msgBuffer = new TextEncoder().encode(password);
                 const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
                 const hashArray = Array.from(new Uint8Array(hashBuffer));
-                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            }
-            function hidePreloader() {
-                const p = document.getElementById('preloader');
-                if (p) p.classList.add('hidden');
+                return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
             }
 
-            // Модалки
+            // ===================== МОДАЛКИ =====================
             function showModal(html, onClose) {
                 const container = document.getElementById('modalContainer');
-                container.innerHTML = `
-                    <div class="modal-overlay" id="modalOverlay">
-                        <div class="modal">
-                            <button class="modal-close" id="modalCloseBtn">✕</button>
-                            ${html}
-                        </div>
-                    </div>
-                `;
+                container.innerHTML = `<div class="modal-overlay" id="modalOverlay"><div class="modal"><button class="modal-close" id="modalCloseBtn">✕</button>${html}</div></div>`;
                 const overlay = document.getElementById('modalOverlay');
                 const closeBtn = document.getElementById('modalCloseBtn');
-                setTimeout(() => overlay.classList.add('show'), 10);
-                function closeModal() {
-                    overlay.classList.remove('show');
-                    setTimeout(() => { overlay.remove(); if (onClose) onClose(); }, 250);
-                }
+                setTimeout(()=>overlay.classList.add('show'),10);
+                function closeModal(){ overlay.classList.remove('show'); setTimeout(()=>{ overlay.remove(); if(onClose) onClose(); },250); }
                 closeBtn.addEventListener('click', closeModal);
-                overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(); });
+                overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeModal(); });
                 return { overlay, closeModal };
             }
-            function showAlert(title, message, type = 'info') {
-                const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
-                const { closeModal } = showModal(`
-                    <div style="text-align:center;">
-                        <div style="font-size:48px;margin-bottom:12px;">${icon}</div>
-                        <h3 class="modal-title" style="text-align:center;">${title}</h3>
-                        <p style="color:var(--muted);margin-bottom:20px;">${message}</p>
-                        <button class="btn w-full" id="alertOkBtn">ОК</button>
-                    </div>
-                `);
+            function showAlert(title, message, type='info') {
+                const icon = type==='success'?'✅':type==='error'?'❌':'ℹ️';
+                const { closeModal } = showModal(`<div style="text-align:center;"><div style="font-size:3rem;margin-bottom:0.5rem;">${icon}</div><h3 class="modal-title" style="text-align:center;">${title}</h3><p style="color:var(--muted);margin-bottom:1rem;">${message}</p><button class="btn w-full" id="alertOkBtn">ОК</button></div>`);
                 document.getElementById('alertOkBtn').addEventListener('click', closeModal);
             }
             function showConfirm(title, message, onConfirm) {
-                const { closeModal } = showModal(`
-                    <div style="text-align:center;">
-                        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
-                        <h3 class="modal-title" style="text-align:center;">${title}</h3>
-                        <p style="color:var(--muted);margin-bottom:20px;">${message}</p>
-                        <div class="flex-between gap-12">
-                            <button class="btn secondary w-full" id="confirmCancelBtn">Отмена</button>
-                            <button class="btn danger w-full" id="confirmOkBtn">Подтвердить</button>
-                        </div>
-                    </div>
-                `);
+                const { closeModal } = showModal(`<div style="text-align:center;"><div style="font-size:2.5rem;margin-bottom:0.5rem;">⚠️</div><h3 class="modal-title" style="text-align:center;">${title}</h3><p style="color:var(--muted);margin-bottom:1rem;">${message}</p><div class="flex-between gap-12"><button class="btn secondary w-full" id="confirmCancelBtn">Отмена</button><button class="btn danger w-full" id="confirmOkBtn">Подтвердить</button></div></div>`);
                 document.getElementById('confirmCancelBtn').addEventListener('click', closeModal);
-                document.getElementById('confirmOkBtn').addEventListener('click', () => { closeModal(); onConfirm(); });
+                document.getElementById('confirmOkBtn').addEventListener('click', ()=>{ closeModal(); onConfirm(); });
             }
 
-            // Аутентификация
+            // ===================== АВТОРИЗАЦИЯ =====================
             async function checkAuth() {
-                if (!supabaseClient) { if (!initSupabase()) return; }
+                if (!supabaseClient) { if(!initSupabase()) return; }
                 const saved = localStorage.getItem('arizona_current_user');
                 if (saved) {
                     try {
                         const parsed = JSON.parse(saved);
-                        const { data, error } = await withTimeout(
-                            supabaseClient.from('app_users').select('*').eq('id', parsed.id).maybeSingle(), 5000
-                        );
+                        const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('id', parsed.id).maybeSingle(),5000);
                         if (!error && data) {
                             if (data.telegram_id !== currentUser.id) {
                                 localStorage.removeItem('arizona_current_user');
@@ -557,13 +489,11 @@
                         } else {
                             localStorage.removeItem('arizona_current_user');
                         }
-                    } catch (e) { console.warn('checkAuth restore error', e); localStorage.removeItem('arizona_current_user'); }
+                    } catch(e) { console.warn('checkAuth restore error', e); localStorage.removeItem('arizona_current_user'); }
                 }
                 if (currentUser.id) {
                     try {
-                        const { data, error } = await withTimeout(
-                            supabaseClient.from('app_users').select('*').eq('telegram_id', currentUser.id).maybeSingle(), 5000
-                        );
+                        const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('telegram_id', currentUser.id).maybeSingle(),5000);
                         if (!error && data) {
                             if (data.banned) { showBanScreen(); return; }
                             currentAuthUser = data;
@@ -572,7 +502,7 @@
                             hideSplashAndShowApp();
                             return;
                         }
-                    } catch (e) { console.warn('checkAuth telegram error', e); }
+                    } catch(e) { console.warn('checkAuth telegram error', e); }
                 }
                 hideSplashAndShowAuth();
             }
@@ -590,23 +520,16 @@
             }
 
             async function loadUserSettingsAndProgress() {
-                if (!currentAuthUser) return;
+                if(!currentAuthUser) return;
                 try {
-                    const { data: sd, error: se } = await withTimeout(
-                        supabaseClient.from('user_settings').select('*').eq('user_id', currentAuthUser.id).maybeSingle(), 5000
-                    );
-                    if (se) throw se;
-                    if (sd) { userSettings = sd; currentTheme = sd.theme || 'light'; sfxEnabled = sd.sfx_enabled !== false; }
-                    else {
-                        await supabaseClient.from('user_settings').insert({ user_id: currentAuthUser.id, theme: 'light', sfx_enabled: true, admin_password_hash: null });
-                        currentTheme = 'light'; sfxEnabled = true;
-                    }
-                    const { data: pd, error: pe } = await withTimeout(
-                        supabaseClient.from('user_progress').select('*').eq('user_id', currentAuthUser.id).maybeSingle(), 5000
-                    );
-                    if (pe) throw pe;
-                    userProgress = pd || {};
-                } catch (e) { console.warn('loadUserSettings error', e); currentTheme = 'light'; sfxEnabled = true; userProgress = {}; }
+                    const { data:sd, error:se } = await withTimeout(supabaseClient.from('user_settings').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
+                    if(se) throw se;
+                    if(sd) { userSettings = sd; currentTheme = sd.theme||'light'; sfxEnabled = sd.sfx_enabled!==false; }
+                    else { await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null}); currentTheme='light'; sfxEnabled=true; }
+                    const { data:pd, error:pe } = await withTimeout(supabaseClient.from('user_progress').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
+                    if(pe) throw pe;
+                    userProgress = pd||{};
+                } catch(e) { console.warn('loadUserSettings error',e); currentTheme='light'; sfxEnabled=true; userProgress={}; }
                 applyTheme();
             }
 
@@ -623,74 +546,78 @@
                     <div class="auth-container">
                         <div class="auth-background"></div>
                         <div class="auth-box">
-                            <h2 style="text-align:center;margin-bottom:4px;">Arizona RP</h2>
-                            <p style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:20px;">Маркетплейс для Arizona RP</p>
-                            <div style="display:flex;margin-bottom:20px;border-bottom:1px solid var(--border);">
+                            <h2 style="text-align:center;margin-bottom:0.3rem;">Arizona RP</h2>
+                            <p style="text-align:center;font-size:0.8rem;color:var(--muted);margin-bottom:1.2rem;">Маркетплейс для Arizona RP</p>
+                            <div style="display:flex;margin-bottom:1.2rem;border-bottom:1px solid var(--border);">
                                 <button class="auth-tab ${mode==='login'?'active':''}" id="authTabLogin">Вход</button>
                                 <button class="auth-tab ${mode==='register'?'active':''}" id="authTabRegister">Создать</button>
                             </div>
                             <div class="form-group"><label>Логин</label><input type="text" id="authUsername" placeholder="Введите логин"></div>
                             <div class="form-group"><label>Пароль</label><input type="password" id="authPassword" placeholder="Введите пароль"></div>
                             <button class="btn w-full" id="authSubmitBtn" ${isSubmitting?'disabled':''}>${isSubmitting?'⏳ Загрузка...':(mode==='login'?'Войти':'Создать аккаунт')}</button>
-                            <p id="authError" style="color:#EF4444;font-size:12px;margin-top:10px;text-align:center;">${errorMsg||''}</p>
+                            <p id="authError" style="color:#EF4444;font-size:0.75rem;margin-top:0.6rem;text-align:center;">${errorMsg||''}</p>
                         </div>
                     </div>`;
-                    document.getElementById('authTabLogin').addEventListener('click', () => { if (mode!=='login'){ mode='login'; isSubmitting=false; renderAuthForm(); }});
-                    document.getElementById('authTabRegister').addEventListener('click', () => { if (mode!=='register'){ mode='register'; isSubmitting=false; renderAuthForm(); }});
-                    document.getElementById('authSubmitBtn').addEventListener('click', async () => {
-                        if (isSubmitting) return;
+                    document.getElementById('authTabLogin').addEventListener('click', ()=>{ if(mode!=='login'){ mode='login'; isSubmitting=false; renderAuthForm(); }});
+                    document.getElementById('authTabRegister').addEventListener('click', ()=>{ if(mode!=='register'){ mode='register'; isSubmitting=false; renderAuthForm(); }});
+                    document.getElementById('authSubmitBtn').addEventListener('click', async ()=>{
+                        if(isSubmitting) return;
                         const errEl = document.getElementById('authError');
                         errEl.textContent = '';
                         const username = document.getElementById('authUsername').value.trim().toLowerCase();
                         const password = document.getElementById('authPassword').value.trim();
-                        if (!username || !password) { errEl.textContent = 'Заполните все поля'; return; }
-                        isSubmitting = true; const btn = document.getElementById('authSubmitBtn'); btn.disabled = true; btn.textContent = '⏳ Загрузка...';
+                        if(!username||!password){ errEl.textContent='Заполните все поля'; return; }
+                        isSubmitting = true; const btn = document.getElementById('authSubmitBtn'); btn.disabled = true; btn.textContent='⏳ Загрузка...';
                         try {
                             const hashedPassword = await hashPassword(password);
-                            if (mode === 'login') {
-                                const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('username', username).maybeSingle(), 5000);
-                                if (error) throw error;
-                                if (!data) { errEl.textContent = 'Пользователь не найден. Зарегистрируйтесь.'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
-                                if (data.password_hash !== hashedPassword) { errEl.textContent = 'Неверный логин или пароль'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
-                                if (data.banned) { showBanScreen(); return; }
+                            if(mode==='login') {
+                                const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('username',username).maybeSingle(),5000);
+                                if(error) throw error;
+                                if(!data){ errEl.textContent='Пользователь не найден. Зарегистрируйтесь.'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
+                                if(data.password_hash!==hashedPassword){ errEl.textContent='Неверный логин или пароль'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
+                                if(data.banned){ showBanScreen(); return; }
                                 currentAuthUser = data; localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
                                 await loadUserSettingsAndProgress(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
                             } else {
-                                const { data: existingTelegram } = await withTimeout(supabaseClient.from('app_users').select('id').eq('telegram_id', currentUser.id).maybeSingle(), 5000);
-                                if (existingTelegram) { errEl.textContent = 'Этот Telegram уже привязан к аккаунту. Войдите.'; isSubmitting=false; btn.disabled=false; btn.textContent='Создать аккаунт'; return; }
-                                const { data: existing } = await withTimeout(supabaseClient.from('app_users').select('id').eq('username', username).maybeSingle(), 5000);
-                                if (existing) { errEl.textContent = 'Такой пользователь уже существует'; isSubmitting=false; btn.disabled=false; btn.textContent='Создать аккаунт'; return; }
-                                const newUser = { username, password_hash: hashedPassword, telegram_id: currentUser.id||null, telegram_username: currentUser.username||null, banned:false, is_admin: username===OWNER_USERNAME, created_at: new Date().toISOString() };
-                                const { data: inserted, error: insertErr } = await withTimeout(supabaseClient.from('app_users').insert(newUser).select().single(), 5000);
-                                if (insertErr) throw insertErr;
+                                const { data: existingTelegram } = await withTimeout(supabaseClient.from('app_users').select('id').eq('telegram_id', currentUser.id).maybeSingle(),5000);
+                                if(existingTelegram){ errEl.textContent='Этот Telegram уже привязан к аккаунту. Войдите.'; isSubmitting=false; btn.disabled=false; btn.textContent='Создать аккаунт'; return; }
+                                const { data: existing } = await withTimeout(supabaseClient.from('app_users').select('id').eq('username',username).maybeSingle(),5000);
+                                if(existing){ errEl.textContent='Такой пользователь уже существует'; isSubmitting=false; btn.disabled=false; btn.textContent='Создать аккаунт'; return; }
+                                const newUser = { username, password_hash:hashedPassword, telegram_id: currentUser.id||null, telegram_username: currentUser.username||null, banned:false, is_admin: username===OWNER_USERNAME, created_at:new Date().toISOString() };
+                                const { data: inserted, error: insertErr } = await withTimeout(supabaseClient.from('app_users').insert(newUser).select().single(),5000);
+                                if(insertErr) throw insertErr;
                                 currentAuthUser = inserted; localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
-                                await supabaseClient.from('user_settings').insert({ user_id: currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null });
-                                await supabaseClient.from('user_progress').insert({ user_id: currentAuthUser.id, tutorial_completed:false, admin_tutorial_completed:false });
+                                await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null});
+                                await supabaseClient.from('user_progress').insert({user_id:currentAuthUser.id, tutorial_completed:false, admin_tutorial_completed:false});
                                 await loadUserSettingsAndProgress(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
                             }
-                        } catch (e) { console.error('Auth error', e); let msg = 'Ошибка соединения.'; if (e.message==='Timeout') msg='Превышено время ожидания.'; errEl.textContent = msg; isSubmitting=false; btn.disabled=false; btn.textContent = mode==='login'?'Войти':'Создать аккаунт'; }
+                        } catch(e) {
+                            console.error('Auth error',e);
+                            let msg='Ошибка соединения.'; if(e.message==='Timeout') msg='Превышено время ожидания.';
+                            errEl.textContent=msg; isSubmitting=false; btn.disabled=false; btn.textContent = mode==='login'?'Войти':'Создать аккаунт';
+                        }
                     });
                 }
                 renderAuthForm();
             }
 
-            // Инициализация приложения
-            async function initApp(isFirstLogin = false) {
-                if (!currentAuthUser) { showAuthScreen(); return; }
-                isAdmin = currentAuthUser.is_admin || (currentAuthUser.username === OWNER_USERNAME);
-                isOwner = currentAuthUser.username === OWNER_USERNAME;
+            // ===================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =====================
+            async function initApp(isFirstLogin=false) {
+                if(!currentAuthUser){ showAuthScreen(); return; }
+                isAdmin = currentAuthUser.is_admin || (currentAuthUser.username===OWNER_USERNAME);
+                isOwner = currentAuthUser.username===OWNER_USERNAME;
                 document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdmin);
                 await loadSearchHistory(); await loadNotificationsCount();
                 checkTutorials(isFirstLogin);
                 switchSection('home');
                 requestWakeLock();
             }
-            async function loadSearchHistory() { if(!currentAuthUser)return; try{ const {data,error}=await withTimeout(supabaseClient.from('search_history').select('query').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).limit(10),5000); if(error)throw error; searchHistory = data ? data.map(i=>i.query) : []; }catch(e){ searchHistory=[]; } }
-            async function saveSearchQuery(query) { if(!currentAuthUser||!query)return; try{ await supabaseClient.from('search_history').insert({user_id:currentAuthUser.id, query}); const {data:ids}=await supabaseClient.from('search_history').select('id').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).range(10,9999); if(ids&&ids.length) await supabaseClient.from('search_history').delete().in('id', ids.map(r=>r.id)); await loadSearchHistory(); }catch(e){ console.warn('saveSearchQuery',e); } }
-            async function loadNotificationsCount() { if(!currentAuthUser)return; try{ const {count,error}=await withTimeout(supabaseClient.from('notifications').select('*',{count:'exact',head:true}).eq('user_id',currentAuthUser.id).eq('read',false),5000); if(!error) unreadNotifications = count||0; }catch(e){ unreadNotifications=0; } }
-            function requestWakeLock() { try{ if('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock=>{wakeLock=lock;}).catch(()=>{}); }catch(e){} }
+            async function loadSearchHistory(){ if(!currentAuthUser)return; try{ const {data,error}=await withTimeout(supabaseClient.from('search_history').select('query').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).limit(10),5000); if(error)throw error; searchHistory = data?data.map(i=>i.query):[]; }catch(e){ searchHistory=[]; } }
+            async function saveSearchQuery(query){ if(!currentAuthUser||!query)return; try{ await supabaseClient.from('search_history').insert({user_id:currentAuthUser.id,query}); const {data:ids}=await supabaseClient.from('search_history').select('id').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).range(10,9999); if(ids&&ids.length) await supabaseClient.from('search_history').delete().in('id',ids.map(r=>r.id)); await loadSearchHistory(); }catch(e){ console.warn('saveSearchQuery',e); } }
+            async function loadNotificationsCount(){ if(!currentAuthUser)return; try{ const {count,error}=await withTimeout(supabaseClient.from('notifications').select('*',{count:'exact',head:true}).eq('user_id',currentAuthUser.id).eq('read',false),5000); if(!error) unreadNotifications=count||0; }catch(e){ unreadNotifications=0; } }
+            function requestWakeLock(){ try{ if('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock=>{wakeLock=lock;}).catch(()=>{}); }catch(e){} }
 
-            // Туториалы
+            // ===================== ТУТОРИАЛЫ =====================
             function checkTutorials(isFirstLogin=false){ if(!currentAuthUser)return; const done=userProgress.tutorial_completed===true; if(isFirstLogin||!done) showUserTutorial(); }
             async function markTutorialCompleted(){ await supabaseClient.from('user_progress').update({tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.tutorial_completed=true; }
             function showUserTutorial(){
@@ -705,7 +632,7 @@
                 function render(){ const s=slides[cur], last=cur===slides.length-1; cont.innerHTML=`<div class="tutorial-overlay"><div class="tutorial-slide"><h2>${s.title}</h2><p>${s.text}</p><button class="btn w-full mt-12" id="adminTutNextBtn">${last?'Закрыть':'Вперёд →'}</button></div></div>`; document.getElementById('adminTutNextBtn').addEventListener('click',()=>{if(cur<slides.length-1){cur++;render();}else{supabaseClient.from('user_progress').update({admin_tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.admin_tutorial_completed=true; cont.innerHTML='';}}); } render();
             }
 
-            // Навигация
+            // ===================== НАВИГАЦИЯ =====================
             function switchSection(section){
                 currentSection=section;
                 document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -720,7 +647,7 @@
                 playSfx('click'); requestWakeLock();
             }
             document.querySelectorAll('.nav-item[data-section]').forEach(btn=>btn.addEventListener('click',()=>{const sec=btn.dataset.section; if(sec==='admin'&&!isAdmin)return; switchSection(sec);}));
-            document.getElementById('themeToggleBtn').addEventListener('click',async()=>{ currentTheme = currentTheme==='light'?'dark':'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id',currentAuthUser.id); playSfx('click'); });
+            document.getElementById('themeToggleBtn').addEventListener('click',async()=>{ currentTheme=currentTheme==='light'?'dark':'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id',currentAuthUser.id); playSfx('click'); });
             document.getElementById('headerSearchTrigger').addEventListener('click', openSearchModal);
             document.getElementById('logoBtn').addEventListener('click', openLinksModal);
 
@@ -735,33 +662,33 @@
                 document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{window.open(item.dataset.link,'_blank');document.getElementById('modalOverlay').remove();}));
             }
 
-            // Админ-пароль
+            // ===================== АДМИН-ПАРОЛЬ =====================
             async function checkAdminPassword(){
                 if(!currentAuthUser||!isAdmin)return;
                 const has = userSettings.admin_password_hash && userSettings.admin_password_hash!==null;
                 if(!has) showCreateAdminPasswordModal(); else showAdminLoginModal(userSettings.admin_password_hash);
             }
             function showCreateAdminPasswordModal(){
-                showModal(`<h3 class="modal-title">🔒 Создайте пароль администратора</h3><p style="color:var(--muted);margin-bottom:16px;">Этот пароль будет использоваться для входа в админ-панель.</p>
+                showModal(`<h3 class="modal-title">🔒 Создайте пароль администратора</h3><p style="color:var(--muted);margin-bottom:1rem;">Этот пароль будет использоваться для входа в админ-панель.</p>
                 <div class="form-group"><label>Новый пароль</label><input type="password" id="newAdminPass" placeholder="Минимум 6 символов"></div>
                 <div class="form-group"><label>Повторите пароль</label><input type="password" id="confirmAdminPass" placeholder="Повторите пароль"></div>
-                <button class="btn w-full" id="createAdminPassBtn">Создать</button><p id="adminPassError" style="color:#EF4444;font-size:12px;margin-top:8px;"></p>`);
+                <button class="btn w-full" id="createAdminPassBtn">Создать</button><p id="adminPassError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
                 document.getElementById('createAdminPassBtn').addEventListener('click',async()=>{
-                    const p1=document.getElementById('newAdminPass').value.trim(); const p2=document.getElementById('confirmAdminPass').value.trim(); const errEl=document.getElementById('adminPassError');
+                    const p1=document.getElementById('newAdminPass').value.trim(), p2=document.getElementById('confirmAdminPass').value.trim(), errEl=document.getElementById('adminPassError');
                     if(p1.length<6){errEl.textContent='Пароль слишком короткий';return;} if(p1!==p2){errEl.textContent='Пароли не совпадают';return;}
                     const hash=await hashPassword(p1); await supabaseClient.from('user_settings').update({admin_password_hash:hash}).eq('user_id',currentAuthUser.id); userSettings.admin_password_hash=hash;
                     playSfx('success'); showToast('Пароль администратора установлен','success'); document.getElementById('modalOverlay').remove(); showAdminTutorial(); loadAdminPanel();
                 });
             }
             function showAdminLoginModal(storedHash){
-                showModal(`<h3 class="modal-title">🔒 Вход в админ-панель</h3><div class="form-group"><label>Пароль</label><input type="password" id="adminLoginPass" placeholder="Введите пароль"></div><button class="btn w-full" id="adminLoginBtn">Войти</button><p id="adminLoginError" style="color:#EF4444;font-size:12px;margin-top:8px;"></p>`);
+                showModal(`<h3 class="modal-title">🔒 Вход в админ-панель</h3><div class="form-group"><label>Пароль</label><input type="password" id="adminLoginPass" placeholder="Введите пароль"></div><button class="btn w-full" id="adminLoginBtn">Войти</button><p id="adminLoginError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
                 document.getElementById('adminLoginBtn').addEventListener('click',async()=>{
-                    const pass=document.getElementById('adminLoginPass').value.trim(); const errEl=document.getElementById('adminLoginError'); const hash=await hashPassword(pass);
+                    const pass=document.getElementById('adminLoginPass').value.trim(), errEl=document.getElementById('adminLoginError'); const hash=await hashPassword(pass);
                     if(hash!==storedHash){errEl.textContent='Неверный пароль';return;} playSfx('success'); document.getElementById('modalOverlay').remove(); showAdminTutorial(); loadAdminPanel();
                 });
             }
 
-            // Главная лента
+            // ===================== ГЛАВНАЯ ЛЕНТА =====================
             let feedPage=0; const FEED_PAGE_SIZE=20;
             function setupServerSelector(){
                 const btn=document.getElementById('serverSelectBtn');
@@ -777,7 +704,7 @@
                 });
                 updateServerButtonText();
             }
-            function updateServerButtonText(){ const btn=document.getElementById('serverSelectBtn'); btn.textContent = currentFilterServer ? `🌐 ${currentFilterServer}` : '🌐 Все сервера'; }
+            function updateServerButtonText(){ const btn=document.getElementById('serverSelectBtn'); btn.textContent = currentFilterServer?`🌐 ${currentFilterServer}`:'🌐 Все сервера'; }
             async function loadHomeFeed(reset=true){
                 if(reset) feedPage=0;
                 const cont=document.getElementById('homeFeed'); if(reset) cont.innerHTML='<div class="loader"></div>';
@@ -785,7 +712,7 @@
                     let query = supabaseClient.from('ads').select('*').eq('status','approved').order('created_at',{ascending:false}).range(feedPage*FEED_PAGE_SIZE,(feedPage+1)*FEED_PAGE_SIZE-1);
                     if(currentFilterServer) query = query.eq('server', currentFilterServer);
                     const {data,error}=await withTimeout(query,8000); if(error) throw error;
-                    const newAds = data || [];
+                    const newAds = data||[];
                     const validAds = newAds.filter(ad=>!ad.expires_at || new Date(ad.expires_at)>new Date());
                     if(reset) homeAds=validAds; else homeAds=[...homeAds,...validAds];
                     renderHomeFeed(); feedPage++;
@@ -803,14 +730,26 @@
                         if(diff>0){ const total=Math.floor(diff/1000),h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60; timer=`<div class="countdown-timer">⏳ Удаление через: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}</div>`; }
                         else timer='<div class="countdown-timer">⚠️ Удалено</div>';
                     }
-                    html+=`<div class="card ad-card" data-ad-id="${ad.id}"><img class="ad-card-img" src="${img}" loading="lazy" onerror="this.src='${DEFAULT_AD_IMAGE}'"><div class="ad-card-info"><div class="ad-card-title">${ad.item_name||'Без названия'}</div><div class="ad-card-price">${formatPrice(ad.price)}</div><div class="ad-card-badges">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div><div class="ad-card-author">Автор: ${ad.author_username||ad.author_id}</div>${timer}</div></div>`;
+                    html+=`<div class="card ad-card" data-ad-id="${ad.id}">
+                        <div class="img-container" style="width:80px;height:100px;border-radius:12px;flex-shrink:0;background:var(--border);">
+                            <div class="skeleton" style="position:absolute;inset:0;border-radius:12px;"></div>
+                            <img src="${img}" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;" onload="this.classList.add('loaded')" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <div style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:var(--border);border-radius:12px;z-index:0;">📷</div>
+                        </div>
+                        <div class="ad-card-info">
+                            <div class="ad-card-title">${ad.item_name||'Без названия'}</div>
+                            <div class="ad-card-price">${formatPrice(ad.price)}</div>
+                            <div class="ad-card-badges">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>
+                            <div class="ad-card-author">Автор: ${ad.author_username||ad.author_id}</div>${timer}
+                        </div>
+                    </div>`;
                 });
                 cont.innerHTML=html;
                 cont.querySelectorAll('.ad-card').forEach(card=>card.addEventListener('click',()=>{const id=card.dataset.adId; const ad=homeAds.find(a=>a.id==id); if(ad)openAdDetail(ad);}));
                 const loadMore=document.createElement('button'); loadMore.className='btn secondary w-full mt-12'; loadMore.textContent='Загрузить ещё'; loadMore.addEventListener('click',()=>loadHomeFeed(false)); cont.appendChild(loadMore);
             }
 
-            // Корзина
+            // ===================== КОРЗИНА =====================
             async function loadCart(){
                 const cont=document.getElementById('cartList'); if(!currentAuthUser){cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>';return;} cont.innerHTML='<div class="loader"></div>';
                 try{
@@ -820,7 +759,7 @@
                     cartAds=ads||[]; if(!cartAds.length){cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>';return;}
                     let html=''; cartAds.forEach(ad=>{
                         const isDel=ad.status==='deleted'; const statusBadge=isDel?'<span class="badge status-deleted">🔴 Удалено</span>':'<span class="badge status-approved">🟢 Висит</span>';
-                        html+=`<div class="card ${isDel?'inactive-card':''}" data-ad-id="${ad.id}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:13px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:4px;">${statusBadge}</div></div><button class="btn danger" data-remove-cart="${ad.id}">🗑</button></div></div>`;
+                        html+=`<div class="card ${isDel?'inactive-card':''}" data-ad-id="${ad.id}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.8rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><button class="btn danger" data-remove-cart="${ad.id}">🗑</button></div></div>`;
                     });
                     cont.innerHTML=html;
                     cont.querySelectorAll('[data-remove-cart]').forEach(btn=>btn.addEventListener('click',async(e)=>{e.stopPropagation(); await supabaseClient.from('favorites').delete().eq('user_id',currentAuthUser.id).eq('ad_id',btn.dataset.removeCart); loadCart();}));
@@ -828,7 +767,7 @@
                 }catch(e){cont.innerHTML='<div class="empty-state">⚠️ Ошибка загрузки</div>';}
             }
 
-            // Форма отправки
+            // ===================== ФОРМА ОТПРАВКИ =====================
             let sendFormData = { type:'sell', category:null, server:null };
             function initSendForm(){
                 const priceInput=document.getElementById('sendPrice'); priceInput.removeEventListener('input',formatPriceInputHandler); priceInput.addEventListener('input',formatPriceInputHandler);
@@ -864,7 +803,7 @@
                     myAds=data||[]; if(!myAds.length){cont.innerHTML='<div class="empty-state">У вас пока нет объявлений</div>';return;}
                     let html=''; myAds.forEach(ad=>{
                         let statusBadge=ad.status==='pending'?'<span class="badge status-pending">🟡 На модерации</span>':ad.status==='deleted'?'<span class="badge status-deleted">🔴 Удалено</span>':'<span class="badge status-approved">🟢 Висит</span>';
-                        html+=`<div class="card ${ad.status==='deleted'?'inactive-card':''}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:4px;">${statusBadge}</div></div><div class="flex-between gap-8"><button class="btn danger" data-perm-del="${ad.id}">🗑</button>${ad.status==='deleted'?`<button class="btn gold" data-appeal="${ad.id}">📨</button>`:''}</div></div></div>`;
+                        html+=`<div class="card ${ad.status==='deleted'?'inactive-card':''}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><div class="flex-between gap-8"><button class="btn danger" data-perm-del="${ad.id}">🗑</button>${ad.status==='deleted'?`<button class="btn gold" data-appeal="${ad.id}">📨</button>`:''}</div></div></div>`;
                     });
                     cont.innerHTML=html;
                     cont.querySelectorAll('[data-perm-del]').forEach(btn=>btn.addEventListener('click',async(e)=>{e.stopPropagation(); showConfirm('Удаление','Стереть объявление навсегда?',async()=>{await supabaseClient.from('ads').delete().eq('id',btn.dataset.permDel); await supabaseClient.from('favorites').delete().eq('ad_id',btn.dataset.permDel); loadMyAds();});}));
@@ -879,37 +818,36 @@
                     <div class="form-group"><label>Причина</label><button class="btn secondary w-full" id="appealReasonBtn">Выберите причину</button></div>
                     <div class="form-group"><label>Доказательства</label><input type="text" id="appealEvidence" placeholder="https://..."></div>
                     <button class="btn w-full" id="appealSubmitBtn">Отправить</button>`);
-                let selectedReason = null;
+                let selectedReason=null;
                 document.getElementById('appealReasonBtn').addEventListener('click',()=>{
                     showModal(`<h3 class="modal-title">Выберите причину</h3><div class="grid-tiles">${APPEAL_REASONS.map(r=>`<div class="grid-tile" data-reason="${r}">${r}</div>`).join('')}</div>`);
-                    document.querySelectorAll('#modalOverlay [data-reason]').forEach(t=>t.addEventListener('click',()=>{
-                        selectedReason = t.dataset.reason;
-                        document.getElementById('appealReasonBtn').textContent = selectedReason;
-                        document.getElementById('modalOverlay').remove();
-                    }));
+                    document.querySelectorAll('#modalOverlay [data-reason]').forEach(t=>t.addEventListener('click',()=>{ selectedReason=t.dataset.reason; document.getElementById('appealReasonBtn').textContent=selectedReason; document.getElementById('modalOverlay').remove(); }));
                 });
                 document.getElementById('appealSubmitBtn').addEventListener('click',async()=>{
                     if(!selectedReason){showAlert('Ошибка','Выберите причину');return;}
-                    const evidence=document.getElementById('appealEvidence').value.trim();
-                    const lc=checkLinksString(evidence); if(!lc.valid){showAlert('Ошибка',lc.message);return;}
+                    const evidence=document.getElementById('appealEvidence').value.trim(); const lc=checkLinksString(evidence); if(!lc.valid){showAlert('Ошибка',lc.message);return;}
                     await supabaseClient.from('appeals').insert({ad_id:appealAdId,author_id:currentAuthUser.id,reason:selectedReason,evidence,status:'pending',created_at:new Date().toISOString()});
                     playSfx('success'); showAlert('Успех','Апелляция отправлена'); document.getElementById('modalOverlay').remove();
                 });
             }
 
-            // Админ-панель
+            // ===================== АДМИН-ПАНЕЛЬ =====================
             async function loadAdminPanel(){
                 const cont=document.getElementById('adminPanelContent'); if(!isAdmin){cont.innerHTML='<div class="empty-state">Нет доступа</div>';return;} cont.innerHTML='<div class="loader"></div>';
                 try{
-                    const [pr,ar,rr]=await Promise.all([withTimeout(supabaseClient.from('ads').select('*').eq('status','pending').order('created_at',{ascending:false}),5000),withTimeout(supabaseClient.from('appeals').select('*').eq('status','pending').order('created_at',{ascending:false}),5000),withTimeout(supabaseClient.from('reports').select('*').eq('status','pending').order('created_at',{ascending:false}),5000)]);
+                    const [pr,ar,rr]=await Promise.all([
+                        withTimeout(supabaseClient.from('ads').select('*').eq('status','pending').order('created_at',{ascending:false}),5000),
+                        withTimeout(supabaseClient.from('appeals').select('*').eq('status','pending').order('created_at',{ascending:false}),5000),
+                        withTimeout(supabaseClient.from('reports').select('*').eq('status','pending').order('created_at',{ascending:false}),5000)
+                    ]);
                     if(pr.error)throw pr.error; if(ar.error)throw ar.error; if(rr.error)throw rr.error;
                     pendingAds=pr.data||[]; pendingAppeals=ar.data||[]; pendingReports=rr.data||[];
                     let html='<h3>📋 Объявления на модерации</h3>';
                     if(!pendingAds.length) html+='<div class="empty-state">Нет объявлений</div>';
-                    else pendingAds.forEach(ad=>{ html+=`<div class="card"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:12px;color:var(--muted);">${ad.server} • ${ad.author_username||ad.author_id} • ${formatPrice(ad.price)}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve="${ad.id}">✅</button><button class="btn danger" data-reject="${ad.id}">❌</button><button class="btn secondary" data-edit-ad="${ad.id}">✏️</button></div></div>`; });
-                    html+='<h3 style="margin-top:20px;">📨 Апелляции</h3>'; if(!pendingAppeals.length)html+='<div class="empty-state">Нет апелляций</div>'; else pendingAppeals.forEach(ap=>{ html+=`<div class="card"><div style="font-weight:700;">Объявление ID: ${ap.ad_id}</div><div style="font-size:12px;color:var(--muted);">Автор: ${ap.author_username||ap.author_id}</div><div style="font-size:12px;">Причина: ${ap.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-appeal="${ap.id}">✅</button><button class="btn danger" data-reject-appeal="${ap.id}">❌</button></div></div>`; });
-                    html+='<h3 style="margin-top:20px;">🚨 Жалобы</h3>'; if(!pendingReports.length)html+='<div class="empty-state">Нет жалоб</div>'; else pendingReports.forEach(rp=>{ html+=`<div class="card"><div style="font-weight:700;">Объявление ID: ${rp.ad_id}</div><div style="font-size:12px;color:var(--muted);">От: ${rp.reporter_username||rp.reporter_id}</div><div style="font-size:12px;">Причина: ${rp.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-report="${rp.id}">✅</button><button class="btn danger" data-reject-report="${rp.id}">❌</button></div></div>`; });
-                    if(isOwner){ html+=`<h3 style="margin-top:20px;">👤 Управление пользователями</h3><div class="form-group"><input type="text" id="adminUsernameInput" placeholder="username или ID"></div><div class="flex-between gap-8 mb-8"><button class="btn danger w-full" id="adminBanBtn">🔨 Забанить</button><button class="btn success w-full" id="adminUnbanBtn">🔓 Разбанить</button></div><div class="flex-between gap-8 mb-8"><button class="btn w-full" id="adminMakeAdminBtn">👑 Сделать админом</button><button class="btn secondary w-full" id="adminRemoveAdminBtn">⬇️ Снять админа</button></div><button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>`; }
+                    else pendingAds.forEach(ad=>{ html+=`<div class="card"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${ad.author_username||ad.author_id} • ${formatPrice(ad.price)}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve="${ad.id}">✅</button><button class="btn danger" data-reject="${ad.id}">❌</button><button class="btn secondary" data-edit-ad="${ad.id}">✏️</button></div></div>`; });
+                    html+='<h3 style="margin-top:1rem;">📨 Апелляции</h3>'; if(!pendingAppeals.length)html+='<div class="empty-state">Нет апелляций</div>'; else pendingAppeals.forEach(ap=>{ html+=`<div class="card"><div style="font-weight:700;">Объявление ID: ${ap.ad_id}</div><div style="font-size:0.75rem;color:var(--muted);">Автор: ${ap.author_username||ap.author_id}</div><div style="font-size:0.8rem;">Причина: ${ap.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-appeal="${ap.id}">✅</button><button class="btn danger" data-reject-appeal="${ap.id}">❌</button></div></div>`; });
+                    html+='<h3 style="margin-top:1rem;">🚨 Жалобы</h3>'; if(!pendingReports.length)html+='<div class="empty-state">Нет жалоб</div>'; else pendingReports.forEach(rp=>{ html+=`<div class="card"><div style="font-weight:700;">Объявление ID: ${rp.ad_id}</div><div style="font-size:0.75rem;color:var(--muted);">От: ${rp.reporter_username||rp.reporter_id}</div><div style="font-size:0.8rem;">Причина: ${rp.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-report="${rp.id}">✅</button><button class="btn danger" data-reject-report="${rp.id}">❌</button></div></div>`; });
+                    if(isOwner){ html+=`<h3 style="margin-top:1rem;">👤 Управление пользователями</h3><div class="form-group"><input type="text" id="adminUsernameInput" placeholder="username или ID"></div><div class="flex-between gap-8 mb-8"><button class="btn danger w-full" id="adminBanBtn">🔨 Забанить</button><button class="btn success w-full" id="adminUnbanBtn">🔓 Разбанить</button></div><div class="flex-between gap-8 mb-8"><button class="btn w-full" id="adminMakeAdminBtn">👑 Сделать админом</button><button class="btn secondary w-full" id="adminRemoveAdminBtn">⬇️ Снять админа</button></div><button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>`; }
                     cont.innerHTML=html; bindAdminEvents();
                 }catch(e){cont.innerHTML='<div class="empty-state">⚠️ Ошибка загрузки</div>';}
             }
@@ -926,7 +864,7 @@
             async function adminUserAction(action){ const target=document.getElementById('adminUsernameInput').value.trim(); if(!target){showAlert('Ошибка','Введите username или ID');return;} try{ let q=supabaseClient.from('app_users').select('*'); if(!isNaN(target))q=q.eq('id',target); else q=q.eq('username',target); const {data:users,error}=await withTimeout(q,5000); if(error)throw error; if(!users.length){showAlert('Ошибка','Пользователь не найден');return;} const user=users[0]; let updates={}; if(action==='ban')updates.banned=true; else if(action==='unban')updates.banned=false; else if(action==='make_admin')updates.is_admin=true; else if(action==='remove_admin')updates.is_admin=false; await supabaseClient.from('app_users').update(updates).eq('id',user.id); playSfx('success'); showAlert('Успех','Действие выполнено'); loadAdminPanel(); }catch(e){showAlert('Ошибка','Не удалось выполнить');} }
             function openAdminEditModal(ad){ showModal(`<h3 class="modal-title">✏️ Редактирование</h3><div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name||''}"></div><div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price||''}"></div><div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description||''}</textarea></div><div class="form-group"><label>Скриншоты</label><input type="text" id="editAdminImgs" value="${ad.images||''}"></div><button class="btn w-full" id="editAdminSaveBtn">Сохранить и одобрить</button>`); document.getElementById('editAdminSaveBtn').addEventListener('click',async()=>{ const item_name=document.getElementById('editAdminName').value.trim(); const price=parsePriceToNumber(document.getElementById('editAdminPrice').value); const description=document.getElementById('editAdminDesc').value.trim(); const images=document.getElementById('editAdminImgs').value.trim(); const lc=checkLinksString(images); if(!lc.valid){showAlert('Ошибка',lc.message);return;} const expiresAt=new Date(Date.now()+AD_EXPIRY_HOURS*60*60*1000).toISOString(); await supabaseClient.from('ads').update({item_name,price,description,images,status:'approved',expires_at:expiresAt}).eq('id',ad.id); playSfx('success'); document.getElementById('modalOverlay').remove(); loadAdminPanel(); loadHomeFeed(); }); }
 
-            // Детали объявления
+            // ===================== ДЕТАЛИ ОБЪЯВЛЕНИЯ =====================
             async function openAdDetail(ad){
                 const images=ad.images?ad.images.split(',').map(s=>s.trim()).filter(s=>s):[]; const gallery=images.length?'<div class="image-gallery">'+images.map(img=>`<img src="${img}" loading="lazy" onerror="this.style.display='none'">`).join('')+'</div>':'';
                 const catLabel=ALL_CATEGORIES.find(c=>c.id===ad.category)?.label||ad.category; const modeBadge=ad.mode==='sell'?'<span class="badge sell">Продажа</span>':'<span class="badge buy">Покупка</span>';
@@ -934,7 +872,7 @@
                 else if(ad.status==='deleted'){ statusHtml='<div class="empty-state">🗑️ Объявление удалено</div>'; if(ad.author_id===currentAuthUser.id) statusHtml+='<button class="btn gold w-full mt-8" id="detailAppealBtn">📨 Подать апелляцию</button>'; }
                 else statusHtml=`<button class="btn w-full mb-8" id="detailContactBtn">💬 Написать</button><button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button><button class="btn secondary w-full mb-8" id="detailReviewsBtn">⭐ Отзывы</button>${ad.author_id===currentAuthUser.id?'<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить</button>':''}<button class="btn secondary w-full mt-8" id="detailReportBtn">🚨 Пожаловаться</button>`;
                 const isFav=await checkIfInCart(ad.id);
-                showModal(`<h3 class="modal-title">${ad.item_name}</h3><div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>${gallery}<div style="font-size:24px;font-weight:900;color:var(--accent);margin-bottom:8px;">${formatPrice(ad.price)}</div><p style="color:var(--muted);margin-bottom:12px;">${ad.description||'Нет описания'}</p><div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Автор: <span id="detailAuthorLink" style="cursor:pointer;color:var(--text);">${ad.author_username||ad.author_id}</span></div>${statusHtml}<div id="detailReviewsSection"></div><h4 style="margin:16px 0 8px;">📌 Похожие</h4><div id="detailSimilarAds"></div>`);
+                showModal(`<h3 class="modal-title">${ad.item_name}</h3><div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>${gallery}<div style="font-size:1.5rem;font-weight:900;color:var(--accent);margin-bottom:0.5rem;">${formatPrice(ad.price)}</div><p style="color:var(--muted);margin-bottom:0.8rem;">${ad.description||'Нет описания'}</p><div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;">Автор: <span id="detailAuthorLink" style="cursor:pointer;color:var(--text);">${ad.author_username||ad.author_id}</span></div>${statusHtml}<div id="detailReviewsSection"></div><h4 style="margin:1rem 0 0.5rem;">📌 Похожие</h4><div id="detailSimilarAds"></div>`);
                 const overlay=document.getElementById('modalOverlay');
                 if(ad.status==='approved'){
                     document.getElementById('detailContactBtn').addEventListener('click',()=>window.open(`https://t.me/${ad.author_username||ad.author_id}`,'_blank'));
@@ -949,13 +887,13 @@
                 loadReviews(ad.id); loadSimilarAds(ad.category,ad.id);
             }
             async function checkIfInCart(adId){ if(!currentAuthUser)return false; const {data,error}=await supabaseClient.from('favorites').select('*').eq('user_id',currentAuthUser.id).eq('ad_id',adId).maybeSingle(); if(error)return false; return !!data; }
-            async function loadReviews(adId){ const cont=document.getElementById('detailReviewsSection'); if(!cont)return; try{ const {data:reviews,error}=await withTimeout(supabaseClient.from('reviews').select('*').eq('ad_id',adId).order('created_at',{ascending:false}),5000); if(error)throw error; const revs=reviews||[]; if(!revs.length){cont.innerHTML='<p style="color:var(--muted);">⭐ Отзывов пока нет</p>';return;} const avg=revs.reduce((s,r)=>s+r.stars,0)/revs.length; let html=`<div style="font-size:20px;font-weight:800;">⭐ ${avg.toFixed(1)} (${revs.length})</div><div class="progress-bar mb-12"><div class="progress-fill" style="width:${(avg/5*100)}%;"></div></div>`; revs.forEach(r=>{ const canEdit=r.author_id===currentAuthUser.id&&(Date.now()-new Date(r.created_at).getTime())<7*24*60*60*1000; html+=`<div class="review-item"><div style="font-weight:600;">${r.author_username||r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span></div><div style="font-size:12px;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('ru-RU')}</div><p style="font-size:13px;margin:4px 0;">${r.text||''}</p>${r.media_links?`<div style="font-size:11px;color:var(--accent);">${r.media_links}</div>`:''}${canEdit?`<div class="flex-between gap-8 mt-8"><button class="btn secondary" data-edit-review="${r.id}">✏️</button><button class="btn danger" data-del-review="${r.id}">🗑</button></div>`:''}</div>`; }); cont.innerHTML=html; cont.querySelectorAll('[data-edit-review]').forEach(btn=>btn.addEventListener('click',()=>{const r=revs.find(x=>x.id==btn.dataset.editReview); if(r)openEditReviewModal(r);})); cont.querySelectorAll('[data-del-review]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('reviews').delete().eq('id',btn.dataset.delReview); loadReviews(adId);})); }catch(e){cont.innerHTML='<p style="color:var(--muted);">⚠️ Не удалось загрузить отзывы</p>';} }
+            async function loadReviews(adId){ const cont=document.getElementById('detailReviewsSection'); if(!cont)return; try{ const {data:reviews,error}=await withTimeout(supabaseClient.from('reviews').select('*').eq('ad_id',adId).order('created_at',{ascending:false}),5000); if(error)throw error; const revs=reviews||[]; if(!revs.length){cont.innerHTML='<p style="color:var(--muted);">⭐ Отзывов пока нет</p>';return;} const avg=revs.reduce((s,r)=>s+r.stars,0)/revs.length; let html=`<div style="font-size:1.2rem;font-weight:800;">⭐ ${avg.toFixed(1)} (${revs.length})</div><div class="progress-bar mb-12"><div class="progress-fill" style="width:${(avg/5*100)}%;"></div></div>`; revs.forEach(r=>{ const canEdit=r.author_id===currentAuthUser.id&&(Date.now()-new Date(r.created_at).getTime())<7*24*60*60*1000; html+=`<div class="review-item"><div style="font-weight:600;">${r.author_username||r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span></div><div style="font-size:0.7rem;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('ru-RU')}</div><p style="font-size:0.8rem;margin:0.3rem 0;">${r.text||''}</p>${r.media_links?`<div style="font-size:0.7rem;color:var(--accent);">${r.media_links}</div>`:''}${canEdit?`<div class="flex-between gap-8 mt-8"><button class="btn secondary" data-edit-review="${r.id}">✏️</button><button class="btn danger" data-del-review="${r.id}">🗑</button></div>`:''}</div>`; }); cont.innerHTML=html; cont.querySelectorAll('[data-edit-review]').forEach(btn=>btn.addEventListener('click',()=>{const r=revs.find(x=>x.id==btn.dataset.editReview); if(r)openEditReviewModal(r);})); cont.querySelectorAll('[data-del-review]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('reviews').delete().eq('id',btn.dataset.delReview); loadReviews(adId);})); }catch(e){cont.innerHTML='<p style="color:var(--muted);">⚠️ Не удалось загрузить отзывы</p>';} }
             async function loadSimilarAds(category,currentId){ const cont=document.getElementById('detailSimilarAds'); if(!cont)return; try{ const {data}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').eq('category',category).neq('id',currentId).limit(3).order('created_at',{ascending:false}),5000); const similar=data||[]; if(!similar.length){cont.innerHTML='<p style="color:var(--muted);">Похожих нет</p>';return;} cont.innerHTML=similar.map(ad=>`<div class="card" data-sim="${ad.id}"><span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}</div>`).join(''); cont.querySelectorAll('[data-sim]').forEach(el=>el.addEventListener('click',()=>{const found=similar.find(a=>a.id==el.dataset.sim); if(found){document.getElementById('modalOverlay').remove(); openAdDetail(found);}})); }catch(e){} }
             function openReviewsModal(adId){ showModal(`<h3 class="modal-title">⭐ Оставить отзыв</h3><div class="form-group"><label>Оценка</label><div class="star-rating" id="reviewStars">${[1,2,3,4,5].map(i=>`<span data-star="${i}">☆</span>`).join('')}</div></div><div class="form-group"><label>Ссылки</label><input type="text" id="reviewMedia" placeholder="https://..."></div><div class="form-group"><label>Текст</label><textarea id="reviewText"></textarea></div><button class="btn w-full" id="reviewSubmitBtn">Отправить</button>`); let selected=0; const stars=document.getElementById('reviewStars'); stars.querySelectorAll('span').forEach(s=>s.addEventListener('click',()=>{selected=parseInt(s.dataset.star); updateStars(stars,selected);})); document.getElementById('reviewSubmitBtn').addEventListener('click',async()=>{ if(!selected){showAlert('Ошибка','Выберите оценку');return;} const text=document.getElementById('reviewText').value.trim(); const media=document.getElementById('reviewMedia').value.trim(); const lc=checkLinksString(media); if(!lc.valid){showAlert('Ошибка',lc.message);return;} try{ await supabaseClient.from('reviews').insert({ad_id:adId,author_id:currentAuthUser.id,author_username:currentAuthUser.username,stars:selected,text,media_links:media,created_at:new Date().toISOString()}); playSfx('success'); showAlert('Успех','Отзыв отправлен'); document.getElementById('modalOverlay').remove(); loadReviews(adId); }catch(e){showAlert('Ошибка','Не удалось отправить отзыв');} }); }
             function updateStars(container,selected){ container.querySelectorAll('span').forEach(s=>{ s.textContent=parseInt(s.dataset.star)<=selected?'★':'☆'; s.classList.toggle('active',parseInt(s.dataset.star)<=selected); }); }
             function openEditReviewModal(review){ showModal(`<h3 class="modal-title">✏️ Редактировать отзыв</h3><div class="form-group"><label>Оценка</label><div class="star-rating" id="editReviewStars">${[1,2,3,4,5].map(i=>`<span data-star="${i}" class="${i<=review.stars?'active':''}">${i<=review.stars?'★':'☆'}</span>`).join('')}</div></div><div class="form-group"><label>Ссылки</label><input type="text" id="editReviewMedia" value="${review.media_links||''}"></div><div class="form-group"><label>Текст</label><textarea id="editReviewText">${review.text||''}</textarea></div><button class="btn w-full" id="editReviewSubmitBtn">Сохранить</button>`); let selected=review.stars; const stars=document.getElementById('editReviewStars'); stars.querySelectorAll('span').forEach(s=>s.addEventListener('click',()=>{selected=parseInt(s.dataset.star); updateStars(stars,selected);})); document.getElementById('editReviewSubmitBtn').addEventListener('click',async()=>{ const text=document.getElementById('editReviewText').value.trim(); const media=document.getElementById('editReviewMedia').value.trim(); const lc=checkLinksString(media); if(!lc.valid){showAlert('Ошибка',lc.message);return;} await supabaseClient.from('reviews').update({stars:selected,text,media_links:media}).eq('id',review.id); playSfx('success'); document.getElementById('modalOverlay').remove(); loadReviews(review.ad_id); }); }
 
-            // Игра
+            // ===================== ИГРА БАРЫГА =====================
             async function loadGameState(){
                 if(!currentAuthUser)return; if(barygaStateLoaded)return;
                 const {data,error}=await withTimeout(supabaseClient.from('baryga').select('*').eq('user_id',currentAuthUser.id).maybeSingle(),5000); if(error)console.warn(error);
@@ -967,7 +905,7 @@
             }
             function openBarygaGame(){
                 loadGameState().then(()=>{
-                    showModal(`<h3 class="modal-title">🎮 Игра «Барыга»</h3><div style="text-align:center;font-size:24px;font-weight:900;margin-bottom:8px;" id="gameMoneyDisplay">💰 ${formatPrice(gameState.money)}</div><div class="game-click-area" id="gameClickArea"><img src="https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg" alt="Клик"></div><div style="font-size:12px;color:var(--muted);text-align:center;" id="gameStatsDisplay">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div><div class="mt-12" id="gameUpgradesContainer"></div>`, ()=>saveGameState());
+                    showModal(`<h3 class="modal-title">🎮 Игра «Барыга»</h3><div style="text-align:center;font-size:1.5rem;font-weight:900;margin-bottom:0.5rem;" id="gameMoneyDisplay">💰 ${formatPrice(gameState.money)}</div><div class="game-click-area" id="gameClickArea"><img src="https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg" loading="lazy" alt="Клик"></div><div style="font-size:0.75rem;color:var(--muted);text-align:center;" id="gameStatsDisplay">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div><div class="mt-12" id="gameUpgradesContainer"></div>`, ()=>saveGameState());
                     const clickArea=document.getElementById('gameClickArea'); const upgradesCont=document.getElementById('gameUpgradesContainer'); upgradesCont.innerHTML=renderUpgrades();
                     let lastAuto=Date.now();
                     function loop(){ if(!document.getElementById('gameClickArea'))return; const now=Date.now(); if(now-lastAuto>=1000){ if(gameState.autoIncome>0){ gameState.money+=gameState.autoIncome; gameState.last_seen=new Date().toISOString(); updateGameUIFast(); saveGameStateDebounced(); } lastAuto=now; } requestAnimationFrame(loop); }
@@ -982,8 +920,8 @@
             function saveGameStateDebounced(){ if(saveGameTimeout)clearTimeout(saveGameTimeout); saveGameTimeout=setTimeout(saveGameState,1000); }
             async function saveGameState(){ if(!currentAuthUser)return; try{ const {data}=await supabaseClient.from('baryga').select('id').eq('user_id',currentAuthUser.id).single(); if(data){ await supabaseClient.from('baryga').update({money:gameState.money,click_power:gameState.clickPower,click_cost:gameState.clickCost,auto_income:gameState.autoIncome,auto_cost:gameState.autoCost,pro_cost:gameState.proCost,shop_cost:gameState.shopCost,elite_cost:gameState.eliteCost,oil_cost:gameState.oilCost,crypto_cost:gameState.cryptoCost,scrap_cost:gameState.scrapCost,last_seen:new Date().toISOString()}).eq('id',data.id); } else { await supabaseClient.from('baryga').insert({...gameState,user_id:currentAuthUser.id}); } }catch(e){console.warn('saveGameState',e);} }
 
-            // Поиск
-            function openSearchModal(){ showModal(`<h3 class="modal-title">🔍 Поиск</h3><div class="form-group"><input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off"></div><div class="flex-between gap-8 mb-12"><button class="btn w-full" id="searchItemBtn">📦 Предмет</button><button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button></div><div id="searchSuggestions"></div><div id="searchHistory"></div><div id="searchResults"></div>`); const input=document.getElementById('searchInput'); setTimeout(()=>input.focus(),100); const sugg=document.getElementById('searchSuggestions'), res=document.getElementById('searchResults'), hist=document.getElementById('searchHistory'); function renderHist(){ if(!searchHistory.length){hist.innerHTML='';return;} hist.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">📜 История:</div>'+searchHistory.map(h=>`<span class="badge" style="cursor:pointer;margin:2px;" data-hist="${h}">${h}</span>`).join(''); hist.querySelectorAll('[data-hist]').forEach(el=>el.addEventListener('click',()=>{input.value=el.dataset.hist; input.dispatchEvent(new Event('input'));})); } renderHist(); input.addEventListener('input',async()=>{ const q=input.value.trim().toLowerCase(); if(!q){sugg.innerHTML='';res.innerHTML='';return;} const {data,error}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name',`%${q}%`).limit(5),5000); if(error)return; const items=data||[]; sugg.innerHTML=items.map(ad=>`<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join(''); sugg.querySelectorAll('[data-sug]').forEach(el=>el.addEventListener('click',()=>{const ad=items.find(a=>a.id==el.dataset.sug); if(ad){saveSearchQuery(q); document.getElementById('modalOverlay').remove(); openAdDetail(ad);}})); }); document.getElementById('searchItemBtn').addEventListener('click',async()=>{ const q=input.value.trim().toLowerCase(); if(!q)return; saveSearchQuery(q); const {data,error}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name',`%${q}%`),5000); if(error)return; const items=data||[]; if(!items.length){res.innerHTML='<div class="empty-state">Ничего не найдено</div>';return;} res.innerHTML=items.map(ad=>`<div class="card" data-res-id="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join(''); res.querySelectorAll('[data-res-id]').forEach(card=>card.addEventListener('click',()=>{const ad=items.find(a=>a.id==card.dataset.resId); if(ad){document.getElementById('modalOverlay').remove(); openAdDetail(ad);}})); }); document.getElementById('searchProfileBtn').addEventListener('click',()=>{const q=input.value.trim(); if(q)openProfileModal(q);}); }
+            // ===================== ПОИСК =====================
+            function openSearchModal(){ showModal(`<h3 class="modal-title">🔍 Поиск</h3><div class="form-group"><input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off"></div><div class="flex-between gap-8 mb-12"><button class="btn w-full" id="searchItemBtn">📦 Предмет</button><button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button></div><div id="searchSuggestions"></div><div id="searchHistory"></div><div id="searchResults"></div>`); const input=document.getElementById('searchInput'); setTimeout(()=>input.focus(),100); const sugg=document.getElementById('searchSuggestions'), res=document.getElementById('searchResults'), hist=document.getElementById('searchHistory'); function renderHist(){ if(!searchHistory.length){hist.innerHTML='';return;} hist.innerHTML='<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;">📜 История:</div>'+searchHistory.map(h=>`<span class="badge" style="cursor:pointer;margin:0.15rem;" data-hist="${h}">${h}</span>`).join(''); hist.querySelectorAll('[data-hist]').forEach(el=>el.addEventListener('click',()=>{input.value=el.dataset.hist; input.dispatchEvent(new Event('input'));})); } renderHist(); input.addEventListener('input',async()=>{ const q=input.value.trim().toLowerCase(); if(!q){sugg.innerHTML='';res.innerHTML='';return;} const {data,error}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name',`%${q}%`).limit(5),5000); if(error)return; const items=data||[]; sugg.innerHTML=items.map(ad=>`<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join(''); sugg.querySelectorAll('[data-sug]').forEach(el=>el.addEventListener('click',()=>{const ad=items.find(a=>a.id==el.dataset.sug); if(ad){saveSearchQuery(q); document.getElementById('modalOverlay').remove(); openAdDetail(ad);}})); }); document.getElementById('searchItemBtn').addEventListener('click',async()=>{ const q=input.value.trim().toLowerCase(); if(!q)return; saveSearchQuery(q); const {data,error}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name',`%${q}%`),5000); if(error)return; const items=data||[]; if(!items.length){res.innerHTML='<div class="empty-state">Ничего не найдено</div>';return;} res.innerHTML=items.map(ad=>`<div class="card" data-res-id="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join(''); res.querySelectorAll('[data-res-id]').forEach(card=>card.addEventListener('click',()=>{const ad=items.find(a=>a.id==card.dataset.resId); if(ad){document.getElementById('modalOverlay').remove(); openAdDetail(ad);}})); }); document.getElementById('searchProfileBtn').addEventListener('click',()=>{const q=input.value.trim(); if(q)openProfileModal(q);}); }
             async function openProfileModal(authorIdOrUsername){
                 let userId=authorIdOrUsername;
                 if(typeof authorIdOrUsername==='string'&&authorIdOrUsername.startsWith('@')){
@@ -1006,15 +944,15 @@
                     const {data:reviews}=await supabaseClient.from('reviews').select('stars').eq('ad_id',userId);
                     const avg=reviews&&reviews.length?(reviews.reduce((s,r)=>s+r.stars,0)/reviews.length).toFixed(1):'—';
                     const cont=document.getElementById('profileAdsList');
-                    let html=`<div style="margin-bottom:16px;"><strong>Объявлений:</strong> ${count||0} • <strong>Средняя оценка:</strong> ⭐${avg}</div>`;
+                    let html=`<div style="margin-bottom:1rem;"><strong>Объявлений:</strong> ${count||0} • <strong>Средняя оценка:</strong> ⭐${avg}</div>`;
                     if(!ads.length) html+='<div class="empty-state">Нет активных объявлений</div>';
-                    else html+=ads.map(ad=>`<div class="card" data-prof-ad="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:12px;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
+                    else html+=ads.map(ad=>`<div class="card" data-prof-ad="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
                     cont.innerHTML=html;
                     cont.querySelectorAll('[data-prof-ad]').forEach(card=>card.addEventListener('click',()=>{const ad=ads.find(a=>a.id==card.dataset.profAd); if(ad){document.getElementById('modalOverlay').remove(); openAdDetail(ad);}}));
                 }catch(e){document.getElementById('profileAdsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>';}
             }
 
-            // Все разделы
+            // ===================== ВСЕ РАЗДЕЛЫ =====================
             function loadAllTiles(){
                 const tiles=[ {id:'looks',icon:'📸',label:'Лента «Луков»'}, {id:'companions',icon:'👥',label:'Попутчики'}, {id:'music',icon:'🎵',label:'Музыка'}, {id:'baryga',icon:'🎮',label:'Игра «Барыга»'}, {id:'settings',icon:'⚙️',label:'Настройки'}, {id:'manager',icon:'👨‍💼',label:'Менеджер'}, {id:'chat',icon:'💬',label:'Переписки'}, {id:'notifications',icon:'🔔',label:'Уведомления'}, {id:'achievements',icon:'🏆',label:'Достижения'} ];
                 const cont=document.getElementById('allTiles'); cont.innerHTML=tiles.map(t=>`<div class="grid-tile" data-tile="${t.id}"><span class="tile-icon">${t.icon}</span><span>${t.label}</span></div>`).join('');
@@ -1025,7 +963,7 @@
                 }));
             }
 
-            // Разделы: луки, попутчики, музыка
+            // ===================== ЛУКИ, ПОПУТЧИКИ, МУЗЫКА =====================
             function openLooksModal(){
                 showModal(`<h3 class="modal-title">📸 Лента «Луков»</h3><div class="form-group"><label>Ссылка на фото</label><input type="text" id="lookImg" placeholder="https://..."></div><div class="form-group"><label>Описание</label><input type="text" id="lookDesc" placeholder="Мой лук"></div><button class="btn w-full mb-12" id="lookSubmitBtn">Опубликовать</button><div id="looksList"><div class="loader"></div></div>`);
                 loadLooksFeed();
@@ -1041,7 +979,7 @@
                 const {data,error}=await withTimeout(supabaseClient.from('looks').select('*').order('created_at',{ascending:false}),5000);
                 if(error){cont.innerHTML='<div class="empty-state">⚠️ Ошибка</div>';return;} const looks=data||[];
                 if(!looks.length){cont.innerHTML='<div class="empty-state">📸 Образов пока нет</div>';return;}
-                cont.innerHTML=looks.map(l=>`<div class="card"><img src="${l.image_url}" loading="lazy" style="width:100%;height:200px;object-fit:cover;border-radius:12px;margin-bottom:8px;" onerror="this.style.display='none'"><div style="font-weight:700;font-size:13px;">${l.author_username||l.author_id}</div><p style="font-size:13px;color:var(--muted);">${l.description||''}</p>${l.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-look="${l.id}">🗑</button>`:''}</div>`).join('');
+                cont.innerHTML=looks.map(l=>`<div class="card"><div class="img-container" style="height:200px;border-radius:12px;background:var(--border);"><div class="skeleton" style="position:absolute;inset:0;border-radius:12px;"></div><img src="${l.image_url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;" onload="this.classList.add('loaded')" onerror="this.style.display='none';"></div><div style="font-weight:700;font-size:0.85rem;">${l.author_username||l.author_id}</div><p style="font-size:0.8rem;color:var(--muted);">${l.description||''}</p>${l.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-look="${l.id}">🗑</button>`:''}</div>`).join('');
                 cont.querySelectorAll('[data-del-look]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('looks').delete().eq('id',btn.dataset.delLook); loadLooksFeed();}));
             }
             function openCompanionsModal(){
@@ -1059,7 +997,7 @@
                 const {data,error}=await withTimeout(supabaseClient.from('companions').select('*').order('created_at',{ascending:false}),5000);
                 if(error){cont.innerHTML='<div class="empty-state">⚠️ Ошибка</div>';return;} const comps=data||[];
                 if(!comps.length){cont.innerHTML='<div class="empty-state">👥 Заявок нет</div>';return;}
-                cont.innerHTML=comps.map(c=>`<div class="card"><div style="font-weight:700;">${c.target}</div><div style="font-size:12px;color:var(--muted);">Автор: ${c.author_username||c.author_id} • Контакт: ${c.contact}</div>${c.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-comp="${c.id}">🗑</button>`:''}</div>`).join('');
+                cont.innerHTML=comps.map(c=>`<div class="card"><div style="font-weight:700;">${c.target}</div><div style="font-size:0.75rem;color:var(--muted);">Автор: ${c.author_username||c.author_id} • Контакт: ${c.contact}</div>${c.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-comp="${c.id}">🗑</button>`:''}</div>`).join('');
                 cont.querySelectorAll('[data-del-comp]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('companions').delete().eq('id',btn.dataset.delComp); loadCompanionsFeed();}));
             }
             function openMusicModal(){
@@ -1070,20 +1008,28 @@
                 document.getElementById('musicResetBtn').addEventListener('click',()=>{if(activeAudio){activeAudio.pause();window.appCurrentAudio=null;} document.getElementById('musicUrl').value='';});
             }
 
-            // Настройки
+            // ===================== НАСТРОЙКИ =====================
             function openSettingsModal(){
                 showModal(`<h3 class="modal-title">⚙️ Настройки</h3>
-                    <div class="form-group flex-between"><label>🔊 Звуки</label><input type="checkbox" id="settingsSfx" ${sfxEnabled?'checked':''} style="width:22px;height:22px;"></div>
-                    <div class="form-group flex-between"><label>🌙 Тёмная тема</label><input type="checkbox" id="settingsDark" ${currentTheme==='dark'?'checked':''} style="width:22px;height:22px;"></div>
+                    <div class="form-group flex-between"><label>🔊 Звуки</label><input type="checkbox" id="settingsSfx" ${sfxEnabled?'checked':''} style="width:1.5rem;height:1.5rem;"></div>
+                    <div class="form-group flex-between"><label>🌙 Тёмная тема</label><input type="checkbox" id="settingsDark" ${currentTheme==='dark'?'checked':''} style="width:1.5rem;height:1.5rem;"></div>
                     <button class="btn secondary w-full mt-12" id="settingsLogoutBtn">🚪 Выйти</button>
                     <button class="btn danger w-full mt-8" id="settingsDeleteBtn">🗑 Удалить аккаунт</button>`);
                 document.getElementById('settingsSfx').addEventListener('change',async(e)=>{sfxEnabled=e.target.checked; if(currentAuthUser)await supabaseClient.from('user_settings').update({sfx_enabled:sfxEnabled}).eq('user_id',currentAuthUser.id);});
                 document.getElementById('settingsDark').addEventListener('change',async(e)=>{currentTheme=e.target.checked?'dark':'light'; applyTheme(); if(currentAuthUser)await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id',currentAuthUser.id);});
-                document.getElementById('settingsLogoutBtn').addEventListener('click',()=>{localStorage.removeItem('arizona_current_user'); currentAuthUser=null; document.getElementById('modalOverlay').remove(); showAuthScreen();});
+                document.getElementById('settingsLogoutBtn').addEventListener('click',()=>{
+                    // Полная очистка сессии
+                    localStorage.removeItem('arizona_current_user');
+                    sessionStorage.clear();
+                    currentAuthUser = null;
+                    document.getElementById('modalOverlay').remove();
+                    // Перезагружаем приложение на экран входа
+                    showAuthScreen();
+                });
                 document.getElementById('settingsDeleteBtn').addEventListener('click',showDeleteAccountModal);
             }
             function showDeleteAccountModal(){
-                showModal(`<h3 class="modal-title">🗑 Удаление аккаунта</h3><p style="color:var(--muted);margin-bottom:16px;">Введите пароль для подтверждения.</p><div class="form-group"><label>Пароль</label><input type="password" id="deletePassInput"></div><button class="btn danger w-full" id="confirmDeleteBtn">Удалить</button><p id="deleteError" style="color:#EF4444;font-size:12px;margin-top:8px;"></p>`);
+                showModal(`<h3 class="modal-title">🗑 Удаление аккаунта</h3><p style="color:var(--muted);margin-bottom:1rem;">Введите пароль для подтверждения.</p><div class="form-group"><label>Пароль</label><input type="password" id="deletePassInput"></div><button class="btn danger w-full" id="confirmDeleteBtn">Удалить</button><p id="deleteError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
                 document.getElementById('confirmDeleteBtn').addEventListener('click',async()=>{
                     const pass=document.getElementById('deletePassInput').value.trim(); const errEl=document.getElementById('deleteError');
                     if(!pass){errEl.textContent='Введите пароль';return;} const hash=await hashPassword(pass);
@@ -1110,7 +1056,7 @@
                 });
             }
 
-            // Менеджер (только менеджер и ВК)
+            // ===================== МЕНЕДЖЕР =====================
             function openManagerModal(){
                 showModal(`<h3 class="modal-title">👨‍💼 Менеджер / Поддержка</h3><div class="links-list">
                     <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span><span class="link-value">@bounqy31</span></div>
@@ -1119,14 +1065,14 @@
                 document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{window.open(item.dataset.link,'_blank');document.getElementById('modalOverlay').remove();}));
             }
 
-            // Переписки, уведомления, достижения
+            // ===================== ПЕРЕПИСКИ, УВЕДОМЛЕНИЯ, ДОСТИЖЕНИЯ =====================
             function openChatModal(){ showModal(`<h3 class="modal-title">💬 Переписки</h3><div class="empty-state">Переписки ведутся напрямую в Telegram.</div><button class="btn w-full mt-12" id="chatTgBtn">📱 Перейти в Telegram</button>`); document.getElementById('chatTgBtn').addEventListener('click',()=>window.open('https://t.me/','_blank')); }
             async function openNotificationsModal(){
                 showModal(`<h3 class="modal-title">🔔 Уведомления</h3><div id="notificationsList"><div class="loader"></div></div>`);
                 try{
                     const {data,error}=await withTimeout(supabaseClient.from('notifications').select('*').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}),5000); if(error)throw error;
                     const notif=data||[]; const cont=document.getElementById('notificationsList'); if(!notif.length){cont.innerHTML='<div class="empty-state">Нет уведомлений</div>';return;}
-                    cont.innerHTML=notif.map(n=>`<div class="card ${!n.read?'inactive-card':''}"><div style="font-weight:600;">${n.message}</div><div style="font-size:11px;color:var(--muted);">${new Date(n.created_at).toLocaleString('ru-RU')}</div></div>`).join('');
+                    cont.innerHTML=notif.map(n=>`<div class="card ${!n.read?'inactive-card':''}"><div style="font-weight:600;">${n.message}</div><div style="font-size:0.7rem;color:var(--muted);">${new Date(n.created_at).toLocaleString('ru-RU')}</div></div>`).join('');
                     await supabaseClient.from('notifications').update({read:true}).eq('user_id',currentAuthUser.id).eq('read',false); unreadNotifications=0;
                 }catch(e){document.getElementById('notificationsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>';}
             }
@@ -1149,19 +1095,17 @@
                         {name:'Компаньон',desc:'Найдите попутчика',achieved:(uc.data?.length||0)>=1,icon:'👥'}
                     ];
                     const cont=document.getElementById('achievementsList');
-                    cont.innerHTML=achievements.map(a=>`<div class="card" style="opacity:${a.achieved?'1':'0.5'};"><div class="flex-between"><div><span style="font-size:24px;">${a.icon}</span> <strong>${a.name}</strong></div><span>${a.achieved?'✅':'🔒'}</span></div><div style="font-size:12px;color:var(--muted);">${a.desc}</div></div>`).join('');
+                    cont.innerHTML=achievements.map(a=>`<div class="card" style="opacity:${a.achieved?'1':'0.5'};"><div class="flex-between"><div><span style="font-size:1.5rem;">${a.icon}</span> <strong>${a.name}</strong></div><span>${a.achieved?'✅':'🔒'}</span></div><div style="font-size:0.75rem;color:var(--muted);">${a.desc}</div></div>`).join('');
                 }catch(e){document.getElementById('achievementsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>';}
             }
 
-            // Запуск
+            // ===================== ЗАПУСК =====================
             const telegramOk = initTelegram();
             if (!telegramOk) return;
             if (!initSupabase()) return;
 
-            // Показываем сплэш, затем проверяем авторизацию
-            setTimeout(() => {
-                checkAuth();
-            }, 2000); // задержка 2 секунды для анимации
+            // Показываем сплэш 2 секунды, затем проверяем авторизацию
+            setTimeout(() => { checkAuth(); }, 2000);
 
             window.addEventListener('online', () => { if (currentSection === 'home') loadHomeFeed(); });
             document.addEventListener('DOMContentLoaded', () => setupServerSelector());
@@ -1169,4 +1113,4 @@
         })();
     </script>
 </body>
-    </html>
+</html>

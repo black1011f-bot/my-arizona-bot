@@ -181,7 +181,7 @@
         .link-item:active { transform:scale(0.97); }
         .link-item .link-icon { font-size:1.5rem; width:2.2rem; text-align:center; }
         .link-item .link-label { flex:1; font-weight:600; }
-        .link-item .link-value { color:var(--accent); font-size:0.8rem; display:none; } /* скрываем @username */
+        .link-item .link-value { color:var(--accent); font-size:0.8rem; display:none; }
         /* ========== LOADER ========== */
         .loader { border:3px solid var(--border); border-top:3px solid var(--accent); border-radius:50%; width:32px; height:32px; animation:spin 0.8s linear infinite; margin:20px auto; }
         @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
@@ -351,29 +351,83 @@
             function initTelegram() {
                 try {
                     if (window.Telegram && window.Telegram.WebApp) {
-                        tg = window.Telegram.WebApp; tg.expand(); tg.ready();
+                        tg = window.Telegram.WebApp;
+                        tg.expand();
+                        tg.ready();
+                        // Настройка цвета заголовка и фона для лучшей интеграции
+                        if (tg.setHeaderColor) tg.setHeaderColor(currentTheme === 'dark' ? '#0F172A' : '#F9FAFB');
+                        if (tg.setBackgroundColor) tg.setBackgroundColor(currentTheme === 'dark' ? '#0F172A' : '#F9FAFB');
                         const initData = tg.initDataUnsafe || {};
-                        if (initData.user) { currentUser = { id: initData.user.id, username: initData.user.username || '', first_name: initData.user.first_name || 'Пользователь' }; }
-                        else { showFatalError('Требуется запуск через Telegram.'); return false; }
-                    } else { showFatalError('Требуется запуск через Telegram.'); return false; }
+                        if (initData.user) {
+                            currentUser = { id: initData.user.id, username: initData.user.username || '', first_name: initData.user.first_name || 'Пользователь' };
+                        } else {
+                            showFatalError('Требуется запуск через Telegram.');
+                            return false;
+                        }
+                    } else {
+                        showFatalError('Требуется запуск через Telegram.');
+                        return false;
+                    }
                     return true;
                 } catch(e) { showFatalError('Ошибка Telegram WebApp'); return false; }
             }
 
             // ===================== УТИЛИТЫ =====================
             function withTimeout(promise, ms=10000) { return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout')),ms))]); }
+
+            /**
+             * Воспроизведение звукового эффекта через Web Audio API.
+             * Длительность звука теперь 30 мс (по требованию).
+             * @param {string} type - Тип звука: 'click', 'success', 'error', 'buy', 'splash'
+             */
             function playSfx(type='click') {
                 if(!sfxEnabled) return;
                 try {
                     if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-                    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-                    osc.connect(gain); gain.connect(audioCtx.destination);
-                    const freqs = { click:800, success:1200, error:300, buy:1000 };
-                    osc.frequency.value = freqs[type]||600; osc.type='sine'; gain.gain.value=0.1;
-                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.15);
-                    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime+0.15);
-                } catch(e){}
+                    if(audioCtx.state === 'suspended') audioCtx.resume();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    // Настройка частоты и формы волны в зависимости от типа
+                    const freqs = { click:800, success:1200, error:300, buy:1000, splash:600 };
+                    osc.frequency.value = freqs[type] || 600;
+                    osc.type = 'sine';
+
+                    // Короткая атака и быстрый спад (30 мс)
+                    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.1, audioCtx.currentTime + 0.005);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
+
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + 0.04);
+                } catch(e) {
+                    // Тихая обработка ошибок (например, если AudioContext ещё не разрешён)
+                    console.warn('Sfx error:', e);
+                }
             }
+
+            /**
+             * Воспроизведение звука при появлении сплэш-экрана.
+             * Вызывается однократно.
+             */
+            function playSplashSound() {
+                // Попытка воспроизвести звук. Если браузер блокирует автовоспроизведение,
+                // звук будет проигран при первом взаимодействии пользователя (глобальный обработчик).
+                playSfx('splash');
+            }
+
+            /**
+             * Вибрация через Telegram HapticFeedback (если доступно).
+             * @param {string} style - 'light', 'medium', 'heavy', 'rigid', 'soft'
+             */
+            function hapticFeedback(style='light') {
+                if (tg && tg.HapticFeedback) {
+                    try { tg.HapticFeedback.impactOccurred(style); } catch(e) {}
+                }
+            }
+
             function showToast(message, type='info') {
                 const cont = document.getElementById('toastContainer');
                 const toast = document.createElement('div');
@@ -381,19 +435,21 @@
                 cont.appendChild(toast);
                 setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateX(100%)'; setTimeout(()=>toast.remove(),300); },3000);
             }
+
             function applyTheme() {
                 document.documentElement.setAttribute('data-theme', currentTheme);
-                // Обновить логотип в шапке в зависимости от темы
                 const logoImg = document.getElementById('headerLogoImg');
                 if (logoImg) {
                     logoImg.src = currentTheme === 'dark' ? 'https://i.postimg.cc/zfWNX3c5/1788346752679.jpg' : 'https://i.postimg.cc/nV1HDjcb/1788346659518.jpg';
                 }
-                // Обновить фон экрана входа (если он открыт)
                 const authBg = document.querySelector('.auth-background');
                 if (authBg) {
                     authBg.style.backgroundImage = currentTheme === 'dark' ? "url('https://i.postimg.cc/yNhGbRG4/1788346347547.jpg')" : "url('https://i.postimg.cc/x8phPS4J/1788346275828.jpg')";
                 }
+                if (tg && tg.setHeaderColor) tg.setHeaderColor(currentTheme === 'dark' ? '#0F172A' : '#F9FAFB');
+                if (tg && tg.setBackgroundColor) tg.setBackgroundColor(currentTheme === 'dark' ? '#0F172A' : '#F9FAFB');
             }
+
             function formatPrice(value) {
                 if(!value) return '0';
                 let num = typeof value==='string'? value.toLowerCase() : value.toString();
@@ -445,6 +501,24 @@
                 return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
             }
 
+            // ===================== ГЛОБАЛЬНЫЙ ОБРАБОТЧИК КЛИКОВ ДЛЯ ЗВУКОВ И ВИБРАЦИИ =====================
+            /**
+             * Навешиваем делегирование кликов на документ.
+             * Если клик по интерактивному элементу (кнопка, карточка и т.п.) — воспроизводим звук и вибрацию.
+             */
+            document.addEventListener('click', function(e) {
+                const interactiveSelectors = [
+                    '.btn', '.nav-item', '.card', '.grid-tile', '.link-item', '.search-suggestion',
+                    '.game-click-area', '.upgrade-card button', '.theme-toggle', '.header-logo', '.header-search',
+                    '.modal-close', '.auth-tab', '.auth-theme-toggle', '.star-rating span', '[data-link]'
+                ];
+                const target = e.target.closest(interactiveSelectors.join(','));
+                if (target) {
+                    playSfx('click');
+                    hapticFeedback('light');
+                }
+            });
+
             // ===================== МОДАЛКИ =====================
             function showModal(html, onClose) {
                 const container = document.getElementById('modalContainer');
@@ -468,26 +542,111 @@
                 document.getElementById('confirmOkBtn').addEventListener('click', ()=>{ closeModal(); onConfirm(); });
             }
 
-            // ===================== АУТЕНТИФИКАЦИЯ =====================
+            // ===================== АУТЕНТИФИКАЦИЯ (ИСПРАВЛЕНО: НАДЁЖНОЕ ВОССТАНОВЛЕНИЕ СЕССИИ) =====================
+            /**
+             * Проверка аутентификации.
+             * 1. Если в localStorage есть полный объект пользователя — используем его мгновенно.
+             * 2. В фоне проверяем актуальность через Supabase.
+             * 3. Если в localStorage ничего нет, но есть Telegram user — ищем в БД.
+             * 4. Если пользователь не найден — показываем экран входа.
+             */
             async function checkAuth() {
                 if (!supabaseClient) { if(!initSupabase()) return; }
+
+                // 1. Пытаемся восстановить из localStorage (полный объект)
+                const savedUser = localStorage.getItem('arizona_current_user_full');
+                if (savedUser) {
+                    try {
+                        const parsed = JSON.parse(savedUser);
+                        if (parsed && parsed.id) {
+                            // Мгновенно устанавливаем пользователя и показываем приложение
+                            currentAuthUser = parsed;
+                            isAdmin = parsed.is_admin || parsed.username === OWNER_USERNAME;
+                            isOwner = parsed.username === OWNER_USERNAME;
+                            await loadUserSettingsAndProgress(); // загружаем настройки
+                            hideSplashAndShowApp();
+                            // Фоновая проверка статуса (не блокирует интерфейс)
+                            setTimeout(async () => {
+                                try {
+                                    const { data, error } = await withTimeout(
+                                        supabaseClient.from('app_users').select('*').eq('id', parsed.id).maybeSingle(), 5000);
+                                    if (!error && data) {
+                                        if (data.banned) {
+                                            showBanScreen();
+                                            return;
+                                        }
+                                        // Обновляем данные, если изменились
+                                        if (data.telegram_id !== currentUser.id) {
+                                            // Возможно, пользователь вошёл с другого Telegram — выходим
+                                            localStorage.removeItem('arizona_current_user_full');
+                                            localStorage.removeItem('arizona_current_user');
+                                            currentAuthUser = null;
+                                            hideSplashAndShowAuth();
+                                            return;
+                                        }
+                                        currentAuthUser = data;
+                                        localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
+                                        localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
+                                        isAdmin = data.is_admin || data.username === OWNER_USERNAME;
+                                        isOwner = data.username === OWNER_USERNAME;
+                                        document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdmin);
+                                    } else {
+                                        // Пользователь удалён из БД
+                                        localStorage.removeItem('arizona_current_user_full');
+                                        localStorage.removeItem('arizona_current_user');
+                                        currentAuthUser = null;
+                                        hideSplashAndShowAuth();
+                                    }
+                                } catch(e) { /* Не критично, оставляем как есть */ }
+                            }, 0);
+                            return;
+                        }
+                    } catch(e) { console.warn('Ошибка парсинга сохранённого пользователя', e); }
+                }
+
+                // 2. Если full-объекта нет, пробуем старый ключ (id)
                 const saved = localStorage.getItem('arizona_current_user');
                 if (saved) {
                     try {
                         const parsed = JSON.parse(saved);
                         const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('id', parsed.id).maybeSingle(),5000);
                         if (!error && data) {
-                            if (data.telegram_id !== currentUser.id) { localStorage.removeItem('arizona_current_user'); }
-                            else { if (data.banned) { showBanScreen(); return; } currentAuthUser = data; await loadUserSettingsAndProgress(); hideSplashAndShowApp(); return; }
-                        } else { localStorage.removeItem('arizona_current_user'); }
+                            if (data.telegram_id !== currentUser.id) {
+                                localStorage.removeItem('arizona_current_user');
+                                localStorage.removeItem('arizona_current_user_full');
+                            } else {
+                                if (data.banned) { showBanScreen(); return; }
+                                currentAuthUser = data;
+                                localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
+                                localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
+                                await loadUserSettingsAndProgress();
+                                hideSplashAndShowApp();
+                                return;
+                            }
+                        } else {
+                            localStorage.removeItem('arizona_current_user');
+                            localStorage.removeItem('arizona_current_user_full');
+                        }
                     } catch(e) { console.warn('checkAuth restore error', e); localStorage.removeItem('arizona_current_user'); }
                 }
+
+                // 3. Если в localStorage ничего, но есть Telegram user — ищем в БД
                 if (currentUser.id) {
                     try {
                         const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('telegram_id', currentUser.id).maybeSingle(),5000);
-                        if (!error && data) { if (data.banned) { showBanScreen(); return; } currentAuthUser = data; localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser)); await loadUserSettingsAndProgress(); hideSplashAndShowApp(); return; }
+                        if (!error && data) {
+                            if (data.banned) { showBanScreen(); return; }
+                            currentAuthUser = data;
+                            localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
+                            localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
+                            await loadUserSettingsAndProgress();
+                            hideSplashAndShowApp();
+                            return;
+                        }
                     } catch(e) { console.warn('checkAuth telegram error', e); }
                 }
+
+                // 4. Ничего не нашли — показываем экран входа
                 hideSplashAndShowAuth();
             }
 
@@ -551,7 +710,7 @@
                     document.getElementById('authThemeToggle').addEventListener('click', ()=>{
                         currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
                         applyTheme();
-                        renderAuthForm(); // перерисовать с новым фоном
+                        renderAuthForm();
                     });
                     document.getElementById('authTabLogin').addEventListener('click', ()=>{ if(mode!=='login'){ mode='login'; isSubmitting=false; renderAuthForm(); }});
                     document.getElementById('authTabRegister').addEventListener('click', ()=>{ if(mode!=='register'){ mode='register'; isSubmitting=false; renderAuthForm(); }});
@@ -568,7 +727,9 @@
                                 if(!data){ errEl.textContent='Пользователь не найден. Зарегистрируйтесь.'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
                                 if(data.password_hash!==hashedPassword){ errEl.textContent='Неверный логин или пароль'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
                                 if(data.banned){ showBanScreen(); return; }
-                                currentAuthUser = data; localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
+                                currentAuthUser = data;
+                                localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
+                                localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
                                 await loadUserSettingsAndProgress(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
                             } else {
                                 const { data: existingTelegram } = await withTimeout(supabaseClient.from('app_users').select('id').eq('telegram_id', currentUser.id).maybeSingle(),5000);
@@ -578,7 +739,9 @@
                                 const newUser = { username, password_hash:hashedPassword, telegram_id: currentUser.id||null, telegram_username: currentUser.username||null, banned:false, is_admin: username===OWNER_USERNAME, created_at:new Date().toISOString() };
                                 const { data: inserted, error: insertErr } = await withTimeout(supabaseClient.from('app_users').insert(newUser).select().single(),5000);
                                 if(insertErr) throw insertErr;
-                                currentAuthUser = inserted; localStorage.setItem('arizona_current_user', JSON.stringify(currentAuthUser));
+                                currentAuthUser = inserted;
+                                localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
+                                localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
                                 await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null});
                                 await supabaseClient.from('user_progress').insert({user_id:currentAuthUser.id, tutorial_completed:false, admin_tutorial_completed:false});
                                 await loadUserSettingsAndProgress(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
@@ -605,7 +768,7 @@
             async function loadNotificationsCount() { if(!currentAuthUser)return; try{ const {count,error}=await withTimeout(supabaseClient.from('notifications').select('*',{count:'exact',head:true}).eq('user_id',currentAuthUser.id).eq('read',false),5000); if(!error) unreadNotifications=count||0; }catch(e){ unreadNotifications=0; } }
             function requestWakeLock() { try{ if('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock=>{wakeLock=lock;}).catch(()=>{}); }catch(e){} }
 
-            // ===================== ТУТОРИАЛЫ (переписаны в одном модальном окне) =====================
+            // ===================== ТУТОРИАЛЫ =====================
             function showUserTutorial() {
                 const slides = [
                     { title:'⚠️ Предупреждение', text:'Мы не несём ответственности за скам. Запрещена продажа/покупка аккаунтов.' },
@@ -1111,7 +1274,6 @@
                     requestAnimationFrame(loop);
                     clickArea.addEventListener('click', ()=>{ gameState.money += gameState.clickPower; updateGameUIFast(); saveGameStateDebounced(); clickArea.style.transform = 'scale(0.92)'; setTimeout(()=>clickArea.style.transform='', 80); });
                     upgradesCont.addEventListener('click', (e)=>{ const btn = e.target.closest('[data-upgrade]'); if(!btn) return; const idx = parseInt(btn.dataset.upgrade); const up = getUpgradesList()[idx]; if(gameState.money >= up.cost){ gameState.money -= up.cost; up.action(); updateGameUIFast(); saveGameStateDebounced(); playSfx('buy'); } });
-                    // Сохранение при закрытии или уходе со страницы
                     window.addEventListener('beforeunload', saveGameState);
                     document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveGameState(); });
                 });
@@ -1204,7 +1366,7 @@
                 } catch(e){ document.getElementById('profileAdsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; }
             }
 
-            // ===================== ВСЕ РАЗДЕЛЫ (без достижений и менеджера) =====================
+            // ===================== ВСЕ РАЗДЕЛЫ =====================
             function loadAllTiles(){
                 const tiles = [
                     { id:'looks', icon:'📸', label:'Лента «Луков»' },
@@ -1283,7 +1445,7 @@
                     <button class="btn danger w-full mt-8" id="settingsDeleteBtn">🗑 Удалить аккаунт</button>`);
                 document.getElementById('settingsSfx').addEventListener('change', async (e)=>{ sfxEnabled = e.target.checked; if(currentAuthUser) await supabaseClient.from('user_settings').update({ sfx_enabled: sfxEnabled }).eq('user_id', currentAuthUser.id); });
                 document.getElementById('settingsDark').addEventListener('change', async (e)=>{ currentTheme = e.target.checked ? 'dark' : 'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({ theme: currentTheme }).eq('user_id', currentAuthUser.id); });
-                document.getElementById('settingsLogoutBtn').addEventListener('click', ()=>{ localStorage.removeItem('arizona_current_user'); sessionStorage.clear(); currentAuthUser = null; document.getElementById('modalOverlay').remove(); showAuthScreen(); });
+                document.getElementById('settingsLogoutBtn').addEventListener('click', ()=>{ localStorage.removeItem('arizona_current_user'); localStorage.removeItem('arizona_current_user_full'); sessionStorage.clear(); currentAuthUser = null; document.getElementById('modalOverlay').remove(); showAuthScreen(); });
                 document.getElementById('settingsDeleteBtn').addEventListener('click', showDeleteAccountModal);
             }
             function showDeleteAccountModal(){
@@ -1308,20 +1470,13 @@
                             await supabaseClient.from('reviews').delete().eq('author_id', currentAuthUser.id);
                             await supabaseClient.from('appeals').delete().eq('author_id', currentAuthUser.id);
                             await supabaseClient.from('reports').delete().eq('reporter_id', currentAuthUser.id);
-                            localStorage.removeItem('arizona_current_user'); currentAuthUser = null;
+                            localStorage.removeItem('arizona_current_user');
+                            localStorage.removeItem('arizona_current_user_full');
+                            currentAuthUser = null;
                             document.getElementById('modalOverlay').remove(); showAuthScreen(); showToast('Аккаунт удалён','success');
                         } catch(e){ showAlert('Ошибка','Не удалось удалить аккаунт'); }
                     });
                 });
-            }
-
-            // ===================== МЕНЕДЖЕР (открывается только из шапки) =====================
-            function openManagerModal(){
-                showModal(`<h3 class="modal-title">👨‍💼 Менеджер / Поддержка</h3><div class="links-list">
-                    <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span></div>
-                    <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">👥</span><span class="link-label">ВК сообщество</span></div>
-                </div>`);
-                document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click', ()=>{ window.open(item.dataset.link,'_blank'); document.getElementById('modalOverlay').remove(); }));
             }
 
             // ===================== ЧАТ =====================
@@ -1348,6 +1503,8 @@
             const telegramOk = initTelegram();
             if (!telegramOk) return;
             if (!initSupabase()) return;
+            // Воспроизводим звук сплэша (может быть заблокирован браузером)
+            playSplashSound();
             setTimeout(() => { checkAuth(); }, 2000);
             window.addEventListener('online', () => { if (currentSection === 'home') loadHomeFeed(); });
             document.addEventListener('DOMContentLoaded', () => setupServerSelector());
@@ -1355,4 +1512,4 @@
         })();
     </script>
 </body>
-                                                        </html>
+</html>

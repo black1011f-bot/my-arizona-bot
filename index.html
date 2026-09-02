@@ -8,7 +8,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* ===== Глобальные переменные ===== */
+        /* ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ========== */
         :root {
             --bg: #F9FAFB;
             --card: #FFFFFF;
@@ -56,178 +56,186 @@
             padding-bottom: calc(var(--nav-height) + 2rem);
             transition: max-width 0.3s;
         }
-        /* ===== Адаптивные точки ===== */
         @media (min-width: 768px) {
             :root { --container-width: 720px; --base-font-size: 17px; }
-            .ads-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
-            .ad-card { width:100%; }
+            .ads-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+            .ad-card { width: 100%; }
         }
         @media (min-width: 1024px) {
             :root { --container-width: 1200px; --base-font-size: 18px; }
-            .ads-grid { grid-template-columns:repeat(3,1fr); }
+            .ads-grid { grid-template-columns: repeat(3, 1fr); }
         }
         @media (max-width: 420px) {
             :root { --base-font-size: 15px; --btn-min-height: 44px; --header-height: 56px; --nav-height: 60px; }
             .header-title { font-size: clamp(1rem, 4vw, 1.3rem); }
-            .header-logo { width:32px; height:32px; border-radius:8px; }
-            .nav-item .nav-icon { font-size:20px; }
-            .nav-item { font-size: clamp(0.65rem, 2.5vw, 0.8rem); min-height:40px; }
-            .ad-card-img { width:64px; height:84px; }
+            .header-logo { width: 32px; height: 32px; border-radius: 8px; }
+            .nav-item .nav-icon { font-size: 20px; }
+            .nav-item { font-size: clamp(0.65rem, 2.5vw, 0.8rem); min-height: 40px; }
+            .ad-card-img { width: 64px; height: 84px; }
             .ad-card-title { font-size: clamp(0.8rem, 3vw, 1rem); }
             .ad-card-price { font-size: clamp(0.9rem, 3.5vw, 1.1rem); }
-            .card { padding:0.8rem; }
-            .modal { padding:1rem; max-width:100%; }
-            .grid-tiles { grid-template-columns:repeat(2,1fr); gap:0.8rem; }
-            .btn { padding:0.7rem 1rem; font-size:0.85rem; min-height:42px; }
-            .form-group input, .form-group select, .form-group textarea { padding:0.7rem 0.9rem; font-size:0.9rem; }
+            .card { padding: 0.8rem; }
+            .modal { padding: 1rem; max-width: 100%; }
+            .grid-tiles { grid-template-columns: repeat(2, 1fr); gap: 0.8rem; }
+            .btn { padding: 0.7rem 1rem; font-size: 0.85rem; min-height: 42px; }
+            .form-group input, .form-group select, .form-group textarea { padding: 0.7rem 0.9rem; font-size: 0.9rem; }
         }
         @media (max-width: 360px) {
             :root { --base-font-size: 14px; }
             .header-title { font-size: clamp(0.9rem, 4vw, 1.1rem); }
-            .nav-item .nav-icon { font-size:18px; }
-            .nav-item { font-size:0.7rem; min-height:36px; }
-            .ad-card-img { width:54px; height:70px; }
-            .ad-card-title { font-size:0.75rem; }
-            .badge { font-size:0.65rem; padding:2px 8px; }
+            .nav-item .nav-icon { font-size: 18px; }
+            .nav-item { font-size: 0.7rem; min-height: 36px; }
+            .ad-card-img { width: 54px; height: 70px; }
+            .ad-card-title { font-size: 0.75rem; }
+            .badge { font-size: 0.65rem; padding: 2px 8px; }
         }
-        /* ===== Header ===== */
-        .header { position:fixed; top:0; left:0; right:0; z-index:100; background:var(--bg); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0.6rem 1rem; height:var(--header-height); gap:0.6rem; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
-        .header-logo { width:36px; height:36px; border-radius:10px; overflow:hidden; flex-shrink:0; cursor:pointer; transition:transform 0.2s; }
-        .header-logo img { width:100%; height:100%; object-fit:cover; display:block; }
-        .header-title { font-weight:800; font-size:clamp(1rem, 4vw, 1.5rem); white-space:nowrap; letter-spacing:-0.02em; }
-        .header-search { flex:1; min-width:0; cursor:pointer; }
-        .header-search input { width:100%; padding:0.6rem 1rem; border-radius:50px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:0.9rem; outline:none; pointer-events:none; box-shadow:var(--shadow); }
-        .theme-toggle { background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0.2rem; border-radius:8px; flex-shrink:0; }
-        /* ===== Bottom nav ===== */
-        .nav-bar { position:fixed; bottom:0; left:0; right:0; z-index:100; background:var(--bg); border-top:1px solid var(--border); display:flex; justify-content:space-around; align-items:center; height:var(--nav-height); padding-bottom:env(safe-area-inset-bottom); }
-        .nav-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:none; border:none; color:var(--muted); font-size:clamp(0.65rem, 2vw, 0.8rem); font-weight:600; cursor:pointer; padding:0.25rem 0.3rem; border-radius:12px; transition:color 0.2s, transform 0.1s; flex:1; max-width:80px; min-height:48px; }
-        .nav-item .nav-icon { font-size:clamp(1.2rem, 5vw, 1.6rem); line-height:1; }
-        .nav-item.active { color:var(--accent); background:rgba(79,70,229,0.08); }
-        .nav-item:active { transform:scale(0.92); }
-        /* ===== Sections ===== */
-        .section { display:none; opacity:0; transform:translateY(10px); transition:opacity 0.25s, transform 0.25s; }
-        .section.active { display:block; opacity:1; transform:translateY(0); }
-        /* ===== Cards ===== */
-        .card { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow); padding:0.9rem; margin-bottom:0.9rem; transition:background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s; cursor:pointer; }
-        .card:active { transform:scale(0.98); }
-        .card.inactive-card { opacity:0.7; background:rgba(128,128,128,0.06); }
-        [data-theme="dark"] .card.inactive-card { background:rgba(255,255,255,0.03); }
-        .ad-card { display:flex; gap:0.8rem; align-items:flex-start; }
-        .ad-card-img { width:80px; height:100px; border-radius:12px; object-fit:cover; background:var(--border); flex-shrink:0; }
-        .ad-card-info { flex:1; min-width:0; }
-        .ad-card-title { font-weight:700; font-size:clamp(0.8rem, 2.5vw, 1rem); margin-bottom:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .ad-card-price { font-weight:800; font-size:clamp(0.9rem, 3vw, 1.2rem); color:var(--accent); margin-bottom:0.2rem; }
-        .ad-card-badges { display:flex; flex-wrap:wrap; gap:0.25rem; margin-bottom:0.2rem; }
-        .badge { padding:0.15rem 0.6rem; border-radius:20px; font-size:0.7rem; font-weight:700; background:var(--border); color:var(--text); white-space:nowrap; }
-        .badge.sell { background:#10B981; color:#fff; }
-        .badge.buy { background:#F97316; color:#fff; }
-        .badge.server { background:var(--gold); color:#1a1a1a; }
-        .badge.category { background:var(--accent); color:#fff; }
-        .badge.status-pending { background:#FBBF24; color:#1a1a1a; }
-        .badge.status-deleted { background:#EF4444; color:#fff; }
-        .badge.status-approved { background:#10B981; color:#fff; }
-        .ad-card-author { font-size:0.7rem; color:var(--muted); }
-        .countdown-timer { font-size:0.7rem; color:var(--muted); margin-top:0.2rem; font-weight:500; }
-        /* ===== Buttons ===== */
-        .btn { display:inline-flex; align-items:center; justify-content:center; gap:0.4rem; padding:0.7rem 1.1rem; border-radius:var(--radius-sm); border:none; background:var(--accent); color:#fff; font-weight:700; font-size:clamp(0.8rem, 2.5vw, 0.95rem); cursor:pointer; transition:background 0.2s, transform 0.1s, opacity 0.2s; touch-action:manipulation; min-height:var(--btn-min-height); }
-        .btn:hover { background:var(--accent-hover); }
-        .btn:active { transform:scale(0.97); }
-        .btn.secondary { background:var(--border); color:var(--text); }
-        .btn.danger { background:#EF4444; color:#fff; }
-        .btn.gold { background:var(--gold); color:#1a1a1a; }
-        .btn.success { background:#10B981; color:#fff; }
-        .btn:disabled { opacity:0.5; pointer-events:none; }
-        .btn.w-full { width:100%; }
-        /* ===== Modal ===== */
-        .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:200; display:flex; align-items:center; justify-content:center; padding:1rem; opacity:0; transition:opacity 0.25s; backdrop-filter:blur(4px); }
-        .modal-overlay.show { opacity:1; }
-        .modal { background:var(--card); border-radius:var(--radius); border:1px solid var(--border); box-shadow:var(--shadow-lg); width:100%; max-width:480px; max-height:85vh; overflow-y:auto; padding:1.5rem; position:relative; transform:translateY(20px); transition:transform 0.25s; }
-        .modal-overlay.show .modal { transform:translateY(0); }
-        .modal-close { position:absolute; top:0.7rem; right:0.7rem; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--muted); padding:0.2rem; line-height:1; z-index:5; }
-        .modal-title { font-weight:800; font-size:clamp(1rem, 3vw, 1.4rem); margin-bottom:1rem; padding-right:2rem; letter-spacing:-0.02em; }
-        /* ===== Forms ===== */
-        .form-group { margin-bottom:1rem; }
-        .form-group label { display:block; font-weight:600; font-size:0.8rem; margin-bottom:0.3rem; color:var(--muted); }
-        .form-group input, .form-group select, .form-group textarea { width:100%; padding:0.7rem 1rem; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:0.9rem; outline:none; transition:border-color 0.2s, background 0.3s; font-family:var(--font); }
-        .form-group textarea { min-height:100px; resize:vertical; }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--accent); }
-        /* ===== Auth ===== */
-        .auth-container { position:fixed; top:0; left:0; right:0; bottom:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:1rem; overflow:hidden; }
-        .auth-background { position:absolute; top:0; left:0; right:0; bottom:0; background:url('https://i.postimg.cc/wBn6Rw4F/images.jpg') center/cover; filter:blur(10px); transform:scale(1.1); z-index:-1; }
-        .auth-box { width:100%; max-width:400px; background:var(--card); border-radius:var(--radius); border:1px solid var(--border); padding:1.8rem; box-shadow:var(--shadow-lg); position:relative; z-index:1; }
-        .auth-tab { flex:1; padding:0.6rem; background:none; border:none; cursor:pointer; font-weight:700; transition:color 0.2s, border-color 0.2s; }
-        .auth-tab.active { color:var(--accent); border-bottom:2px solid var(--accent); }
-        .auth-tab:not(.active) { color:var(--muted); border-bottom:2px solid transparent; }
-        /* ===== Splash ===== */
-        #splash-screen { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); z-index:3000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.8rem; transition:opacity 0.5s ease, visibility 0.5s; }
-        #splash-screen.hidden { opacity:0; visibility:hidden; pointer-events:none; }
-        .splash-icon { width:clamp(72px, 20vw, 120px); height:clamp(72px, 20vw, 120px); border-radius:24px; overflow:hidden; box-shadow:var(--shadow-lg); animation:splashZoom 1.2s ease-out; }
-        .splash-icon img { width:100%; height:100%; object-fit:cover; display:block; }
-        .splash-title { font-weight:900; font-size:clamp(1.5rem, 6vw, 2.5rem); color:var(--text); letter-spacing:-0.02em; animation:splashFadeUp 1s ease 0.3s both; }
-        .splash-subtitle { font-size:clamp(0.9rem, 3vw, 1.2rem); color:var(--muted); font-weight:600; animation:splashFadeUp 1s ease 0.6s both; }
-        @keyframes splashZoom { 0% { transform:scale(0.3); opacity:0; } 100% { transform:scale(1); opacity:1; } }
-        @keyframes splashFadeUp { 0% { transform:translateY(20px); opacity:0; } 100% { transform:translateY(0); opacity:1; } }
-        /* ===== Toast ===== */
-        .toast-container { position:fixed; top:70px; right:1rem; z-index:999; display:flex; flex-direction:column; gap:0.5rem; max-width:320px; }
-        .toast { background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.8rem 1rem; box-shadow:var(--shadow-lg); font-size:0.8rem; font-weight:500; color:var(--text); animation:slideIn 0.3s ease; }
-        .toast.success { border-left:4px solid #10B981; }
-        .toast.error { border-left:4px solid #EF4444; }
-        .toast.info { border-left:4px solid var(--accent); }
-        @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
-        /* ===== Skeleton loading ===== */
-        .skeleton { background: linear-gradient(90deg, var(--border) 25%, var(--card) 50%, var(--border) 75%); background-size:200% 100%; animation:skeleton-loading 1.5s infinite; border-radius:var(--radius-sm); }
-        @keyframes skeleton-loading { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
-        .img-skeleton { width:100%; height:100%; position:absolute; top:0; left:0; }
-        .img-container { position:relative; overflow:hidden; }
-        .img-container img { opacity:0; transition:opacity 0.3s; }
-        .img-container img.loaded { opacity:1; }
-        /* ===== Links list ===== */
-        .links-list { display:flex; flex-direction:column; gap:0.6rem; }
-        .link-item { display:flex; align-items:center; gap:0.8rem; padding:0.8rem; background:var(--bg); border-radius:var(--radius-sm); border:1px solid var(--border); cursor:pointer; transition:transform 0.2s, background 0.2s; }
-        .link-item:active { transform:scale(0.97); }
-        .link-item .link-icon { font-size:1.5rem; width:2.2rem; text-align:center; }
-        .link-item .link-label { flex:1; font-weight:600; }
-        .link-item .link-value { color:var(--accent); font-size:0.8rem; }
-        /* ===== Loader ===== */
-        .loader { border:3px solid var(--border); border-top:3px solid var(--accent); border-radius:50%; width:32px; height:32px; animation:spin 0.8s linear infinite; margin:20px auto; }
-        @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
-        /* ===== Scrollbar ===== */
-        ::-webkit-scrollbar { width:4px; height:4px; }
-        ::-webkit-scrollbar-track { background:var(--border); border-radius:4px; }
-        ::-webkit-scrollbar-thumb { background:var(--accent); border-radius:4px; }
-        /* ===== Game ===== */
-        .game-click-area { width:100%; max-width:250px; aspect-ratio:1; margin:0 auto 1rem; cursor:pointer; border-radius:50%; overflow:hidden; border:4px solid var(--border); transition:transform 0.1s, border-color 0.3s; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
-        .game-click-area:active { transform:scale(0.92); }
-        .game-click-area img { width:100%; height:100%; object-fit:cover; pointer-events:none; display:block; }
-        /* ===== Upgrades ===== */
-        .upgrade-card { display:flex; justify-content:space-between; align-items:center; padding:0.8rem; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:0.6rem; background:var(--card); }
-        .upgrade-info { flex:1; }
-        .upgrade-name { font-weight:700; font-size:0.9rem; }
-        .upgrade-cost { font-size:0.75rem; color:var(--muted); }
-        /* ===== Star rating ===== */
-        .star-rating { display:flex; gap:0.4rem; font-size:2rem; cursor:pointer; }
-        .star-rating span { color:var(--border); transition:color 0.2s, transform 0.2s; }
-        .star-rating span.active { color:var(--gold); }
-        .star-rating span:hover { transform:scale(1.2); }
-        /* ===== Reviews ===== */
-        .review-item { border-bottom:1px solid var(--border); padding:0.6rem 0; }
-        .review-item:last-child { border-bottom:none; }
-        /* ===== Progress bar ===== */
-        .progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin:0.3rem 0; }
-        .progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; }
-        /* ===== Grid tiles ===== */
-        .grid-tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.8rem; }
-        .grid-tile { padding:1rem; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); text-align:center; cursor:pointer; font-weight:700; font-size:0.8rem; transition:transform 0.2s, border-color 0.2s, background 0.2s; }
-        .grid-tile:active { transform:scale(0.95); }
-        .grid-tile .tile-icon { font-size:2rem; display:block; margin-bottom:0.4rem; }
-        .grid-tile.active { border-color:var(--accent); background:rgba(79,70,229,0.08); }
-        /* ===== Search ===== */
-        .search-suggestion { padding:0.6rem 0.9rem; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:background 0.2s; }
-        .search-suggestion:hover, .search-suggestion:active { background:var(--border); }
-        /* ===== Utilities ===== */
-        .hidden { display:none!important; }
-        .flex-between { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; }
-        .mt-8 { margin-top:0.5rem; } .mt-12 { margin-top:0.8rem; } .mb-8 { margin-bottom:0.5rem; } .mb-12 { margin-bottom:0.8rem; } .w-full { width:100%; } .gap-8 { gap:0.5rem; } .gap-12 { gap:0.8rem; } .text-center { text-align:center; }
+        /* ========== HEADER ========== */
+        .header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0.6rem 1rem; height: var(--header-height); gap: 0.6rem; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .header-logo { width: 36px; height: 36px; border-radius: 10px; overflow: hidden; flex-shrink: 0; cursor: pointer; transition: transform 0.2s; }
+        .header-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .header-title { font-weight: 800; font-size: clamp(1rem, 4vw, 1.5rem); white-space: nowrap; letter-spacing: -0.02em; }
+        .header-search { flex: 1; min-width: 0; cursor: pointer; }
+        .header-search input { width: 100%; padding: 0.6rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.9rem; outline: none; pointer-events: none; box-shadow: var(--shadow); }
+        .theme-toggle { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0.2rem; border-radius: 8px; flex-shrink: 0; }
+        /* ========== BOTTOM NAV ========== */
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; height: var(--nav-height); padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: none; color: var(--muted); font-size: clamp(0.65rem, 2vw, 0.8rem); font-weight: 600; cursor: pointer; padding: 0.25rem 0.3rem; border-radius: 12px; transition: color 0.2s, transform 0.1s; flex: 1; max-width: 80px; min-height: 48px; }
+        .nav-item .nav-icon { font-size: clamp(1.2rem, 5vw, 1.6rem); line-height: 1; }
+        .nav-item.active { color: var(--accent); background: rgba(79, 70, 229, 0.08); }
+        .nav-item:active { transform: scale(0.92); }
+        /* ========== SECTIONS ========== */
+        .section { display: none; opacity: 0; transform: translateY(10px); transition: opacity 0.25s, transform 0.25s; }
+        .section.active { display: block; opacity: 1; transform: translateY(0); }
+        /* ========== CARDS ========== */
+        .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 0.9rem; margin-bottom: 0.9rem; transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.15s; cursor: pointer; }
+        .card:active { transform: scale(0.98); }
+        .card.inactive-card { opacity: 0.7; background: rgba(128, 128, 128, 0.06); }
+        [data-theme="dark"] .card.inactive-card { background: rgba(255, 255, 255, 0.03); }
+        .ad-card { display: flex; gap: 0.8rem; align-items: flex-start; }
+        .ad-card-img { width: 80px; height: 100px; border-radius: 12px; object-fit: cover; background: var(--border); flex-shrink: 0; }
+        .ad-card-info { flex: 1; min-width: 0; }
+        .ad-card-title { font-weight: 700; font-size: clamp(0.8rem, 2.5vw, 1rem); margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ad-card-price { font-weight: 800; font-size: clamp(0.9rem, 3vw, 1.2rem); color: var(--accent); margin-bottom: 0.2rem; }
+        .ad-card-badges { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.2rem; }
+        .badge { padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; background: var(--border); color: var(--text); white-space: nowrap; }
+        .badge.sell { background: #10B981; color: #fff; }
+        .badge.buy { background: #F97316; color: #fff; }
+        .badge.server { background: var(--gold); color: #1a1a1a; }
+        .badge.category { background: var(--accent); color: #fff; }
+        .badge.status-pending { background: #FBBF24; color: #1a1a1a; }
+        .badge.status-deleted { background: #EF4444; color: #fff; }
+        .badge.status-approved { background: #10B981; color: #fff; }
+        .ad-card-author { font-size: 0.7rem; color: var(--muted); }
+        .countdown-timer { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; font-weight: 500; }
+        /* ========== BUTTONS ========== */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.7rem 1.1rem; border-radius: var(--radius-sm); border: none; background: var(--accent); color: #fff; font-weight: 700; font-size: clamp(0.8rem, 2.5vw, 0.95rem); cursor: pointer; transition: background 0.2s, transform 0.1s, opacity 0.2s; touch-action: manipulation; min-height: var(--btn-min-height); }
+        .btn:hover { background: var(--accent-hover); }
+        .btn:active { transform: scale(0.97); }
+        .btn.secondary { background: var(--border); color: var(--text); }
+        .btn.danger { background: #EF4444; color: #fff; }
+        .btn.gold { background: var(--gold); color: #1a1a1a; }
+        .btn.success { background: #10B981; color: #fff; }
+        .btn:disabled { opacity: 0.5; pointer-events: none; }
+        .btn.w-full { width: 100%; }
+        /* ========== MODAL ========== */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; transition: opacity 0.25s; backdrop-filter: blur(4px); }
+        .modal-overlay.show { opacity: 1; }
+        .modal { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-lg); width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; padding: 1.5rem; position: relative; transform: translateY(20px); transition: transform 0.25s; }
+        .modal-overlay.show .modal { transform: translateY(0); }
+        .modal-close { position: absolute; top: 0.7rem; right: 0.7rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--muted); padding: 0.2rem; line-height: 1; z-index: 5; }
+        .modal-title { font-weight: 800; font-size: clamp(1rem, 3vw, 1.4rem); margin-bottom: 1rem; padding-right: 2rem; letter-spacing: -0.02em; }
+        /* ========== FORMS ========== */
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; color: var(--muted); }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.7rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.2s, background 0.3s; font-family: var(--font); }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+        /* ========== AUTH ========== */
+        .auth-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; overflow: hidden; }
+        .auth-background { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url('https://i.postimg.cc/wBn6Rw4F/images.jpg') center/cover; filter: blur(10px); transform: scale(1.1); z-index: -1; }
+        .auth-box { width: 100%; max-width: 400px; background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.8rem; box-shadow: var(--shadow-lg); position: relative; z-index: 1; }
+        .auth-tab { flex: 1; padding: 0.6rem; background: none; border: none; cursor: pointer; font-weight: 700; transition: color 0.2s, border-color 0.2s; }
+        .auth-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+        .auth-tab:not(.active) { color: var(--muted); border-bottom: 2px solid transparent; }
+        /* ========== SPLASH ========== */
+        #splash-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; transition: opacity 0.5s ease, visibility 0.5s; }
+        #splash-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .splash-icon { width: clamp(72px, 20vw, 120px); height: clamp(72px, 20vw, 120px); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-lg); animation: splashZoom 1.2s ease-out; }
+        .splash-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .splash-title { font-weight: 900; font-size: clamp(1.5rem, 6vw, 2.5rem); color: var(--text); letter-spacing: -0.02em; animation: splashFadeUp 1s ease 0.3s both; }
+        .splash-subtitle { font-size: clamp(0.9rem, 3vw, 1.2rem); color: var(--muted); font-weight: 600; animation: splashFadeUp 1s ease 0.6s both; }
+        @keyframes splashZoom { 0% { transform: scale(0.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes splashFadeUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        /* ========== TOAST ========== */
+        .toast-container { position: fixed; top: 70px; right: 1rem; z-index: 999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 320px; }
+        .toast { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.8rem 1rem; box-shadow: var(--shadow-lg); font-size: 0.8rem; font-weight: 500; color: var(--text); animation: slideIn 0.3s ease; }
+        .toast.success { border-left: 4px solid #10B981; }
+        .toast.error { border-left: 4px solid #EF4444; }
+        .toast.info { border-left: 4px solid var(--accent); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        /* ========== SKELETON ========== */
+        .skeleton { background: linear-gradient(90deg, var(--border) 25%, var(--card) 50%, var(--border) 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: var(--radius-sm); }
+        @keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .img-container { position: relative; overflow: hidden; }
+        .img-container img { opacity: 0; transition: opacity 0.3s; }
+        .img-container img.loaded { opacity: 1; }
+        /* ========== LINKS ========== */
+        .links-list { display: flex; flex-direction: column; gap: 0.6rem; }
+        .link-item { display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); cursor: pointer; transition: transform 0.2s, background 0.2s; }
+        .link-item:active { transform: scale(0.97); }
+        .link-item .link-icon { font-size: 1.5rem; width: 2.2rem; text-align: center; }
+        .link-item .link-label { flex: 1; font-weight: 600; }
+        .link-item .link-value { color: var(--accent); font-size: 0.8rem; }
+        /* ========== LOADER ========== */
+        .loader { border: 3px solid var(--border); border-top: 3px solid var(--accent); border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* ========== SCROLLBAR ========== */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+        /* ========== GAME ========== */
+        .game-click-area { width: 100%; max-width: 220px; aspect-ratio: 1; margin: 0 auto 1rem; cursor: pointer; border-radius: 20px; overflow: hidden; border: 4px solid var(--border); transition: transform 0.1s, border-color 0.3s; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+        .game-click-area:active { transform: scale(0.92); }
+        .game-click-area img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; display: block; }
+        /* ========== UPGRADES ========== */
+        .upgrade-card { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 0.6rem; background: var(--card); }
+        .upgrade-info { flex: 1; }
+        .upgrade-name { font-weight: 700; font-size: 0.9rem; }
+        .upgrade-cost { font-size: 0.75rem; color: var(--muted); }
+        /* ========== STAR RATING ========== */
+        .star-rating { display: flex; gap: 0.4rem; font-size: 2rem; cursor: pointer; }
+        .star-rating span { color: var(--border); transition: color 0.2s, transform 0.2s; }
+        .star-rating span.active { color: var(--gold); }
+        .star-rating span:hover { transform: scale(1.2); }
+        /* ========== REVIEWS ========== */
+        .review-item { border-bottom: 1px solid var(--border); padding: 0.6rem 0; }
+        .review-item:last-child { border-bottom: none; }
+        /* ========== PROGRESS BAR ========== */
+        .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 0.3rem 0; }
+        .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+        /* ========== GRID TILES ========== */
+        .grid-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; }
+        .grid-tile { padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card); text-align: center; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: transform 0.2s, border-color 0.2s, background 0.2s; }
+        .grid-tile:active { transform: scale(0.95); }
+        .grid-tile .tile-icon { font-size: 2rem; display: block; margin-bottom: 0.4rem; }
+        .grid-tile.active { border-color: var(--accent); background: rgba(79, 70, 229, 0.08); }
+        /* ========== SEARCH ========== */
+        .search-suggestion { padding: 0.6rem 0.9rem; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: background 0.2s; }
+        .search-suggestion:hover, .search-suggestion:active { background: var(--border); }
+        /* ========== UTILITIES ========== */
+        .hidden { display: none!important; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+        .mt-8 { margin-top: 0.5rem; }
+        .mt-12 { margin-top: 0.8rem; }
+        .mb-8 { margin-bottom: 0.5rem; }
+        .mb-12 { margin-bottom: 0.8rem; }
+        .w-full { width: 100%; }
+        .gap-8 { gap: 0.5rem; }
+        .gap-12 { gap: 0.8rem; }
+        .text-center { text-align: center; }
+        /* ========== BAN ========== */
+        .ban-image { width: 100%; max-width: 300px; margin: 0 auto; border-radius: var(--radius); overflow: hidden; }
+        .ban-image img { width: 100%; height: auto; display: block; }
     </style>
 </head>
 <body>
@@ -277,8 +285,6 @@
                 <div class="form-group"><label>Сервер</label><button class="btn secondary w-full" id="sendServerBtn">Выберите сервер</button></div>
                 <button class="btn w-full" id="sendSubmitBtn">Отправить объявление</button>
             </div>
-            <h3 style="margin:1rem 0 0.8rem;font-weight:800;">📦 Мои объявления</h3>
-            <div id="myAdsList"></div>
         </section>
         <section class="section" id="section-admin">
             <h2 style="margin-bottom:1rem;font-weight:800;">🛡️ Админ-панель</h2>
@@ -287,6 +293,8 @@
         <section class="section" id="section-all">
             <h2 style="margin-bottom:1rem;font-weight:800;">☰ Все разделы</h2>
             <div class="grid-tiles" id="allTiles"></div>
+            <h3 style="margin:1.5rem 0 0.8rem;font-weight:800;">📦 Мои объявления</h3>
+            <div id="myAdsList"></div>
         </section>
     </main>
 
@@ -301,7 +309,6 @@
 
     <!-- Контейнеры -->
     <div id="modalContainer"></div>
-    <div id="tutorialContainer"></div>
     <div id="authContainer"></div>
     <div class="toast-container" id="toastContainer"></div>
 
@@ -309,30 +316,21 @@
         (function() {
             'use strict';
 
-            // ===================== КОНСТАНТЫ =====================
+            // Константы
             const OWNER_USERNAME = 'bounqy';
-            const ALL_SERVERS = [
-                'Phoenix','Tucson','Scottdale','Chandler','Brainburg','Saint-Rose','Mesa','Red-Rock','Yuma','Surprise','Prescott','Glendale','Kingman','Winslow','Payson','Gilbert','Show-Low','Casa-Grande','Page','Sun-City','Queen-Creek','Sedona','Holiday','Wednesday','Yava','Faraway','Bumble-Bee','Christmas','Mirage','Love','Drake','Space','Home','Mobile I','Mobile II','Mobile III'
-            ];
+            const ALL_SERVERS = ['Phoenix','Tucson','Scottdale','Chandler','Brainburg','Saint-Rose','Mesa','Red-Rock','Yuma','Surprise','Prescott','Glendale','Kingman','Winslow','Payson','Gilbert','Show-Low','Casa-Grande','Page','Sun-City','Queen-Creek','Sedona','Holiday','Wednesday','Yava','Faraway','Bumble-Bee','Christmas','Mirage','Love','Drake','Space','Home','Mobile I','Mobile II','Mobile III'];
             const ALL_CATEGORIES = [
-                { id: 'accessories', label: '💍 Аксессуары и вещи' },
-                { id: 'transport', label: '🚗 Транспорт' },
-                { id: 'realestate', label: '🏠 Недвижимость' },
-                { id: 'business', label: '💼 Бизнесы' },
-                { id: 'weapons', label: '🔫 Оружие и материалы' },
-                { id: 'clothing', label: '👕 Одежда' },
-                { id: 'electronics', label: '📱 Электроника' }
+                { id: 'accessories', label: '💍 Аксессуары и вещи' }, { id: 'transport', label: '🚗 Транспорт' }, { id: 'realestate', label: '🏠 Недвижимость' },
+                { id: 'business', label: '💼 Бизнесы' }, { id: 'weapons', label: '🔫 Оружие и материалы' }, { id: 'clothing', label: '👕 Одежда' }, { id: 'electronics', label: '📱 Электроника' }
             ];
-            const APPEAL_REASONS = [
-                'Несправедливая блокировка','Ошибка модерации','Объявление удалили по ошибке','Нарушение правил другой стороной','Техническая проблема','Возврат средств','Жалоба на пользователя','Взлом аккаунта','Другое','Не знаю'
-            ];
+            const APPEAL_REASONS = ['Несправедливая блокировка','Ошибка модерации','Объявление удалили по ошибке','Нарушение правил другой стороной','Техническая проблема','Возврат средств','Жалоба на пользователя','Взлом аккаунта','Другое','Не знаю'];
             const ALLOWED_DOMAINS = ['youtube.com','youtu.be','radikal.cloud','allwebs.ru','postimages.org','ru.imgbb.com'];
             const DEFAULT_AD_IMAGE = 'https://i.postimg.cc/zDwTPKwq/0465dd7cc4f5446e5e908000ec4379bb.jpg';
             const SUPABASE_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co';
             const SUPABASE_ANON_KEY = 'sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO';
             const AD_EXPIRY_HOURS = 48;
 
-            // ===================== ГЛОБАЛЬНОЕ СОСТОЯНИЕ =====================
+            // Глобальное состояние
             let tg = null, supabaseClient = null, currentAuthUser = null;
             let currentUser = { id:0, username:'', first_name:'' };
             let currentSection = 'home', currentTheme = 'light', sfxEnabled = true;
@@ -343,7 +341,7 @@
             let homeAds = [], cartAds = [], myAds = [], pendingAds = [], pendingAppeals = [], pendingReports = [], searchHistory = [];
             let allTilesLoaded = false, barygaStateLoaded = false;
 
-            // ===================== ИНИЦИАЛИЗАЦИЯ SUPABASE =====================
+            // Инициализация Supabase
             function initSupabase() {
                 try {
                     if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
@@ -352,27 +350,41 @@
                     }
                     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ persistSession:false } });
                     return true;
-                } catch(e) { showFatalError('Ошибка подключения к Supabase'); return false; }
+                } catch(e) {
+                    showFatalError('Ошибка подключения к Supabase');
+                    return false;
+                }
             }
             function showFatalError(msg) {
                 document.body.innerHTML = `<div class="fullscreen-overlay"><h1 style="color:#EF4444;">⚠️ Ошибка</h1><p>${msg}</p><button class="btn mt-12" onclick="location.reload()">Повторить</button></div>`;
             }
 
-            // ===================== TELEGRAM WEBAPP =====================
+            // Telegram WebApp
             function initTelegram() {
                 try {
                     if (window.Telegram && window.Telegram.WebApp) {
-                        tg = window.Telegram.WebApp; tg.expand(); tg.ready();
+                        tg = window.Telegram.WebApp;
+                        tg.expand();
+                        tg.ready();
                         const initData = tg.initDataUnsafe || {};
                         if (initData.user) {
                             currentUser = { id: initData.user.id, username: initData.user.username || '', first_name: initData.user.first_name || 'Пользователь' };
-                        } else { showFatalError('Требуется запуск через Telegram.'); return false; }
-                    } else { showFatalError('Требуется запуск через Telegram.'); return false; }
+                        } else {
+                            showFatalError('Требуется запуск через Telegram.');
+                            return false;
+                        }
+                    } else {
+                        showFatalError('Требуется запуск через Telegram.');
+                        return false;
+                    }
                     return true;
-                } catch(e) { showFatalError('Ошибка Telegram WebApp'); return false; }
+                } catch(e) {
+                    showFatalError('Ошибка Telegram WebApp');
+                    return false;
+                }
             }
 
-            // ===================== УТИЛИТЫ =====================
+            // Утилиты
             function withTimeout(promise, ms=10000) { return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout')),ms))]); }
             function playSfx(type='click') {
                 if(!sfxEnabled) return;
@@ -445,7 +457,7 @@
                 return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
             }
 
-            // ===================== МОДАЛКИ =====================
+            // Модалки
             function showModal(html, onClose) {
                 const container = document.getElementById('modalContainer');
                 container.innerHTML = `<div class="modal-overlay" id="modalOverlay"><div class="modal"><button class="modal-close" id="modalCloseBtn">✕</button>${html}</div></div>`;
@@ -468,7 +480,7 @@
                 document.getElementById('confirmOkBtn').addEventListener('click', ()=>{ closeModal(); onConfirm(); });
             }
 
-            // ===================== АВТОРИЗАЦИЯ =====================
+            // Аутентификация
             async function checkAuth() {
                 if (!supabaseClient) { if(!initSupabase()) return; }
                 const saved = localStorage.getItem('arizona_current_user');
@@ -489,7 +501,10 @@
                         } else {
                             localStorage.removeItem('arizona_current_user');
                         }
-                    } catch(e) { console.warn('checkAuth restore error', e); localStorage.removeItem('arizona_current_user'); }
+                    } catch(e) {
+                        console.warn('checkAuth restore error', e);
+                        localStorage.removeItem('arizona_current_user');
+                    }
                 }
                 if (currentUser.id) {
                     try {
@@ -525,16 +540,28 @@
                     const { data:sd, error:se } = await withTimeout(supabaseClient.from('user_settings').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
                     if(se) throw se;
                     if(sd) { userSettings = sd; currentTheme = sd.theme||'light'; sfxEnabled = sd.sfx_enabled!==false; }
-                    else { await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null}); currentTheme='light'; sfxEnabled=true; }
+                    else {
+                        await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null});
+                        currentTheme='light'; sfxEnabled=true;
+                    }
                     const { data:pd, error:pe } = await withTimeout(supabaseClient.from('user_progress').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
                     if(pe) throw pe;
                     userProgress = pd||{};
-                } catch(e) { console.warn('loadUserSettings error',e); currentTheme='light'; sfxEnabled=true; userProgress={}; }
+                } catch(e) {
+                    console.warn('loadUserSettings error',e);
+                    currentTheme='light'; sfxEnabled=true; userProgress={};
+                }
                 applyTheme();
             }
 
             function showBanScreen() {
-                document.body.innerHTML = `<div class="fullscreen-overlay"><h1 style="color:#EF4444;">🚫 Вы забанены</h1><p>Ваш аккаунт заблокирован администрацией.</p><button class="btn mt-12" onclick="window.open('https://t.me/${OWNER_USERNAME}','_blank')">Связаться</button></div>`;
+                document.body.innerHTML = `
+                    <div class="fullscreen-overlay" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; text-align:center; padding:1rem;">
+                        <div class="ban-image"><img src="https://i.postimg.cc/QxHPzc8j/67a0788c2bc6a08c9814c8ddb26768ca.jpg" alt="Бан"></div>
+                        <h1 style="color:#EF4444;">🚫 Вы забанены</h1>
+                        <p style="color:var(--muted);">Ваш аккаунт заблокирован администрацией.</p>
+                        <button class="btn mt-12" onclick="window.open('https://t.me/${OWNER_USERNAME}','_blank')">Связаться с поддержкой</button>
+                    </div>`;
             }
 
             function showAuthScreen() {
@@ -601,57 +628,99 @@
                 renderAuthForm();
             }
 
-            // ===================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =====================
+            // Инициализация приложения
             async function initApp(isFirstLogin=false) {
                 if(!currentAuthUser){ showAuthScreen(); return; }
                 isAdmin = currentAuthUser.is_admin || (currentAuthUser.username===OWNER_USERNAME);
                 isOwner = currentAuthUser.username===OWNER_USERNAME;
                 document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdmin);
-                await loadSearchHistory(); await loadNotificationsCount();
-                checkTutorials(isFirstLogin);
+                await loadSearchHistory();
+                await loadNotificationsCount();
+                if (isFirstLogin || !userProgress.tutorial_completed) {
+                    showUserTutorial();
+                }
                 switchSection('home');
                 requestWakeLock();
             }
-            async function loadSearchHistory(){ if(!currentAuthUser)return; try{ const {data,error}=await withTimeout(supabaseClient.from('search_history').select('query').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).limit(10),5000); if(error)throw error; searchHistory = data?data.map(i=>i.query):[]; }catch(e){ searchHistory=[]; } }
-            async function saveSearchQuery(query){ if(!currentAuthUser||!query)return; try{ await supabaseClient.from('search_history').insert({user_id:currentAuthUser.id,query}); const {data:ids}=await supabaseClient.from('search_history').select('id').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).range(10,9999); if(ids&&ids.length) await supabaseClient.from('search_history').delete().in('id',ids.map(r=>r.id)); await loadSearchHistory(); }catch(e){ console.warn('saveSearchQuery',e); } }
-            async function loadNotificationsCount(){ if(!currentAuthUser)return; try{ const {count,error}=await withTimeout(supabaseClient.from('notifications').select('*',{count:'exact',head:true}).eq('user_id',currentAuthUser.id).eq('read',false),5000); if(!error) unreadNotifications=count||0; }catch(e){ unreadNotifications=0; } }
-            function requestWakeLock(){ try{ if('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock=>{wakeLock=lock;}).catch(()=>{}); }catch(e){} }
+            async function loadSearchHistory() { if(!currentAuthUser)return; try{ const {data,error}=await withTimeout(supabaseClient.from('search_history').select('query').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).limit(10),5000); if(error)throw error; searchHistory = data?data.map(i=>i.query):[]; }catch(e){ searchHistory=[]; } }
+            async function saveSearchQuery(query) { if(!currentAuthUser||!query)return; try{ await supabaseClient.from('search_history').insert({user_id:currentAuthUser.id,query}); const {data:ids}=await supabaseClient.from('search_history').select('id').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).range(10,9999); if(ids&&ids.length) await supabaseClient.from('search_history').delete().in('id',ids.map(r=>r.id)); await loadSearchHistory(); }catch(e){ console.warn('saveSearchQuery',e); } }
+            async function loadNotificationsCount() { if(!currentAuthUser)return; try{ const {count,error}=await withTimeout(supabaseClient.from('notifications').select('*',{count:'exact',head:true}).eq('user_id',currentAuthUser.id).eq('read',false),5000); if(!error) unreadNotifications=count||0; }catch(e){ unreadNotifications=0; } }
+            function requestWakeLock() { try{ if('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock=>{wakeLock=lock;}).catch(()=>{}); }catch(e){} }
 
-            // ===================== ТУТОРИАЛЫ =====================
-            function checkTutorials(isFirstLogin=false){ if(!currentAuthUser)return; const done=userProgress.tutorial_completed===true; if(isFirstLogin||!done) showUserTutorial(); }
-            async function markTutorialCompleted(){ await supabaseClient.from('user_progress').update({tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.tutorial_completed=true; }
-            function showUserTutorial(){
-                const slides=[ {title:'⚠️ Предупреждение',text:'Мы не несём ответственности за скам. Запрещена продажа/покупка аккаунтов.'}, {title:'Добро пожаловать!',text:'Это приложение для размещения объявлений на серверах Arizona RP.'}, {title:'🏠 Главная',text:'Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности.'}, {title:'🛒 Корзина',text:'Сохраняйте понравившиеся объявления.'}, {title:'➕ Отправка',text:'Создавайте свои объявления.'}, {title:'☰ Все разделы',text:'Игра «Барыга», лента луков, попутчики, музыка и настройки.'}, {title:'🔍 Поиск',text:'Используйте строку поиска вверху.'} ];
-                let cur=0; const cont=document.getElementById('tutorialContainer');
-                function render(){ const s=slides[cur], last=cur===slides.length-1; cont.innerHTML=`<div class="tutorial-overlay"><div class="tutorial-slide"><h2>${s.title}</h2><p>${s.text}</p><div class="tutorial-nav"><button class="btn secondary" id="tutBackBtn" ${cur===0?'disabled':''}>← Назад</button><button class="btn" id="tutNextBtn">${last?'Завершить':'Вперёд →'}</button></div></div></div>`; document.getElementById('tutBackBtn').addEventListener('click',()=>{if(cur>0){cur--;render();}}); document.getElementById('tutNextBtn').addEventListener('click',()=>{if(cur<slides.length-1){cur++;render();}else{markTutorialCompleted();cont.innerHTML='';}}); } render();
+            // Туториалы
+            function showUserTutorial() {
+                const slides = [
+                    { title:'⚠️ Предупреждение', text:'Мы не несём ответственности за скам. Запрещена продажа/покупка аккаунтов.' },
+                    { title:'Добро пожаловать!', text:'Это приложение для размещения объявлений на серверах Arizona RP.' },
+                    { title:'🏠 Главная', text:'Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности.' },
+                    { title:'🛒 Корзина', text:'Сохраняйте понравившиеся объявления.' },
+                    { title:'➕ Отправка', text:'Создавайте свои объявления.' },
+                    { title:'☰ Все разделы', text:'Игра «Барыга», лента луков, попутчики, музыка и настройки.' },
+                    { title:'🔍 Поиск', text:'Используйте строку поиска вверху.' }
+                ];
+                let cur = 0;
+                function renderSlide() {
+                    const s = slides[cur];
+                    const last = cur === slides.length - 1;
+                    const html = `<div class="modal-title">${s.title}</div><p style="color:var(--muted);margin-bottom:1.5rem;">${s.text}</p>
+                    <div class="flex-between gap-12">
+                        <button class="btn secondary" id="tutBackBtn" ${cur===0?'disabled':''}>← Назад</button>
+                        <button class="btn" id="tutNextBtn">${last?'Завершить':'Вперёд →'}</button>
+                    </div>`;
+                    const { closeModal } = showModal(html);
+                    document.getElementById('tutBackBtn').addEventListener('click', ()=>{ if(cur>0){ cur--; closeModal(); setTimeout(renderSlide, 300); } });
+                    document.getElementById('tutNextBtn').addEventListener('click', ()=>{ if(cur<slides.length-1){ cur++; closeModal(); setTimeout(renderSlide, 300); } else { closeModal(); markTutorialCompleted(); } });
+                }
+                renderSlide();
             }
-            function showAdminTutorial(){
-                if(!currentAuthUser||!isAdmin)return; if(userProgress.admin_tutorial_completed===true)return;
-                const slides=[ {title:'🔧 Админ-панель',text:'Здесь вы управляете объявлениями.'}, {title:'📨 Апелляции',text:'Одобряйте или отклоняйте апелляции.'}, {title:'⚖️ Управление пользователями',text:'Баны, разбаны, назначение админов.'}, {title:'🧹 Дополнительно',text:'Очистка ленты и другие действия.'} ];
-                let cur=0; const cont=document.getElementById('tutorialContainer');
-                function render(){ const s=slides[cur], last=cur===slides.length-1; cont.innerHTML=`<div class="tutorial-overlay"><div class="tutorial-slide"><h2>${s.title}</h2><p>${s.text}</p><button class="btn w-full mt-12" id="adminTutNextBtn">${last?'Закрыть':'Вперёд →'}</button></div></div>`; document.getElementById('adminTutNextBtn').addEventListener('click',()=>{if(cur<slides.length-1){cur++;render();}else{supabaseClient.from('user_progress').update({admin_tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.admin_tutorial_completed=true; cont.innerHTML='';}}); } render();
+            async function markTutorialCompleted() { await supabaseClient.from('user_progress').update({tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.tutorial_completed=true; }
+
+            function showAdminTutorial() {
+                const slides = [
+                    { title:'🔧 Админ-панель', text:'Здесь вы управляете объявлениями.' },
+                    { title:'📨 Апелляции', text:'Одобряйте или отклоняйте апелляции.' },
+                    { title:'⚖️ Управление пользователями', text:'Баны, разбаны, назначение админов.' },
+                    { title:'🧹 Дополнительно', text:'Очистка ленты и другие действия.' }
+                ];
+                let cur = 0;
+                function renderSlide() {
+                    const s = slides[cur];
+                    const last = cur === slides.length - 1;
+                    const html = `<div class="modal-title">${s.title}</div><p style="color:var(--muted);margin-bottom:1.5rem;">${s.text}</p>
+                    <button class="btn w-full" id="adminTutNextBtn">${last?'Закрыть':'Вперёд →'}</button>`;
+                    const { closeModal } = showModal(html);
+                    document.getElementById('adminTutNextBtn').addEventListener('click', ()=>{ if(cur<slides.length-1){ cur++; closeModal(); setTimeout(renderSlide, 300); } else { supabaseClient.from('user_progress').update({admin_tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.admin_tutorial_completed=true; closeModal(); } });
+                }
+                renderSlide();
             }
 
-            // ===================== НАВИГАЦИЯ =====================
-            function switchSection(section){
-                currentSection=section;
+            // Навигация
+            function switchSection(section) {
+                currentSection = section;
                 document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
                 document.getElementById('section-'+section).classList.add('active');
                 document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
                 document.querySelector(`.nav-item[data-section="${section}"]`).classList.add('active');
                 if(section==='home') loadHomeFeed();
                 if(section==='cart') loadCart();
-                if(section==='send'){ initSendForm(); loadMyAds(); }
-                if(section==='admin'){ if(isAdmin) checkAdminPassword(); else document.getElementById('adminPanelContent').innerHTML='<div class="empty-state">Нет доступа</div>'; }
-                if(section==='all' && !allTilesLoaded){ loadAllTiles(); allTilesLoaded=true; }
-                playSfx('click'); requestWakeLock();
+                if(section==='send') { initSendForm(); }
+                if(section==='admin') {
+                    if(isAdmin) { checkAdminPassword(); }
+                    else { document.getElementById('adminPanelContent').innerHTML='<div class="empty-state">Нет доступа</div>'; }
+                }
+                if(section==='all') {
+                    if(!allTilesLoaded) { loadAllTiles(); allTilesLoaded=true; }
+                    loadMyAds();
+                }
+                playSfx('click');
+                requestWakeLock();
             }
-            document.querySelectorAll('.nav-item[data-section]').forEach(btn=>btn.addEventListener('click',()=>{const sec=btn.dataset.section; if(sec==='admin'&&!isAdmin)return; switchSection(sec);}));
-            document.getElementById('themeToggleBtn').addEventListener('click',async()=>{ currentTheme=currentTheme==='light'?'dark':'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id',currentAuthUser.id); playSfx('click'); });
+            document.querySelectorAll('.nav-item[data-section]').forEach(btn=>btn.addEventListener('click',()=>{ const sec = btn.dataset.section; if(sec==='admin'&&!isAdmin) return; switchSection(sec); }));
+            document.getElementById('themeToggleBtn').addEventListener('click', async ()=>{ currentTheme = currentTheme==='light'?'dark':'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id',currentAuthUser.id); playSfx('click'); });
             document.getElementById('headerSearchTrigger').addEventListener('click', openSearchModal);
             document.getElementById('logoBtn').addEventListener('click', openLinksModal);
 
-            function openLinksModal(){
+            function openLinksModal() {
                 showModal(`<h3 class="modal-title">🔗 Сообщества</h3><div class="links-list">
                     <div class="link-item" data-link="https://t.me/arizona_coin_bot"><span class="link-icon">🤖</span><span class="link-label">Бот</span><span class="link-value">@arizona_coin_bot</span></div>
                     <div class="link-item" data-link="https://t.me/Bounty_Squad31"><span class="link-icon">📣</span><span class="link-label">Телеграм канал</span><span class="link-value">@Bounty_Squad31</span></div>
@@ -659,275 +728,758 @@
                     <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span><span class="link-value">@bounqy31</span></div>
                     <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">👥</span><span class="link-label">ВК сообщество</span><span class="link-value">@bountyarz</span></div>
                 </div>`);
-                document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{window.open(item.dataset.link,'_blank');document.getElementById('modalOverlay').remove();}));
+                document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{ window.open(item.dataset.link,'_blank'); document.getElementById('modalOverlay').remove(); }));
             }
 
-            // ===================== АДМИН-ПАРОЛЬ =====================
+            // Админ-пароль
             async function checkAdminPassword(){
-                if(!currentAuthUser||!isAdmin)return;
-                const has = userSettings.admin_password_hash && userSettings.admin_password_hash!==null;
-                if(!has) showCreateAdminPasswordModal(); else showAdminLoginModal(userSettings.admin_password_hash);
+                if(!currentAuthUser || !isAdmin) return;
+                const has = userSettings.admin_password_hash && userSettings.admin_password_hash !== null;
+                if(!has) showCreateAdminPasswordModal();
+                else showAdminLoginModal(userSettings.admin_password_hash);
             }
             function showCreateAdminPasswordModal(){
                 showModal(`<h3 class="modal-title">🔒 Создайте пароль администратора</h3><p style="color:var(--muted);margin-bottom:1rem;">Этот пароль будет использоваться для входа в админ-панель.</p>
                 <div class="form-group"><label>Новый пароль</label><input type="password" id="newAdminPass" placeholder="Минимум 6 символов"></div>
                 <div class="form-group"><label>Повторите пароль</label><input type="password" id="confirmAdminPass" placeholder="Повторите пароль"></div>
                 <button class="btn w-full" id="createAdminPassBtn">Создать</button><p id="adminPassError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
-                document.getElementById('createAdminPassBtn').addEventListener('click',async()=>{
-                    const p1=document.getElementById('newAdminPass').value.trim(), p2=document.getElementById('confirmAdminPass').value.trim(), errEl=document.getElementById('adminPassError');
-                    if(p1.length<6){errEl.textContent='Пароль слишком короткий';return;} if(p1!==p2){errEl.textContent='Пароли не совпадают';return;}
-                    const hash=await hashPassword(p1); await supabaseClient.from('user_settings').update({admin_password_hash:hash}).eq('user_id',currentAuthUser.id); userSettings.admin_password_hash=hash;
-                    playSfx('success'); showToast('Пароль администратора установлен','success'); document.getElementById('modalOverlay').remove(); showAdminTutorial(); loadAdminPanel();
+                document.getElementById('createAdminPassBtn').addEventListener('click', async ()=>{
+                    const p1 = document.getElementById('newAdminPass').value.trim();
+                    const p2 = document.getElementById('confirmAdminPass').value.trim();
+                    const errEl = document.getElementById('adminPassError');
+                    if(p1.length < 6){ errEl.textContent='Пароль слишком короткий'; return; }
+                    if(p1 !== p2){ errEl.textContent='Пароли не совпадают'; return; }
+                    const hash = await hashPassword(p1);
+                    await supabaseClient.from('user_settings').update({admin_password_hash:hash}).eq('user_id',currentAuthUser.id);
+                    userSettings.admin_password_hash = hash;
+                    playSfx('success'); showToast('Пароль администратора установлен','success');
+                    document.getElementById('modalOverlay').remove();
+                    showAdminTutorial();
+                    loadAdminPanel();
                 });
             }
             function showAdminLoginModal(storedHash){
                 showModal(`<h3 class="modal-title">🔒 Вход в админ-панель</h3><div class="form-group"><label>Пароль</label><input type="password" id="adminLoginPass" placeholder="Введите пароль"></div><button class="btn w-full" id="adminLoginBtn">Войти</button><p id="adminLoginError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
-                document.getElementById('adminLoginBtn').addEventListener('click',async()=>{
-                    const pass=document.getElementById('adminLoginPass').value.trim(), errEl=document.getElementById('adminLoginError'); const hash=await hashPassword(pass);
-                    if(hash!==storedHash){errEl.textContent='Неверный пароль';return;} playSfx('success'); document.getElementById('modalOverlay').remove(); showAdminTutorial(); loadAdminPanel();
+                document.getElementById('adminLoginBtn').addEventListener('click', async ()=>{
+                    const pass = document.getElementById('adminLoginPass').value.trim();
+                    const errEl = document.getElementById('adminLoginError');
+                    const hash = await hashPassword(pass);
+                    if(hash !== storedHash){ errEl.textContent='Неверный пароль'; return; }
+                    playSfx('success');
+                    document.getElementById('modalOverlay').remove();
+                    showAdminTutorial();
+                    loadAdminPanel();
                 });
             }
 
-            // ===================== ГЛАВНАЯ ЛЕНТА =====================
-            let feedPage=0; const FEED_PAGE_SIZE=20;
+            // Главная лента
+            let feedPage = 0;
+            const FEED_PAGE_SIZE = 20;
             function setupServerSelector(){
-                const btn=document.getElementById('serverSelectBtn');
-                btn.addEventListener('click',()=>{
+                const btn = document.getElementById('serverSelectBtn');
+                btn.addEventListener('click', ()=>{
                     showModal(`<h3 class="modal-title">🌍 Выберите сервер</h3><div class="grid-tiles" id="serverGrid">
                         <div class="grid-tile ${currentFilterServer===null?'active':''}" data-server="">Все сервера</div>
                         ${ALL_SERVERS.map(s=>`<div class="grid-tile ${currentFilterServer===s?'active':''}" data-server="${s}">${s}</div>`).join('')}
                     </div>`);
-                    document.querySelectorAll('#serverGrid [data-server]').forEach(tile=>tile.addEventListener('click',()=>{
-                        const server=tile.dataset.server; currentFilterServer = server===''?null:server; updateServerButtonText();
-                        document.getElementById('modalOverlay').remove(); loadHomeFeed();
+                    document.querySelectorAll('#serverGrid [data-server]').forEach(tile=>tile.addEventListener('click', ()=>{
+                        const server = tile.dataset.server;
+                        currentFilterServer = server === '' ? null : server;
+                        updateServerButtonText();
+                        document.getElementById('modalOverlay').remove();
+                        loadHomeFeed();
                     }));
                 });
                 updateServerButtonText();
             }
-            function updateServerButtonText(){ const btn=document.getElementById('serverSelectBtn'); btn.textContent = currentFilterServer?`🌐 ${currentFilterServer}`:'🌐 Все сервера'; }
+            function updateServerButtonText(){
+                const btn = document.getElementById('serverSelectBtn');
+                btn.textContent = currentFilterServer ? `🌐 ${currentFilterServer}` : '🌐 Все сервера';
+            }
             async function loadHomeFeed(reset=true){
-                if(reset) feedPage=0;
-                const cont=document.getElementById('homeFeed'); if(reset) cont.innerHTML='<div class="loader"></div>';
+                if(reset) feedPage = 0;
+                const cont = document.getElementById('homeFeed');
+                if(reset) cont.innerHTML = '<div class="loader"></div>';
                 try{
                     let query = supabaseClient.from('ads').select('*').eq('status','approved').order('created_at',{ascending:false}).range(feedPage*FEED_PAGE_SIZE,(feedPage+1)*FEED_PAGE_SIZE-1);
                     if(currentFilterServer) query = query.eq('server', currentFilterServer);
-                    const {data,error}=await withTimeout(query,8000); if(error) throw error;
-                    const newAds = data||[];
-                    const validAds = newAds.filter(ad=>!ad.expires_at || new Date(ad.expires_at)>new Date());
-                    if(reset) homeAds=validAds; else homeAds=[...homeAds,...validAds];
-                    renderHomeFeed(); feedPage++;
-                }catch(e){ cont.innerHTML='<div class="empty-state">⚠️ Ошибка загрузки</div>'; }
+                    const { data, error } = await withTimeout(query, 8000);
+                    if(error) throw error;
+                    const newAds = data || [];
+                    const validAds = newAds.filter(ad => !ad.expires_at || new Date(ad.expires_at) > new Date());
+                    if(reset) homeAds = validAds;
+                    else homeAds = [...homeAds, ...validAds];
+                    renderHomeFeed();
+                    feedPage++;
+                } catch(e) {
+                    cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>';
+                }
             }
             function renderHomeFeed(){
-                const cont=document.getElementById('homeFeed'); if(!homeAds.length){cont.innerHTML='<div class="empty-state">📭 Объявлений пока нет</div>';return;}
-                let html=''; homeAds.forEach(ad=>{
-                    const firstImg=ad.images?ad.images.split(',')[0].trim():''; const img=firstImg||DEFAULT_AD_IMAGE;
-                    const modeBadge=ad.mode==='sell'?'<span class="badge sell">Продажа</span>':'<span class="badge buy">Покупка</span>';
-                    const catLabel=ALL_CATEGORIES.find(c=>c.id===ad.category)?.label||ad.category;
-                    let timer='';
+                const cont = document.getElementById('homeFeed');
+                if(!homeAds.length){ cont.innerHTML='<div class="empty-state">📭 Объявлений пока нет</div>'; return; }
+                let html = '';
+                homeAds.forEach(ad=>{
+                    const firstImg = ad.images ? ad.images.split(',')[0].trim() : '';
+                    const img = firstImg || DEFAULT_AD_IMAGE;
+                    const modeBadge = ad.mode==='sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
+                    const catLabel = ALL_CATEGORIES.find(c=>c.id===ad.category)?.label || ad.category;
+                    let timer = '';
                     if(ad.expires_at){
-                        const diff=new Date(ad.expires_at)-new Date();
-                        if(diff>0){ const total=Math.floor(diff/1000),h=Math.floor(total/3600),m=Math.floor((total%3600)/60),s=total%60; timer=`<div class="countdown-timer">⏳ Удаление через: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}</div>`; }
-                        else timer='<div class="countdown-timer">⚠️ Удалено</div>';
+                        const diff = new Date(ad.expires_at) - new Date();
+                        if(diff > 0){
+                            const total = Math.floor(diff/1000);
+                            const h = Math.floor(total/3600);
+                            const m = Math.floor((total%3600)/60);
+                            const s = total%60;
+                            timer = `<div class="countdown-timer">⏳ Удаление через: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}</div>`;
+                        } else {
+                            timer = '<div class="countdown-timer">⚠️ Удалено</div>';
+                        }
                     }
-                    html+=`<div class="card ad-card" data-ad-id="${ad.id}">
+                    html += `<div class="card ad-card" data-ad-id="${ad.id}">
                         <div class="img-container" style="width:80px;height:100px;border-radius:12px;flex-shrink:0;background:var(--border);">
                             <div class="skeleton" style="position:absolute;inset:0;border-radius:12px;"></div>
-                            <img src="${img}" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;" onload="this.classList.add('loaded')" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <img src="${img}" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;" onload="this.classList.add('loaded')" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                             <div style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:var(--border);border-radius:12px;z-index:0;">📷</div>
                         </div>
                         <div class="ad-card-info">
-                            <div class="ad-card-title">${ad.item_name||'Без названия'}</div>
+                            <div class="ad-card-title">${ad.item_name || 'Без названия'}</div>
                             <div class="ad-card-price">${formatPrice(ad.price)}</div>
                             <div class="ad-card-badges">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>
-                            <div class="ad-card-author">Автор: ${ad.author_username||ad.author_id}</div>${timer}
+                            <div class="ad-card-author">Автор: ${ad.author_username || ad.author_id}</div>
+                            ${timer}
                         </div>
                     </div>`;
                 });
-                cont.innerHTML=html;
-                cont.querySelectorAll('.ad-card').forEach(card=>card.addEventListener('click',()=>{const id=card.dataset.adId; const ad=homeAds.find(a=>a.id==id); if(ad)openAdDetail(ad);}));
-                const loadMore=document.createElement('button'); loadMore.className='btn secondary w-full mt-12'; loadMore.textContent='Загрузить ещё'; loadMore.addEventListener('click',()=>loadHomeFeed(false)); cont.appendChild(loadMore);
+                cont.innerHTML = html;
+                cont.querySelectorAll('.ad-card').forEach(card=>card.addEventListener('click', ()=>{
+                    const id = card.dataset.adId;
+                    const ad = homeAds.find(a=>a.id == id);
+                    if(ad) openAdDetail(ad);
+                }));
+                const loadMore = document.createElement('button');
+                loadMore.className = 'btn secondary w-full mt-12';
+                loadMore.textContent = 'Загрузить ещё';
+                loadMore.addEventListener('click', ()=>loadHomeFeed(false));
+                cont.appendChild(loadMore);
             }
 
-            // ===================== КОРЗИНА =====================
+            // Корзина
             async function loadCart(){
-                const cont=document.getElementById('cartList'); if(!currentAuthUser){cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>';return;} cont.innerHTML='<div class="loader"></div>';
+                const cont = document.getElementById('cartList');
+                if(!currentAuthUser){ cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>'; return; }
+                cont.innerHTML = '<div class="loader"></div>';
                 try{
-                    const {data:favs,error:favErr}=await withTimeout(supabaseClient.from('favorites').select('ad_id').eq('user_id',currentAuthUser.id),5000); if(favErr)throw favErr;
-                    const adIds=favs.map(f=>f.ad_id); if(!adIds.length){cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>';return;}
-                    const {data:ads,error:adsErr}=await withTimeout(supabaseClient.from('ads').select('*').in('id',adIds).order('created_at',{ascending:false}),5000); if(adsErr)throw adsErr;
-                    cartAds=ads||[]; if(!cartAds.length){cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>';return;}
-                    let html=''; cartAds.forEach(ad=>{
-                        const isDel=ad.status==='deleted'; const statusBadge=isDel?'<span class="badge status-deleted">🔴 Удалено</span>':'<span class="badge status-approved">🟢 Висит</span>';
-                        html+=`<div class="card ${isDel?'inactive-card':''}" data-ad-id="${ad.id}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.8rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><button class="btn danger" data-remove-cart="${ad.id}">🗑</button></div></div>`;
+                    const { data: favs, error: favErr } = await withTimeout(supabaseClient.from('favorites').select('ad_id').eq('user_id', currentAuthUser.id), 5000);
+                    if(favErr) throw favErr;
+                    const adIds = favs.map(f=>f.ad_id);
+                    if(!adIds.length){ cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>'; return; }
+                    const { data: ads, error: adsErr } = await withTimeout(supabaseClient.from('ads').select('*').in('id', adIds).order('created_at',{ascending:false}), 5000);
+                    if(adsErr) throw adsErr;
+                    cartAds = ads || [];
+                    if(!cartAds.length){ cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>'; return; }
+                    let html = '';
+                    cartAds.forEach(ad=>{
+                        const isDel = ad.status==='deleted';
+                        const statusBadge = isDel ? '<span class="badge status-deleted">🔴 Удалено</span>' : '<span class="badge status-approved">🟢 Висит</span>';
+                        html += `<div class="card ${isDel?'inactive-card':''}" data-ad-id="${ad.id}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.8rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><button class="btn danger" data-remove-cart="${ad.id}">🗑</button></div></div>`;
                     });
-                    cont.innerHTML=html;
-                    cont.querySelectorAll('[data-remove-cart]').forEach(btn=>btn.addEventListener('click',async(e)=>{e.stopPropagation(); await supabaseClient.from('favorites').delete().eq('user_id',currentAuthUser.id).eq('ad_id',btn.dataset.removeCart); loadCart();}));
-                    cont.querySelectorAll('.card[data-ad-id]').forEach(card=>card.addEventListener('click',(e)=>{if(e.target.closest('button'))return; const ad=cartAds.find(a=>a.id==card.dataset.adId); if(ad)openAdDetail(ad);}));
-                }catch(e){cont.innerHTML='<div class="empty-state">⚠️ Ошибка загрузки</div>';}
+                    cont.innerHTML = html;
+                    cont.querySelectorAll('[data-remove-cart]').forEach(btn=>btn.addEventListener('click', async (e)=>{
+                        e.stopPropagation();
+                        await supabaseClient.from('favorites').delete().eq('user_id', currentAuthUser.id).eq('ad_id', btn.dataset.removeCart);
+                        loadCart();
+                    }));
+                    cont.querySelectorAll('.card[data-ad-id]').forEach(card=>card.addEventListener('click', (e)=>{
+                        if(e.target.closest('button')) return;
+                        const ad = cartAds.find(a=>a.id == card.dataset.adId);
+                        if(ad) openAdDetail(ad);
+                    }));
+                } catch(e) {
+                    cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>';
+                }
             }
 
-            // ===================== ФОРМА ОТПРАВКИ =====================
+            // Форма отправки
             let sendFormData = { type:'sell', category:null, server:null };
             function initSendForm(){
-                const priceInput=document.getElementById('sendPrice'); priceInput.removeEventListener('input',formatPriceInputHandler); priceInput.addEventListener('input',formatPriceInputHandler);
-                document.getElementById('sendTypeBtn').addEventListener('click',()=>{
+                const priceInput = document.getElementById('sendPrice');
+                priceInput.removeEventListener('input', formatPriceInputHandler);
+                priceInput.addEventListener('input', formatPriceInputHandler);
+                document.getElementById('sendTypeBtn').addEventListener('click', ()=>{
                     showModal(`<h3 class="modal-title">Тип сделки</h3><div class="grid-tiles"><div class="grid-tile" data-type="sell">Продажа</div><div class="grid-tile" data-type="buy">Покупка</div></div>`);
-                    document.querySelectorAll('#modalOverlay [data-type]').forEach(t=>t.addEventListener('click',()=>{ sendFormData.type=t.dataset.type; document.getElementById('sendTypeBtn').textContent = t.dataset.type==='sell'?'Продажа':'Покупка'; document.getElementById('modalOverlay').remove(); }));
+                    document.querySelectorAll('#modalOverlay [data-type]').forEach(t=>t.addEventListener('click', ()=>{ sendFormData.type = t.dataset.type; document.getElementById('sendTypeBtn').textContent = t.dataset.type==='sell'?'Продажа':'Покупка'; document.getElementById('modalOverlay').remove(); }));
                 });
-                document.getElementById('sendCategoryBtn').addEventListener('click',()=>{
+                document.getElementById('sendCategoryBtn').addEventListener('click', ()=>{
                     showModal(`<h3 class="modal-title">Категория</h3><div class="grid-tiles">${ALL_CATEGORIES.map(c=>`<div class="grid-tile" data-cat="${c.id}">${c.label}</div>`).join('')}</div>`);
-                    document.querySelectorAll('#modalOverlay [data-cat]').forEach(t=>t.addEventListener('click',()=>{ sendFormData.category=t.dataset.cat; document.getElementById('sendCategoryBtn').textContent=ALL_CATEGORIES.find(c=>c.id===t.dataset.cat).label; document.getElementById('modalOverlay').remove(); }));
+                    document.querySelectorAll('#modalOverlay [data-cat]').forEach(t=>t.addEventListener('click', ()=>{ sendFormData.category = t.dataset.cat; document.getElementById('sendCategoryBtn').textContent = ALL_CATEGORIES.find(c=>c.id===t.dataset.cat).label; document.getElementById('modalOverlay').remove(); }));
                 });
-                document.getElementById('sendServerBtn').addEventListener('click',()=>{
+                document.getElementById('sendServerBtn').addEventListener('click', ()=>{
                     showModal(`<h3 class="modal-title">Сервер</h3><div class="grid-tiles">${ALL_SERVERS.map(s=>`<div class="grid-tile" data-server="${s}">${s}</div>`).join('')}</div>`);
-                    document.querySelectorAll('#modalOverlay [data-server]').forEach(t=>t.addEventListener('click',()=>{ sendFormData.server=t.dataset.server; document.getElementById('sendServerBtn').textContent=t.dataset.server; document.getElementById('modalOverlay').remove(); }));
+                    document.querySelectorAll('#modalOverlay [data-server]').forEach(t=>t.addEventListener('click', ()=>{ sendFormData.server = t.dataset.server; document.getElementById('sendServerBtn').textContent = t.dataset.server; document.getElementById('modalOverlay').remove(); }));
                 });
             }
 
-            document.getElementById('sendSubmitBtn').addEventListener('click',async()=>{
-                if(!currentAuthUser){showAlert('Ошибка','Вы не авторизованы');return;}
-                const itemName=document.getElementById('sendName').value.trim(); const priceRaw=document.getElementById('sendPrice').value.trim(); const description=document.getElementById('sendDescription').value.trim(); const images=document.getElementById('sendImages').value.trim();
-                if(!itemName||!priceRaw||!description){showAlert('Ошибка','Заполните все обязательные поля');return;}
-                const linkCheck=checkLinksString(images); if(!linkCheck.valid){showAlert('Ошибка',linkCheck.message);return;}
-                const last=localStorage.getItem('arizona_last_submit_time'); if(last){const diff=Date.now()-parseInt(last); if(diff<120000){showAlert('Подождите',`Следующая отправка через ${Math.ceil((120000-diff)/1000)} сек.`);return;}}
-                if(!sendFormData.category||!sendFormData.server){showAlert('Ошибка','Выберите категорию и сервер');return;}
-                const newAd={mode:sendFormData.type, category:sendFormData.category, item_name:itemName, price:parsePriceToNumber(priceRaw), description, images, server:sendFormData.server, author_id:currentAuthUser.id, author_username:currentAuthUser.username, status:'pending', created_at:new Date().toISOString(), expires_at:null};
-                try{ await withTimeout(supabaseClient.from('ads').insert(newAd),5000); localStorage.setItem('arizona_last_submit_time',Date.now().toString()); playSfx('success'); showToast('Объявление отправлено','success'); document.getElementById('sendName').value=''; document.getElementById('sendPrice').value=''; document.getElementById('sendDescription').value=''; document.getElementById('sendImages').value=''; loadMyAds(); }catch(e){showAlert('Ошибка','Не удалось отправить');}
+            document.getElementById('sendSubmitBtn').addEventListener('click', async ()=>{
+                if(!currentAuthUser){ showAlert('Ошибка','Вы не авторизованы'); return; }
+                const itemName = document.getElementById('sendName').value.trim();
+                const priceRaw = document.getElementById('sendPrice').value.trim();
+                const description = document.getElementById('sendDescription').value.trim();
+                const images = document.getElementById('sendImages').value.trim();
+                if(!itemName || !priceRaw || !description){ showAlert('Ошибка','Заполните все обязательные поля'); return; }
+                const linkCheck = checkLinksString(images);
+                if(!linkCheck.valid){ showAlert('Ошибка', linkCheck.message); return; }
+                const last = localStorage.getItem('arizona_last_submit_time');
+                if(last){
+                    const diff = Date.now() - parseInt(last);
+                    if(diff < 120000){ showAlert('Подождите', `Следующая отправка через ${Math.ceil((120000-diff)/1000)} сек.`); return; }
+                }
+                if(!sendFormData.category || !sendFormData.server){ showAlert('Ошибка','Выберите категорию и сервер'); return; }
+                const newAd = {
+                    mode: sendFormData.type,
+                    category: sendFormData.category,
+                    item_name: itemName,
+                    price: parsePriceToNumber(priceRaw),
+                    description,
+                    images,
+                    server: sendFormData.server,
+                    author_id: currentAuthUser.id,
+                    author_username: currentAuthUser.username,
+                    status: 'pending',
+                    created_at: new Date().toISOString(),
+                    expires_at: null
+                };
+                try{
+                    await withTimeout(supabaseClient.from('ads').insert(newAd), 5000);
+                    localStorage.setItem('arizona_last_submit_time', Date.now().toString());
+                    playSfx('success');
+                    showToast('Объявление отправлено','success');
+                    document.getElementById('sendName').value = '';
+                    document.getElementById('sendPrice').value = '';
+                    document.getElementById('sendDescription').value = '';
+                    document.getElementById('sendImages').value = '';
+                } catch(e) {
+                    showAlert('Ошибка','Не удалось отправить');
+                }
             });
 
+            // Мои объявления
             async function loadMyAds(){
-                const cont=document.getElementById('myAdsList'); if(!currentAuthUser){cont.innerHTML='<div class="empty-state">У вас пока нет объявлений</div>';return;} cont.innerHTML='<div class="loader"></div>';
+                const cont = document.getElementById('myAdsList');
+                if(!currentAuthUser){ cont.innerHTML='<div class="empty-state">У вас пока нет объявлений</div>'; return; }
+                cont.innerHTML = '<div class="loader"></div>';
                 try{
-                    const {data,error}=await withTimeout(supabaseClient.from('ads').select('*').eq('author_id',currentAuthUser.id).order('created_at',{ascending:false}),5000); if(error)throw error;
-                    myAds=data||[]; if(!myAds.length){cont.innerHTML='<div class="empty-state">У вас пока нет объявлений</div>';return;}
-                    let html=''; myAds.forEach(ad=>{
-                        let statusBadge=ad.status==='pending'?'<span class="badge status-pending">🟡 На модерации</span>':ad.status==='deleted'?'<span class="badge status-deleted">🔴 Удалено</span>':'<span class="badge status-approved">🟢 Висит</span>';
-                        html+=`<div class="card ${ad.status==='deleted'?'inactive-card':''}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><div class="flex-between gap-8"><button class="btn danger" data-perm-del="${ad.id}">🗑</button>${ad.status==='deleted'?`<button class="btn gold" data-appeal="${ad.id}">📨</button>`:''}</div></div></div>`;
+                    const { data, error } = await withTimeout(supabaseClient.from('ads').select('*').eq('author_id', currentAuthUser.id).order('created_at',{ascending:false}), 5000);
+                    if(error) throw error;
+                    myAds = data || [];
+                    if(!myAds.length){ cont.innerHTML='<div class="empty-state">У вас пока нет объявлений</div>'; return; }
+                    let html = '';
+                    myAds.forEach(ad=>{
+                        let statusBadge = ad.status==='pending' ? '<span class="badge status-pending">🟡 На модерации</span>' : (ad.status==='deleted' ? '<span class="badge status-deleted">🔴 Удалено</span>' : '<span class="badge status-approved">🟢 Висит</span>');
+                        html += `<div class="card ${ad.status==='deleted'?'inactive-card':''}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><div class="flex-between gap-8"><button class="btn danger" data-perm-del="${ad.id}">🗑</button>${ad.status==='deleted'?`<button class="btn gold" data-appeal="${ad.id}">📨</button>`:''}</div></div></div>`;
                     });
-                    cont.innerHTML=html;
-                    cont.querySelectorAll('[data-perm-del]').forEach(btn=>btn.addEventListener('click',async(e)=>{e.stopPropagation(); showConfirm('Удаление','Стереть объявление навсегда?',async()=>{await supabaseClient.from('ads').delete().eq('id',btn.dataset.permDel); await supabaseClient.from('favorites').delete().eq('ad_id',btn.dataset.permDel); loadMyAds();});}));
-                    cont.querySelectorAll('[data-appeal]').forEach(btn=>btn.addEventListener('click',(e)=>{e.stopPropagation(); appealAdId=btn.dataset.appeal; openAppealModal();}));
-                }catch(e){cont.innerHTML='<div class="empty-state">⚠️ Ошибка загрузки</div>';}
+                    cont.innerHTML = html;
+                    cont.querySelectorAll('[data-perm-del]').forEach(btn=>btn.addEventListener('click', async (e)=>{
+                        e.stopPropagation();
+                        showConfirm('Удаление','Стереть объявление навсегда?', async ()=>{
+                            await supabaseClient.from('ads').delete().eq('id', btn.dataset.permDel);
+                            await supabaseClient.from('favorites').delete().eq('ad_id', btn.dataset.permDel);
+                            loadMyAds();
+                        });
+                    }));
+                    cont.querySelectorAll('[data-appeal]').forEach(btn=>btn.addEventListener('click', (e)=>{
+                        e.stopPropagation();
+                        appealAdId = btn.dataset.appeal;
+                        openAppealModal();
+                    }));
+                } catch(e) {
+                    cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>';
+                }
             }
 
-            let appealAdId=null;
+            // Апелляция
+            let appealAdId = null;
             function openAppealModal(){
-                if(!appealAdId)return;
+                if(!appealAdId) return;
                 showModal(`<h3 class="modal-title">📨 Апелляция</h3>
-                    <div class="form-group"><label>Причина</label><button class="btn secondary w-full" id="appealReasonBtn">Выберите причину</button></div>
+                    <div class="form-group"><label>Причина</label><select id="appealReasonSelect">${APPEAL_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
                     <div class="form-group"><label>Доказательства</label><input type="text" id="appealEvidence" placeholder="https://..."></div>
                     <button class="btn w-full" id="appealSubmitBtn">Отправить</button>`);
-                let selectedReason=null;
-                document.getElementById('appealReasonBtn').addEventListener('click',()=>{
-                    showModal(`<h3 class="modal-title">Выберите причину</h3><div class="grid-tiles">${APPEAL_REASONS.map(r=>`<div class="grid-tile" data-reason="${r}">${r}</div>`).join('')}</div>`);
-                    document.querySelectorAll('#modalOverlay [data-reason]').forEach(t=>t.addEventListener('click',()=>{ selectedReason=t.dataset.reason; document.getElementById('appealReasonBtn').textContent=selectedReason; document.getElementById('modalOverlay').remove(); }));
-                });
-                document.getElementById('appealSubmitBtn').addEventListener('click',async()=>{
-                    if(!selectedReason){showAlert('Ошибка','Выберите причину');return;}
-                    const evidence=document.getElementById('appealEvidence').value.trim(); const lc=checkLinksString(evidence); if(!lc.valid){showAlert('Ошибка',lc.message);return;}
-                    await supabaseClient.from('appeals').insert({ad_id:appealAdId,author_id:currentAuthUser.id,reason:selectedReason,evidence,status:'pending',created_at:new Date().toISOString()});
-                    playSfx('success'); showAlert('Успех','Апелляция отправлена'); document.getElementById('modalOverlay').remove();
+                document.getElementById('appealSubmitBtn').addEventListener('click', async ()=>{
+                    const reason = document.getElementById('appealReasonSelect').value;
+                    const evidence = document.getElementById('appealEvidence').value.trim();
+                    const lc = checkLinksString(evidence);
+                    if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    await supabaseClient.from('appeals').insert({ ad_id: appealAdId, author_id: currentAuthUser.id, reason, evidence, status:'pending', created_at:new Date().toISOString() });
+                    playSfx('success');
+                    showAlert('Успех','Апелляция отправлена');
+                    document.getElementById('modalOverlay').remove();
                 });
             }
 
-            // ===================== АДМИН-ПАНЕЛЬ =====================
+            // Админ-панель
             async function loadAdminPanel(){
-                const cont=document.getElementById('adminPanelContent'); if(!isAdmin){cont.innerHTML='<div class="empty-state">Нет доступа</div>';return;} cont.innerHTML='<div class="loader"></div>';
+                const cont = document.getElementById('adminPanelContent');
+                if(!isAdmin){ cont.innerHTML='<div class="empty-state">Нет доступа</div>'; return; }
+                cont.innerHTML = '<div class="loader"></div>';
                 try{
-                    const [pr,ar,rr]=await Promise.all([
-                        withTimeout(supabaseClient.from('ads').select('*').eq('status','pending').order('created_at',{ascending:false}),5000),
-                        withTimeout(supabaseClient.from('appeals').select('*').eq('status','pending').order('created_at',{ascending:false}),5000),
-                        withTimeout(supabaseClient.from('reports').select('*').eq('status','pending').order('created_at',{ascending:false}),5000)
+                    const [pr, ar, rr] = await Promise.all([
+                        withTimeout(supabaseClient.from('ads').select('*').eq('status','pending').order('created_at',{ascending:false}), 5000),
+                        withTimeout(supabaseClient.from('appeals').select('*').eq('status','pending').order('created_at',{ascending:false}), 5000),
+                        withTimeout(supabaseClient.from('reports').select('*').eq('status','pending').order('created_at',{ascending:false}), 5000)
                     ]);
-                    if(pr.error)throw pr.error; if(ar.error)throw ar.error; if(rr.error)throw rr.error;
-                    pendingAds=pr.data||[]; pendingAppeals=ar.data||[]; pendingReports=rr.data||[];
-                    let html='<h3>📋 Объявления на модерации</h3>';
-                    if(!pendingAds.length) html+='<div class="empty-state">Нет объявлений</div>';
-                    else pendingAds.forEach(ad=>{ html+=`<div class="card"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${ad.author_username||ad.author_id} • ${formatPrice(ad.price)}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve="${ad.id}">✅</button><button class="btn danger" data-reject="${ad.id}">❌</button><button class="btn secondary" data-edit-ad="${ad.id}">✏️</button></div></div>`; });
-                    html+='<h3 style="margin-top:1rem;">📨 Апелляции</h3>'; if(!pendingAppeals.length)html+='<div class="empty-state">Нет апелляций</div>'; else pendingAppeals.forEach(ap=>{ html+=`<div class="card"><div style="font-weight:700;">Объявление ID: ${ap.ad_id}</div><div style="font-size:0.75rem;color:var(--muted);">Автор: ${ap.author_username||ap.author_id}</div><div style="font-size:0.8rem;">Причина: ${ap.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-appeal="${ap.id}">✅</button><button class="btn danger" data-reject-appeal="${ap.id}">❌</button></div></div>`; });
-                    html+='<h3 style="margin-top:1rem;">🚨 Жалобы</h3>'; if(!pendingReports.length)html+='<div class="empty-state">Нет жалоб</div>'; else pendingReports.forEach(rp=>{ html+=`<div class="card"><div style="font-weight:700;">Объявление ID: ${rp.ad_id}</div><div style="font-size:0.75rem;color:var(--muted);">От: ${rp.reporter_username||rp.reporter_id}</div><div style="font-size:0.8rem;">Причина: ${rp.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-report="${rp.id}">✅</button><button class="btn danger" data-reject-report="${rp.id}">❌</button></div></div>`; });
-                    if(isOwner){ html+=`<h3 style="margin-top:1rem;">👤 Управление пользователями</h3><div class="form-group"><input type="text" id="adminUsernameInput" placeholder="username или ID"></div><div class="flex-between gap-8 mb-8"><button class="btn danger w-full" id="adminBanBtn">🔨 Забанить</button><button class="btn success w-full" id="adminUnbanBtn">🔓 Разбанить</button></div><div class="flex-between gap-8 mb-8"><button class="btn w-full" id="adminMakeAdminBtn">👑 Сделать админом</button><button class="btn secondary w-full" id="adminRemoveAdminBtn">⬇️ Снять админа</button></div><button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>`; }
-                    cont.innerHTML=html; bindAdminEvents();
-                }catch(e){cont.innerHTML='<div class="empty-state">⚠️ Ошибка загрузки</div>';}
+                    if(pr.error) throw pr.error;
+                    if(ar.error) throw ar.error;
+                    if(rr.error) throw rr.error;
+                    pendingAds = pr.data || [];
+                    pendingAppeals = ar.data || [];
+                    pendingReports = rr.data || [];
+                    let html = '<h3>📋 Объявления на модерации</h3>';
+                    if(!pendingAds.length) html += '<div class="empty-state">Нет объявлений</div>';
+                    else pendingAds.forEach(ad=>{
+                        html += `<div class="card"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${ad.author_username||ad.author_id} • ${formatPrice(ad.price)}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve="${ad.id}">✅</button><button class="btn danger" data-reject="${ad.id}">❌</button><button class="btn secondary" data-edit-ad="${ad.id}">✏️</button></div></div>`;
+                    });
+                    html += '<h3 style="margin-top:1rem;">📨 Апелляции</h3>';
+                    if(!pendingAppeals.length) html += '<div class="empty-state">Нет апелляций</div>';
+                    else pendingAppeals.forEach(ap=>{
+                        html += `<div class="card"><div style="font-weight:700;">Объявление ID: ${ap.ad_id}</div><div style="font-size:0.75rem;color:var(--muted);">Автор: ${ap.author_username||ap.author_id}</div><div style="font-size:0.8rem;">Причина: ${ap.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-appeal="${ap.id}">✅</button><button class="btn danger" data-reject-appeal="${ap.id}">❌</button></div></div>`;
+                    });
+                    html += '<h3 style="margin-top:1rem;">🚨 Жалобы</h3>';
+                    if(!pendingReports.length) html += '<div class="empty-state">Нет жалоб</div>';
+                    else pendingReports.forEach(rp=>{
+                        html += `<div class="card"><div style="font-weight:700;">Объявление ID: ${rp.ad_id}</div><div style="font-size:0.75rem;color:var(--muted);">От: ${rp.reporter_username||rp.reporter_id}</div><div style="font-size:0.8rem;">Причина: ${rp.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-report="${rp.id}">✅</button><button class="btn danger" data-reject-report="${rp.id}">❌</button></div></div>`;
+                    });
+                    if(isOwner){
+                        html += `<h3 style="margin-top:1rem;">👤 Управление пользователями</h3><div class="form-group"><input type="text" id="adminUsernameInput" placeholder="username или ID"></div><div class="flex-between gap-8 mb-8"><button class="btn danger w-full" id="adminBanBtn">🔨 Забанить</button><button class="btn success w-full" id="adminUnbanBtn">🔓 Разбанить</button></div><div class="flex-between gap-8 mb-8"><button class="btn w-full" id="adminMakeAdminBtn">👑 Сделать админом</button><button class="btn secondary w-full" id="adminRemoveAdminBtn">⬇️ Снять админа</button></div><button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>`;
+                    }
+                    cont.innerHTML = html;
+                    bindAdminEvents();
+                } catch(e) {
+                    cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>';
+                }
             }
             function bindAdminEvents(){
-                document.querySelectorAll('[data-approve]').forEach(btn=>btn.addEventListener('click',async()=>{const expiresAt=new Date(Date.now()+AD_EXPIRY_HOURS*60*60*1000).toISOString(); await supabaseClient.from('ads').update({status:'approved',expires_at:expiresAt}).eq('id',btn.dataset.approve); loadAdminPanel(); loadHomeFeed();}));
-                document.querySelectorAll('[data-reject]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('ads').update({status:'deleted'}).eq('id',btn.dataset.reject); loadAdminPanel();}));
-                document.querySelectorAll('[data-edit-ad]').forEach(btn=>btn.addEventListener('click',()=>{const ad=pendingAds.find(a=>a.id==btn.dataset.editAd); if(ad)openAdminEditModal(ad);}));
-                document.querySelectorAll('[data-approve-appeal]').forEach(btn=>btn.addEventListener('click',async()=>{const ap=pendingAppeals.find(a=>a.id==btn.dataset.approveAppeal); if(ap){const expiresAt=new Date(Date.now()+AD_EXPIRY_HOURS*60*60*1000).toISOString(); await supabaseClient.from('ads').update({status:'approved',expires_at:expiresAt}).eq('id',ap.ad_id);} await supabaseClient.from('appeals').update({status:'approved'}).eq('id',btn.dataset.approveAppeal); loadAdminPanel();}));
-                document.querySelectorAll('[data-reject-appeal]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('appeals').update({status:'rejected'}).eq('id',btn.dataset.rejectAppeal); loadAdminPanel();}));
-                document.querySelectorAll('[data-approve-report]').forEach(btn=>btn.addEventListener('click',async()=>{const rp=pendingReports.find(r=>r.id==btn.dataset.approveReport); if(rp)await supabaseClient.from('ads').update({status:'deleted'}).eq('id',rp.ad_id); await supabaseClient.from('reports').update({status:'approved'}).eq('id',btn.dataset.approveReport); loadAdminPanel();}));
-                document.querySelectorAll('[data-reject-report]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('reports').update({status:'rejected'}).eq('id',btn.dataset.rejectReport); loadAdminPanel();}));
-                if(isOwner){ document.getElementById('adminBanBtn')?.addEventListener('click',()=>adminUserAction('ban')); document.getElementById('adminUnbanBtn')?.addEventListener('click',()=>adminUserAction('unban')); document.getElementById('adminMakeAdminBtn')?.addEventListener('click',()=>adminUserAction('make_admin')); document.getElementById('adminRemoveAdminBtn')?.addEventListener('click',()=>adminUserAction('remove_admin')); document.getElementById('adminClearFeedBtn')?.addEventListener('click',async()=>{ showConfirm('Очистка','Удалить ВСЕ объявления?',async()=>{await supabaseClient.from('ads').delete().neq('id',0); await supabaseClient.from('favorites').delete().neq('id',0); loadAdminPanel(); loadHomeFeed();}); }); }
-            }
-            async function adminUserAction(action){ const target=document.getElementById('adminUsernameInput').value.trim(); if(!target){showAlert('Ошибка','Введите username или ID');return;} try{ let q=supabaseClient.from('app_users').select('*'); if(!isNaN(target))q=q.eq('id',target); else q=q.eq('username',target); const {data:users,error}=await withTimeout(q,5000); if(error)throw error; if(!users.length){showAlert('Ошибка','Пользователь не найден');return;} const user=users[0]; let updates={}; if(action==='ban')updates.banned=true; else if(action==='unban')updates.banned=false; else if(action==='make_admin')updates.is_admin=true; else if(action==='remove_admin')updates.is_admin=false; await supabaseClient.from('app_users').update(updates).eq('id',user.id); playSfx('success'); showAlert('Успех','Действие выполнено'); loadAdminPanel(); }catch(e){showAlert('Ошибка','Не удалось выполнить');} }
-            function openAdminEditModal(ad){ showModal(`<h3 class="modal-title">✏️ Редактирование</h3><div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name||''}"></div><div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price||''}"></div><div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description||''}</textarea></div><div class="form-group"><label>Скриншоты</label><input type="text" id="editAdminImgs" value="${ad.images||''}"></div><button class="btn w-full" id="editAdminSaveBtn">Сохранить и одобрить</button>`); document.getElementById('editAdminSaveBtn').addEventListener('click',async()=>{ const item_name=document.getElementById('editAdminName').value.trim(); const price=parsePriceToNumber(document.getElementById('editAdminPrice').value); const description=document.getElementById('editAdminDesc').value.trim(); const images=document.getElementById('editAdminImgs').value.trim(); const lc=checkLinksString(images); if(!lc.valid){showAlert('Ошибка',lc.message);return;} const expiresAt=new Date(Date.now()+AD_EXPIRY_HOURS*60*60*1000).toISOString(); await supabaseClient.from('ads').update({item_name,price,description,images,status:'approved',expires_at:expiresAt}).eq('id',ad.id); playSfx('success'); document.getElementById('modalOverlay').remove(); loadAdminPanel(); loadHomeFeed(); }); }
-
-            // ===================== ДЕТАЛИ ОБЪЯВЛЕНИЯ =====================
-            async function openAdDetail(ad){
-                const images=ad.images?ad.images.split(',').map(s=>s.trim()).filter(s=>s):[]; const gallery=images.length?'<div class="image-gallery">'+images.map(img=>`<img src="${img}" loading="lazy" onerror="this.style.display='none'">`).join('')+'</div>':'';
-                const catLabel=ALL_CATEGORIES.find(c=>c.id===ad.category)?.label||ad.category; const modeBadge=ad.mode==='sell'?'<span class="badge sell">Продажа</span>':'<span class="badge buy">Покупка</span>';
-                let statusHtml=''; if(ad.status==='pending') statusHtml='<div class="empty-state">⏳ На модерации</div>';
-                else if(ad.status==='deleted'){ statusHtml='<div class="empty-state">🗑️ Объявление удалено</div>'; if(ad.author_id===currentAuthUser.id) statusHtml+='<button class="btn gold w-full mt-8" id="detailAppealBtn">📨 Подать апелляцию</button>'; }
-                else statusHtml=`<button class="btn w-full mb-8" id="detailContactBtn">💬 Написать</button><button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button><button class="btn secondary w-full mb-8" id="detailReviewsBtn">⭐ Отзывы</button>${ad.author_id===currentAuthUser.id?'<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить</button>':''}<button class="btn secondary w-full mt-8" id="detailReportBtn">🚨 Пожаловаться</button>`;
-                const isFav=await checkIfInCart(ad.id);
-                showModal(`<h3 class="modal-title">${ad.item_name}</h3><div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>${gallery}<div style="font-size:1.5rem;font-weight:900;color:var(--accent);margin-bottom:0.5rem;">${formatPrice(ad.price)}</div><p style="color:var(--muted);margin-bottom:0.8rem;">${ad.description||'Нет описания'}</p><div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;">Автор: <span id="detailAuthorLink" style="cursor:pointer;color:var(--text);">${ad.author_username||ad.author_id}</span></div>${statusHtml}<div id="detailReviewsSection"></div><h4 style="margin:1rem 0 0.5rem;">📌 Похожие</h4><div id="detailSimilarAds"></div>`);
-                const overlay=document.getElementById('modalOverlay');
-                if(ad.status==='approved'){
-                    document.getElementById('detailContactBtn').addEventListener('click',()=>window.open(`https://t.me/${ad.author_username||ad.author_id}`,'_blank'));
-                    const cartBtn=document.getElementById('detailCartToggleBtn'); cartBtn.textContent=isFav?'🛒 Убрать из корзины':'🛒 В корзину';
-                    cartBtn.addEventListener('click',async()=>{ if(isFav){await supabaseClient.from('favorites').delete().eq('user_id',currentAuthUser.id).eq('ad_id',ad.id); cartBtn.textContent='🛒 В корзину';} else {await supabaseClient.from('favorites').insert({user_id:currentAuthUser.id,ad_id:ad.id}); cartBtn.textContent='🛒 Убрать из корзины';} loadCart(); });
-                    document.getElementById('detailReviewsBtn').addEventListener('click',()=>openReviewsModal(ad.id));
-                    if(ad.author_id===currentAuthUser.id) document.getElementById('detailDeleteBtn').addEventListener('click',async()=>{showConfirm('Удаление','Удалить объявление?',async()=>{await supabaseClient.from('ads').update({status:'deleted'}).eq('id',ad.id); overlay.remove(); loadHomeFeed();});});
-                    document.getElementById('detailReportBtn').addEventListener('click',()=>{ showModal(`<h3 class="modal-title">🚨 Пожаловаться</h3><div class="form-group"><label>Причина</label><textarea id="reportReason"></textarea></div><button class="btn w-full" id="reportSubmitBtn">Отправить</button>`); document.getElementById('reportSubmitBtn').addEventListener('click',async()=>{ const reason=document.getElementById('reportReason').value.trim(); if(!reason){showAlert('Ошибка','Введите причину');return;} await supabaseClient.from('reports').insert({ad_id:ad.id,reporter_id:currentAuthUser.id,reporter_username:currentAuthUser.username,reason,status:'pending',created_at:new Date().toISOString()}); showAlert('Успех','Жалоба отправлена'); document.getElementById('modalOverlay').remove(); }); });
+                document.querySelectorAll('[data-approve]').forEach(btn=>btn.addEventListener('click', async ()=>{
+                    const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS*60*60*1000).toISOString();
+                    await supabaseClient.from('ads').update({status:'approved', expires_at: expiresAt}).eq('id', btn.dataset.approve);
+                    loadAdminPanel();
+                    loadHomeFeed();
+                }));
+                document.querySelectorAll('[data-reject]').forEach(btn=>btn.addEventListener('click', async ()=>{
+                    await supabaseClient.from('ads').update({status:'deleted'}).eq('id', btn.dataset.reject);
+                    loadAdminPanel();
+                }));
+                document.querySelectorAll('[data-edit-ad]').forEach(btn=>btn.addEventListener('click', ()=>{
+                    const ad = pendingAds.find(a=>a.id == btn.dataset.editAd);
+                    if(ad) openAdminEditModal(ad);
+                }));
+                document.querySelectorAll('[data-approve-appeal]').forEach(btn=>btn.addEventListener('click', async ()=>{
+                    const ap = pendingAppeals.find(a=>a.id == btn.dataset.approveAppeal);
+                    if(ap){
+                        const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS*60*60*1000).toISOString();
+                        await supabaseClient.from('ads').update({status:'approved', expires_at: expiresAt}).eq('id', ap.ad_id);
+                    }
+                    await supabaseClient.from('appeals').update({status:'approved'}).eq('id', btn.dataset.approveAppeal);
+                    loadAdminPanel();
+                }));
+                document.querySelectorAll('[data-reject-appeal]').forEach(btn=>btn.addEventListener('click', async ()=>{
+                    await supabaseClient.from('appeals').update({status:'rejected'}).eq('id', btn.dataset.rejectAppeal);
+                    loadAdminPanel();
+                }));
+                document.querySelectorAll('[data-approve-report]').forEach(btn=>btn.addEventListener('click', async ()=>{
+                    const rp = pendingReports.find(r=>r.id == btn.dataset.approveReport);
+                    if(rp) await supabaseClient.from('ads').update({status:'deleted'}).eq('id', rp.ad_id);
+                    await supabaseClient.from('reports').update({status:'approved'}).eq('id', btn.dataset.approveReport);
+                    loadAdminPanel();
+                }));
+                document.querySelectorAll('[data-reject-report]').forEach(btn=>btn.addEventListener('click', async ()=>{
+                    await supabaseClient.from('reports').update({status:'rejected'}).eq('id', btn.dataset.rejectReport);
+                    loadAdminPanel();
+                }));
+                if(isOwner){
+                    document.getElementById('adminBanBtn')?.addEventListener('click', ()=>adminUserAction('ban'));
+                    document.getElementById('adminUnbanBtn')?.addEventListener('click', ()=>adminUserAction('unban'));
+                    document.getElementById('adminMakeAdminBtn')?.addEventListener('click', ()=>adminUserAction('make_admin'));
+                    document.getElementById('adminRemoveAdminBtn')?.addEventListener('click', ()=>adminUserAction('remove_admin'));
+                    document.getElementById('adminClearFeedBtn')?.addEventListener('click', async ()=>{
+                        showConfirm('Очистка','Удалить ВСЕ объявления?', async ()=>{
+                            await supabaseClient.from('ads').delete().neq('id', 0);
+                            await supabaseClient.from('favorites').delete().neq('id', 0);
+                            loadAdminPanel();
+                            loadHomeFeed();
+                        });
+                    });
                 }
-                if(ad.status==='deleted'&&ad.author_id===currentAuthUser.id) document.getElementById('detailAppealBtn')?.addEventListener('click',()=>{appealAdId=ad.id; openAppealModal();});
-                document.getElementById('detailAuthorLink').addEventListener('click',()=>openProfileModal(ad.author_id));
-                loadReviews(ad.id); loadSimilarAds(ad.category,ad.id);
             }
-            async function checkIfInCart(adId){ if(!currentAuthUser)return false; const {data,error}=await supabaseClient.from('favorites').select('*').eq('user_id',currentAuthUser.id).eq('ad_id',adId).maybeSingle(); if(error)return false; return !!data; }
-            async function loadReviews(adId){ const cont=document.getElementById('detailReviewsSection'); if(!cont)return; try{ const {data:reviews,error}=await withTimeout(supabaseClient.from('reviews').select('*').eq('ad_id',adId).order('created_at',{ascending:false}),5000); if(error)throw error; const revs=reviews||[]; if(!revs.length){cont.innerHTML='<p style="color:var(--muted);">⭐ Отзывов пока нет</p>';return;} const avg=revs.reduce((s,r)=>s+r.stars,0)/revs.length; let html=`<div style="font-size:1.2rem;font-weight:800;">⭐ ${avg.toFixed(1)} (${revs.length})</div><div class="progress-bar mb-12"><div class="progress-fill" style="width:${(avg/5*100)}%;"></div></div>`; revs.forEach(r=>{ const canEdit=r.author_id===currentAuthUser.id&&(Date.now()-new Date(r.created_at).getTime())<7*24*60*60*1000; html+=`<div class="review-item"><div style="font-weight:600;">${r.author_username||r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span></div><div style="font-size:0.7rem;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('ru-RU')}</div><p style="font-size:0.8rem;margin:0.3rem 0;">${r.text||''}</p>${r.media_links?`<div style="font-size:0.7rem;color:var(--accent);">${r.media_links}</div>`:''}${canEdit?`<div class="flex-between gap-8 mt-8"><button class="btn secondary" data-edit-review="${r.id}">✏️</button><button class="btn danger" data-del-review="${r.id}">🗑</button></div>`:''}</div>`; }); cont.innerHTML=html; cont.querySelectorAll('[data-edit-review]').forEach(btn=>btn.addEventListener('click',()=>{const r=revs.find(x=>x.id==btn.dataset.editReview); if(r)openEditReviewModal(r);})); cont.querySelectorAll('[data-del-review]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('reviews').delete().eq('id',btn.dataset.delReview); loadReviews(adId);})); }catch(e){cont.innerHTML='<p style="color:var(--muted);">⚠️ Не удалось загрузить отзывы</p>';} }
-            async function loadSimilarAds(category,currentId){ const cont=document.getElementById('detailSimilarAds'); if(!cont)return; try{ const {data}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').eq('category',category).neq('id',currentId).limit(3).order('created_at',{ascending:false}),5000); const similar=data||[]; if(!similar.length){cont.innerHTML='<p style="color:var(--muted);">Похожих нет</p>';return;} cont.innerHTML=similar.map(ad=>`<div class="card" data-sim="${ad.id}"><span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}</div>`).join(''); cont.querySelectorAll('[data-sim]').forEach(el=>el.addEventListener('click',()=>{const found=similar.find(a=>a.id==el.dataset.sim); if(found){document.getElementById('modalOverlay').remove(); openAdDetail(found);}})); }catch(e){} }
-            function openReviewsModal(adId){ showModal(`<h3 class="modal-title">⭐ Оставить отзыв</h3><div class="form-group"><label>Оценка</label><div class="star-rating" id="reviewStars">${[1,2,3,4,5].map(i=>`<span data-star="${i}">☆</span>`).join('')}</div></div><div class="form-group"><label>Ссылки</label><input type="text" id="reviewMedia" placeholder="https://..."></div><div class="form-group"><label>Текст</label><textarea id="reviewText"></textarea></div><button class="btn w-full" id="reviewSubmitBtn">Отправить</button>`); let selected=0; const stars=document.getElementById('reviewStars'); stars.querySelectorAll('span').forEach(s=>s.addEventListener('click',()=>{selected=parseInt(s.dataset.star); updateStars(stars,selected);})); document.getElementById('reviewSubmitBtn').addEventListener('click',async()=>{ if(!selected){showAlert('Ошибка','Выберите оценку');return;} const text=document.getElementById('reviewText').value.trim(); const media=document.getElementById('reviewMedia').value.trim(); const lc=checkLinksString(media); if(!lc.valid){showAlert('Ошибка',lc.message);return;} try{ await supabaseClient.from('reviews').insert({ad_id:adId,author_id:currentAuthUser.id,author_username:currentAuthUser.username,stars:selected,text,media_links:media,created_at:new Date().toISOString()}); playSfx('success'); showAlert('Успех','Отзыв отправлен'); document.getElementById('modalOverlay').remove(); loadReviews(adId); }catch(e){showAlert('Ошибка','Не удалось отправить отзыв');} }); }
-            function updateStars(container,selected){ container.querySelectorAll('span').forEach(s=>{ s.textContent=parseInt(s.dataset.star)<=selected?'★':'☆'; s.classList.toggle('active',parseInt(s.dataset.star)<=selected); }); }
-            function openEditReviewModal(review){ showModal(`<h3 class="modal-title">✏️ Редактировать отзыв</h3><div class="form-group"><label>Оценка</label><div class="star-rating" id="editReviewStars">${[1,2,3,4,5].map(i=>`<span data-star="${i}" class="${i<=review.stars?'active':''}">${i<=review.stars?'★':'☆'}</span>`).join('')}</div></div><div class="form-group"><label>Ссылки</label><input type="text" id="editReviewMedia" value="${review.media_links||''}"></div><div class="form-group"><label>Текст</label><textarea id="editReviewText">${review.text||''}</textarea></div><button class="btn w-full" id="editReviewSubmitBtn">Сохранить</button>`); let selected=review.stars; const stars=document.getElementById('editReviewStars'); stars.querySelectorAll('span').forEach(s=>s.addEventListener('click',()=>{selected=parseInt(s.dataset.star); updateStars(stars,selected);})); document.getElementById('editReviewSubmitBtn').addEventListener('click',async()=>{ const text=document.getElementById('editReviewText').value.trim(); const media=document.getElementById('editReviewMedia').value.trim(); const lc=checkLinksString(media); if(!lc.valid){showAlert('Ошибка',lc.message);return;} await supabaseClient.from('reviews').update({stars:selected,text,media_links:media}).eq('id',review.id); playSfx('success'); document.getElementById('modalOverlay').remove(); loadReviews(review.ad_id); }); }
+            async function adminUserAction(action){
+                const target = document.getElementById('adminUsernameInput').value.trim();
+                if(!target){ showAlert('Ошибка','Введите username или ID'); return; }
+                try{
+                    let q = supabaseClient.from('app_users').select('*');
+                    if(!isNaN(target)) q = q.eq('id', target);
+                    else q = q.eq('username', target);
+                    const { data: users, error } = await withTimeout(q, 5000);
+                    if(error) throw error;
+                    if(!users.length){ showAlert('Ошибка','Пользователь не найден'); return; }
+                    const user = users[0];
+                    let updates = {};
+                    if(action==='ban') updates.banned = true;
+                    else if(action==='unban') updates.banned = false;
+                    else if(action==='make_admin') updates.is_admin = true;
+                    else if(action==='remove_admin') updates.is_admin = false;
+                    await supabaseClient.from('app_users').update(updates).eq('id', user.id);
+                    playSfx('success');
+                    showAlert('Успех','Действие выполнено');
+                    loadAdminPanel();
+                } catch(e) {
+                    showAlert('Ошибка','Не удалось выполнить');
+                }
+            }
+            function openAdminEditModal(ad){
+                showModal(`<h3 class="modal-title">✏️ Редактирование</h3><div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name||''}"></div><div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price||''}"></div><div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description||''}</textarea></div><div class="form-group"><label>Скриншоты</label><input type="text" id="editAdminImgs" value="${ad.images||''}"></div><button class="btn w-full" id="editAdminSaveBtn">Сохранить и одобрить</button>`);
+                document.getElementById('editAdminSaveBtn').addEventListener('click', async ()=>{
+                    const item_name = document.getElementById('editAdminName').value.trim();
+                    const price = parsePriceToNumber(document.getElementById('editAdminPrice').value);
+                    const description = document.getElementById('editAdminDesc').value.trim();
+                    const images = document.getElementById('editAdminImgs').value.trim();
+                    const lc = checkLinksString(images);
+                    if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS*60*60*1000).toISOString();
+                    await supabaseClient.from('ads').update({ item_name, price, description, images, status:'approved', expires_at: expiresAt }).eq('id', ad.id);
+                    playSfx('success');
+                    document.getElementById('modalOverlay').remove();
+                    loadAdminPanel();
+                    loadHomeFeed();
+                });
+            }
 
-            // ===================== ИГРА БАРЫГА =====================
+            // Детали объявления
+            async function openAdDetail(ad){
+                const images = ad.images ? ad.images.split(',').map(s=>s.trim()).filter(s=>s) : [];
+                const gallery = images.length ? '<div class="image-gallery">'+images.map(img=>`<img src="${img}" loading="lazy" onerror="this.style.display='none'">`).join('')+'</div>' : '';
+                const catLabel = ALL_CATEGORIES.find(c=>c.id===ad.category)?.label || ad.category;
+                const modeBadge = ad.mode==='sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
+                let statusHtml = '';
+                if(ad.status==='pending') statusHtml = '<div class="empty-state">⏳ На модерации</div>';
+                else if(ad.status==='deleted'){
+                    statusHtml = '<div class="empty-state">🗑️ Объявление удалено</div>';
+                    if(ad.author_id === currentAuthUser.id) statusHtml += '<button class="btn gold w-full mt-8" id="detailAppealBtn">📨 Подать апелляцию</button>';
+                } else {
+                    statusHtml = `<button class="btn w-full mb-8" id="detailContactBtn">💬 Написать</button><button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button><button class="btn secondary w-full mb-8" id="detailReviewsBtn">⭐ Отзывы</button>${ad.author_id===currentAuthUser.id?'<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить</button>':''}<button class="btn secondary w-full mt-8" id="detailReportBtn">🚨 Пожаловаться</button>`;
+                }
+                const isFav = await checkIfInCart(ad.id);
+                showModal(`<h3 class="modal-title">${ad.item_name}</h3><div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>${gallery}<div style="font-size:1.5rem;font-weight:900;color:var(--accent);margin-bottom:0.5rem;">${formatPrice(ad.price)}</div><p style="color:var(--muted);margin-bottom:0.8rem;">${ad.description||'Нет описания'}</p><div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;">Автор: <span id="detailAuthorLink" style="cursor:pointer;color:var(--text);">${ad.author_username||ad.author_id}</span></div>${statusHtml}<div id="detailReviewsSection"></div><h4 style="margin:1rem 0 0.5rem;">📌 Похожие</h4><div id="detailSimilarAds"></div>`);
+                const overlay = document.getElementById('modalOverlay');
+                if(ad.status==='approved'){
+                    document.getElementById('detailContactBtn').addEventListener('click', ()=>window.open(`https://t.me/${ad.author_username||ad.author_id}`,'_blank'));
+                    const cartBtn = document.getElementById('detailCartToggleBtn');
+                    cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 В корзину';
+                    cartBtn.addEventListener('click', async ()=>{
+                        if(isFav){
+                            await supabaseClient.from('favorites').delete().eq('user_id', currentAuthUser.id).eq('ad_id', ad.id);
+                            cartBtn.textContent = '🛒 В корзину';
+                        } else {
+                            await supabaseClient.from('favorites').insert({ user_id: currentAuthUser.id, ad_id: ad.id });
+                            cartBtn.textContent = '🛒 Убрать из корзины';
+                        }
+                        loadCart();
+                    });
+                    document.getElementById('detailReviewsBtn').addEventListener('click', ()=>openReviewsModal(ad.id));
+                    if(ad.author_id === currentAuthUser.id){
+                        document.getElementById('detailDeleteBtn').addEventListener('click', async ()=>{
+                            showConfirm('Удаление','Удалить объявление?', async ()=>{
+                                await supabaseClient.from('ads').update({status:'deleted'}).eq('id', ad.id);
+                                overlay.remove();
+                                loadHomeFeed();
+                            });
+                        });
+                    }
+                    document.getElementById('detailReportBtn').addEventListener('click', ()=>{
+                        showModal(`<h3 class="modal-title">🚨 Пожаловаться</h3><div class="form-group"><label>Причина</label><textarea id="reportReason"></textarea></div><button class="btn w-full" id="reportSubmitBtn">Отправить</button>`);
+                        document.getElementById('reportSubmitBtn').addEventListener('click', async ()=>{
+                            const reason = document.getElementById('reportReason').value.trim();
+                            if(!reason){ showAlert('Ошибка','Введите причину'); return; }
+                            await supabaseClient.from('reports').insert({ ad_id: ad.id, reporter_id: currentAuthUser.id, reporter_username: currentAuthUser.username, reason, status:'pending', created_at:new Date().toISOString() });
+                            showAlert('Успех','Жалоба отправлена');
+                            document.getElementById('modalOverlay').remove();
+                        });
+                    });
+                }
+                if(ad.status==='deleted' && ad.author_id===currentAuthUser.id){
+                    document.getElementById('detailAppealBtn')?.addEventListener('click', ()=>{ appealAdId = ad.id; openAppealModal(); });
+                }
+                document.getElementById('detailAuthorLink').addEventListener('click', ()=>openProfileModal(ad.author_id));
+                loadReviews(ad.id);
+                loadSimilarAds(ad.category, ad.id);
+            }
+            async function checkIfInCart(adId){
+                if(!currentAuthUser) return false;
+                const { data, error } = await supabaseClient.from('favorites').select('*').eq('user_id', currentAuthUser.id).eq('ad_id', adId).maybeSingle();
+                if(error) return false;
+                return !!data;
+            }
+            async function loadReviews(adId){
+                const cont = document.getElementById('detailReviewsSection');
+                if(!cont) return;
+                try{
+                    const { data: reviews, error } = await withTimeout(supabaseClient.from('reviews').select('*').eq('ad_id', adId).order('created_at',{ascending:false}), 5000);
+                    if(error) throw error;
+                    const revs = reviews || [];
+                    if(!revs.length){ cont.innerHTML='<p style="color:var(--muted);">⭐ Отзывов пока нет</p>'; return; }
+                    const avg = revs.reduce((s,r)=>s+r.stars,0)/revs.length;
+                    let html = `<div style="font-size:1.2rem;font-weight:800;">⭐ ${avg.toFixed(1)} (${revs.length})</div><div class="progress-bar mb-12"><div class="progress-fill" style="width:${(avg/5*100)}%;"></div></div>`;
+                    revs.forEach(r=>{
+                        const canEdit = r.author_id===currentAuthUser.id && (Date.now()-new Date(r.created_at).getTime()) < 7*24*60*60*1000;
+                        html += `<div class="review-item"><div style="font-weight:600;">${r.author_username||r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span></div><div style="font-size:0.7rem;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('ru-RU')}</div><p style="font-size:0.8rem;margin:0.3rem 0;">${r.text||''}</p>${r.media_links?`<div style="font-size:0.7rem;color:var(--accent);">${r.media_links}</div>`:''}${canEdit?`<div class="flex-between gap-8 mt-8"><button class="btn secondary" data-edit-review="${r.id}">✏️</button><button class="btn danger" data-del-review="${r.id}">🗑</button></div>`:''}</div>`;
+                    });
+                    cont.innerHTML = html;
+                    cont.querySelectorAll('[data-edit-review]').forEach(btn=>btn.addEventListener('click', ()=>{ const r = revs.find(x=>x.id==btn.dataset.editReview); if(r) openEditReviewModal(r); }));
+                    cont.querySelectorAll('[data-del-review]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('reviews').delete().eq('id', btn.dataset.delReview); loadReviews(adId); }));
+                } catch(e){
+                    cont.innerHTML='<p style="color:var(--muted);">⚠️ Не удалось загрузить отзывы</p>';
+                }
+            }
+            async function loadSimilarAds(category, currentId){
+                const cont = document.getElementById('detailSimilarAds');
+                if(!cont) return;
+                try{
+                    const { data } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').eq('category',category).neq('id',currentId).limit(3).order('created_at',{ascending:false}), 5000);
+                    const similar = data || [];
+                    if(!similar.length){ cont.innerHTML='<p style="color:var(--muted);">Похожих нет</p>'; return; }
+                    cont.innerHTML = similar.map(ad=>`<div class="card" data-sim="${ad.id}"><span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}</div>`).join('');
+                    cont.querySelectorAll('[data-sim]').forEach(el=>el.addEventListener('click', ()=>{
+                        const found = similar.find(a=>a.id==el.dataset.sim);
+                        if(found){ document.getElementById('modalOverlay').remove(); openAdDetail(found); }
+                    }));
+                } catch(e){}
+            }
+            function openReviewsModal(adId){
+                showModal(`<h3 class="modal-title">⭐ Оставить отзыв</h3><div class="form-group"><label>Оценка</label><div class="star-rating" id="reviewStars">${[1,2,3,4,5].map(i=>`<span data-star="${i}">☆</span>`).join('')}</div></div><div class="form-group"><label>Ссылки</label><input type="text" id="reviewMedia" placeholder="https://..."></div><div class="form-group"><label>Текст</label><textarea id="reviewText"></textarea></div><button class="btn w-full" id="reviewSubmitBtn">Отправить</button>`);
+                let selected = 0;
+                const stars = document.getElementById('reviewStars');
+                stars.querySelectorAll('span').forEach(s=>s.addEventListener('click', ()=>{ selected = parseInt(s.dataset.star); updateStars(stars, selected); }));
+                document.getElementById('reviewSubmitBtn').addEventListener('click', async ()=>{
+                    if(!selected){ showAlert('Ошибка','Выберите оценку'); return; }
+                    const text = document.getElementById('reviewText').value.trim();
+                    const media = document.getElementById('reviewMedia').value.trim();
+                    const lc = checkLinksString(media);
+                    if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    try{
+                        await supabaseClient.from('reviews').insert({ ad_id: adId, author_id: currentAuthUser.id, author_username: currentAuthUser.username, stars: selected, text, media_links: media, created_at:new Date().toISOString() });
+                        playSfx('success');
+                        showAlert('Успех','Отзыв отправлен');
+                        document.getElementById('modalOverlay').remove();
+                        loadReviews(adId);
+                    } catch(e){ showAlert('Ошибка','Не удалось отправить отзыв'); }
+                });
+            }
+            function updateStars(container, selected){
+                container.querySelectorAll('span').forEach(s=>{
+                    s.textContent = parseInt(s.dataset.star) <= selected ? '★' : '☆';
+                    s.classList.toggle('active', parseInt(s.dataset.star) <= selected);
+                });
+            }
+            function openEditReviewModal(review){
+                showModal(`<h3 class="modal-title">✏️ Редактировать отзыв</h3><div class="form-group"><label>Оценка</label><div class="star-rating" id="editReviewStars">${[1,2,3,4,5].map(i=>`<span data-star="${i}" class="${i<=review.stars?'active':''}">${i<=review.stars?'★':'☆'}</span>`).join('')}</div></div><div class="form-group"><label>Ссылки</label><input type="text" id="editReviewMedia" value="${review.media_links||''}"></div><div class="form-group"><label>Текст</label><textarea id="editReviewText">${review.text||''}</textarea></div><button class="btn w-full" id="editReviewSubmitBtn">Сохранить</button>`);
+                let selected = review.stars;
+                const stars = document.getElementById('editReviewStars');
+                stars.querySelectorAll('span').forEach(s=>s.addEventListener('click', ()=>{ selected = parseInt(s.dataset.star); updateStars(stars, selected); }));
+                document.getElementById('editReviewSubmitBtn').addEventListener('click', async ()=>{
+                    const text = document.getElementById('editReviewText').value.trim();
+                    const media = document.getElementById('editReviewMedia').value.trim();
+                    const lc = checkLinksString(media);
+                    if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    await supabaseClient.from('reviews').update({ stars:selected, text, media_links: media }).eq('id', review.id);
+                    playSfx('success');
+                    document.getElementById('modalOverlay').remove();
+                    loadReviews(review.ad_id);
+                });
+            }
+
+            // Игра Барыга
             async function loadGameState(){
-                if(!currentAuthUser)return; if(barygaStateLoaded)return;
-                const {data,error}=await withTimeout(supabaseClient.from('baryga').select('*').eq('user_id',currentAuthUser.id).maybeSingle(),5000); if(error)console.warn(error);
+                if(!currentAuthUser) return;
+                if(barygaStateLoaded) return;
+                const { data, error } = await withTimeout(supabaseClient.from('baryga').select('*').eq('user_id', currentAuthUser.id).maybeSingle(), 5000);
+                if(error) console.warn(error);
                 if(data){
-                    gameState={money:data.money||0,clickPower:data.click_power||1,clickCost:data.click_cost||50,autoIncome:data.auto_income||0,autoCost:data.auto_cost||200,proCost:data.pro_cost||800,shopCost:data.shop_cost||3000,eliteCost:data.elite_cost||10000,oilCost:data.oil_cost||35000,cryptoCost:data.crypto_cost||150000,scrapCost:data.scrap_cost||500,last_seen:data.last_seen||new Date().toISOString()};
-                    const last=new Date(gameState.last_seen).getTime(); const diff=Math.min((Date.now()-last)/1000,3600); if(diff>0&&gameState.autoIncome>0){gameState.money+=gameState.autoIncome*diff; gameState.last_seen=new Date().toISOString(); saveGameState();}
-                } else { gameState={...gameState,user_id:currentAuthUser.id,last_seen:new Date().toISOString()}; await supabaseClient.from('baryga').insert(gameState); }
-                barygaStateLoaded=true;
+                    gameState = {
+                        money: data.money || 0,
+                        clickPower: data.click_power || 1,
+                        clickCost: data.click_cost || 50,
+                        autoIncome: data.auto_income || 0,
+                        autoCost: data.auto_cost || 200,
+                        proCost: data.pro_cost || 800,
+                        shopCost: data.shop_cost || 3000,
+                        eliteCost: data.elite_cost || 10000,
+                        oilCost: data.oil_cost || 35000,
+                        cryptoCost: data.crypto_cost || 150000,
+                        scrapCost: data.scrap_cost || 500,
+                        last_seen: data.last_seen || new Date().toISOString()
+                    };
+                    const last = new Date(gameState.last_seen).getTime();
+                    const diff = Math.min((Date.now()-last)/1000, 3600);
+                    if(diff>0 && gameState.autoIncome>0){
+                        gameState.money += gameState.autoIncome * diff;
+                        gameState.last_seen = new Date().toISOString();
+                        saveGameState();
+                    }
+                } else {
+                    gameState = { ...gameState, user_id: currentAuthUser.id, last_seen: new Date().toISOString() };
+                    await supabaseClient.from('baryga').insert(gameState);
+                }
+                barygaStateLoaded = true;
             }
             function openBarygaGame(){
                 loadGameState().then(()=>{
                     showModal(`<h3 class="modal-title">🎮 Игра «Барыга»</h3><div style="text-align:center;font-size:1.5rem;font-weight:900;margin-bottom:0.5rem;" id="gameMoneyDisplay">💰 ${formatPrice(gameState.money)}</div><div class="game-click-area" id="gameClickArea"><img src="https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg" loading="lazy" alt="Клик"></div><div style="font-size:0.75rem;color:var(--muted);text-align:center;" id="gameStatsDisplay">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div><div class="mt-12" id="gameUpgradesContainer"></div>`, ()=>saveGameState());
-                    const clickArea=document.getElementById('gameClickArea'); const upgradesCont=document.getElementById('gameUpgradesContainer'); upgradesCont.innerHTML=renderUpgrades();
-                    let lastAuto=Date.now();
-                    function loop(){ if(!document.getElementById('gameClickArea'))return; const now=Date.now(); if(now-lastAuto>=1000){ if(gameState.autoIncome>0){ gameState.money+=gameState.autoIncome; gameState.last_seen=new Date().toISOString(); updateGameUIFast(); saveGameStateDebounced(); } lastAuto=now; } requestAnimationFrame(loop); }
+                    const clickArea = document.getElementById('gameClickArea');
+                    const upgradesCont = document.getElementById('gameUpgradesContainer');
+                    upgradesCont.innerHTML = renderUpgrades();
+                    let lastAuto = Date.now();
+                    function loop(){
+                        if(!document.getElementById('gameClickArea')) return;
+                        const now = Date.now();
+                        if(now - lastAuto >= 1000){
+                            if(gameState.autoIncome > 0){
+                                gameState.money += gameState.autoIncome;
+                                gameState.last_seen = new Date().toISOString();
+                                updateGameUIFast();
+                                saveGameStateDebounced();
+                            }
+                            lastAuto = now;
+                        }
+                        requestAnimationFrame(loop);
+                    }
                     requestAnimationFrame(loop);
-                    clickArea.addEventListener('click',()=>{gameState.money+=gameState.clickPower; updateGameUIFast(); saveGameStateDebounced(); clickArea.style.transform='scale(0.92)'; setTimeout(()=>clickArea.style.transform='',80);});
-                    upgradesCont.addEventListener('click',(e)=>{const btn=e.target.closest('[data-upgrade]'); if(!btn)return; const idx=parseInt(btn.dataset.upgrade); const up=getUpgradesList()[idx]; if(gameState.money>=up.cost){gameState.money-=up.cost; up.action(); updateGameUIFast(); saveGameStateDebounced(); playSfx('buy');}});
+                    clickArea.addEventListener('click', ()=>{
+                        gameState.money += gameState.clickPower;
+                        updateGameUIFast();
+                        saveGameStateDebounced();
+                        clickArea.style.transform = 'scale(0.92)';
+                        setTimeout(()=>clickArea.style.transform='', 80);
+                    });
+                    upgradesCont.addEventListener('click', (e)=>{
+                        const btn = e.target.closest('[data-upgrade]');
+                        if(!btn) return;
+                        const idx = parseInt(btn.dataset.upgrade);
+                        const up = getUpgradesList()[idx];
+                        if(gameState.money >= up.cost){
+                            gameState.money -= up.cost;
+                            up.action();
+                            updateGameUIFast();
+                            saveGameStateDebounced();
+                            playSfx('buy');
+                        }
+                    });
                 });
             }
-            function getUpgradesList(){ return [ {name:'Клик +1',cost:gameState.clickCost,action:()=>{gameState.clickPower+=1;gameState.clickCost*=2;}}, {name:'Авто +5/сек',cost:gameState.autoCost,action:()=>{gameState.autoIncome+=5;gameState.autoCost*=2;}}, {name:'Про +20/сек',cost:gameState.proCost,action:()=>{gameState.autoIncome+=20;gameState.proCost*=2;}}, {name:'Магазин +50/сек',cost:gameState.shopCost,action:()=>{gameState.autoIncome+=50;gameState.shopCost*=2;}}, {name:'Элита: клик +10',cost:gameState.eliteCost,action:()=>{gameState.clickPower+=10;gameState.eliteCost*=2;}}, {name:'Нефть +200/сек',cost:gameState.oilCost,action:()=>{gameState.autoIncome+=200;gameState.oilCost*=2;}}, {name:'Крипта +1000/сек',cost:gameState.cryptoCost,action:()=>{gameState.autoIncome+=1000;gameState.cryptoCost*=2;}}, {name:'Скупка лома +500/сек',cost:gameState.scrapCost,action:()=>{gameState.autoIncome+=500;gameState.scrapCost*=2;}} ]; }
-            function renderUpgrades(){ return getUpgradesList().map((u,i)=>`<div class="upgrade-card"><div class="upgrade-info"><div class="upgrade-name">${u.name}</div><div class="upgrade-cost" data-cost-idx="${i}">💰 ${formatPrice(u.cost)}</div></div><button class="btn secondary" data-upgrade="${i}" ${gameState.money<u.cost?'disabled':''}>Купить</button></div>`).join(''); }
-            function updateGameUIFast(){ const moneyEl=document.getElementById('gameMoneyDisplay'); if(moneyEl)moneyEl.textContent='💰 '+formatPrice(gameState.money); const statsEl=document.getElementById('gameStatsDisplay'); if(statsEl)statsEl.textContent=`Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек`; getUpgradesList().forEach((u,i)=>{ const btn=document.querySelector(`[data-upgrade="${i}"]`); const cost=document.querySelector(`[data-cost-idx="${i}"]`); if(btn&&cost){cost.textContent='💰 '+formatPrice(u.cost); if(gameState.money<u.cost)btn.setAttribute('disabled','true'); else btn.removeAttribute('disabled');} }); }
-            function saveGameStateDebounced(){ if(saveGameTimeout)clearTimeout(saveGameTimeout); saveGameTimeout=setTimeout(saveGameState,1000); }
-            async function saveGameState(){ if(!currentAuthUser)return; try{ const {data}=await supabaseClient.from('baryga').select('id').eq('user_id',currentAuthUser.id).single(); if(data){ await supabaseClient.from('baryga').update({money:gameState.money,click_power:gameState.clickPower,click_cost:gameState.clickCost,auto_income:gameState.autoIncome,auto_cost:gameState.autoCost,pro_cost:gameState.proCost,shop_cost:gameState.shopCost,elite_cost:gameState.eliteCost,oil_cost:gameState.oilCost,crypto_cost:gameState.cryptoCost,scrap_cost:gameState.scrapCost,last_seen:new Date().toISOString()}).eq('id',data.id); } else { await supabaseClient.from('baryga').insert({...gameState,user_id:currentAuthUser.id}); } }catch(e){console.warn('saveGameState',e);} }
+            function getUpgradesList(){
+                return [
+                    { name:'Клик +1', cost: gameState.clickCost, action: ()=>{ gameState.clickPower += 1; gameState.clickCost *= 2; } },
+                    { name:'Авто +5/сек', cost: gameState.autoCost, action: ()=>{ gameState.autoIncome += 5; gameState.autoCost *= 2; } },
+                    { name:'Про +20/сек', cost: gameState.proCost, action: ()=>{ gameState.autoIncome += 20; gameState.proCost *= 2; } },
+                    { name:'Магазин +50/сек', cost: gameState.shopCost, action: ()=>{ gameState.autoIncome += 50; gameState.shopCost *= 2; } },
+                    { name:'Элита: клик +10', cost: gameState.eliteCost, action: ()=>{ gameState.clickPower += 10; gameState.eliteCost *= 2; } },
+                    { name:'Нефть +200/сек', cost: gameState.oilCost, action: ()=>{ gameState.autoIncome += 200; gameState.oilCost *= 2; } },
+                    { name:'Крипта +1000/сек', cost: gameState.cryptoCost, action: ()=>{ gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
+                    { name:'Скупка лома +500/сек', cost: gameState.scrapCost, action: ()=>{ gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
+                ];
+            }
+            function renderUpgrades(){
+                return getUpgradesList().map((u,i)=>`<div class="upgrade-card"><div class="upgrade-info"><div class="upgrade-name">${u.name}</div><div class="upgrade-cost" data-cost-idx="${i}">💰 ${formatPrice(u.cost)}</div></div><button class="btn secondary" data-upgrade="${i}" ${gameState.money < u.cost ? 'disabled' : ''}>Купить</button></div>`).join('');
+            }
+            function updateGameUIFast(){
+                const moneyEl = document.getElementById('gameMoneyDisplay');
+                if(moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money);
+                const statsEl = document.getElementById('gameStatsDisplay');
+                if(statsEl) statsEl.textContent = `Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек`;
+                getUpgradesList().forEach((u,i)=>{
+                    const btn = document.querySelector(`[data-upgrade="${i}"]`);
+                    const cost = document.querySelector(`[data-cost-idx="${i}"]`);
+                    if(btn && cost){
+                        cost.textContent = '💰 ' + formatPrice(u.cost);
+                        if(gameState.money < u.cost) btn.setAttribute('disabled','true');
+                        else btn.removeAttribute('disabled');
+                    }
+                });
+            }
+            function saveGameStateDebounced(){
+                if(saveGameTimeout) clearTimeout(saveGameTimeout);
+                saveGameTimeout = setTimeout(saveGameState, 1000);
+            }
+            async function saveGameState(){
+                if(!currentAuthUser) return;
+                try{
+                    const { data } = await supabaseClient.from('baryga').select('id').eq('user_id', currentAuthUser.id).single();
+                    if(data){
+                        await supabaseClient.from('baryga').update({
+                            money: gameState.money,
+                            click_power: gameState.clickPower,
+                            click_cost: gameState.clickCost,
+                            auto_income: gameState.autoIncome,
+                            auto_cost: gameState.autoCost,
+                            pro_cost: gameState.proCost,
+                            shop_cost: gameState.shopCost,
+                            elite_cost: gameState.eliteCost,
+                            oil_cost: gameState.oilCost,
+                            crypto_cost: gameState.cryptoCost,
+                            scrap_cost: gameState.scrapCost,
+                            last_seen: new Date().toISOString()
+                        }).eq('id', data.id);
+                    } else {
+                        await supabaseClient.from('baryga').insert({ ...gameState, user_id: currentAuthUser.id });
+                    }
+                } catch(e){ console.warn('saveGameState', e); }
+            }
 
-            // ===================== ПОИСК =====================
-            function openSearchModal(){ showModal(`<h3 class="modal-title">🔍 Поиск</h3><div class="form-group"><input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off"></div><div class="flex-between gap-8 mb-12"><button class="btn w-full" id="searchItemBtn">📦 Предмет</button><button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button></div><div id="searchSuggestions"></div><div id="searchHistory"></div><div id="searchResults"></div>`); const input=document.getElementById('searchInput'); setTimeout(()=>input.focus(),100); const sugg=document.getElementById('searchSuggestions'), res=document.getElementById('searchResults'), hist=document.getElementById('searchHistory'); function renderHist(){ if(!searchHistory.length){hist.innerHTML='';return;} hist.innerHTML='<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;">📜 История:</div>'+searchHistory.map(h=>`<span class="badge" style="cursor:pointer;margin:0.15rem;" data-hist="${h}">${h}</span>`).join(''); hist.querySelectorAll('[data-hist]').forEach(el=>el.addEventListener('click',()=>{input.value=el.dataset.hist; input.dispatchEvent(new Event('input'));})); } renderHist(); input.addEventListener('input',async()=>{ const q=input.value.trim().toLowerCase(); if(!q){sugg.innerHTML='';res.innerHTML='';return;} const {data,error}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name',`%${q}%`).limit(5),5000); if(error)return; const items=data||[]; sugg.innerHTML=items.map(ad=>`<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join(''); sugg.querySelectorAll('[data-sug]').forEach(el=>el.addEventListener('click',()=>{const ad=items.find(a=>a.id==el.dataset.sug); if(ad){saveSearchQuery(q); document.getElementById('modalOverlay').remove(); openAdDetail(ad);}})); }); document.getElementById('searchItemBtn').addEventListener('click',async()=>{ const q=input.value.trim().toLowerCase(); if(!q)return; saveSearchQuery(q); const {data,error}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name',`%${q}%`),5000); if(error)return; const items=data||[]; if(!items.length){res.innerHTML='<div class="empty-state">Ничего не найдено</div>';return;} res.innerHTML=items.map(ad=>`<div class="card" data-res-id="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join(''); res.querySelectorAll('[data-res-id]').forEach(card=>card.addEventListener('click',()=>{const ad=items.find(a=>a.id==card.dataset.resId); if(ad){document.getElementById('modalOverlay').remove(); openAdDetail(ad);}})); }); document.getElementById('searchProfileBtn').addEventListener('click',()=>{const q=input.value.trim(); if(q)openProfileModal(q);}); }
+            // Поиск и профиль
+            function openSearchModal(){
+                showModal(`<h3 class="modal-title">🔍 Поиск</h3><div class="form-group"><input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off"></div><div class="flex-between gap-8 mb-12"><button class="btn w-full" id="searchItemBtn">📦 Предмет</button><button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button></div><div id="searchSuggestions"></div><div id="searchHistory"></div><div id="searchResults"></div>`);
+                const input = document.getElementById('searchInput');
+                setTimeout(()=>input.focus(),100);
+                const sugg = document.getElementById('searchSuggestions'), res = document.getElementById('searchResults'), hist = document.getElementById('searchHistory');
+                function renderHist(){
+                    if(!searchHistory.length){ hist.innerHTML=''; return; }
+                    hist.innerHTML = '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;">📜 История:</div>' + searchHistory.map(h=>`<span class="badge" style="cursor:pointer;margin:0.15rem;" data-hist="${h}">${h}</span>`).join('');
+                    hist.querySelectorAll('[data-hist]').forEach(el=>el.addEventListener('click', ()=>{ input.value = el.dataset.hist; input.dispatchEvent(new Event('input')); }));
+                }
+                renderHist();
+                input.addEventListener('input', async ()=>{
+                    const q = input.value.trim().toLowerCase();
+                    if(!q){ sugg.innerHTML=''; res.innerHTML=''; return; }
+                    const { data, error } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name', `%${q}%`).limit(5), 5000);
+                    if(error) return;
+                    const items = data || [];
+                    sugg.innerHTML = items.map(ad=>`<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('');
+                    sugg.querySelectorAll('[data-sug]').forEach(el=>el.addEventListener('click', ()=>{
+                        const ad = items.find(a=>a.id == el.dataset.sug);
+                        if(ad){ saveSearchQuery(q); document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
+                    }));
+                });
+                document.getElementById('searchItemBtn').addEventListener('click', async ()=>{
+                    const q = input.value.trim().toLowerCase();
+                    if(!q) return;
+                    saveSearchQuery(q);
+                    const { data, error } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name', `%${q}%`), 5000);
+                    if(error) return;
+                    const items = data || [];
+                    if(!items.length){ res.innerHTML='<div class="empty-state">Ничего не найдено</div>'; return; }
+                    res.innerHTML = items.map(ad=>`<div class="card" data-res-id="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
+                    res.querySelectorAll('[data-res-id]').forEach(card=>card.addEventListener('click', ()=>{
+                        const ad = items.find(a=>a.id == card.dataset.resId);
+                        if(ad){ document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
+                    }));
+                });
+                document.getElementById('searchProfileBtn').addEventListener('click', ()=>{ const q = input.value.trim(); if(q) openProfileModal(q); });
+            }
             async function openProfileModal(authorIdOrUsername){
-                let userId=authorIdOrUsername;
-                if(typeof authorIdOrUsername==='string'&&authorIdOrUsername.startsWith('@')){
-                    const username=authorIdOrUsername.substring(1);
-                    const {data}=await supabaseClient.from('app_users').select('id').eq('username',username).maybeSingle();
-                    if(data) userId=data.id; else userId=null;
+                let userId = authorIdOrUsername;
+                if(typeof authorIdOrUsername==='string' && authorIdOrUsername.startsWith('@')){
+                    const username = authorIdOrUsername.substring(1);
+                    const { data } = await supabaseClient.from('app_users').select('id').eq('username', username).maybeSingle();
+                    if(data) userId = data.id; else userId = null;
                 }
                 showModal(`<h3 class="modal-title">👤 Профиль: ${authorIdOrUsername}</h3>
                     <div class="links-list mb-12">
@@ -936,181 +1488,209 @@
                         <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">📢</span><span class="link-label">ВК канал</span><span class="link-value">@bountyarz</span></div>
                     </div>
                     <div id="profileAdsList"><div class="loader"></div></div>`);
-                document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{window.open(item.dataset.link,'_blank');}));
-                if(!userId){document.getElementById('profileAdsList').innerHTML='<div class="empty-state">Пользователь не найден</div>';return;}
+                document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click', ()=>window.open(item.dataset.link,'_blank')));
+                if(!userId){ document.getElementById('profileAdsList').innerHTML='<div class="empty-state">Пользователь не найден</div>'; return; }
                 try{
-                    const {data}=await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').eq('author_id',userId).order('created_at',{ascending:false}),5000);
-                    const ads=data||[]; const {count}=await supabaseClient.from('ads').select('*',{count:'exact',head:true}).eq('author_id',userId);
-                    const {data:reviews}=await supabaseClient.from('reviews').select('stars').eq('ad_id',userId);
-                    const avg=reviews&&reviews.length?(reviews.reduce((s,r)=>s+r.stars,0)/reviews.length).toFixed(1):'—';
-                    const cont=document.getElementById('profileAdsList');
-                    let html=`<div style="margin-bottom:1rem;"><strong>Объявлений:</strong> ${count||0} • <strong>Средняя оценка:</strong> ⭐${avg}</div>`;
-                    if(!ads.length) html+='<div class="empty-state">Нет активных объявлений</div>';
-                    else html+=ads.map(ad=>`<div class="card" data-prof-ad="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
-                    cont.innerHTML=html;
-                    cont.querySelectorAll('[data-prof-ad]').forEach(card=>card.addEventListener('click',()=>{const ad=ads.find(a=>a.id==card.dataset.profAd); if(ad){document.getElementById('modalOverlay').remove(); openAdDetail(ad);}}));
-                }catch(e){document.getElementById('profileAdsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>';}
+                    const { data } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').eq('author_id', userId).order('created_at',{ascending:false}), 5000);
+                    const ads = data || [];
+                    const { count } = await supabaseClient.from('ads').select('*',{ count:'exact', head:true }).eq('author_id', userId);
+                    const { data: reviews } = await supabaseClient.from('reviews').select('stars').eq('ad_id', userId);
+                    const avg = reviews && reviews.length ? (reviews.reduce((s,r)=>s+r.stars,0)/reviews.length).toFixed(1) : '—';
+                    const cont = document.getElementById('profileAdsList');
+                    let html = `<div style="margin-bottom:1rem;"><strong>Объявлений:</strong> ${count||0} • <strong>Средняя оценка:</strong> ⭐${avg}</div>`;
+                    if(!ads.length) html += '<div class="empty-state">Нет активных объявлений</div>';
+                    else html += ads.map(ad=>`<div class="card" data-prof-ad="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
+                    cont.innerHTML = html;
+                    cont.querySelectorAll('[data-prof-ad]').forEach(card=>card.addEventListener('click', ()=>{
+                        const ad = ads.find(a=>a.id == card.dataset.profAd);
+                        if(ad){ document.getElementById('modalOverlay').remove(); openAdDetail(ad); }
+                    }));
+                } catch(e){ document.getElementById('profileAdsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; }
             }
 
-            // ===================== ВСЕ РАЗДЕЛЫ =====================
+            // Все разделы
             function loadAllTiles(){
-                const tiles=[ {id:'looks',icon:'📸',label:'Лента «Луков»'}, {id:'companions',icon:'👥',label:'Попутчики'}, {id:'music',icon:'🎵',label:'Музыка'}, {id:'baryga',icon:'🎮',label:'Игра «Барыга»'}, {id:'settings',icon:'⚙️',label:'Настройки'}, {id:'manager',icon:'👨‍💼',label:'Менеджер'}, {id:'chat',icon:'💬',label:'Переписки'}, {id:'notifications',icon:'🔔',label:'Уведомления'}, {id:'achievements',icon:'🏆',label:'Достижения'} ];
-                const cont=document.getElementById('allTiles'); cont.innerHTML=tiles.map(t=>`<div class="grid-tile" data-tile="${t.id}"><span class="tile-icon">${t.icon}</span><span>${t.label}</span></div>`).join('');
-                cont.querySelectorAll('[data-tile]').forEach(tile=>tile.addEventListener('click',()=>{ const id=tile.dataset.tile;
-                    if(id==='looks')openLooksModal(); if(id==='companions')openCompanionsModal(); if(id==='music')openMusicModal();
-                    if(id==='baryga')openBarygaGame(); if(id==='settings')openSettingsModal(); if(id==='manager')openManagerModal();
-                    if(id==='chat')openChatModal(); if(id==='notifications')openNotificationsModal(); if(id==='achievements')openAchievementsModal();
+                const tiles = [
+                    { id:'looks', icon:'📸', label:'Лента «Луков»' },
+                    { id:'companions', icon:'👥', label:'Попутчики' },
+                    { id:'music', icon:'🎵', label:'Музыка' },
+                    { id:'baryga', icon:'🎮', label:'Игра «Барыга»' },
+                    { id:'settings', icon:'⚙️', label:'Настройки' },
+                    { id:'manager', icon:'👨‍💼', label:'Менеджер' },
+                    { id:'chat', icon:'💬', label:'Переписки' },
+                    { id:'notifications', icon:'🔔', label:'Уведомления' }
+                ];
+                const cont = document.getElementById('allTiles');
+                cont.innerHTML = tiles.map(t=>`<div class="grid-tile" data-tile="${t.id}"><span class="tile-icon">${t.icon}</span><span>${t.label}</span></div>`).join('');
+                cont.querySelectorAll('[data-tile]').forEach(tile=>tile.addEventListener('click', ()=>{
+                    const id = tile.dataset.tile;
+                    if(id==='looks') openLooksModal();
+                    if(id==='companions') openCompanionsModal();
+                    if(id==='music') openMusicModal();
+                    if(id==='baryga') openBarygaGame();
+                    if(id==='settings') openSettingsModal();
+                    if(id==='manager') openManagerModal();
+                    if(id==='chat') openChatModal();
+                    if(id==='notifications') openNotificationsModal();
                 }));
             }
 
-            // ===================== ЛУКИ, ПОПУТЧИКИ, МУЗЫКА =====================
+            // Луки, попутчики, музыка
             function openLooksModal(){
                 showModal(`<h3 class="modal-title">📸 Лента «Луков»</h3><div class="form-group"><label>Ссылка на фото</label><input type="text" id="lookImg" placeholder="https://..."></div><div class="form-group"><label>Описание</label><input type="text" id="lookDesc" placeholder="Мой лук"></div><button class="btn w-full mb-12" id="lookSubmitBtn">Опубликовать</button><div id="looksList"><div class="loader"></div></div>`);
                 loadLooksFeed();
-                document.getElementById('lookSubmitBtn').addEventListener('click',async()=>{
-                    const img=document.getElementById('lookImg').value.trim(); const desc=document.getElementById('lookDesc').value.trim();
-                    const lc=checkLinksString(img); if(!lc.valid){showAlert('Ошибка',lc.message);return;}
-                    await supabaseClient.from('looks').insert({author_id:currentAuthUser.id,author_username:currentAuthUser.username,image_url:img,description:desc,created_at:new Date().toISOString()});
-                    playSfx('success'); document.getElementById('lookImg').value=''; document.getElementById('lookDesc').value=''; loadLooksFeed();
+                document.getElementById('lookSubmitBtn').addEventListener('click', async ()=>{
+                    const img = document.getElementById('lookImg').value.trim();
+                    const desc = document.getElementById('lookDesc').value.trim();
+                    const lc = checkLinksString(img);
+                    if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    await supabaseClient.from('looks').insert({ author_id: currentAuthUser.id, author_username: currentAuthUser.username, image_url: img, description: desc, created_at: new Date().toISOString() });
+                    playSfx('success');
+                    document.getElementById('lookImg').value = '';
+                    document.getElementById('lookDesc').value = '';
+                    loadLooksFeed();
                 });
             }
             async function loadLooksFeed(){
-                const cont=document.getElementById('looksList'); if(!cont)return;
-                const {data,error}=await withTimeout(supabaseClient.from('looks').select('*').order('created_at',{ascending:false}),5000);
-                if(error){cont.innerHTML='<div class="empty-state">⚠️ Ошибка</div>';return;} const looks=data||[];
-                if(!looks.length){cont.innerHTML='<div class="empty-state">📸 Образов пока нет</div>';return;}
-                cont.innerHTML=looks.map(l=>`<div class="card"><div class="img-container" style="height:200px;border-radius:12px;background:var(--border);"><div class="skeleton" style="position:absolute;inset:0;border-radius:12px;"></div><img src="${l.image_url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;" onload="this.classList.add('loaded')" onerror="this.style.display='none';"></div><div style="font-weight:700;font-size:0.85rem;">${l.author_username||l.author_id}</div><p style="font-size:0.8rem;color:var(--muted);">${l.description||''}</p>${l.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-look="${l.id}">🗑</button>`:''}</div>`).join('');
-                cont.querySelectorAll('[data-del-look]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('looks').delete().eq('id',btn.dataset.delLook); loadLooksFeed();}));
+                const cont = document.getElementById('looksList');
+                if(!cont) return;
+                const { data, error } = await withTimeout(supabaseClient.from('looks').select('*').order('created_at',{ascending:false}), 5000);
+                if(error){ cont.innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; return; }
+                const looks = data || [];
+                if(!looks.length){ cont.innerHTML='<div class="empty-state">📸 Образов пока нет</div>'; return; }
+                cont.innerHTML = looks.map(l=>`<div class="card"><div class="img-container" style="height:200px;border-radius:12px;background:var(--border);"><div class="skeleton" style="position:absolute;inset:0;border-radius:12px;"></div><img src="${l.image_url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;" onload="this.classList.add('loaded')" onerror="this.style.display='none';"></div><div style="font-weight:700;font-size:0.85rem;">${l.author_username||l.author_id}</div><p style="font-size:0.8rem;color:var(--muted);">${l.description||''}</p>${l.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-look="${l.id}">🗑</button>`:''}</div>`).join('');
+                cont.querySelectorAll('[data-del-look]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('looks').delete().eq('id', btn.dataset.delLook); loadLooksFeed(); }));
             }
             function openCompanionsModal(){
                 showModal(`<h3 class="modal-title">👥 Попутчики</h3><div class="form-group"><label>Цель</label><input type="text" id="compTarget" placeholder="Например: еду на шахту"></div><div class="form-group"><label>Контакты</label><input type="text" id="compContact" placeholder="@username"></div><button class="btn w-full mb-12" id="compSubmitBtn">Найти напарника</button><div id="companionsList"><div class="loader"></div></div>`);
                 loadCompanionsFeed();
-                document.getElementById('compSubmitBtn').addEventListener('click',async()=>{
-                    const target=document.getElementById('compTarget').value.trim(); const contact=document.getElementById('compContact').value.trim();
-                    if(!target||!contact){showAlert('Ошибка','Заполните все поля');return;}
-                    await supabaseClient.from('companions').insert({author_id:currentAuthUser.id,author_username:currentAuthUser.username,target,contact,created_at:new Date().toISOString()});
-                    playSfx('success'); document.getElementById('compTarget').value=''; document.getElementById('compContact').value=''; loadCompanionsFeed();
+                document.getElementById('compSubmitBtn').addEventListener('click', async ()=>{
+                    const target = document.getElementById('compTarget').value.trim();
+                    const contact = document.getElementById('compContact').value.trim();
+                    if(!target || !contact){ showAlert('Ошибка','Заполните все поля'); return; }
+                    await supabaseClient.from('companions').insert({ author_id: currentAuthUser.id, author_username: currentAuthUser.username, target, contact, created_at: new Date().toISOString() });
+                    playSfx('success');
+                    document.getElementById('compTarget').value = '';
+                    document.getElementById('compContact').value = '';
+                    loadCompanionsFeed();
                 });
             }
             async function loadCompanionsFeed(){
-                const cont=document.getElementById('companionsList'); if(!cont)return;
-                const {data,error}=await withTimeout(supabaseClient.from('companions').select('*').order('created_at',{ascending:false}),5000);
-                if(error){cont.innerHTML='<div class="empty-state">⚠️ Ошибка</div>';return;} const comps=data||[];
-                if(!comps.length){cont.innerHTML='<div class="empty-state">👥 Заявок нет</div>';return;}
-                cont.innerHTML=comps.map(c=>`<div class="card"><div style="font-weight:700;">${c.target}</div><div style="font-size:0.75rem;color:var(--muted);">Автор: ${c.author_username||c.author_id} • Контакт: ${c.contact}</div>${c.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-comp="${c.id}">🗑</button>`:''}</div>`).join('');
-                cont.querySelectorAll('[data-del-comp]').forEach(btn=>btn.addEventListener('click',async()=>{await supabaseClient.from('companions').delete().eq('id',btn.dataset.delComp); loadCompanionsFeed();}));
+                const cont = document.getElementById('companionsList');
+                if(!cont) return;
+                const { data, error } = await withTimeout(supabaseClient.from('companions').select('*').order('created_at',{ascending:false}), 5000);
+                if(error){ cont.innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; return; }
+                const comps = data || [];
+                if(!comps.length){ cont.innerHTML='<div class="empty-state">👥 Заявок нет</div>'; return; }
+                cont.innerHTML = comps.map(c=>`<div class="card"><div style="font-weight:700;">${c.target}</div><div style="font-size:0.75rem;color:var(--muted);">Автор: ${c.author_username||c.author_id} • Контакт: ${c.contact}</div>${c.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-comp="${c.id}">🗑</button>`:''}</div>`).join('');
+                cont.querySelectorAll('[data-del-comp]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('companions').delete().eq('id', btn.dataset.delComp); loadCompanionsFeed(); }));
             }
             function openMusicModal(){
                 showModal(`<h3 class="modal-title">🎵 Музыка</h3><div class="form-group"><label>Ссылка на трек (mp3)</label><input type="text" id="musicUrl" placeholder="https://..."></div><div class="flex-between gap-8 mb-12"><button class="btn w-full" id="musicPlayBtn">▶️ Играть</button><button class="btn secondary w-full" id="musicPauseBtn">⏸ Пауза</button></div><button class="btn danger w-full" id="musicResetBtn">⏹ Сбросить</button>`);
-                let activeAudio=window.appCurrentAudio||null;
-                document.getElementById('musicPlayBtn').addEventListener('click',()=>{ const url=document.getElementById('musicUrl').value.trim(); if(url){ if(activeAudio)activeAudio.pause(); activeAudio=new Audio(url); window.appCurrentAudio=activeAudio; activeAudio.play().catch(()=>showAlert('Ошибка','Не удалось воспроизвести')); } else if(activeAudio)activeAudio.play(); });
-                document.getElementById('musicPauseBtn').addEventListener('click',()=>{if(activeAudio)activeAudio.pause();});
-                document.getElementById('musicResetBtn').addEventListener('click',()=>{if(activeAudio){activeAudio.pause();window.appCurrentAudio=null;} document.getElementById('musicUrl').value='';});
+                let activeAudio = window.appCurrentAudio || null;
+                document.getElementById('musicPlayBtn').addEventListener('click', ()=>{
+                    const url = document.getElementById('musicUrl').value.trim();
+                    if(url){
+                        if(activeAudio) activeAudio.pause();
+                        activeAudio = new Audio(url);
+                        window.appCurrentAudio = activeAudio;
+                        activeAudio.play().catch(()=>showAlert('Ошибка','Не удалось воспроизвести'));
+                    } else if(activeAudio) activeAudio.play();
+                });
+                document.getElementById('musicPauseBtn').addEventListener('click', ()=>{ if(activeAudio) activeAudio.pause(); });
+                document.getElementById('musicResetBtn').addEventListener('click', ()=>{ if(activeAudio){ activeAudio.pause(); window.appCurrentAudio = null; } document.getElementById('musicUrl').value=''; });
             }
 
-            // ===================== НАСТРОЙКИ =====================
+            // Настройки
             function openSettingsModal(){
                 showModal(`<h3 class="modal-title">⚙️ Настройки</h3>
                     <div class="form-group flex-between"><label>🔊 Звуки</label><input type="checkbox" id="settingsSfx" ${sfxEnabled?'checked':''} style="width:1.5rem;height:1.5rem;"></div>
                     <div class="form-group flex-between"><label>🌙 Тёмная тема</label><input type="checkbox" id="settingsDark" ${currentTheme==='dark'?'checked':''} style="width:1.5rem;height:1.5rem;"></div>
                     <button class="btn secondary w-full mt-12" id="settingsLogoutBtn">🚪 Выйти</button>
                     <button class="btn danger w-full mt-8" id="settingsDeleteBtn">🗑 Удалить аккаунт</button>`);
-                document.getElementById('settingsSfx').addEventListener('change',async(e)=>{sfxEnabled=e.target.checked; if(currentAuthUser)await supabaseClient.from('user_settings').update({sfx_enabled:sfxEnabled}).eq('user_id',currentAuthUser.id);});
-                document.getElementById('settingsDark').addEventListener('change',async(e)=>{currentTheme=e.target.checked?'dark':'light'; applyTheme(); if(currentAuthUser)await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id',currentAuthUser.id);});
-                document.getElementById('settingsLogoutBtn').addEventListener('click',()=>{
-                    // Полная очистка сессии
+                document.getElementById('settingsSfx').addEventListener('change', async (e)=>{ sfxEnabled = e.target.checked; if(currentAuthUser) await supabaseClient.from('user_settings').update({ sfx_enabled: sfxEnabled }).eq('user_id', currentAuthUser.id); });
+                document.getElementById('settingsDark').addEventListener('change', async (e)=>{ currentTheme = e.target.checked ? 'dark' : 'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({ theme: currentTheme }).eq('user_id', currentAuthUser.id); });
+                document.getElementById('settingsLogoutBtn').addEventListener('click', ()=>{
                     localStorage.removeItem('arizona_current_user');
                     sessionStorage.clear();
                     currentAuthUser = null;
                     document.getElementById('modalOverlay').remove();
-                    // Перезагружаем приложение на экран входа
                     showAuthScreen();
                 });
-                document.getElementById('settingsDeleteBtn').addEventListener('click',showDeleteAccountModal);
+                document.getElementById('settingsDeleteBtn').addEventListener('click', showDeleteAccountModal);
             }
             function showDeleteAccountModal(){
                 showModal(`<h3 class="modal-title">🗑 Удаление аккаунта</h3><p style="color:var(--muted);margin-bottom:1rem;">Введите пароль для подтверждения.</p><div class="form-group"><label>Пароль</label><input type="password" id="deletePassInput"></div><button class="btn danger w-full" id="confirmDeleteBtn">Удалить</button><p id="deleteError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
-                document.getElementById('confirmDeleteBtn').addEventListener('click',async()=>{
-                    const pass=document.getElementById('deletePassInput').value.trim(); const errEl=document.getElementById('deleteError');
-                    if(!pass){errEl.textContent='Введите пароль';return;} const hash=await hashPassword(pass);
-                    if(hash!==currentAuthUser.password_hash){errEl.textContent='Неверный пароль';return;}
-                    showConfirm('Удаление','Удалить аккаунт и все данные?',async()=>{
+                document.getElementById('confirmDeleteBtn').addEventListener('click', async ()=>{
+                    const pass = document.getElementById('deletePassInput').value.trim();
+                    const errEl = document.getElementById('deleteError');
+                    if(!pass){ errEl.textContent='Введите пароль'; return; }
+                    const hash = await hashPassword(pass);
+                    if(hash !== currentAuthUser.password_hash){ errEl.textContent='Неверный пароль'; return; }
+                    showConfirm('Удаление','Удалить аккаунт и все данные?', async ()=>{
                         try{
-                            await supabaseClient.from('app_users').delete().eq('id',currentAuthUser.id);
-                            await supabaseClient.from('user_settings').delete().eq('user_id',currentAuthUser.id);
-                            await supabaseClient.from('user_progress').delete().eq('user_id',currentAuthUser.id);
-                            await supabaseClient.from('ads').delete().eq('author_id',currentAuthUser.id);
-                            await supabaseClient.from('favorites').delete().eq('user_id',currentAuthUser.id);
-                            await supabaseClient.from('search_history').delete().eq('user_id',currentAuthUser.id);
-                            await supabaseClient.from('baryga').delete().eq('user_id',currentAuthUser.id);
-                            await supabaseClient.from('looks').delete().eq('author_id',currentAuthUser.id);
-                            await supabaseClient.from('companions').delete().eq('author_id',currentAuthUser.id);
-                            await supabaseClient.from('notifications').delete().eq('user_id',currentAuthUser.id);
-                            await supabaseClient.from('reviews').delete().eq('author_id',currentAuthUser.id);
-                            await supabaseClient.from('appeals').delete().eq('author_id',currentAuthUser.id);
-                            await supabaseClient.from('reports').delete().eq('reporter_id',currentAuthUser.id);
-                            localStorage.removeItem('arizona_current_user'); currentAuthUser=null;
-                            document.getElementById('modalOverlay').remove(); showAuthScreen(); showToast('Аккаунт удалён','success');
-                        }catch(e){showAlert('Ошибка','Не удалось удалить аккаунт');}
+                            await supabaseClient.from('app_users').delete().eq('id', currentAuthUser.id);
+                            await supabaseClient.from('user_settings').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('user_progress').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('ads').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('favorites').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('search_history').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('baryga').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('looks').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('companions').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('notifications').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('reviews').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('appeals').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('reports').delete().eq('reporter_id', currentAuthUser.id);
+                            localStorage.removeItem('arizona_current_user');
+                            currentAuthUser = null;
+                            document.getElementById('modalOverlay').remove();
+                            showAuthScreen();
+                            showToast('Аккаунт удалён','success');
+                        } catch(e){ showAlert('Ошибка','Не удалось удалить аккаунт'); }
                     });
                 });
             }
 
-            // ===================== МЕНЕДЖЕР =====================
+            // Менеджер
             function openManagerModal(){
                 showModal(`<h3 class="modal-title">👨‍💼 Менеджер / Поддержка</h3><div class="links-list">
                     <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span><span class="link-value">@bounqy31</span></div>
                     <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">👥</span><span class="link-label">ВК сообщество</span><span class="link-value">@bountyarz</span></div>
                 </div>`);
-                document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{window.open(item.dataset.link,'_blank');document.getElementById('modalOverlay').remove();}));
+                document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click', ()=>{ window.open(item.dataset.link,'_blank'); document.getElementById('modalOverlay').remove(); }));
             }
 
-            // ===================== ПЕРЕПИСКИ, УВЕДОМЛЕНИЯ, ДОСТИЖЕНИЯ =====================
-            function openChatModal(){ showModal(`<h3 class="modal-title">💬 Переписки</h3><div class="empty-state">Переписки ведутся напрямую в Telegram.</div><button class="btn w-full mt-12" id="chatTgBtn">📱 Перейти в Telegram</button>`); document.getElementById('chatTgBtn').addEventListener('click',()=>window.open('https://t.me/','_blank')); }
+            // Чат
+            function openChatModal(){
+                showModal(`<h3 class="modal-title">💬 Переписки</h3><div class="empty-state">Переписки ведутся напрямую в Telegram.</div><button class="btn w-full mt-12" id="chatTgBtn">📱 Перейти в Telegram</button>`);
+                document.getElementById('chatTgBtn').addEventListener('click', ()=>window.open('https://t.me/','_blank'));
+            }
+
+            // Уведомления
             async function openNotificationsModal(){
                 showModal(`<h3 class="modal-title">🔔 Уведомления</h3><div id="notificationsList"><div class="loader"></div></div>`);
                 try{
-                    const {data,error}=await withTimeout(supabaseClient.from('notifications').select('*').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}),5000); if(error)throw error;
-                    const notif=data||[]; const cont=document.getElementById('notificationsList'); if(!notif.length){cont.innerHTML='<div class="empty-state">Нет уведомлений</div>';return;}
-                    cont.innerHTML=notif.map(n=>`<div class="card ${!n.read?'inactive-card':''}"><div style="font-weight:600;">${n.message}</div><div style="font-size:0.7rem;color:var(--muted);">${new Date(n.created_at).toLocaleString('ru-RU')}</div></div>`).join('');
-                    await supabaseClient.from('notifications').update({read:true}).eq('user_id',currentAuthUser.id).eq('read',false); unreadNotifications=0;
-                }catch(e){document.getElementById('notificationsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>';}
-            }
-            async function openAchievementsModal(){
-                showModal(`<h3 class="modal-title">🏆 Достижения</h3><div id="achievementsList"><div class="loader"></div></div>`);
-                try{
-                    const [ua,ur,uf,ul,uc]=await Promise.all([
-                        supabaseClient.from('ads').select('id').eq('author_id',currentAuthUser.id),
-                        supabaseClient.from('reviews').select('id').eq('author_id',currentAuthUser.id),
-                        supabaseClient.from('favorites').select('id').eq('user_id',currentAuthUser.id),
-                        supabaseClient.from('looks').select('id').eq('author_id',currentAuthUser.id),
-                        supabaseClient.from('companions').select('id').eq('author_id',currentAuthUser.id)
-                    ]);
-                    const achievements=[
-                        {name:'Новичок',desc:'Создайте первое объявление',achieved:(ua.data?.length||0)>=1,icon:'📝'},
-                        {name:'Активный',desc:'Создайте 10 объявлений',achieved:(ua.data?.length||0)>=10,icon:'📈'},
-                        {name:'Критик',desc:'Оставьте первый отзыв',achieved:(ur.data?.length||0)>=1,icon:'⭐'},
-                        {name:'Коллекционер',desc:'Добавьте 5 в корзину',achieved:(uf.data?.length||0)>=5,icon:'🛒'},
-                        {name:'Модник',desc:'Опубликуйте свой лук',achieved:(ul.data?.length||0)>=1,icon:'📸'},
-                        {name:'Компаньон',desc:'Найдите попутчика',achieved:(uc.data?.length||0)>=1,icon:'👥'}
-                    ];
-                    const cont=document.getElementById('achievementsList');
-                    cont.innerHTML=achievements.map(a=>`<div class="card" style="opacity:${a.achieved?'1':'0.5'};"><div class="flex-between"><div><span style="font-size:1.5rem;">${a.icon}</span> <strong>${a.name}</strong></div><span>${a.achieved?'✅':'🔒'}</span></div><div style="font-size:0.75rem;color:var(--muted);">${a.desc}</div></div>`).join('');
-                }catch(e){document.getElementById('achievementsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>';}
+                    const { data, error } = await withTimeout(supabaseClient.from('notifications').select('*').eq('user_id', currentAuthUser.id).order('created_at',{ascending:false}), 5000);
+                    if(error) throw error;
+                    const notif = data || [];
+                    const cont = document.getElementById('notificationsList');
+                    if(!notif.length){ cont.innerHTML='<div class="empty-state">Нет уведомлений</div>'; return; }
+                    cont.innerHTML = notif.map(n=>`<div class="card ${!n.read?'inactive-card':''}"><div style="font-weight:600;">${n.message}</div><div style="font-size:0.7rem;color:var(--muted);">${new Date(n.created_at).toLocaleString('ru-RU')}</div></div>`).join('');
+                    await supabaseClient.from('notifications').update({ read:true }).eq('user_id', currentAuthUser.id).eq('read', false);
+                    unreadNotifications = 0;
+                } catch(e){ document.getElementById('notificationsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; }
             }
 
-            // ===================== ЗАПУСК =====================
+            // Запуск
             const telegramOk = initTelegram();
             if (!telegramOk) return;
             if (!initSupabase()) return;
-
-            // Показываем сплэш 2 секунды, затем проверяем авторизацию
             setTimeout(() => { checkAuth(); }, 2000);
-
             window.addEventListener('online', () => { if (currentSection === 'home') loadHomeFeed(); });
             document.addEventListener('DOMContentLoaded', () => setupServerSelector());
             console.log('Arizona RP App fully initialized');
         })();
     </script>
 </body>
-</html>
+    </html>

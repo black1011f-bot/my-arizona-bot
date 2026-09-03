@@ -213,7 +213,6 @@
             if (this.suit === other.suit) return this.rank > other.rank;
             return false;
         }
-        // Сравнение для сортировки по силе (чем больше ранг, тем сильнее)
         static compareStrength(a, b) {
             return a.rank - b.rank;
         }
@@ -316,7 +315,6 @@
         }
 
         // ----- Лучший выбор для бота -----
-        // Выбор карты для атаки: самая слабая не-козырь, иначе самый слабый козырь
         botChooseAttackCard() {
             const nonTrump = this.botHand.filter(c => c.suit !== this.trumpSuit);
             if (nonTrump.length > 0) {
@@ -328,21 +326,15 @@
             }
         }
 
-        // Выбор защитной карты для бота: самая слабая карта, которая бьёт атакующую (стараясь не использовать козыри, если есть альтернатива)
         botChooseDefenseCard(attackCard) {
-            // Собираем все карты, которые могут побить
             const candidates = this.botHand.filter(c => c.beats(attackCard, this.trumpSuit));
             if (candidates.length === 0) return null;
-            // Сортируем по силе (возрастание) – выбираем самую слабую
             candidates.sort((a,b) => a.rank - b.rank);
-            // Если есть не-козырь, предпочитаем его (даже если он слабее козыря)
             const nonTrump = candidates.filter(c => c.suit !== this.trumpSuit);
             if (nonTrump.length > 0) {
-                // берём самую слабую не-козырь
                 nonTrump.sort((a,b) => a.rank - b.rank);
                 return nonTrump[0];
             } else {
-                // все кандидаты - козыри, берём самый слабый
                 return candidates[0];
             }
         }
@@ -403,7 +395,7 @@
             this.botDefend();
         }
 
-        // ----- Защита бота (улучшенная) -----
+        // ----- Защита бота -----
         botDefend() {
             if (this.gameOver) return;
             const attackCards = this.attackingCards;
@@ -412,19 +404,16 @@
             let success = true;
 
             for (let atk of attackCards) {
-                // Ищем самую слабую подходящую карту
                 let bestCard = null;
                 let bestIdx = -1;
                 for (let i=0; i<this.botHand.length; i++) {
                     if (usedIndices.includes(i)) continue;
                     const candidate = this.botHand[i];
                     if (candidate.beats(atk, this.trumpSuit)) {
-                        // Выбираем самую слабую (по рангу), и если есть не-козырь, предпочитаем его
                         if (!bestCard) {
                             bestCard = candidate;
                             bestIdx = i;
                         } else {
-                            // Сравниваем: предпочитаем не-козырь, затем меньший ранг
                             const bestIsTrump = bestCard.suit === this.trumpSuit;
                             const candIsTrump = candidate.suit === this.trumpSuit;
                             if (bestIsTrump && !candIsTrump) {
@@ -433,7 +422,6 @@
                             } else if (!bestIsTrump && candIsTrump) {
                                 // оставляем текущий
                             } else {
-                                // оба козыри или оба не-козыри, выбираем меньший ранг
                                 if (candidate.rank < bestCard.rank) {
                                     bestCard = candidate;
                                     bestIdx = i;
@@ -452,7 +440,6 @@
             }
 
             if (success) {
-                // Бот отбился
                 for (let card of defense) {
                     const idx = this.botHand.indexOf(card);
                     if (idx !== -1) this.botHand.splice(idx, 1);
@@ -462,9 +449,10 @@
                 this.updateUI();
                 this.clearTable();
                 this.setStatus('Бот отбился!');
+                // Ход переходит боту (следующий после игрока)
                 this.finishTurn(false);
             } else {
-                // Бот не может отбиться – берёт карты
+                // Бот не отбился – берёт карты
                 this.botHand.push(...this.tableCards);
                 this.tableCards = [];
                 this.attackingCards = [];
@@ -483,10 +471,11 @@
             this.waitingForPass = false;
             this.enableControls(false, false, false, false);
             this.setStatus('Ход завершён.');
-            this.finishTurn(false);
+            // После взятия ботом, ход переходит игроку (следующему после бота)
+            this.finishTurn(true);
         }
 
-        // ----- Ход бота (улучшенный) -----
+        // ----- Ход бота -----
         botTurn() {
             if (this.gameOver) return;
             if (this.isPlayerTurn) return;
@@ -540,6 +529,7 @@
             if (this.defendingCards.length === this.attackingCards.length) {
                 this.clearTable();
                 this.setStatus('Вы отбились!');
+                // После отбоя игроком, ход переходит игроку (следующему после бота)
                 this.finishTurn(true);
             } else {
                 this.waitingForPlayerAction = true;
@@ -561,11 +551,13 @@
             this.suggestedCards = [];
             this.updateUI();
             this.setStatus('Вы взяли карты.');
-            this.finishTurn(true);
+            // После взятия игроком (он был защитником), ход переходит боту (следующему после игрока)
+            this.finishTurn(false);
         }
 
         // ----- Завершение хода (общая) -----
         finishTurn(nextIsPlayer) {
+            // nextIsPlayer: true – ход игроку, false – ход боту
             this.waitingForPlayerAction = false;
             this.waitingForPass = false;
             this.enableControls(false, false, false, false);
@@ -877,4 +869,4 @@
     document.getElementById('menu').style.display = 'flex';
 </script>
 </body>
-                </html>
+</html>

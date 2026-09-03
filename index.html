@@ -126,39 +126,64 @@
         #center-zone {
             flex: 1;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 6px;
-            padding: 6px;
-            min-height: 120px;
-        }
-        .center-row {
-            display: flex;
             flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            gap: 6px;
-            width: 100%;
+            gap: 12px;
+            padding: 10px;
+            min-height: 120px;
+            position: relative;
         }
-        .center-label {
-            font-size: 0.8em;
-            font-weight: bold;
-            color: #fff;
-            background: rgba(0,0,0,0.5);
-            padding: 2px 14px;
-            border-radius: 30px;
-            letter-spacing: 0.5px;
-            text-shadow: 0 0 6px #000;
-            margin: 0 6px;
-            white-space: nowrap;
+        /* Пара карт (атака+защита) */
+        .card-pair {
+            display: inline-flex;
+            position: relative;
+            width: 70px;   /* чуть больше карты, чтобы было место для смещения */
+            height: 95px;
+            flex-shrink: 0;
+            transition: transform 0.2s;
         }
-        .center-label.attack {
-            background: rgba(200, 50, 50, 0.7);
+        .card-pair .card {
+            position: absolute;
+            width: 60px;
+            height: 84px;
+            transition: left 0.3s, top 0.3s, opacity 0.3s, transform 0.2s;
+            cursor: default;
+            pointer-events: none;
         }
-        .center-label.defense {
-            background: rgba(50, 100, 200, 0.7);
+        /* Атакующая карта (слева-сверху) */
+        .card-pair .card.attack-card {
+            left: 0;
+            top: 0;
+            z-index: 1;
+            border-color: #d44;
+            box-shadow: 0 0 10px rgba(200, 50, 50, 0.5);
         }
+        /* Защитная карта (справа-снизу со смещением) */
+        .card-pair .card.defense-card {
+            left: 18px;  /* смещение вправо */
+            top: 14px;   /* смещение вниз */
+            z-index: 2;
+            border-color: #44d;
+            box-shadow: 0 0 10px rgba(50, 100, 200, 0.5);
+        }
+        /* Если только атака (защиты нет) */
+        .card-pair .card.attack-only {
+            left: 0;
+            top: 0;
+            z-index: 1;
+            border-color: #d44;
+            box-shadow: 0 0 10px rgba(200, 50, 50, 0.5);
+        }
+        /* Анимация появления карт */
+        .card-pair .card {
+            animation: cardAppear 0.25s ease-out;
+        }
+        @keyframes cardAppear {
+            0% { opacity: 0; transform: scale(0.8) translateY(-10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
         #player-zone {
             flex: 0 0 110px;
             border-top: 2px dashed rgba(255,255,255,0.2);
@@ -187,6 +212,7 @@
             flex-direction: column;
             align-items: center;
             gap: 4px;
+            z-index: 10;
         }
         #deck-area .card {
             width: 50px;
@@ -280,14 +306,6 @@
             pointer-events: none;
             filter: grayscale(0.6);
         }
-        .card.attack-card {
-            border-color: #d44;
-            box-shadow: 0 0 10px rgba(200, 50, 50, 0.5);
-        }
-        .card.defense-card {
-            border-color: #44d;
-            box-shadow: 0 0 10px rgba(50, 100, 200, 0.5);
-        }
         .card.trump-card {
             border: 3px solid gold;
         }
@@ -357,6 +375,20 @@
             margin: 0 12px 4px;
             font-weight: 500;
         }
+        /* Счётчик карт на столе */
+        #table-count {
+            color: #fff;
+            background: rgba(0,0,0,0.4);
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            z-index: 5;
+        }
         /* Адаптив */
         @media (max-width: 600px) {
             .card {
@@ -365,12 +397,19 @@
                 font-size: 0.9em;
                 padding: 3px 4px;
             }
+            .card-pair {
+                width: 56px;
+                height: 76px;
+            }
+            .card-pair .card.defense-card {
+                left: 14px;
+                top: 11px;
+            }
             #bot-zone { flex-basis: 65px; }
             #player-zone { flex-basis: 85px; }
             #deck-area .card { width: 40px; height: 56px; font-size: 1em; }
             #controls button { padding: 6px 10px; font-size: 0.85em; min-width: 50px; }
             #menu h1 { font-size: 2em; }
-            .center-label { font-size: 0.7em; }
         }
         @media (max-width: 420px) {
             .card {
@@ -379,9 +418,17 @@
                 font-size: 0.75em;
                 padding: 2px 3px;
             }
+            .card-pair {
+                width: 48px;
+                height: 64px;
+            }
+            .card-pair .card.defense-card {
+                left: 12px;
+                top: 9px;
+            }
             #bot-zone { flex-basis: 55px; }
             #player-zone { flex-basis: 70px; }
-            #center-zone { min-height: 90px; }
+            #center-zone { min-height: 90px; gap: 8px; }
         }
     </style>
 </head>
@@ -405,21 +452,14 @@
 
         <!-- Центральная зона (стол) -->
         <div id="center-zone">
-            <!-- Ряд защиты (сверху) -->
-            <div class="center-row" id="defenseRow">
-                <span class="center-label defense">🛡 Защита</span>
-                <div id="defenseCards" style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;"></div>
-            </div>
-            <!-- Ряд атаки (снизу) -->
-            <div class="center-row" id="attackRow">
-                <span class="center-label attack">⚔ Атака</span>
-                <div id="attackCards" style="display:flex; flex-wrap:wrap; gap:4px; align-items:center;"></div>
-            </div>
+            <!-- Здесь будут отображаться пары карт -->
+            <div id="pairs-container" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:12px; width:100%;"></div>
             <!-- Козырь и колода -->
             <div id="deck-area">
                 <div class="card back" id="deckCard"></div>
                 <div id="trump-info">♠</div>
             </div>
+            <div id="table-count"></div>
         </div>
 
         <!-- Зона игрока -->
@@ -502,8 +542,8 @@
             this.gameOver = false;
             this.waitingForPlayerAction = false;
             this.cardsToDeal = 6;
-            this.maxTableCards = 6; // ограничение на 6 карт на столе
-            this.suggestedCards = []; // для подсветки
+            this.maxTableCards = 6;
+            this.suggestedCards = [];
         }
 
         init() {
@@ -551,7 +591,6 @@
 
         // ===== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =====
         getPossibleAttackCards() {
-            // Если стол пуст – можно любую карту
             if (this.attackingCards.length === 0) {
                 return this.playerHand.slice();
             }
@@ -560,7 +599,6 @@
         }
 
         getPossibleDefendCards() {
-            // Защита: нужно побить следующую атакующую карту (по порядку)
             const attackCards = this.attackingCards;
             const defendIndex = this.defendingCards.length;
             if (defendIndex >= attackCards.length) return [];
@@ -580,7 +618,6 @@
         // ===== ХОД ИГРОКА =====
         playerAttack(card) {
             if (!this.waitingForPlayerAction || !this.isAttacking || !this.isPlayerTurn || this.gameOver) return false;
-            // Проверка ограничения на 6 карт
             if (this.tableCards.length >= this.maxTableCards) {
                 this.setStatus('На столе уже ' + this.maxTableCards + ' карт, больше подкидывать нельзя.');
                 return false;
@@ -769,7 +806,6 @@
                 return;
             }
             this.isAttacking = true;
-            // Бот выбирает самую младшую карту (или козырь, если есть)
             let card = this.botHand[0];
             this.botHand.splice(0, 1);
             this.tableCards.push(card);
@@ -795,7 +831,6 @@
                 return;
             }
             this.setStatus('Выберите карту для подкидывания (того же достоинства).');
-            // Подсветка уже включена
         }
 
         // ===== ПОДСКАЗКА =====
@@ -806,25 +841,13 @@
                 this.setStatus('Нет подходящих карт для хода.');
                 return;
             }
-            // Выбираем первую возможную карту
             const card = possible[0];
             this.suggestedCards = [card];
             this.updateUI();
-            // Добавляем класс suggest к карте в руке
-            this.highlightSuggestedCard(card);
-            this.setStatus('Подсказка: сыграйте карту ' + card.name + card.suit);
-        }
-
-        highlightSuggestedCard(card) {
-            // Убираем старую подсветку
-            document.querySelectorAll('#player-zone .card.suggest').forEach(el => el.classList.remove('suggest'));
+            // Подсветим в руке
             const cards = document.querySelectorAll('#player-zone .card');
-            // Находим карту по значению (не самый надёжный способ, но для простоты)
-            // Лучше добавить data-id
             for (let el of cards) {
-                // Сравниваем с card.id
                 const text = el.textContent.replace(/\s/g, '');
-                // Простой способ: ищем по имени и масти
                 const name = card.name;
                 const suit = card.suitSymbol;
                 if (text.includes(name) && text.includes(suit)) {
@@ -832,6 +855,7 @@
                     break;
                 }
             }
+            this.setStatus('Подсказка: сыграйте карту ' + card.name + card.suit);
         }
 
         // ===== ВСПОМОГАТЕЛЬНЫЕ =====
@@ -886,7 +910,6 @@
         }
 
         shakeCard(card) {
-            // Находим элемент карты в руке игрока и трясём
             const cards = document.querySelectorAll('#player-zone .card');
             for (let el of cards) {
                 const text = el.textContent.replace(/\s/g, '');
@@ -901,14 +924,12 @@
         }
 
         highlightPossibleCards() {
-            // Убираем старые подсветки
             document.querySelectorAll('#player-zone .card.highlight, #player-zone .card.suggest').forEach(el => {
                 el.classList.remove('highlight', 'suggest');
             });
             if (!this.waitingForPlayerAction) return;
             const possible = this.getPossibleCards();
             if (possible.length === 0) return;
-            // Подсвечиваем все возможные карты (слабо)
             const cards = document.querySelectorAll('#player-zone .card');
             for (let el of cards) {
                 const text = el.textContent.replace(/\s/g, '');
@@ -990,56 +1011,46 @@
         }
 
         renderTable() {
-            const attackContainer = document.getElementById('attackCards');
-            attackContainer.innerHTML = '';
-            this.attackingCards.forEach((card) => {
-                const el = this.createCardElement(card, false);
-                el.classList.add('attack-card');
-                el.style.cursor = 'default';
-                el.style.pointerEvents = 'none';
-                attackContainer.appendChild(el);
-            });
-            const defenseContainer = document.getElementById('defenseCards');
-            defenseContainer.innerHTML = '';
-            this.defendingCards.forEach((card) => {
-                const el = this.createCardElement(card, false);
-                el.classList.add('defense-card');
-                el.style.cursor = 'default';
-                el.style.pointerEvents = 'none';
-                defenseContainer.appendChild(el);
-            });
-            const attackLabel = document.querySelector('.center-label.attack');
-            const defenseLabel = document.querySelector('.center-label.defense');
-            if (this.isPlayerTurn && this.isAttacking) {
-                attackLabel.textContent = '⚔ Ваша атака';
-                defenseLabel.textContent = '🛡 Защита бота';
-            } else if (!this.isPlayerTurn && this.isAttacking) {
-                attackLabel.textContent = '⚔ Атака бота';
-                defenseLabel.textContent = '🛡 Ваша защита';
-            } else {
-                attackLabel.textContent = '⚔ Атака';
-                defenseLabel.textContent = '🛡 Защита';
+            const container = document.getElementById('pairs-container');
+            container.innerHTML = '';
+            // Собираем пары: для каждой атакующей карты ищем соответствующую защитную
+            const pairs = [];
+            for (let i = 0; i < this.attackingCards.length; i++) {
+                const atk = this.attackingCards[i];
+                const def = (i < this.defendingCards.length) ? this.defendingCards[i] : null;
+                pairs.push({ atk, def });
             }
-            // Отображаем количество карт на столе
-            const tableCount = this.tableCards.length;
-            if (tableCount > 0) {
-                const countEl = document.createElement('div');
-                countEl.style.cssText = 'color:#fff; background:rgba(0,0,0,0.5); padding:0 12px; border-radius:20px; font-size:0.8em;';
-                countEl.textContent = tableCount + '/' + this.maxTableCards;
-                document.getElementById('center-zone').appendChild(countEl);
-                // Но чтобы не плодить, лучше добавить в отдельное место
-                // Удалим предыдущий, если есть
-                const old = document.getElementById('tableCount');
-                if (old) old.remove();
-                const newCount = document.createElement('div');
-                newCount.id = 'tableCount';
-                newCount.style.cssText = 'color:#fff; background:rgba(0,0,0,0.4); padding:2px 12px; border-radius:20px; font-size:0.8em; position:absolute; bottom:5px; left:50%; transform:translateX(-50%);';
-                newCount.textContent = 'На столе: ' + tableCount + ' / ' + this.maxTableCards;
-                document.getElementById('center-zone').appendChild(newCount);
-            } else {
-                const old = document.getElementById('tableCount');
-                if (old) old.remove();
+            // Если защитных больше (не бывает, но на всякий случай)
+            for (let i = this.attackingCards.length; i < this.defendingCards.length; i++) {
+                // лишние защитные без атакующих – такого не должно быть
             }
+            for (let pair of pairs) {
+                const pairDiv = document.createElement('div');
+                pairDiv.className = 'card-pair';
+                // Атакующая карта
+                const atkEl = this.createCardElement(pair.atk, false);
+                if (pair.def) {
+                    atkEl.classList.add('attack-card');
+                } else {
+                    atkEl.classList.add('attack-only');
+                }
+                atkEl.style.pointerEvents = 'none';
+                atkEl.style.cursor = 'default';
+                pairDiv.appendChild(atkEl);
+                // Защитная карта (если есть)
+                if (pair.def) {
+                    const defEl = this.createCardElement(pair.def, false);
+                    defEl.classList.add('defense-card');
+                    defEl.style.pointerEvents = 'none';
+                    defEl.style.cursor = 'default';
+                    pairDiv.appendChild(defEl);
+                }
+                container.appendChild(pairDiv);
+            }
+            // Счётчик
+            const countEl = document.getElementById('table-count');
+            const total = this.tableCards.length;
+            countEl.textContent = 'На столе: ' + total + ' / ' + this.maxTableCards;
         }
 
         renderDeck() {
@@ -1082,7 +1093,6 @@
                 this.setStatus('Сейчас не ваш ход.');
                 return;
             }
-            // Убираем подсветку предложенной карты при клике
             this.suggestedCards = [];
             if (this.isAttacking && this.isPlayerTurn) {
                 this.playerAttack(card);

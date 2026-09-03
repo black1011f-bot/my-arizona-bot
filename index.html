@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Arizona Online — Подкидной Дурак</title>
+    <title>Arizona Online — Дурак</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -23,34 +23,55 @@
 
         #splash {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(6, 11, 19, 0.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            background: rgba(6, 11, 19, 0.97); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             gap: 10px; z-index: 100; transition: opacity 0.4s ease; padding: 15px; overflow-y: auto;
         }
         #splash.hidden { opacity: 0; pointer-events: none; }
 
-        .header-container { text-align: center; display: flex; flex-direction: column; align-items: center; }
-        .app-icon {
-            width: 65px; height: 65px; border-radius: 16px;
-            border: 2px solid #ffd700; box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-            margin-bottom: 4px; object-fit: cover; animation: floatIcon 3s ease-in-out infinite;
+        /* Шапка с вращающимися по кругу картами вокруг названия */
+        .durak-header {
+            position: relative; width: 220px; height: 110px;
+            display: flex; justify-content: center; align-items: center; margin-bottom: 5px;
         }
-
+        .header-title-box {
+            position: absolute; z-index: 10; text-align: center;
+            background: rgba(6, 11, 19, 0.85); padding: 8px 12px;
+            border-radius: 12px; border: 1px solid rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+        }
         .main-title {
-            font-size: 1.8em; font-weight: 900; letter-spacing: 1px;
+            font-size: 1.4em; font-weight: 900; letter-spacing: 1px;
             background: linear-gradient(45deg, #ffd700, #ff8c00, #ffd700);
             background-size: 200% 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            animation: gradientShift 4s ease infinite, floatAnim 3s ease-in-out infinite;
+            animation: gradientShift 4s ease infinite;
             text-transform: uppercase;
         }
         .sub-title {
-            font-size: 0.9em; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;
-            color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.4);
+            font-size: 0.7em; font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+            color: #4ade80; text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
         }
 
+        /* Анимированные карты, летающие по кругу вокруг названия */
+        .orbit-card {
+            position: absolute; width: 32px; height: 46px; border-radius: 4px;
+            background: #fff; border: 1px solid #333; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; justify-content: space-between; padding: 1px 2px;
+            font-size: 9px; font-weight: bold;
+            animation: orbitAnim 6s linear infinite;
+        }
+        .orbit-card.red { color: #dc2626; }
+        .orbit-card.black { color: #0f172a; }
+        .orbit-card:nth-child(1) { animation-delay: 0s; }
+        .orbit-card:nth-child(2) { animation-delay: -1.5s; }
+        .orbit-card:nth-child(3) { animation-delay: -3s; }
+        .orbit-card:nth-child(4) { animation-delay: -4.5s; }
+
+        @keyframes orbitAnim {
+            0%   { transform: rotate(0deg) translate(85px) rotate(0deg); }
+            100% { transform: rotate(360deg) translate(85px) rotate(-360deg); }
+        }
         @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        @keyframes floatIcon { 0%, 100% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-4px) rotate(1deg); } }
-        @keyframes floatAnim { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-2px); } }
 
         .settings-card {
             width: 90%; background: rgba(255, 255, 255, 0.03);
@@ -70,7 +91,7 @@
             width: 85%; padding: 12px 0; background: linear-gradient(45deg, #ffd700, #ff8c00); color: #060b13;
             border: none; border-radius: 25px; font-weight: 900; font-size: 15px;
             cursor: pointer; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4); margin-top: 4px;
-            text-transform: uppercase; letter-spacing: 1px; transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase; letter-spacing: 1px; transition: transform 0.2s;
         }
         .start-btn:active { transform: scale(0.96); }
 
@@ -128,22 +149,20 @@
         }
 
         #table-field {
-            flex: 1; margin-top: 80px; margin-bottom: 155px;
+            flex: 1; margin-top: 75px; margin-bottom: 155px;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             gap: 8px; padding: 5px; z-index: 5;
         }
         .table-cards-wrapper {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 12px;
             justify-items: center; align-items: center; max-width: 270px;
         }
         
-        /* Исправленный контейнер карт на столе для идеального отображения атаки и защиты */
+        /* Идеальное и стабильное расположение карт атаки и защиты на столе */
         .card-pair {
             position: relative;
-            width: 65px;
-            height: 68px;
-            display: flex;
-            align-items: center;
+            width: 58px;
+            height: 72px;
         }
         .card-pair .attack-card {
             position: absolute;
@@ -153,8 +172,8 @@
         }
         .card-pair .defense-card {
             position: absolute;
-            left: 16px;
-            top: 6px;
+            left: 14px;
+            top: 8px;
             z-index: 2;
         }
 
@@ -246,9 +265,7 @@
             0% { transform: scale(1); }
             100% { transform: scale(1.1); }
         }
-        .emoji-particle {
-            position: absolute; font-size: 24px; animation: fallEmoji 3s linear infinite;
-        }
+        .emoji-particle { position: absolute; font-size: 24px; animation: fallEmoji 3s linear infinite; }
         @keyframes fallEmoji {
             0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
             100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
@@ -259,10 +276,17 @@
 <div id="app">
     <div id="fx-overlay"></div>
     <div id="splash">
-        <div class="header-container">
-            <img src="https://i.postimg.cc/cJGSqNBZ/1788361335674.jpg" alt="Logo" class="app-icon">
-            <div class="main-title">Arizona Дурак</div>
-            <div class="sub-title">Карточный стол</div>
+        <!-- Анимация летающих карт вокруг названия -->
+        <div class="durak-header">
+            <div class="orbit-card red"><span>T</span><span>♥</span></div>
+            <div class="orbit-card black"><span>K</span><span>♠</span></div>
+            <div class="orbit-card red"><span>Д</span><span>♦</span></div>
+            <div class="orbit-card black"><span>В</span><span>♣</span></div>
+            
+            <div class="header-title-box">
+                <div class="main-title">Дурак</div>
+                <div class="sub-title">Arizona Online</div>
+            </div>
         </div>
 
         <div class="settings-card">
@@ -543,7 +567,6 @@
 
         handleTimeout() {
             if (this.gameOver) return;
-
             if (this.defenderIdx === 0 && this.attackingCards.length > this.defendingCards.length) {
                 sounds.playAction();
                 this.onTake();
@@ -610,7 +633,6 @@
             return new Promise(resolve => {
                 const badgeEl = document.getElementById(playerIdx === 0 ? 'badge-p1' : `badge-p${playerIdx + 1}`);
                 const tableField = document.getElementById('table-field');
-                
                 const startRect = badgeEl.getBoundingClientRect();
                 const tableRect = tableField.getBoundingClientRect();
 
@@ -750,14 +772,13 @@
         playCard(card, fromPlayerIdx) {
             if (this.gameOver || this.isAnimating) return;
 
-            // Обработка перевода
+            // Перевод
             if (this.isPerevodnoy && fromPlayerIdx === this.defenderIdx && this.attackingCards.length === 1 && this.defendingCards.length === 0) {
                 if (card.rank === this.attackingCards[0].rank && this.hands[this.defenderIdx].length > 1) {
                     this.hands[fromPlayerIdx] = this.hands[fromPlayerIdx].filter(c => c !== card);
                     this.attackingCards.push(card);
                     sounds.playCard();
                     
-                    // Перевод хода следующему игроку
                     this.attackerIdx = this.defenderIdx;
                     this.defenderIdx = this.getNextActivePlayer(this.attackerIdx);
                     
@@ -780,7 +801,6 @@
                 }
 
                 this.passedPlayers.clear();
-
                 this.hands[fromPlayerIdx] = this.hands[fromPlayerIdx].filter(c => c !== card);
                 this.attackingCards.push(card);
                 sounds.playCard();
@@ -849,7 +869,6 @@
 
             const hand = this.hands[this.defenderIdx];
             
-            // Проверка перевода ботом
             if (this.isPerevodnoy && this.defendingCards.length === 0 && this.attackingCards.length === 1) {
                 const perevodCard = hand.find(c => c.rank === this.attackingCards[0].rank && hand.length > 1);
                 if (perevodCard && Math.random() < 0.6) {
@@ -1113,7 +1132,7 @@
             document.getElementById('deck-count').textContent = this.deck.length;
             document.getElementById('deck-el').style.display = this.deck.length === 0 ? 'none' : 'block';
 
-            // Отрисовка карт на столе
+            // Отрисовка карт на столе без багов
             const wrapper = document.getElementById('cards-wrapper');
             wrapper.innerHTML = '';
             this.attackingCards.forEach((atk, i) => {

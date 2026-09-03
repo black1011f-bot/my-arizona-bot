@@ -133,7 +133,7 @@
         .player-badge .name { font-weight: bold; color: #ffd700; font-size: 9px; }
         .player-badge .status { font-size: 7px; color: #4ade80; }
 
-        #badge-p1 { bottom: 105px; left: 8px; }
+        #badge-p1 { bottom: 115px; left: 8px; }
         #badge-p2 { top: 50%; left: 6px; transform: translateY(-50%); }
         #badge-p3 { top: 8px; left: 50%; transform: translateX(-50%); }
         #badge-p4 { top: 50%; right: 6px; transform: translateY(-50%); }
@@ -146,7 +146,7 @@
         #opp-right { top: 50%; right: -35px; transform: translateY(-50%) rotate(-90deg); width: 110px; height: 35px; }
 
         #deck-container {
-            position: absolute; bottom: 110px; right: 10px;
+            position: absolute; bottom: 125px; right: 10px;
             width: 26px; height: 38px; z-index: 20; transition: all 0.5s ease;
         }
         #deck-container.center-deal { top: 45%; right: 50%; bottom: auto; transform: translate(50%, -50%) scale(1.2); }
@@ -167,7 +167,7 @@
         }
 
         #discard-container {
-            position: absolute; bottom: 110px; left: 55px;
+            position: absolute; bottom: 125px; left: 55px;
             width: 26px; height: 38px; border: 1px dashed rgba(255,215,0,0.3);
             border-radius: 3px; display: flex; justify-content: center; align-items: center;
             color: #ffd700; font-size: 7px; font-weight: bold; z-index: 20; text-shadow: 0 0 5px rgba(255,215,0,0.5);
@@ -179,7 +179,7 @@
         }
 
         #table-field {
-            flex: 1; margin-top: 65px; margin-bottom: 110px;
+            flex: 1; margin-top: 65px; margin-bottom: 125px;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             gap: 3px; padding: 4px; z-index: 5;
         }
@@ -208,7 +208,7 @@
             touch-action: none; overflow: hidden; position: relative;
         }
         
-        /* КАРТЫ У БОТОВ/СОПЕРНИКОВ — КОМПАКТНЫЕ РУБАШКИ */
+        /* КОМПАКТНЫЕ РУБАШКИ БОТОВ */
         .card.opponent-card {
             width: 24px; height: 34px; border-radius: 3px;
             background: url('https://i.postimg.cc/KY3h3Hqx/1788423565409.jpg') center/cover no-repeat !important;
@@ -216,15 +216,15 @@
         }
         .card.opponent-card .card-center-icon, .card.opponent-card .corner { display: none; }
 
-        /* КАРТЫ НА СТОЛЕ (МАЛЕНЬКИЕ, АККУРАТНЫЕ) */
+        /* КАРТЫ НА СТОЛЕ */
         .card.mini { width: 36px; height: 50px; }
         .card.mini .corner { font-size: 7px; }
         .card.mini .corner .suit { font-size: 6px; }
 
-        /* КАРТЫ В РУКАХ (ОПТИМАЛЬНЫЕ, СТРОГО ВХОДЯТ В ЭКРАН) */
-        .card.hand-card { width: 44px; height: 62px; border: 1.5px solid #ffd700; }
-        .card.hand-card .corner { font-size: 8px; }
-        .card.hand-card .corner .suit { font-size: 7px; }
+        /* ИДЕАЛЬНЫЙ РАЗМЕР И КОМПАКТНЫЙ ВЕЕР В РУКЕ */
+        .card.hand-card { width: 50px; height: 70px; border: 1.5px solid #ffd700; }
+        .card.hand-card .corner { font-size: 9px; }
+        .card.hand-card .corner .suit { font-size: 8px; }
 
         .card-center-icon {
             position: absolute; top: 50%; left: 50%;
@@ -247,15 +247,18 @@
         .card.bottom-corner { transform: rotate(180deg); }
 
         #player-hand { 
-            position: absolute; bottom: 2px; left: 0; width: 100%; height: 95px; 
+            position: absolute; bottom: 5px; left: 0; width: 100%; height: 100px; 
             display: flex; justify-content: center; align-items: flex-end; z-index: 30; 
         }
         #player-hand .card { cursor: pointer; transform-origin: bottom center; }
+        
+        /* При наведении в руке карта аккуратно приподнимается вверх */
+        #player-hand .card:hover { transform: translateY(-10px) scale(1.05) !important; z-index: 99 !important; }
 
         .card.dragging { transition: none !important; z-index: 99 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.8), 0 0 12px rgba(255,215,0,0.9) !important; }
         .animating-card { position: absolute; z-index: 80; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; }
 
-        #controls { position: absolute; bottom: 100px; right: 45px; display: flex; gap: 5px; z-index: 40; }
+        #controls { position: absolute; bottom: 115px; right: 45px; display: flex; gap: 5px; z-index: 40; }
         .action-btn { 
             padding: 5px 10px; background: rgba(10, 20, 15, 0.95); color: #ffd700; 
             border: 1px solid rgba(255,215,0,0.5); border-radius: 12px; font-weight: bold; font-size: 9px; 
@@ -1119,9 +1122,8 @@
                 const el = document.createElement('div');
                 el.className = 'card opponent-card';
                 
-                // Компактный веер рубашек ботов, чтобы не занимали полэкрана
-                const offset = (idx - hand.length / 2) * 10;
-                const angle = (idx - (hand.length - 1) / 2) * 3;
+                const offset = (idx - hand.length / 2) * 8;
+                const angle = (idx - (hand.length - 1) / 2) * 2;
                 el.style.transform = `translateX(${offset}px) rotate(${angle}deg)`;
                 
                 container.appendChild(el);
@@ -1134,17 +1136,14 @@
             const myHand = this.hands[0] || [];
             const totalP = myHand.length;
             
-            // Жесткий расчет веера в руках, чтобы ширина карт всегда адаптировалась под экран без вылетов
-            const availableWidth = window.innerWidth - 25;
-            const cardWidth = 44;
-            let stepP = cardWidth + 2;
-            if (totalP > 1) {
-                stepP = Math.min(cardWidth - 2, (availableWidth - cardWidth) / (totalP - 1));
-            }
+            // Плотный кучный веер: карты перекрывают друг друга как в реальной колоде, не разлетаясь в стороны
+            const cardWidth = 50;
+            const maxSpread = Math.min(window.innerWidth - 60, totalP * 28);
+            const stepP = totalP > 1 ? maxSpread / (totalP - 1) : 0;
 
             myHand.forEach((card, idx) => {
                 const el = this.createCardEl(card, false, false, true);
-                const angle = (idx - (totalP - 1) / 2) * 2.2;
+                const angle = (idx - (totalP - 1) / 2) * 4;
                 const offsetX = (idx - (totalP - 1) / 2) * stepP;
 
                 el.style.transform = `translateX(${offsetX}px) rotate(${angle}deg)`;
@@ -1196,7 +1195,7 @@
             this.attackingCards.forEach((atk, i) => {
                 const pair = document.createElement('div');
                 pair.className = 'card-pair';
-                const atkEl = this.createCardEl(atk, false, true, false); // Мелкие мини-карты на столе
+                const atkEl = this.createCardEl(atk, false, true, false);
                 atkEl.classList.add('attack-card');
                 pair.appendChild(atkEl);
 

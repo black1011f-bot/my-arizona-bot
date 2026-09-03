@@ -129,8 +129,8 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 8px;
-            padding: 8px;
+            gap: 6px;
+            padding: 6px;
             min-height: 120px;
         }
         .center-row {
@@ -151,6 +151,7 @@
             letter-spacing: 0.5px;
             text-shadow: 0 0 6px #000;
             margin: 0 6px;
+            white-space: nowrap;
         }
         .center-label.attack {
             background: rgba(200, 50, 50, 0.7);
@@ -164,7 +165,6 @@
             background: rgba(0,0,0,0.15);
             border-radius: 0 0 12px 12px;
         }
-        /* Индикатор хода */
         .turn-indicator {
             position: absolute;
             top: -10px;
@@ -225,7 +225,7 @@
             padding: 4px 6px;
             font-size: 1.1em;
             font-weight: bold;
-            transition: transform 0.15s, box-shadow 0.15s;
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
             position: relative;
             cursor: pointer;
             flex-shrink: 0;
@@ -265,6 +265,15 @@
         .card.highlight {
             box-shadow: 0 0 15px 5px #ffd700;
             transform: scale(1.05);
+            border-color: #ffd700;
+        }
+        .card.suggest {
+            animation: pulse-gold 1s infinite alternate;
+            border-color: #ffaa00;
+        }
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 5px 2px #ffaa00; transform: scale(1); }
+            100% { box-shadow: 0 0 20px 10px #ffd700; transform: scale(1.08); }
         }
         .card.disabled {
             opacity: 0.4;
@@ -282,11 +291,21 @@
         .card.trump-card {
             border: 3px solid gold;
         }
+        .card.shake {
+            animation: shake 0.3s ease;
+        }
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-4px); }
+            80% { transform: translateX(4px); }
+        }
         /* Кнопки управления */
         #controls {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 8px;
             padding: 8px 10px 10px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 40px;
@@ -294,17 +313,17 @@
             flex-wrap: wrap;
         }
         #controls button {
-            padding: 8px 18px;
+            padding: 8px 14px;
             border: none;
             border-radius: 40px;
-            font-size: 1.0em;
+            font-size: 0.95em;
             font-weight: bold;
             background: #ffd700;
             color: #1a3a1a;
             cursor: pointer;
             box-shadow: 0 3px 0 #b8860b;
             transition: 0.1s linear;
-            min-width: 70px;
+            min-width: 60px;
         }
         #controls button:active {
             transform: translateY(3px);
@@ -320,6 +339,11 @@
             background: #ddd;
             color: #222;
             box-shadow: 0 3px 0 #999;
+        }
+        #controls button.hint {
+            background: #5a9;
+            color: #fff;
+            box-shadow: 0 3px 0 #2a6a4a;
         }
         #status {
             color: #fff;
@@ -344,7 +368,7 @@
             #bot-zone { flex-basis: 65px; }
             #player-zone { flex-basis: 85px; }
             #deck-area .card { width: 40px; height: 56px; font-size: 1em; }
-            #controls button { padding: 6px 12px; font-size: 0.9em; min-width: 60px; }
+            #controls button { padding: 6px 10px; font-size: 0.85em; min-width: 50px; }
             #menu h1 { font-size: 2em; }
             .center-label { font-size: 0.7em; }
         }
@@ -409,6 +433,7 @@
         <button id="btnPass" disabled>Отбой</button>
         <button id="btnTake" disabled>Взять</button>
         <button id="btnAdd" disabled>Подкинуть</button>
+        <button id="btnHint" class="hint" disabled>Подсказка</button>
         <button id="btnNewGame" class="secondary">Новая игра</button>
     </div>
 </div>
@@ -417,8 +442,8 @@
     // ================== КЛАСС КАРТЫ ==================
     class Card {
         constructor(suit, rank) {
-            this.suit = suit; // '♠','♥','♦','♣'
-            this.rank = rank; // 6,7,8,9,10,11(В),12(Д),13(К),14(Т)
+            this.suit = suit;
+            this.rank = rank;
             this.id = suit + rank;
         }
         get name() {
@@ -463,7 +488,7 @@
     // ================== ИГРА ==================
     class Game {
         constructor(mode) {
-            this.mode = mode; // 'podkid' или 'perevod'
+            this.mode = mode;
             this.deck = [];
             this.trumpSuit = null;
             this.trumpCard = null;
@@ -477,7 +502,8 @@
             this.gameOver = false;
             this.waitingForPlayerAction = false;
             this.cardsToDeal = 6;
-            this.onUpdate = null;
+            this.maxTableCards = 6; // ограничение на 6 карт на столе
+            this.suggestedCards = []; // для подсветки
         }
 
         init() {
@@ -492,6 +518,7 @@
             this.gameOver = false;
             this.isPlayerTurn = true;
             this.isAttacking = true;
+            this.suggestedCards = [];
             for (let i = 0; i < this.cardsToDeal; i++) {
                 if (this.deck.length === 0) break;
                 this.playerHand.push(this.deck.pop());
@@ -505,7 +532,8 @@
             if (this.isPlayerTurn && !this.gameOver) {
                 this.waitingForPlayerAction = true;
                 this.setStatus('Ваш ход. Выберите карту для атаки.');
-                this.enableControls(false, false, false);
+                this.enableControls(false, false, false, true);
+                this.highlightPossibleCards();
             } else if (!this.isPlayerTurn && !this.gameOver) {
                 this.botTurn();
             }
@@ -521,29 +549,65 @@
             });
         }
 
+        // ===== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =====
+        getPossibleAttackCards() {
+            // Если стол пуст – можно любую карту
+            if (this.attackingCards.length === 0) {
+                return this.playerHand.slice();
+            }
+            const ranks = this.attackingCards.map(c => c.rank);
+            return this.playerHand.filter(c => ranks.includes(c.rank));
+        }
+
+        getPossibleDefendCards() {
+            // Защита: нужно побить следующую атакующую карту (по порядку)
+            const attackCards = this.attackingCards;
+            const defendIndex = this.defendingCards.length;
+            if (defendIndex >= attackCards.length) return [];
+            const target = attackCards[defendIndex];
+            return this.playerHand.filter(c => c.beats(target, this.trumpSuit));
+        }
+
+        getPossibleCards() {
+            if (this.isAttacking && this.isPlayerTurn) {
+                return this.getPossibleAttackCards();
+            } else if (!this.isAttacking && this.isPlayerTurn) {
+                return this.getPossibleDefendCards();
+            }
+            return [];
+        }
+
         // ===== ХОД ИГРОКА =====
         playerAttack(card) {
             if (!this.waitingForPlayerAction || !this.isAttacking || !this.isPlayerTurn || this.gameOver) return false;
+            // Проверка ограничения на 6 карт
+            if (this.tableCards.length >= this.maxTableCards) {
+                this.setStatus('На столе уже ' + this.maxTableCards + ' карт, больше подкидывать нельзя.');
+                return false;
+            }
             const idx = this.playerHand.indexOf(card);
             if (idx === -1) return false;
             if (this.tableCards.length > 0) {
                 const ranksOnTable = this.attackingCards.map(c => c.rank);
                 if (!ranksOnTable.includes(card.rank)) {
                     this.setStatus('Можно подкинуть только карту того же достоинства, что уже есть на столе.');
+                    this.shakeCard(card);
                     return false;
                 }
             }
             this.playerHand.splice(idx, 1);
             this.tableCards.push(card);
             this.attackingCards.push(card);
+            this.suggestedCards = [];
             this.updateUI();
             this.waitingForPlayerAction = false;
-            this.enableControls(false, false, false);
+            this.enableControls(false, false, false, false);
             const canAdd = this.canPlayerAdd();
-            if (canAdd) {
+            if (canAdd && this.tableCards.length < this.maxTableCards) {
                 this.setStatus('Вы можете подкинуть карту того же достоинства или нажать "Отбой".');
-                this.enableControls(true, false, true);
+                this.enableControls(true, false, true, true);
                 this.waitingForPlayerAction = true;
+                this.highlightPossibleCards();
             } else {
                 this.playerPassAttack();
             }
@@ -559,11 +623,12 @@
         playerPassAttack() {
             if (this.gameOver) return;
             this.waitingForPlayerAction = false;
-            this.enableControls(false, false, false);
+            this.enableControls(false, false, false, false);
             this.setStatus('Бот отбивается...');
             this.botDefend();
         }
 
+        // ===== ЗАЩИТА БОТА =====
         botDefend() {
             if (this.gameOver) return;
             const cardsToBeat = this.attackingCards;
@@ -604,8 +669,9 @@
                 this.checkGameOver();
                 if (!this.gameOver) {
                     this.waitingForPlayerAction = true;
-                    this.enableControls(false, false, false);
+                    this.enableControls(false, false, false, true);
                     this.setStatus('Ваш ход. Выберите карту для атаки.');
+                    this.highlightPossibleCards();
                 }
             } else {
                 this.botHand.push(...this.tableCards);
@@ -621,16 +687,17 @@
                 this.checkGameOver();
                 if (!this.gameOver) {
                     this.waitingForPlayerAction = true;
-                    this.enableControls(false, false, false);
+                    this.enableControls(false, false, false, true);
                     this.setStatus('Ваш ход. Выберите карту для атаки.');
+                    this.highlightPossibleCards();
                 }
             }
         }
 
+        // ===== ЗАЩИТА ИГРОКА =====
         playerDefend(card) {
             if (!this.waitingForPlayerAction || this.isAttacking || !this.isPlayerTurn || this.gameOver) return false;
             const attackCards = this.attackingCards;
-            // Определяем, какую карту бьём (первую неотбитую)
             let targetIdx = this.defendingCards.length;
             if (targetIdx >= attackCards.length) {
                 this.setStatus('Все карты уже отбиты.');
@@ -639,6 +706,7 @@
             const atkCard = attackCards[targetIdx];
             if (!card.beats(atkCard, this.trumpSuit)) {
                 this.setStatus('Эта карта не бьёт ' + atkCard.name + atkCard.suit);
+                this.shakeCard(card);
                 return false;
             }
             const idx = this.playerHand.indexOf(card);
@@ -646,6 +714,7 @@
             this.playerHand.splice(idx, 1);
             this.defendingCards.push(card);
             this.tableCards.push(card);
+            this.suggestedCards = [];
             this.updateUI();
             if (this.defendingCards.length === this.attackingCards.length) {
                 this.clearTable();
@@ -657,13 +726,15 @@
                 this.checkGameOver();
                 if (!this.gameOver) {
                     this.waitingForPlayerAction = true;
-                    this.enableControls(false, false, false);
+                    this.enableControls(false, false, false, true);
                     this.setStatus('Ваш ход. Выберите карту для атаки.');
+                    this.highlightPossibleCards();
                 }
             } else {
                 this.setStatus('Отбейте следующую карту или возьмите все.');
                 this.waitingForPlayerAction = true;
-                this.enableControls(false, true, false);
+                this.enableControls(false, true, false, true);
+                this.highlightPossibleCards();
             }
             return true;
         }
@@ -674,6 +745,7 @@
             this.tableCards = [];
             this.attackingCards = [];
             this.defendingCards = [];
+            this.suggestedCards = [];
             this.updateUI();
             this.setStatus('Вы взяли карты. Теперь ход бота.');
             this.isPlayerTurn = false;
@@ -683,11 +755,12 @@
             this.checkGameOver();
             if (!this.gameOver) {
                 this.waitingForPlayerAction = false;
-                this.enableControls(false, false, false);
+                this.enableControls(false, false, false, false);
                 this.botTurn();
             }
         }
 
+        // ===== ХОД БОТА =====
         botTurn() {
             if (this.gameOver) return;
             if (this.isPlayerTurn) return;
@@ -696,7 +769,7 @@
                 return;
             }
             this.isAttacking = true;
-            // Бот выбирает самую младшую карту (не козырь, если есть)
+            // Бот выбирает самую младшую карту (или козырь, если есть)
             let card = this.botHand[0];
             this.botHand.splice(0, 1);
             this.tableCards.push(card);
@@ -706,23 +779,67 @@
             this.isPlayerTurn = true;
             this.isAttacking = false;
             this.waitingForPlayerAction = true;
-            this.enableControls(false, true, false);
+            this.enableControls(false, true, false, true);
             this.setStatus('Отбейтесь картой или нажмите "Взять".');
+            this.highlightPossibleCards();
         }
 
         playerAdd() {
             if (!this.waitingForPlayerAction || !this.isAttacking || !this.isPlayerTurn || this.gameOver) return;
+            if (this.tableCards.length >= this.maxTableCards) {
+                this.setStatus('На столе уже ' + this.maxTableCards + ' карт, больше подкидывать нельзя.');
+                return;
+            }
             if (!this.canPlayerAdd()) {
                 this.setStatus('Нет карт для подкидывания.');
                 return;
             }
             this.setStatus('Выберите карту для подкидывания (того же достоинства).');
+            // Подсветка уже включена
         }
 
+        // ===== ПОДСКАЗКА =====
+        hint() {
+            if (!this.waitingForPlayerAction || this.gameOver) return;
+            const possible = this.getPossibleCards();
+            if (possible.length === 0) {
+                this.setStatus('Нет подходящих карт для хода.');
+                return;
+            }
+            // Выбираем первую возможную карту
+            const card = possible[0];
+            this.suggestedCards = [card];
+            this.updateUI();
+            // Добавляем класс suggest к карте в руке
+            this.highlightSuggestedCard(card);
+            this.setStatus('Подсказка: сыграйте карту ' + card.name + card.suit);
+        }
+
+        highlightSuggestedCard(card) {
+            // Убираем старую подсветку
+            document.querySelectorAll('#player-zone .card.suggest').forEach(el => el.classList.remove('suggest'));
+            const cards = document.querySelectorAll('#player-zone .card');
+            // Находим карту по значению (не самый надёжный способ, но для простоты)
+            // Лучше добавить data-id
+            for (let el of cards) {
+                // Сравниваем с card.id
+                const text = el.textContent.replace(/\s/g, '');
+                // Простой способ: ищем по имени и масти
+                const name = card.name;
+                const suit = card.suitSymbol;
+                if (text.includes(name) && text.includes(suit)) {
+                    el.classList.add('suggest');
+                    break;
+                }
+            }
+        }
+
+        // ===== ВСПОМОГАТЕЛЬНЫЕ =====
         clearTable() {
             this.tableCards = [];
             this.attackingCards = [];
             this.defendingCards = [];
+            this.suggestedCards = [];
             this.updateUI();
         }
 
@@ -741,7 +858,8 @@
             if (this.deck.length === 0 && (this.playerHand.length === 0 || this.botHand.length === 0)) {
                 this.gameOver = true;
                 this.waitingForPlayerAction = false;
-                this.enableControls(false, false, false);
+                this.enableControls(false, false, false, false);
+                this.suggestedCards = [];
                 if (this.playerHand.length === 0) {
                     this.setStatus('🎉 Вы выиграли!');
                 } else if (this.botHand.length === 0) {
@@ -749,6 +867,7 @@
                 } else {
                     this.setStatus('Ничья?');
                 }
+                this.updateUI();
                 return true;
             }
             return false;
@@ -759,18 +878,57 @@
             if (el) el.textContent = msg;
         }
 
-        enableControls(pass, take, add) {
+        enableControls(pass, take, add, hint) {
             document.getElementById('btnPass').disabled = !pass;
             document.getElementById('btnTake').disabled = !take;
             document.getElementById('btnAdd').disabled = !add;
+            document.getElementById('btnHint').disabled = !hint;
         }
 
+        shakeCard(card) {
+            // Находим элемент карты в руке игрока и трясём
+            const cards = document.querySelectorAll('#player-zone .card');
+            for (let el of cards) {
+                const text = el.textContent.replace(/\s/g, '');
+                const name = card.name;
+                const suit = card.suitSymbol;
+                if (text.includes(name) && text.includes(suit)) {
+                    el.classList.add('shake');
+                    setTimeout(() => el.classList.remove('shake'), 300);
+                    break;
+                }
+            }
+        }
+
+        highlightPossibleCards() {
+            // Убираем старые подсветки
+            document.querySelectorAll('#player-zone .card.highlight, #player-zone .card.suggest').forEach(el => {
+                el.classList.remove('highlight', 'suggest');
+            });
+            if (!this.waitingForPlayerAction) return;
+            const possible = this.getPossibleCards();
+            if (possible.length === 0) return;
+            // Подсвечиваем все возможные карты (слабо)
+            const cards = document.querySelectorAll('#player-zone .card');
+            for (let el of cards) {
+                const text = el.textContent.replace(/\s/g, '');
+                for (let card of possible) {
+                    const name = card.name;
+                    const suit = card.suitSymbol;
+                    if (text.includes(name) && text.includes(suit)) {
+                        el.classList.add('highlight');
+                        break;
+                    }
+                }
+            }
+        }
+
+        // ===== ОБНОВЛЕНИЕ UI =====
         updateUI() {
             this.renderPlayerHand();
             this.renderBotHand();
             this.renderTable();
             this.renderDeck();
-            // Индикаторы хода
             const botInd = document.getElementById('botTurnIndicator');
             const playerInd = document.getElementById('playerTurnIndicator');
             if (this.gameOver) {
@@ -787,7 +945,6 @@
 
         renderPlayerHand() {
             const zone = document.getElementById('player-zone');
-            // Удаляем старые карты, но оставляем индикатор
             const indicator = zone.querySelector('.turn-indicator');
             zone.innerHTML = '';
             zone.appendChild(indicator);
@@ -799,6 +956,21 @@
                 });
                 zone.appendChild(el);
             });
+            // Если есть предложенные карты, подсветим их
+            if (this.suggestedCards.length > 0) {
+                const cards = zone.querySelectorAll('.card');
+                for (let el of cards) {
+                    const text = el.textContent.replace(/\s/g, '');
+                    for (let card of this.suggestedCards) {
+                        const name = card.name;
+                        const suit = card.suitSymbol;
+                        if (text.includes(name) && text.includes(suit)) {
+                            el.classList.add('suggest');
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         renderBotHand() {
@@ -811,7 +983,6 @@
                 el.dataset.index = idx;
                 zone.appendChild(el);
             });
-            // Счётчик карт
             const count = document.createElement('div');
             count.style.cssText = 'color:#fff; font-weight:bold; background:rgba(0,0,0,0.5); padding:2px 12px; border-radius:20px; font-size:0.8em; margin-left:4px;';
             count.textContent = this.botHand.length + ' карт';
@@ -819,7 +990,6 @@
         }
 
         renderTable() {
-            // Атакующие карты
             const attackContainer = document.getElementById('attackCards');
             attackContainer.innerHTML = '';
             this.attackingCards.forEach((card) => {
@@ -829,7 +999,6 @@
                 el.style.pointerEvents = 'none';
                 attackContainer.appendChild(el);
             });
-            // Защитные карты
             const defenseContainer = document.getElementById('defenseCards');
             defenseContainer.innerHTML = '';
             this.defendingCards.forEach((card) => {
@@ -839,7 +1008,6 @@
                 el.style.pointerEvents = 'none';
                 defenseContainer.appendChild(el);
             });
-            // Подписи кто атакует
             const attackLabel = document.querySelector('.center-label.attack');
             const defenseLabel = document.querySelector('.center-label.defense');
             if (this.isPlayerTurn && this.isAttacking) {
@@ -851,6 +1019,26 @@
             } else {
                 attackLabel.textContent = '⚔ Атака';
                 defenseLabel.textContent = '🛡 Защита';
+            }
+            // Отображаем количество карт на столе
+            const tableCount = this.tableCards.length;
+            if (tableCount > 0) {
+                const countEl = document.createElement('div');
+                countEl.style.cssText = 'color:#fff; background:rgba(0,0,0,0.5); padding:0 12px; border-radius:20px; font-size:0.8em;';
+                countEl.textContent = tableCount + '/' + this.maxTableCards;
+                document.getElementById('center-zone').appendChild(countEl);
+                // Но чтобы не плодить, лучше добавить в отдельное место
+                // Удалим предыдущий, если есть
+                const old = document.getElementById('tableCount');
+                if (old) old.remove();
+                const newCount = document.createElement('div');
+                newCount.id = 'tableCount';
+                newCount.style.cssText = 'color:#fff; background:rgba(0,0,0,0.4); padding:2px 12px; border-radius:20px; font-size:0.8em; position:absolute; bottom:5px; left:50%; transform:translateX(-50%);';
+                newCount.textContent = 'На столе: ' + tableCount + ' / ' + this.maxTableCards;
+                document.getElementById('center-zone').appendChild(newCount);
+            } else {
+                const old = document.getElementById('tableCount');
+                if (old) old.remove();
             }
         }
 
@@ -894,6 +1082,8 @@
                 this.setStatus('Сейчас не ваш ход.');
                 return;
             }
+            // Убираем подсветку предложенной карты при клике
+            this.suggestedCards = [];
             if (this.isAttacking && this.isPlayerTurn) {
                 this.playerAttack(card);
             } else if (!this.isAttacking && this.isPlayerTurn) {
@@ -926,6 +1116,10 @@
                 this.setStatus('Сейчас нельзя подкинуть.');
             }
         }
+
+        onHint() {
+            this.hint();
+        }
     }
 
     // ================== ЗАПУСК ==================
@@ -938,6 +1132,7 @@
         document.getElementById('btnPass').onclick = () => { if (game) game.onPass(); };
         document.getElementById('btnTake').onclick = () => { if (game) game.onTake(); };
         document.getElementById('btnAdd').onclick = () => { if (game) game.onAdd(); };
+        document.getElementById('btnHint').onclick = () => { if (game) game.onHint(); };
         document.getElementById('btnNewGame').onclick = () => {
             document.getElementById('menu').style.display = 'flex';
             game = null;

@@ -23,20 +23,20 @@
         /* Splash Экран */
         #splash {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.88);
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             gap: 20px; z-index: 100; transition: opacity 0.5s ease;
         }
         #splash.hidden { opacity: 0; pointer-events: none; }
 
-        /* Анимированный заголовок Дурак */
+        /* Живой анимированный заголовок Дурак */
         #splash h1 {
-            font-size: 3.8em; font-weight: 900; letter-spacing: 2px;
-            background: linear-gradient(45deg, #ffd700, #ff4500, #ff007f, #ffd700);
-            background-size: 300% 300%;
+            font-size: 4em; font-weight: 900; letter-spacing: 3px;
+            background: linear-gradient(45deg, #ffd700, #ff4500, #ff007f, #00ffff, #ffd700);
+            background-size: 400% 400%;
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            animation: gradientShift 4s ease infinite, pulseGlow 2s ease-in-out infinite alternate;
+            animation: gradientShift 5s ease infinite, floatAnim 3s ease-in-out infinite;
         }
 
         @keyframes gradientShift {
@@ -45,9 +45,10 @@
             100% { background-position: 0% 50%; }
         }
 
-        @keyframes pulseGlow {
-            from { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5)); }
-            to { transform: scale(1.08); filter: drop-shadow(0 0 25px rgba(255, 69, 0, 0.8)); }
+        @keyframes floatAnim {
+            0% { transform: translateY(0px) rotate(0deg) scale(1); filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6)); }
+            50% { transform: translateY(-15px) rotate(3deg) scale(1.05); filter: drop-shadow(0 10px 25px rgba(255, 69, 0, 0.9)); }
+            100% { transform: translateY(0px) rotate(0deg) scale(1); filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6)); }
         }
 
         .settings-box {
@@ -75,8 +76,8 @@
         .player-badge .name { font-weight: bold; margin-bottom: 2px; }
         .player-badge .info { display: flex; justify-content: space-between; color: #ccc; }
 
-        #badge-bot { top: 20px; left: 15px; }
-        #badge-player { bottom: 175px; left: 15px; }
+        #badge-bot { top: 15px; left: 15px; }
+        #badge-player { bottom: 235px; left: 15px; }
 
         /* Колода и козырь */
         #deck-container {
@@ -105,31 +106,32 @@
 
         /* Поле стола */
         #table-field {
-            flex: 1; margin-top: 110px; margin-bottom: 170px;
+            flex: 1; margin-top: 100px; margin-bottom: 220px;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             gap: 12px; padding: 10px; z-index: 5;
         }
         .table-cards-wrapper {
             display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px;
         }
-        .card-pair { position: relative; width: 60px; height: 85px; }
+        .card-pair { position: relative; width: 64px; height: 90px; }
 
         /* Кнопка Заново на столе */
         .restart-table-btn {
             padding: 12px 30px; background: #ffd700; color: #1a1a1a;
             border: none; border-radius: 25px; font-weight: bold; font-size: 16px;
             cursor: pointer; box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
-            animation: pulseGlow 1.5s ease-in-out infinite alternate;
+            animation: floatAnim 2s ease-in-out infinite;
             margin-top: 15px; z-index: 50; display: none;
         }
 
         /* Карты */
         .card {
-            width: 60px; height: 85px; background: #fff; border-radius: 6px;
-            border: 1px solid #ccc; box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            width: 64px; height: 90px; background: #fff; border-radius: 6px;
+            border: 1.5px solid #bbb; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             position: absolute; display: flex; flex-direction: column;
             justify-content: space-between; padding: 3px 4px;
-            transition: transform 0.3s ease, opacity 0.3s ease;
+            transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+            touch-action: none;
         }
         .card.back {
             background-image: url('https://i.postimg.cc/BQv12ZJj/1788423565409.jpg') !important;
@@ -141,30 +143,43 @@
             background: url('https://i.postimg.cc/0ycmL6ZT/1788346659518.jpg') center/contain no-repeat;
             pointer-events: none; opacity: 0.85;
         }
-        .card .corner { font-size: 11px; font-weight: bold; line-height: 1; text-align: center; }
-        .card .corner .suit { font-size: 11px; }
+        .card .corner { font-size: 12px; font-weight: bold; line-height: 1; text-align: center; pointer-events: none; }
+        .card .corner .suit { font-size: 12px; }
         .card.red { color: #d32f2f; }
         .card.black { color: #111; }
         .card.bottom-corner { transform: rotate(180deg); }
 
         .card-pair .attack-card { left: 0; top: 0; z-index: 1; }
-        .card-pair .defense-card { left: 12px; top: 12px; z-index: 2; }
+        .card-pair .defense-card { left: 14px; top: 14px; z-index: 2; }
 
-        /* Рука бота и игрока */
+        /* Рука бота */
         #bot-hand {
-            position: absolute; top: -40px; left: 0; width: 100%; height: 100px;
+            position: absolute; top: -45px; left: 0; width: 100%; height: 100px;
             display: flex; justify-content: center; z-index: 15;
         }
         #bot-hand .card { position: absolute; }
 
+        /* Чётко видимая рука игрока */
         #player-hand {
-            position: absolute; bottom: -15px; left: 0; width: 100%; height: 160px;
+            position: absolute; bottom: 35px; left: 0; width: 100%; height: 140px;
             display: flex; justify-content: center; align-items: flex-end; z-index: 30;
         }
         #player-hand .card {
             width: 72px; height: 102px;
             position: absolute; cursor: pointer; transform-origin: bottom center;
+            border: 1px solid #ffffff;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.8);
         }
+        #player-hand .card.peek {
+            transform: translateY(-40px) scale(1.1) !important;
+            z-index: 60 !important;
+            box-shadow: 0 10px 25px rgba(255, 215, 0, 0.8), 0 0 0 2px #ffd700 !important;
+        }
+        #player-hand .card.dragging {
+            transition: none !important; z-index: 99 !important;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.8), 0 0 15px rgba(255,215,0,0.9) !important;
+        }
+
         #player-hand .card .card-center-logo { width: 34px; height: 34px; }
         #player-hand .card .corner { font-size: 13px; }
 
@@ -176,20 +191,21 @@
 
         /* Управление */
         #controls {
-            position: absolute; bottom: 165px; right: 15px;
+            position: absolute; bottom: 185px; right: 15px;
             display: flex; flex-direction: column; gap: 8px; z-index: 40;
         }
         .action-btn {
-            padding: 10px 18px; background: rgba(0,0,0,0.85); color: #fff;
+            padding: 10px 18px; background: rgba(0,0,0,0.88); color: #fff;
             border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
             font-weight: bold; font-size: 13px; cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
-        .action-btn:disabled { opacity: 0.2; pointer-events: none; }
+        .action-btn:disabled { opacity: 0.25; pointer-events: none; }
 
         #status-msg {
-            position: absolute; top: 110px; width: 100%; text-align: center;
+            position: absolute; top: 105px; width: 100%; text-align: center;
             color: #ffd700; font-size: 16px; font-weight: bold;
-            text-shadow: 0 2px 5px #000; z-index: 15;
+            text-shadow: 0 2px 6px #000; z-index: 15;
         }
     </style>
 </head>
@@ -293,6 +309,7 @@
             this.botIsTaking = false;
             this.gameOver = false;
             this.isAnimating = false;
+            this.selectedCard = null;
         }
 
         async startWithAnimation() {
@@ -402,6 +419,7 @@
 
                 this.playerHand = this.playerHand.filter(c => c !== card);
                 this.attackingCards.push(card);
+                this.selectedCard = null;
                 this.updateUI();
 
                 if (!this.botIsTaking) {
@@ -418,6 +436,7 @@
                     this.playerHand = this.playerHand.filter(c => c !== card);
                     this.attackingCards.push(card);
                     this.isPlayerTurn = true;
+                    this.selectedCard = null;
                     this.updateUI();
                     document.getElementById('status-msg').textContent = 'Перевод ходу!';
                     setTimeout(() => this.botDefend(), 800);
@@ -435,6 +454,7 @@
             if (card.beats(target, this.trumpSuit)) {
                 this.playerHand = this.playerHand.filter(c => c !== card);
                 this.defendingCards.push(card);
+                this.selectedCard = null;
                 this.updateUI();
 
                 if (this.defendingCards.length === this.attackingCards.length) {
@@ -545,6 +565,7 @@
             this.isAnimating = true;
             this.attackingCards = []; this.defendingCards = [];
             this.botIsTaking = false;
+            this.selectedCard = null;
             this.updateUI();
 
             while (this.playerHand.length < 6 && this.deck.length && this.playerHand.length < MAX_HAND_CARDS) {
@@ -586,12 +607,24 @@
             const handContainer = document.getElementById('player-hand');
             handContainer.innerHTML = '';
             const totalP = this.playerHand.length;
+
+            // Динамический расчёт перекрытия карт для идеальной видимости
+            const maxSpread = Math.min(window.innerWidth - 80, 420);
+            const step = totalP > 1 ? Math.min(32, maxSpread / totalP) : 0;
+
             this.playerHand.forEach((card, idx) => {
                 const el = this.createCardEl(card);
-                const angle = (idx - (totalP - 1) / 2) * (totalP > 12 ? 3 : 5);
-                const offsetX = (idx - (totalP - 1) / 2) * (totalP > 12 ? 18 : 28);
+                const angle = (idx - (totalP - 1) / 2) * (totalP > 10 ? 2 : 3.5);
+                const offsetX = (idx - (totalP - 1) / 2) * step;
+
                 el.style.transform = `translateX(${offsetX}px) rotate(${angle}deg)`;
-                el.onclick = () => this.playCard(card);
+                el.style.zIndex = idx + 1;
+
+                if (this.selectedCard === card) {
+                    el.classList.add('peek');
+                }
+
+                this.bindCardEvents(el, card, offsetX, angle, idx + 1);
                 handContainer.appendChild(el);
             });
 
@@ -631,6 +664,79 @@
                 }
                 wrapper.appendChild(pair);
             });
+        }
+
+        bindCardEvents(el, card, baseOffsetX, baseAngle, baseZIndex) {
+            let lastTap = 0;
+            let isDragging = false;
+            let startX = 0, startY = 0;
+            let initialRect;
+
+            const handleStart = (e) => {
+                if (this.gameOver || this.isAnimating) return;
+                const touch = e.touches ? e.touches[0] : e;
+                startX = touch.clientX;
+                startY = touch.clientY;
+                initialRect = el.getBoundingClientRect();
+                isDragging = false;
+            };
+
+            const handleMove = (e) => {
+                const touch = e.touches ? e.touches[0] : e;
+                const deltaX = touch.clientX - startX;
+                const deltaY = touch.clientY - startY;
+
+                if (Math.hypot(deltaX, deltaY) > 8) {
+                    isDragging = true;
+                    el.classList.add('dragging');
+                    el.style.left = (initialRect.left + deltaX) + 'px';
+                    el.style.top = (initialRect.top + deltaY) + 'px';
+                    el.style.transform = 'scale(1.05)';
+                }
+            };
+
+            const handleEnd = (e) => {
+                if (isDragging) {
+                    el.classList.remove('dragging');
+                    el.style.left = ''; el.style.top = '';
+                    el.style.transform = `translateX(${baseOffsetX}px) rotate(${baseAngle}deg)`;
+
+                    const touch = e.changedTouches ? e.changedTouches[0] : e;
+                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+                    
+                    if (dropTarget && (dropTarget.closest('#table-field') || dropTarget.closest('.card-pair'))) {
+                        this.playCard(card);
+                    } else {
+                        this.updateUI();
+                    }
+                    return;
+                }
+
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                
+                if (tapLength < 300 && tapLength > 0) {
+                    // Двойной тап: сразу сходить / побить
+                    this.playCard(card);
+                } else {
+                    // Одиночный тап: приподнять карту для просмотра
+                    if (this.selectedCard === card) {
+                        this.selectedCard = null;
+                    } else {
+                        this.selectedCard = card;
+                    }
+                    this.updateUI();
+                }
+                lastTap = currentTime;
+            };
+
+            el.addEventListener('touchstart', handleStart, {passive: true});
+            el.addEventListener('touchmove', handleMove, {passive: true});
+            el.addEventListener('touchend', handleEnd);
+
+            el.addEventListener('mousedown', handleStart);
+            window.addEventListener('mousemove', (e) => { if (isDragging) handleMove(e); });
+            window.addEventListener('mouseup', (e) => { if (isDragging) handleEnd(e); });
         }
     }
 

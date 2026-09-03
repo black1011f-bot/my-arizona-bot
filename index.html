@@ -52,7 +52,7 @@
             cursor: pointer; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
         }
 
-        /* Плашки */
+        /* Плашки игроков */
         .player-badge {
             position: absolute; background: rgba(0, 0, 0, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
@@ -63,7 +63,7 @@
         .player-badge .info { display: flex; justify-content: space-between; color: #ccc; }
 
         #badge-bot { top: 20px; left: 15px; }
-        #badge-player { bottom: 160px; left: 15px; }
+        #badge-player { bottom: 175px; left: 15px; }
 
         /* Колода и козырь */
         #deck-container {
@@ -92,7 +92,7 @@
 
         /* Поле стола */
         #table-field {
-            flex: 1; margin-top: 110px; margin-bottom: 160px;
+            flex: 1; margin-top: 110px; margin-bottom: 170px;
             display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
             gap: 12px; padding: 10px; z-index: 5;
         }
@@ -104,7 +104,7 @@
             border: 1px solid #ccc; box-shadow: 0 3px 8px rgba(0,0,0,0.4);
             position: absolute; display: flex; flex-direction: column;
             justify-content: space-between; padding: 3px 4px;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, bottom 0.3s ease, left 0.3s ease, opacity 0.3s ease;
         }
         .card.back {
             background-image: url('https://i.postimg.cc/BQv12ZJj/1788423565409.jpg') !important;
@@ -132,15 +132,28 @@
         }
         #bot-hand .card { position: absolute; }
 
+        /* Увеличенные карты в руке игрока */
         #player-hand {
-            position: absolute; bottom: -10px; left: 0; width: 100%; height: 140px;
+            position: absolute; bottom: -15px; left: 0; width: 100%; height: 160px;
             display: flex; justify-content: center; align-items: flex-end; z-index: 30;
         }
-        #player-hand .card { position: absolute; cursor: pointer; transform-origin: bottom center; }
+        #player-hand .card {
+            width: 72px; height: 102px; /* Увеличенный размер */
+            position: absolute; cursor: pointer; transform-origin: bottom center;
+        }
+        #player-hand .card .card-center-logo { width: 34px; height: 34px; }
+        #player-hand .card .corner { font-size: 13px; }
+
+        /* Анимационная карта для добора */
+        .animating-card {
+            position: absolute; z-index: 80;
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            pointer-events: none;
+        }
 
         /* Управление */
         #controls {
-            position: absolute; bottom: 155px; right: 15px;
+            position: absolute; bottom: 165px; right: 15px;
             display: flex; flex-direction: column; gap: 8px; z-index: 40;
         }
         .action-btn {
@@ -152,8 +165,8 @@
 
         #status-msg {
             position: absolute; top: 110px; width: 100%; text-align: center;
-            color: #ffd700; font-size: 14px; font-weight: bold;
-            text-shadow: 0 2px 4px #000; z-index: 15;
+            color: #ffd700; font-size: 15px; font-weight: bold;
+            text-shadow: 0 2px 5px #000; z-index: 15;
         }
     </style>
 </head>
@@ -241,6 +254,7 @@
             this.isAttacking = true;
             this.botIsTaking = false;
             this.gameOver = false;
+            this.isAnimating = false;
         }
 
         async startWithAnimation() {
@@ -249,17 +263,13 @@
             this.renderTrumpCard();
             await new Promise(r => setTimeout(r, 600));
 
-            // Анимация раздачи из центра
+            // Поочередная анимация раздачи
             for (let i = 0; i < 6; i++) {
                 if (this.deck.length) {
-                    this.playerHand.push(this.deck.pop());
-                    this.updateUI();
-                    await new Promise(r => setTimeout(r, 120));
+                    await this.animateDealCard('player', this.deck.pop());
                 }
                 if (this.deck.length) {
-                    this.botHand.push(this.deck.pop());
-                    this.updateUI();
-                    await new Promise(r => setTimeout(r, 120));
+                    await this.animateDealCard('bot', this.deck.pop());
                 }
             }
 
@@ -269,6 +279,36 @@
             this.sortHands();
             this.updateUI();
             this.nextTurn();
+        }
+
+        async animateDealCard(target, card) {
+            return new Promise(resolve => {
+                const deckEl = document.getElementById('deck-container');
+                const rect = deckEl.getBoundingClientRect();
+                
+                const animCard = this.createCardEl(card, target === 'bot');
+                animCard.classList.add('animating-card');
+                animCard.style.left = rect.left + 'px';
+                animCard.style.top = rect.top + 'px';
+                document.body.appendChild(animCard);
+
+                const targetEl = document.getElementById(target === 'player' ? 'player-hand' : 'bot-hand');
+                const targetRect = targetEl.getBoundingClientRect();
+
+                setTimeout(() => {
+                    animCard.style.left = (targetRect.left + targetRect.width / 2 - 30) + 'px';
+                    animCard.style.top = (targetRect.top + 20) + 'px';
+                    animCard.style.opacity = '0.5';
+                }, 20);
+
+                setTimeout(() => {
+                    animCard.remove();
+                    if (target === 'player') this.playerHand.push(card);
+                    else this.botHand.push(card);
+                    this.updateUI();
+                    resolve();
+                }, 300);
+            });
         }
 
         sortHands() {
@@ -308,7 +348,7 @@
                 document.getElementById('btn-take').disabled = true;
             } else {
                 this.isAttacking = true;
-                document.getElementById('status-msg').textContent = 'Ход Евклида';
+                document.getElementById('status-msg').textContent = 'Евклид ходит...';
                 document.getElementById('btn-action').disabled = true;
                 document.getElementById('btn-take').disabled = true;
                 setTimeout(() => this.botAttack(), 800);
@@ -316,9 +356,9 @@
         }
 
         playCard(card) {
-            if (this.gameOver) return;
+            if (this.gameOver || this.isAnimating) return;
 
-            // Игрок атакует или подкидывает
+            // Ход или подкидывание игрока
             if (this.isPlayerTurn && this.isAttacking) {
                 if (this.attackingCards.length >= 6 || this.attackingCards.length >= this.botHand.length + this.defendingCards.length) return;
 
@@ -332,27 +372,28 @@
                 this.updateUI();
 
                 if (!this.botIsTaking) {
+                    document.getElementById('status-msg').textContent = 'Евклид отбивается...';
                     setTimeout(() => this.botDefend(), 700);
                 } else {
                     document.getElementById('btn-action').textContent = 'Пас';
                     document.getElementById('btn-action').disabled = false;
                 }
 
-            // Перевод карты (Правило переводного дурака)
+            // Перевод карты
             } else if (!this.isPlayerTurn && this.isPerevodnoy && this.defendingCards.length === 0 && this.attackingCards.length > 0) {
                 const firstRank = this.attackingCards[0].rank;
                 if (card.rank === firstRank && this.botHand.length >= this.attackingCards.length + 1) {
                     this.playerHand = this.playerHand.filter(c => c !== card);
                     this.attackingCards.push(card);
-                    this.isPlayerTurn = true; // Ход переведен на бота
+                    this.isPlayerTurn = true;
                     this.updateUI();
-                    document.getElementById('status-msg').textContent = 'Перевод!';
+                    document.getElementById('status-msg').textContent = 'Перевод ходу!';
                     setTimeout(() => this.botDefend(), 800);
                     return;
                 }
                 this.handlePlayerDefense(card);
 
-            // Обычная защита игрока
+            // Обычная защита
             } else if (!this.isPlayerTurn) {
                 this.handlePlayerDefense(card);
             }
@@ -366,7 +407,8 @@
                 this.updateUI();
 
                 if (this.defendingCards.length === this.attackingCards.length) {
-                    setTimeout(() => this.botAttack(), 700);
+                    document.getElementById('status-msg').textContent = 'Вы отбились!';
+                    setTimeout(() => this.botAttack(), 800);
                 }
             }
         }
@@ -379,6 +421,7 @@
                 cardToPlay = this.botHand.find(c => c.suit !== this.trumpSuit) || this.botHand[0];
             } else {
                 if (this.attackingCards.length >= 6 || this.attackingCards.length >= this.playerHand.length + this.defendingCards.length) {
+                    document.getElementById('status-msg').textContent = 'Отбой';
                     document.getElementById('btn-action').textContent = 'Отбой';
                     document.getElementById('btn-action').disabled = false;
                     return;
@@ -391,11 +434,13 @@
                 this.botHand = this.botHand.filter(c => c !== cardToPlay);
                 this.attackingCards.push(cardToPlay);
                 this.updateUI();
+                document.getElementById('status-msg').textContent = 'Евклид походил';
                 document.getElementById('btn-take').disabled = false;
                 if (this.defendingCards.length === this.attackingCards.length - 1) {
                     document.getElementById('btn-action').disabled = true;
                 }
             } else {
+                document.getElementById('status-msg').textContent = 'Отбой';
                 document.getElementById('btn-action').textContent = 'Отбой';
                 document.getElementById('btn-action').disabled = false;
             }
@@ -412,44 +457,54 @@
                 this.updateUI();
 
                 if (this.defendingCards.length === this.attackingCards.length) {
+                    document.getElementById('status-msg').textContent = 'Отбой или подкиньте';
                     document.getElementById('btn-action').textContent = 'Отбой';
                     document.getElementById('btn-action').disabled = false;
                 } else {
                     setTimeout(() => this.botDefend(), 600);
                 }
             } else {
-                // Бот не может отбиться - игрок может подкидывать
                 this.botIsTaking = true;
+                document.getElementById('status-msg').textContent = 'Евклид берёт!';
                 document.getElementById('btn-action').textContent = 'Пас';
                 document.getElementById('btn-action').disabled = false;
             }
         }
 
-        onAction() {
+        async onAction() {
             if (this.botIsTaking) {
-                // Игрок закончил подкидывать боту
+                document.getElementById('status-msg').textContent = 'Евклид забрал карты';
                 this.botHand.push(...this.attackingCards, ...this.defendingCards);
-                this.finishTurn(true); // Ход остается у игрока
+                await this.finishTurn(true);
             } else {
-                // Обычный отбой
-                this.finishTurn(!this.isPlayerTurn);
+                document.getElementById('status-msg').textContent = 'Отбой';
+                await this.finishTurn(!this.isPlayerTurn);
             }
         }
 
-        onTake() {
+        async onTake() {
+            document.getElementById('status-msg').textContent = 'Вы взяли карты';
             this.playerHand.push(...this.attackingCards, ...this.defendingCards);
-            this.finishTurn(false); // Ход переходит к боту
+            await this.finishTurn(false);
         }
 
-        finishTurn(nextIsPlayer) {
+        async finishTurn(nextIsPlayer) {
+            this.isAnimating = true;
             this.attackingCards = []; this.defendingCards = [];
             this.botIsTaking = false;
+            this.updateUI();
 
-            while (this.playerHand.length < 6 && this.deck.length) this.playerHand.push(this.deck.pop());
-            while (this.botHand.length < 6 && this.deck.length) this.botHand.push(this.deck.pop());
+            // Автоматический поочередный добор карт с анимацией
+            while (this.playerHand.length < 6 && this.deck.length) {
+                await this.animateDealCard('player', this.deck.pop());
+            }
+            while (this.botHand.length < 6 && this.deck.length) {
+                await this.animateDealCard('bot', this.deck.pop());
+            }
 
             this.sortHands();
             this.isPlayerTurn = nextIsPlayer;
+            this.isAnimating = false;
             this.updateUI();
             this.nextTurn();
         }
@@ -457,31 +512,31 @@
         checkGameOver() {
             if (this.deck.length === 0) {
                 if (this.playerHand.length === 0 && this.botHand.length === 0) {
-                    document.getElementById('status-msg').textContent = 'Ничья'; this.gameOver = true;
+                    document.getElementById('status-msg').textContent = 'Ничья!'; this.gameOver = true;
                 } else if (this.playerHand.length === 0) {
-                    document.getElementById('status-msg').textContent = 'Победа'; this.gameOver = true;
+                    document.getElementById('status-msg').textContent = 'Победа!'; this.gameOver = true;
                 } else if (this.botHand.length === 0) {
-                    document.getElementById('status-msg').textContent = 'Поражение'; this.gameOver = true;
+                    document.getElementById('status-msg').textContent = 'Евклид выиграл!'; this.gameOver = true;
                 }
             }
             return this.gameOver;
         }
 
         updateUI() {
-            // Рука игрока (лицевая сторона)
+            // Рука игрока
             const handContainer = document.getElementById('player-hand');
             handContainer.innerHTML = '';
             const totalP = this.playerHand.length;
             this.playerHand.forEach((card, idx) => {
                 const el = this.createCardEl(card);
                 const angle = (idx - (totalP - 1) / 2) * 6;
-                const offsetX = (idx - (totalP - 1) / 2) * 26;
+                const offsetX = (idx - (totalP - 1) / 2) * 32;
                 el.style.transform = `translateX(${offsetX}px) rotate(${angle}deg)`;
                 el.onclick = () => this.playCard(card);
                 handContainer.appendChild(el);
             });
 
-            // Рука бота (рубашка)
+            // Рука бота
             const botContainer = document.getElementById('bot-hand');
             botContainer.innerHTML = '';
             const totalB = this.botHand.length;

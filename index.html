@@ -199,10 +199,39 @@
         #online-loader { display: none; flex-direction: column; align-items: center; gap: 8px; color: #ffd700; font-size: 12px; margin-top: 5px; }
         .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,215,0,0.3); border-top: 3px solid #ffd700; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Оверлей анимаций победы/поражения */
+        #fx-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 90; overflow: hidden; display: none;
+        }
+        .floating-banner {
+            position: absolute; font-size: 28px; font-weight: 900; letter-spacing: 2px;
+            white-space: nowrap; animation: floatBanner 4s linear infinite; text-shadow: 0 0 15px rgba(0,0,0,0.9);
+        }
+        .banner-win { color: #ffd700; -webkit-text-stroke: 1px #ff007f; animation: floatBanner 3s linear infinite, pulseText 0.5s ease-in-out infinite alternate; }
+        .banner-lose { color: #ff3333; -webkit-text-stroke: 1px #000; animation: floatBanner 4s linear infinite; }
+
+        @keyframes floatBanner {
+            0% { transform: translate(-150%, 20vh) rotate(-10deg); }
+            100% { transform: translate(150vw, 70vh) rotate(10deg); }
+        }
+        @keyframes pulseText {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+        .emoji-particle {
+            position: absolute; font-size: 24px; animation: fallEmoji 3s linear infinite;
+        }
+        @keyframes fallEmoji {
+            0% { transform: translateY(-30px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
+        }
     </style>
 </head>
 <body>
 <div id="app">
+    <div id="fx-overlay"></div>
     <div id="splash">
         <div class="header-container">
             <img src="https://i.postimg.cc/cJGSqNBZ/1788361335674.jpg" alt="Logo" class="app-icon">
@@ -305,8 +334,96 @@
 </div>
 
 <script>
+    // Аудио менеджер с использованием синтезатора звуков (Web Audio API) без внешних файлов
+    class SoundManager {
+        constructor() {
+            this.ctx = null;
+        }
+        init() {
+            if (!this.ctx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+            }
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+        }
+        playDeal() {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(); osc.stop(this.ctx.currentTime + 0.08);
+        }
+        playCard() {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.06);
+            gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.06);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(); osc.stop(this.ctx.currentTime + 0.06);
+        }
+        playAction() {
+            this.init();
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+            osc.frequency.setValueAtTime(350, this.ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.18);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(); osc.stop(this.ctx.currentTime + 0.18);
+        }
+        playWin() {
+            this.init();
+            if (!this.ctx) return;
+            const notes = [261.63, 329.63, 392.00, 523.25];
+            notes.forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.12);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime + idx * 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.12 + 0.3);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(this.ctx.currentTime + idx * 0.12);
+                osc.stop(this.ctx.currentTime + idx * 0.12 + 0.3);
+            });
+        }
+        playLose() {
+            this.init();
+            if (!this.ctx) return;
+            const notes = [300, 240, 180];
+            notes.forEach((freq, idx) => {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.18);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime + idx * 0.18);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.18 + 0.35);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(this.ctx.currentTime + idx * 0.18);
+                osc.stop(this.ctx.currentTime + idx * 0.18 + 0.35);
+            });
+        }
+    }
+
+    const sounds = new SoundManager();
     const MAX_HAND_CARDS = 24;
-    const TURN_TIME_LIMIT = 90; // 1 минута 30 секунд
+    const TURN_TIME_LIMIT = 90;
 
     class Card {
         constructor(suit, rank) {
@@ -349,7 +466,7 @@
             this.hands = Array.from({length: totalPlayers}, () => []);
             this.attackingCards = [];
             this.defendingCards = [];
-            this.passedPlayers = new Set(); // Игроки, нажавшие Отбой
+            this.passedPlayers = new Set();
             
             this.discardPile = 0;
             this.attackerIdx = 0;
@@ -407,16 +524,19 @@
             if (this.gameOver) return;
 
             if (this.defenderIdx === 0 && this.attackingCards.length > this.defendingCards.length) {
-                // Игрок не успел отбиться — забирает карты
+                sounds.playAction();
                 this.onTake();
             } else {
-                // Если игрок атакует/подкидывает — нажимается Отбой
+                sounds.playAction();
                 this.onAction();
             }
         }
 
         async startWithAnimation() {
             document.getElementById('btn-restart-table').style.display = 'none';
+            document.getElementById('fx-overlay').style.display = 'none';
+            document.getElementById('fx-overlay').innerHTML = '';
+            
             const deckContainer = document.getElementById('deck-container');
             deckContainer.classList.add('center-deal');
             this.renderTrumpCard();
@@ -437,6 +557,7 @@
         }
 
         async animateDealCard(playerIdx, card) {
+            sounds.playDeal();
             return new Promise(resolve => {
                 const deckEl = document.getElementById('deck-container');
                 const rect = deckEl.getBoundingClientRect();
@@ -496,6 +617,14 @@
         nextTurn() {
             if (this.checkGameOver()) return;
 
+            // Если игрок уже победил (карт нет, колода пуста), пропускаем его ход
+            if (this.hands[0].length === 0 && this.deck.length === 0) {
+                this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
+                this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
+                this.nextTurn();
+                return;
+            }
+
             this.passedPlayers.clear();
             this.startTimer();
 
@@ -523,7 +652,6 @@
             if (this.gameOver || this.isAnimating) return;
 
             if (fromPlayerIdx !== this.defenderIdx) {
-                // АТАКА ИЛИ ПОДКИДЫВАНИЕ
                 if (this.attackingCards.length >= 6 || this.attackingCards.length >= this.hands[this.defenderIdx].length + this.defendingCards.length) return;
 
                 if (this.attackingCards.length > 0) {
@@ -531,11 +659,11 @@
                     if (!activeRanks.includes(card.rank)) return;
                 }
 
-                // Сброс статуса отбоя у всех подкидывающих
                 this.passedPlayers.clear();
 
                 this.hands[fromPlayerIdx] = this.hands[fromPlayerIdx].filter(c => c !== card);
                 this.attackingCards.push(card);
+                sounds.playCard();
                 this.updateUI();
 
                 if (this.defenderIdx === 0) {
@@ -547,18 +675,17 @@
                     setTimeout(() => this.botDefend(), 600);
                 }
             } else if (fromPlayerIdx === this.defenderIdx) {
-                // ЗАЩИТА
                 const target = this.attackingCards[this.defendingCards.length];
                 if (card.beats(target, this.trumpSuit)) {
                     this.hands[fromPlayerIdx] = this.hands[fromPlayerIdx].filter(c => c !== card);
                     this.defendingCards.push(card);
+                    sounds.playCard();
 
                     if (this.defendingCards.length === this.attackingCards.length) {
                         document.getElementById('status-msg').textContent = 'Отбито! Ждем Отбой от всех';
-                        document.getElementById('btn-action').disabled = false;
+                        document.getElementById('btn-action').disabled = (this.hands[0].length === 0 && this.deck.length === 0);
                         document.getElementById('btn-take').disabled = true;
                         
-                        // Запуск очереди подкидывания для ботов
                         setTimeout(() => this.checkBotsPodkidOrPass(), 500);
                     }
                     this.updateUI();
@@ -569,7 +696,12 @@
         botTurn() {
             if (this.gameOver) return;
             const hand = this.hands[this.attackerIdx];
-            if (!hand || hand.length === 0) return;
+            if (!hand || hand.length === 0) {
+                this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
+                this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
+                this.nextTurn();
+                return;
+            }
 
             let cardToPlay = null;
             if (this.attackingCards.length === 0) {
@@ -610,23 +742,31 @@
             if (this.gameOver || this.defendingCards.length !== this.attackingCards.length) return;
 
             const activeRanks = [...this.attackingCards, ...this.defendingCards].map(c => c.rank);
-            let anyBotPodkidal = false;
 
             for (let p = 0; p < this.totalPlayers; p++) {
                 if (p === this.defenderIdx || p === 0 || this.passedPlayers.has(p)) continue;
 
                 const hand = this.hands[p];
+                if (hand.length === 0) {
+                    this.passedPlayers.add(p);
+                    continue;
+                }
+
                 const candidates = hand.filter(c => activeRanks.includes(c.rank));
                 const nonTrumps = candidates.filter(c => c.suit !== this.trumpSuit);
                 const cardToPodkid = nonTrumps.length > 0 ? nonTrumps[0] : candidates[0];
 
                 if (cardToPodkid && this.attackingCards.length < 6) {
                     this.playCard(cardToPodkid, p);
-                    anyBotPodkidal = true;
-                    break;
+                    return;
                 } else {
                     this.botPass(p);
                 }
+            }
+
+            // Если игрок уже победил (карт нет), но раунд ждет его подтверждения отбоя — автоматически фиксируем отбой
+            if (this.hands[0].length === 0 && this.deck.length === 0 && !this.passedPlayers.has(0)) {
+                this.passedPlayers.add(0);
             }
 
             this.checkRoundCompletion();
@@ -639,21 +779,19 @@
         }
 
         onAction() {
-            // Игрок-человек нажимает Отбой
+            sounds.playAction();
             this.passedPlayers.add(0);
             document.getElementById('btn-action').disabled = true;
             this.updateUI();
 
-            // Если боты еще не нажали отбой, проверяем их
             this.checkBotsPodkidOrPass();
             this.checkRoundCompletion();
         }
 
         checkRoundCompletion() {
-            // Раунд заканчивается, ТОЛЬКО когда ВСЕ подкидывающие игроки (все кроме защищающегося) нажали «Отбой»
             let requiredPassCount = 0;
             for (let p = 0; p < this.totalPlayers; p++) {
-                if (p !== this.defenderIdx && this.hands[p].length > 0) {
+                if (p !== this.defenderIdx && (this.hands[p].length > 0 || (p === 0 && this.deck.length > 0))) {
                     requiredPassCount++;
                 }
             }
@@ -667,6 +805,7 @@
 
         async finishRoundInDiscard() {
             this.stopTimer();
+            sounds.playAction();
             this.discardPile += this.attackingCards.length + this.defendingCards.length;
             this.renderDiscard();
             this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
@@ -676,6 +815,7 @@
 
         async onTake() {
             this.stopTimer();
+            sounds.playAction();
             this.hands[this.defenderIdx].push(...this.attackingCards, ...this.defendingCards);
             this.attackerIdx = (this.defenderIdx + 1) % this.totalPlayers;
             this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
@@ -713,12 +853,58 @@
                 if (active.length <= 1) {
                     this.stopTimer();
                     this.gameOver = true;
-                    document.getElementById('status-msg').textContent = 'Игра завершена!';
+                    
+                    const playerWon = this.hands[0].length === 0;
+                    if (playerWon) {
+                        sounds.playWin();
+                        this.triggerVictoryFX();
+                    } else {
+                        sounds.playLose();
+                        this.triggerDefeatFX();
+                    }
+
+                    document.getElementById('status-msg').textContent = playerWon ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ!';
                     document.getElementById('btn-restart-table').style.display = 'block';
                     return true;
                 }
             }
             return false;
+        }
+
+        triggerVictoryFX() {
+            const overlay = document.getElementById('fx-overlay');
+            overlay.style.display = 'block';
+            overlay.innerHTML = `
+                <div class="floating-banner banner-win" style="top: 25%;">✨ ПОБЕДИТЕЛЬ ✨</div>
+                <div class="floating-banner banner-win" style="top: 55%; animation-delay: 1.5s;">🎉 ПОБЕДИТЕЛЬ 🎉</div>
+            `;
+            for (let i = 0; i < 15; i++) {
+                const p = document.createElement('div');
+                p.className = 'emoji-particle';
+                p.textContent = ['🎉','⭐','✨','🏆','🎊'][Math.floor(Math.random()*5)];
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDuration = (2 + Math.random() * 2) + 's';
+                p.style.animationDelay = (Math.random() * 2) + 's';
+                overlay.appendChild(p);
+            }
+        }
+
+        triggerDefeatFX() {
+            const overlay = document.getElementById('fx-overlay');
+            overlay.style.display = 'block';
+            overlay.innerHTML = `
+                <div class="floating-banner banner-lose" style="top: 30%;">👎 ЛУЗЕР 👎</div>
+                <div class="floating-banner banner-lose" style="top: 60%; animation-delay: 2s;">❌ ЛУЗЕР ❌</div>
+            `;
+            for (let i = 0; i < 12; i++) {
+                const p = document.createElement('div');
+                p.className = 'emoji-particle';
+                p.textContent = ['👎','💀','💩','❌'][Math.floor(Math.random()*4)];
+                p.style.left = Math.random() * 100 + '%';
+                p.style.animationDuration = (2.5 + Math.random() * 2) + 's';
+                p.style.animationDelay = (Math.random() * 2) + 's';
+                overlay.appendChild(p);
+            }
         }
 
         renderOpponentHand(containerId, hand) {
@@ -749,6 +935,13 @@
                 this.bindCardEvents(el, card, offsetX, angle);
                 handContainer.appendChild(el);
             });
+
+            // Если игрок уже победил (карт нет и колода пуста), скрываем кнопку «Отбой»
+            const isUserWinner = myHand.length === 0 && this.deck.length === 0;
+            const actionBtn = document.getElementById('btn-action');
+            if (isUserWinner && !actionBtn.disabled) {
+                actionBtn.disabled = true;
+            }
 
             if (this.totalPlayers === 2) {
                 this.renderOpponentHand('opp-top', this.hands[1] || []);

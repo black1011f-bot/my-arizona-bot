@@ -3,22 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Дурак — финальная версия</title>
+    <title>Дурак — финал</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
         html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
+            width: 100%; height: 100%; overflow: hidden;
             background: #1a3a1a;
             font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
             touch-action: manipulation;
         }
         #app {
-            width: 100%;
-            height: 100%;
-            max-width: 800px;
-            max-height: 900px;
+            width: 100%; height: 100%; max-width: 800px; max-height: 900px;
             margin: 0 auto;
             background: #2a6b2a;
             border-radius: 30px;
@@ -29,31 +24,96 @@
             overflow: hidden;
             border: 8px solid #5a3a1a;
         }
-        #menu {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.75); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 100; gap: 20px; padding: 20px;
+        /* Splash-экран с размытием */
+        #splash {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            gap: 20px;
+            padding: 30px;
+            transition: opacity 0.8s ease, backdrop-filter 0.8s ease;
+            opacity: 1;
+            pointer-events: all;
         }
-        #menu h1 { color: #ffd700; font-size: 3em; text-shadow: 0 0 20px #000; margin: 0; }
-        #menu label {
-            color: #fff; font-size: 1.3em; background: rgba(0,0,0,0.5); padding: 10px 30px;
-            border-radius: 40px; display: flex; align-items: center; gap: 15px; cursor: pointer;
+        #splash.hidden {
+            opacity: 0;
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+            pointer-events: none;
+        }
+        #splash h1 {
+            color: #ffd700;
+            font-size: 3.5em;
+            text-shadow: 0 0 30px #000;
+            margin: 0;
+            animation: pulse-title 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-title {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        #splash .sub {
+            color: #ddd;
+            font-size: 1.2em;
+            text-shadow: 0 0 10px #000;
+        }
+        #splash .options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        #splash label {
+            color: #fff;
+            font-size: 1.4em;
+            background: rgba(0,0,0,0.4);
+            padding: 12px 30px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
             transition: 0.2s;
+            backdrop-filter: blur(4px);
         }
-        #menu label:hover { background: rgba(255,215,0,0.3); }
-        #menu label input { transform: scale(1.5); cursor: pointer; }
-        #menu button {
-            font-size: 1.8em; padding: 15px 60px; background: #ffd700; border: none;
-            border-radius: 60px; color: #1a3a1a; font-weight: bold; cursor: pointer;
-            box-shadow: 0 5px 0 #b8860b; transition: 0.1s linear;
+        #splash label:hover { background: rgba(255,215,0,0.3); }
+        #splash label input { transform: scale(1.6); cursor: pointer; }
+        #splash .start-btn {
+            font-size: 2em;
+            padding: 15px 60px;
+            background: #ffd700;
+            border: none;
+            border-radius: 60px;
+            color: #1a3a1a;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #b8860b;
+            transition: 0.1s linear;
+            margin-top: 10px;
         }
-        #menu button:active { transform: translateY(5px); box-shadow: 0 0 0 #b8860b; }
-        #menu .info { color: #ddd; font-size: 0.9em; margin-top: 10px; text-align: center; }
+        #splash .start-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #b8860b;
+        }
 
+        /* Основной игровой стол */
         #table {
-            flex: 1; position: relative; background: radial-gradient(circle at 20% 30%, #3a8a3a, #1e5a1e);
-            border-radius: 20px; margin: 8px; box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
-            min-height: 0; display: flex; flex-direction: column;
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at 20% 30%, #3a8a3a, #1e5a1e);
+            border-radius: 20px;
+            margin: 8px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
             overflow: visible;
         }
         .zone {
@@ -61,12 +121,21 @@
             gap: 4px; padding: 4px; position: relative;
         }
         #bot-zone {
-            flex: 0 0 80px; border-bottom: 2px dashed rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.15); border-radius: 12px 12px 0 0;
+            flex: 0 0 80px;
+            border-bottom: 2px dashed rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.15);
+            border-radius: 12px 12px 0 0;
         }
         #center-zone {
-            flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
-            gap: 12px; padding: 10px; min-height: 120px; position: relative;
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            min-height: 120px;
+            position: relative;
         }
         .card-pair {
             display: inline-flex; position: relative; width: 70px; height: 95px;
@@ -109,8 +178,6 @@
         #player-zone .card.black { color: #000; }
         #player-zone .card.trump-card { border: 3px solid gold; }
         #player-zone .card.highlight { box-shadow: 0 0 15px 5px #ffd700; transform: scale(1.05); border-color: #ffd700; z-index: 10; }
-        #player-zone .card.suggest { animation: pulse-gold 1s infinite alternate; border-color: #ffaa00; z-index: 10; }
-        @keyframes pulse-gold { 0% { box-shadow: 0 0 5px 2px #ffaa00; transform: scale(1); } 100% { box-shadow: 0 0 20px 10px #ffd700; transform: scale(1.08); } }
         #player-zone .card.shake { animation: shake 0.3s ease; }
         @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
 
@@ -130,27 +197,18 @@
         }
         #trump-info { color: #fff; font-weight: bold; text-shadow: 0 0 8px #000; font-size: 1.1em; background: rgba(0,0,0,0.5); padding: 4px 12px; border-radius: 20px; text-align: center; }
 
-        /* Слой анимации поверх всего */
         #animation-layer {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 200;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 200;
         }
         #animation-layer .card {
             position: absolute;
             width: 60px; height: 84px;
-            background: #fff;
-            border-radius: 8px;
-            border: 2px solid #333;
+            background: #fff; border-radius: 8px; border: 2px solid #333;
             box-shadow: 2px 4px 8px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 4px 6px;
-            font-size: 1.1em;
-            font-weight: bold;
+            display: flex; flex-direction: column;
+            justify-content: space-between; padding: 4px 6px;
+            font-size: 1.1em; font-weight: bold;
             will-change: transform;
             transform-origin: center center;
             pointer-events: none;
@@ -175,7 +233,6 @@
         #controls button:active { transform: translateY(3px); box-shadow: none; }
         #controls button:disabled { opacity: 0.4; transform: translateY(3px); box-shadow: none; pointer-events: none; }
         #controls button.secondary { background: #ddd; color: #222; box-shadow: 0 3px 0 #999; }
-        #controls button.hint { background: #5a9; color: #fff; box-shadow: 0 3px 0 #2a6a4a; }
 
         #status {
             color: #fff; font-size: 1.2em; text-align: center; text-shadow: 0 0 12px #000;
@@ -198,8 +255,8 @@
             #player-zone { flex-basis: 95px; height: 95px; }
             #deck-area .card { width: 40px; height: 56px; font-size: 1em; }
             #controls button { padding: 6px 10px; font-size: 0.85em; min-width: 50px; }
-            #menu h1 { font-size: 2em; }
-            #menu button { font-size: 1.4em; padding: 12px 40px; }
+            #splash h1 { font-size: 2.5em; }
+            #splash .start-btn { font-size: 1.5em; padding: 12px 40px; }
         }
         @media (max-width: 420px) {
             .card { width: 40px; height: 56px; font-size: 0.75em; padding: 2px 3px; }
@@ -215,14 +272,18 @@
 </head>
 <body>
 <div id="app">
-    <div id="menu">
+    <!-- Splash-экран с выбором режима -->
+    <div id="splash">
         <h1>♠ Дурак ♥</h1>
-        <label><input type="radio" name="mode" value="podkid" checked> Подкидной</label>
-        <label><input type="radio" name="mode" value="perevod"> Переводной</label>
-        <button id="startBtn">Начать игру</button>
-        <div class="info">Офлайн‑версия. Веер карт, анимация, умный бот.</div>
+        <div class="sub">Выберите режим и начните игру</div>
+        <div class="options">
+            <label><input type="radio" name="mode" value="podkid" checked> Подкидной</label>
+            <label><input type="radio" name="mode" value="perevod"> Переводной</label>
+        </div>
+        <button class="start-btn" id="startBtn">Начать игру</button>
     </div>
 
+    <!-- Игровой стол -->
     <div id="table">
         <div id="bot-zone" class="zone">
             <span class="turn-indicator" id="botTurnIndicator" style="display:none;">🤖 ходит</span>
@@ -245,7 +306,6 @@
         <button id="btnPass" disabled>Отбой</button>
         <button id="btnTake" disabled>Взять</button>
         <button id="btnAdd" disabled>Подкинуть</button>
-        <button id="btnHint" class="hint" disabled>Подсказка</button>
         <button id="btnNewGame" class="secondary">Новая игра</button>
     </div>
 </div>
@@ -285,9 +345,7 @@
     // ========== ГЕОМЕТРИЯ ВЕЕРА ==========
     function computeFanPositions(n, w, d, rot) {
         if (n === 0) return [];
-        if (n === 1) {
-            return [{ x: 0, y: 0, angle: 0 }];
-        }
+        if (n === 1) return [{ x: 0, y: 0, angle: 0 }];
         const a = Math.sqrt(d*d + (w*w/4));
         const p = 0.5 * (a + w + a);
         const R = (a * w * a) / (4 * Math.sqrt( p * (p-a) * (p-w) * (p-a) ));
@@ -323,7 +381,6 @@
             this.waitingForPass = false;
             this.cardsToDeal = 6;
             this.maxTableCards = 6;
-            this.suggestedCards = [];
             this.animating = false;
         }
 
@@ -339,11 +396,11 @@
             this.gameOver = false;
             this.isPlayerTurn = true;
             this.isAttacking = true;
-            this.suggestedCards = [];
             this.waitingForPass = false;
             this.waitingForPlayerAction = false;
             this.animating = false;
 
+            // Раздаём по 6 карт
             for (let i=0; i<this.cardsToDeal; i++) {
                 if (this.deck.length===0) break;
                 this.playerHand.push(this.deck.pop());
@@ -421,7 +478,7 @@
             this.isAttacking = true;
             this.waitingForPlayerAction = true;
             this.waitingForPass = false;
-            this.enableControls(false, false, false, true);
+            this.enableControls(false, false, false);
             this.setStatus('Ваш ход. Выберите карту для атаки.');
             this.highlightPossibleCards();
             this.updateUI();
@@ -471,7 +528,7 @@
                 const canAdd = this.canPlayerAdd() && this.tableCards.length < this.maxTableCards;
                 if (canAdd) {
                     this.waitingForPlayerAction = true;
-                    this.enableControls(true, false, true, true);
+                    this.enableControls(true, false, true);
                     this.setStatus('Подкиньте ещё или нажмите "Отбой".');
                     this.highlightPossibleCards();
                 } else {
@@ -485,7 +542,7 @@
             if (this.gameOver) return;
             this.waitingForPlayerAction = false;
             this.waitingForPass = false;
-            this.enableControls(false, false, false, false);
+            this.enableControls(false, false, false);
             this.setStatus('Бот защищается...');
             this.botDefend();
         }
@@ -543,6 +600,7 @@
                 this.setStatus('Бот отбился!');
                 this.finishTurn(false);
             } else {
+                // Бот берёт карты
                 this.botHand.push(...this.tableCards);
                 this.tableCards = [];
                 this.attackingCards = [];
@@ -551,15 +609,16 @@
                 this.setStatus('Бот взял карты. Завершите ход, нажав "Отбой".');
                 this.waitingForPlayerAction = false;
                 this.waitingForPass = true;
-                this.enableControls(true, false, false, false);
+                this.enableControls(true, false, false);
             }
         }
 
         playerPassAfterBotTake() {
             if (!this.waitingForPass || this.gameOver) return;
             this.waitingForPass = false;
-            this.enableControls(false, false, false, false);
+            this.enableControls(false, false, false);
             this.setStatus('Ход завершён.');
+            // После взятия ботом ход переходит игроку
             this.finishTurn(true);
         }
 
@@ -580,11 +639,12 @@
             this.updateUI();
             this.setStatus('Бот атакует картой ' + card.name + card.suit);
 
+            // Игрок защищается
             this.isPlayerTurn = true;
             this.isAttacking = false;
             this.waitingForPlayerAction = true;
             this.waitingForPass = false;
-            this.enableControls(false, true, false, true);
+            this.enableControls(false, true, false);
             this.setStatus('Отбейтесь или нажмите "Взять".');
             this.highlightPossibleCards();
             this.updateUI();
@@ -619,7 +679,7 @@
             this.playerHand.splice(idx, 1);
             this.renderPlayerHand();
 
-            // Ищем атакующую карту на столе, чтобы положить поверх
+            // Ищем атакующую карту на столе
             const attackEl = this.findTableCardElement(target);
             let targetX, targetY, targetAngle = 0;
             if (attackEl) {
@@ -644,7 +704,7 @@
                     this.finishTurn(true);
                 } else {
                     this.waitingForPlayerAction = true;
-                    this.enableControls(false, true, false, true);
+                    this.enableControls(false, true, false);
                     this.setStatus('Отбейте следующую карту или нажмите "Взять".');
                     this.highlightPossibleCards();
                     this.updateUI();
@@ -660,9 +720,9 @@
             this.tableCards = [];
             this.attackingCards = [];
             this.defendingCards = [];
-            this.suggestedCards = [];
             this.updateUI();
             this.setStatus('Вы взяли карты.');
+            // После взятия игроком ход переходит боту
             this.finishTurn(false);
         }
 
@@ -670,7 +730,7 @@
         finishTurn(nextIsPlayer) {
             this.waitingForPlayerAction = false;
             this.waitingForPass = false;
-            this.enableControls(false, false, false, false);
+            this.enableControls(false, false, false);
             this.dealCards();
             this.updateUI();
             this.checkGameOver();
@@ -696,7 +756,6 @@
             this.tableCards = [];
             this.attackingCards = [];
             this.defendingCards = [];
-            this.suggestedCards = [];
             this.updateUI();
         }
 
@@ -705,7 +764,7 @@
                 this.gameOver = true;
                 this.waitingForPlayerAction = false;
                 this.waitingForPass = false;
-                this.enableControls(false, false, false, false);
+                this.enableControls(false, false, false);
                 if (this.playerHand.length === 0) this.setStatus('🎉 Вы выиграли!');
                 else if (this.botHand.length === 0) this.setStatus('😞 Бот выиграл.');
                 else this.setStatus('Ничья?');
@@ -795,17 +854,14 @@
 
         // ========== UI ==========
         setStatus(msg) { document.getElementById('status').textContent = msg; }
-        enableControls(pass, take, add, hint) {
+        enableControls(pass, take, add) {
             document.getElementById('btnPass').disabled = !pass;
             document.getElementById('btnTake').disabled = !take;
             document.getElementById('btnAdd').disabled = !add;
-            document.getElementById('btnHint').disabled = !hint;
         }
 
         highlightPossibleCards() {
-            document.querySelectorAll('#player-zone .card.highlight, #player-zone .card.suggest').forEach(el => {
-                el.classList.remove('highlight', 'suggest');
-            });
+            document.querySelectorAll('#player-zone .card.highlight').forEach(el => el.classList.remove('highlight'));
             if (!this.waitingForPlayerAction) return;
             const possible = this.getPossibleCards();
             if (possible.length === 0) return;
@@ -831,31 +887,6 @@
                     break;
                 }
             }
-        }
-
-        hint() {
-            if (!this.waitingForPlayerAction && !this.waitingForPass) return;
-            if (this.waitingForPass) {
-                this.setStatus('Нажмите "Отбой" для завершения хода.');
-                return;
-            }
-            const possible = this.getPossibleCards();
-            if (possible.length === 0) {
-                this.setStatus('Нет подходящих карт.');
-                return;
-            }
-            const card = possible[0];
-            this.suggestedCards = [card];
-            this.updateUI();
-            const cards = document.querySelectorAll('#player-zone .card');
-            for (let el of cards) {
-                const text = el.textContent.replace(/\s/g, '');
-                if (text.includes(card.name) && text.includes(card.suitSymbol)) {
-                    el.classList.add('suggest');
-                    break;
-                }
-            }
-            this.setStatus('Подсказка: сыграйте ' + card.name + card.suit);
         }
 
         // ========== ОТРИСОВКА ==========
@@ -910,19 +941,6 @@
                 el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); this.onCardClick(card); }, { passive: false });
                 zone.appendChild(el);
             });
-
-            if (this.suggestedCards.length > 0) {
-                const cards = zone.querySelectorAll('.card');
-                for (let el of cards) {
-                    const text = el.textContent.replace(/\s/g, '');
-                    for (let card of this.suggestedCards) {
-                        if (text.includes(card.name) && text.includes(card.suitSymbol)) {
-                            el.classList.add('suggest');
-                            break;
-                        }
-                    }
-                }
-            }
         }
 
         renderBotHand() {
@@ -1000,7 +1018,6 @@
                 this.setStatus('Сейчас не ваш ход.');
                 return;
             }
-            this.suggestedCards = [];
             if (this.isAttacking && this.isPlayerTurn) {
                 this.playerAttack(card);
             } else if (!this.isAttacking && this.isPlayerTurn) {
@@ -1042,24 +1059,22 @@
                 this.setStatus('Сейчас нельзя подкинуть.');
             }
         }
-
-        onHint() {
-            this.hint();
-        }
     }
 
     // ========== ЗАПУСК ==========
     let game = null;
+
     function startGame(mode) {
         game = new Game(mode);
         game.init();
-        document.getElementById('menu').style.display = 'none';
+        // Скрываем splash
+        document.getElementById('splash').classList.add('hidden');
+        // Привязываем кнопки
         document.getElementById('btnPass').onclick = () => { if (game) game.onPass(); };
         document.getElementById('btnTake').onclick = () => { if (game) game.onTake(); };
         document.getElementById('btnAdd').onclick = () => { if (game) game.onAdd(); };
-        document.getElementById('btnHint').onclick = () => { if (game) game.onHint(); };
         document.getElementById('btnNewGame').onclick = () => {
-            document.getElementById('menu').style.display = 'flex';
+            document.getElementById('splash').classList.remove('hidden');
             game = null;
         };
     }
@@ -1068,12 +1083,14 @@
         const mode = document.querySelector('input[name="mode"]:checked').value;
         startGame(mode);
     });
-    document.getElementById('menu').style.display = 'flex';
 
-    // Пересчитываем веер при изменении размера окна (для адаптивности)
+    // Пересчёт веера при изменении размера окна
     window.addEventListener('resize', () => {
         if (game && !game.gameOver) game.updateUI();
     });
+
+    // Изначально splash виден
+    document.getElementById('splash').classList.remove('hidden');
 </script>
 </body>
 </html>

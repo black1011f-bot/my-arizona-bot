@@ -29,7 +29,7 @@ def get_msk_time():
   return datetime.now(ZoneInfo("Europe/Moscow"))
 
 
-TOKEN = "8916669266:AAFWu9dBMLu38mpp2H6rZL8zkvSCSIPFugo"
+TOKEN = "8916669266:AAFUN9e5OKt0IMaEmVUF_tlZnDXIxhP4fKU"
 MANAGER_USERNAME = "bounqy31"
 BOT_USERNAME = "arizona_coin_bot"
 

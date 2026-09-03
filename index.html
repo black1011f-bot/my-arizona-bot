@@ -29,8 +29,25 @@
             gap: 20px; z-index: 100; transition: opacity 0.5s ease;
         }
         #splash.hidden { opacity: 0; pointer-events: none; }
+
+        /* Анимированный заголовок Дурак */
         #splash h1 {
-            color: #ffd700; font-size: 3.2em; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            font-size: 3.8em; font-weight: 900; letter-spacing: 2px;
+            background: linear-gradient(45deg, #ffd700, #ff4500, #ff007f, #ffd700);
+            background-size: 300% 300%;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            animation: gradientShift 4s ease infinite, pulseGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes pulseGlow {
+            from { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5)); }
+            to { transform: scale(1.08); filter: drop-shadow(0 0 25px rgba(255, 69, 0, 0.8)); }
         }
 
         .settings-box {
@@ -89,10 +106,22 @@
         /* Поле стола */
         #table-field {
             flex: 1; margin-top: 110px; margin-bottom: 170px;
-            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
             gap: 12px; padding: 10px; z-index: 5;
         }
+        .table-cards-wrapper {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px;
+        }
         .card-pair { position: relative; width: 60px; height: 85px; }
+
+        /* Кнопка Заново на столе */
+        .restart-table-btn {
+            padding: 12px 30px; background: #ffd700; color: #1a1a1a;
+            border: none; border-radius: 25px; font-weight: bold; font-size: 16px;
+            cursor: pointer; box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+            animation: pulseGlow 1.5s ease-in-out infinite alternate;
+            margin-top: 15px; z-index: 50; display: none;
+        }
 
         /* Карты */
         .card {
@@ -157,16 +186,9 @@
         }
         .action-btn:disabled { opacity: 0.2; pointer-events: none; }
 
-        #btn-restart {
-            position: absolute; top: 20px; right: 105px; z-index: 50;
-            padding: 6px 12px; background: rgba(255, 215, 0, 0.2); color: #ffd700;
-            border: 1px solid #ffd700; border-radius: 12px; font-size: 12px; font-weight: bold;
-            cursor: pointer; display: none;
-        }
-
         #status-msg {
             position: absolute; top: 110px; width: 100%; text-align: center;
-            color: #ffd700; font-size: 15px; font-weight: bold;
+            color: #ffd700; font-size: 16px; font-weight: bold;
             text-shadow: 0 2px 5px #000; z-index: 15;
         }
     </style>
@@ -190,8 +212,6 @@
         <button class="start-btn" id="start-btn">Начать игру</button>
     </div>
 
-    <button id="btn-restart">Заново</button>
-
     <!-- Игроки -->
     <div class="player-badge" id="badge-bot">
         <div class="name">Евклид (ИИ)</div>
@@ -212,7 +232,11 @@
 
     <div id="bot-hand"></div>
     <div id="status-msg"></div>
-    <div id="table-field"></div>
+
+    <div id="table-field">
+        <div class="table-cards-wrapper" id="cards-wrapper"></div>
+        <button class="restart-table-btn" id="btn-restart-table">Сыграть заново</button>
+    </div>
 
     <div id="controls">
         <button class="action-btn" id="btn-action" disabled>Отбой</button>
@@ -223,7 +247,7 @@
 </div>
 
 <script>
-    const MAX_HAND_CARDS = 24; // Максимум карт в руке
+    const MAX_HAND_CARDS = 24;
 
     class Card {
         constructor(suit, rank) {
@@ -245,7 +269,7 @@
 
     function createDeck(size) {
         const suits = ['♠','♥','♦','♣'];
-        let ranks = [6,7,8,9,10,11,12,13,14]; // 36 карт по умолчанию
+        let ranks = [6,7,8,9,10,11,12,13,14];
         if (size == 24) ranks = [9,10,11,12,13,14];
         if (size == 52) ranks = [2,3,4,5,6,7,8,9,10,11,12,13,14];
 
@@ -272,7 +296,7 @@
         }
 
         async startWithAnimation() {
-            document.getElementById('btn-restart').style.display = 'block';
+            document.getElementById('btn-restart-table').style.display = 'none';
             const deckContainer = document.getElementById('deck-container');
             deckContainer.classList.add('center-deal');
             this.renderTrumpCard();
@@ -420,7 +444,6 @@
             }
         }
 
-        // Улучшенный ИИ среднего уровня
         botAttack() {
             if (this.gameOver) return;
 
@@ -441,7 +464,7 @@
                 const candidates = this.botHand.filter(c => activeRanks.includes(c.rank));
                 const candidateNonTrumps = candidates.filter(c => c.suit !== this.trumpSuit).sort((a,b) => a.rank - b.rank);
                 
-                cardToPlay = candidateNonTrumps[0] || candidates.find(c => c.rank < 11); // Подкидывает козыри только если они мелкие
+                cardToPlay = candidateNonTrumps[0] || candidates.find(c => c.rank < 11);
             }
 
             if (cardToPlay) {
@@ -461,11 +484,9 @@
             const targetIndex = this.defendingCards.length;
             const target = this.attackingCards[targetIndex];
 
-            // Находим все возможные карты для отбития
             const options = this.botHand.filter(c => c.beats(target, this.trumpSuit));
             
             if (options.length > 0) {
-                // Сортируем: сначала некозырные наименьшего ранга, затем наименьшие козыри
                 options.sort((a,b) => {
                     const aIsTrump = a.suit === this.trumpSuit;
                     const bIsTrump = b.suit === this.trumpSuit;
@@ -542,12 +563,20 @@
 
         checkGameOver() {
             if (this.deck.length === 0) {
+                let msg = '';
                 if (this.playerHand.length === 0 && this.botHand.length === 0) {
-                    document.getElementById('status-msg').textContent = 'Ничья!'; this.gameOver = true;
+                    msg = 'Ничья!'; this.gameOver = true;
                 } else if (this.playerHand.length === 0) {
-                    document.getElementById('status-msg').textContent = 'Победа!'; this.gameOver = true;
+                    msg = 'Вы выиграли! 🎉'; this.gameOver = true;
                 } else if (this.botHand.length === 0) {
-                    document.getElementById('status-msg').textContent = 'Евклид выиграл!'; this.gameOver = true;
+                    msg = 'Евклид выиграл! 🤖'; this.gameOver = true;
+                }
+
+                if (this.gameOver) {
+                    document.getElementById('status-msg').textContent = msg;
+                    document.getElementById('btn-action').disabled = true;
+                    document.getElementById('btn-take').disabled = true;
+                    document.getElementById('btn-restart-table').style.display = 'block';
                 }
             }
             return this.gameOver;
@@ -586,8 +615,8 @@
                 document.getElementById('deck-el').style.display = 'block';
             }
 
-            const table = document.getElementById('table-field');
-            table.innerHTML = '';
+            const wrapper = document.getElementById('cards-wrapper');
+            wrapper.innerHTML = '';
             this.attackingCards.forEach((atk, i) => {
                 const pair = document.createElement('div');
                 pair.className = 'card-pair';
@@ -600,7 +629,7 @@
                     defEl.classList.add('defense-card');
                     pair.appendChild(defEl);
                 }
-                table.appendChild(pair);
+                wrapper.appendChild(pair);
             });
         }
     }
@@ -608,8 +637,8 @@
     let game;
     function restartGame() {
         document.getElementById('splash').classList.remove('hidden');
-        document.getElementById('btn-restart').style.display = 'none';
-        document.getElementById('table-field').innerHTML = '';
+        document.getElementById('btn-restart-table').style.display = 'none';
+        document.getElementById('cards-wrapper').innerHTML = '';
         document.getElementById('player-hand').innerHTML = '';
         document.getElementById('bot-hand').innerHTML = '';
         document.getElementById('status-msg').textContent = '';
@@ -623,7 +652,7 @@
         game.startWithAnimation();
     };
 
-    document.getElementById('btn-restart').onclick = restartGame;
+    document.getElementById('btn-restart-table').onclick = restartGame;
     document.getElementById('btn-action').onclick = () => game?.onAction();
     document.getElementById('btn-take').onclick = () => game?.onTake();
 </script>

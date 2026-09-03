@@ -106,7 +106,7 @@
             animation: floatAnim 2s ease-in-out infinite; margin-top: 15px; z-index: 50; display: none;
         }
 
-        /* КАРТЫ: УВЕЛИЧЕНЫ И СДЕЛАНЫ БОЛЕЕ ЧЕТКИМИ */
+        /* КАРТЫ: УВЕЛИЧЕННЫЕ И ЧЕТКИЕ */
         .card {
             width: 75px; height: 105px; background: #ffffff; border-radius: 8px;
             border: 2px solid #222; box-shadow: 0 6px 16px rgba(0,0,0,0.6);
@@ -133,8 +133,8 @@
         .card-pair .attack-card { left: 0; top: 0; z-index: 1; }
         .card-pair .defense-card { left: 16px; top: 16px; z-index: 2; }
 
-        /* РУКИ ИГРОКОВ С УВЕЛИЧЕННЫМИ КАРТАМИ */
-        #bot-hand { position: absolute; top: -10px; left: 0; width: 100%; height: 140px; display: flex; justify-content: center; z-index: 15; }
+        /* ЗОНЫ ИГРОКОВ */
+        #bot-hand { position: absolute; top: 10px; left: 0; width: 100%; height: 150px; display: flex; justify-content: center; z-index: 15; }
         #bot-hand .card { width: 85px; height: 120px; position: absolute; transform-origin: top center; border: 2px solid #ffffff; }
 
         #player-hand { position: absolute; bottom: 35px; left: 0; width: 100%; height: 160px; display: flex; justify-content: center; align-items: flex-end; z-index: 30; }
@@ -156,7 +156,7 @@
         <h1>Дурак</h1>
         <div class="settings-box">
             <h3>Против кого играем:</h3>
-            <label><input type="radio" name="opponent" value="bot" checked> Против Евлида (ИИ)</label>
+            <label><input type="radio" name="opponent" value="bot" checked> Против Евклида (ИИ)</label>
             <label><input type="radio" name="opponent" value="friend"> С другом (на 1 телефоне)</label>
         </div>
         <div class="settings-box">
@@ -340,7 +340,7 @@
                 const deckEl = document.getElementById('deck-container');
                 const rect = deckEl.getBoundingClientRect();
                 
-                const animCard = this.createCardEl(card, target === 'bot' && !this.isTwoPlayers);
+                const animCard = this.createCardEl(card, true);
                 animCard.classList.add('animating-card');
                 animCard.style.left = rect.left + 'px';
                 animCard.style.top = rect.top + 'px';
@@ -401,7 +401,7 @@
             } else {
                 this.currentTurnPlayer = 'p2';
                 if (this.isTwoPlayers) {
-                    document.getElementById('status-msg').textContent = 'Ход Игрока 2';
+                    document.getElementById('status-msg').textContent = 'Ход Игрока 2 (сверху)';
                     document.getElementById('btn-action').disabled = true;
                     document.getElementById('btn-take').disabled = true;
                 } else {
@@ -603,7 +603,7 @@
                 } else if (this.playerHand.length === 0) {
                     msg = 'Игрок 1 выиграл! 🎉'; this.gameOver = true;
                 } else if (this.botHand.length === 0) {
-                    msg = `${p2Name} выиграл! 🤖`; this.gameOver = true;
+                    msg = `${p2Name} выиграл! 🎉`; this.gameOver = true;
                 }
 
                 if (this.gameOver) {
@@ -617,48 +617,54 @@
         }
 
         updateUI() {
-            // Нижний игрок (Игрок 1)
+            // Разграничение видимости для режима с другом
+            const isP1Turn = this.currentTurnPlayer === 'p1';
+            const isP2Turn = this.currentTurnPlayer === 'p2';
+
+            // Игрок 1 (Снизу)
             const handContainer = document.getElementById('player-hand');
             handContainer.innerHTML = '';
             const totalP = this.playerHand.length;
             const maxSpread = Math.min(window.innerWidth - 60, 440);
             const stepP = totalP > 1 ? Math.min(38, maxSpread / totalP) : 0;
 
-            const hideP1 = this.isTwoPlayers && this.currentTurnPlayer !== 'p1';
+            const hideP1Cards = this.isTwoPlayers && !isP1Turn;
 
             this.playerHand.forEach((card, idx) => {
-                const el = this.createCardEl(card, hideP1);
+                const el = this.createCardEl(card, hideP1Cards);
                 const angle = (idx - (totalP - 1) / 2) * (totalP > 10 ? 1.8 : 2.8);
                 const offsetX = (idx - (totalP - 1) / 2) * stepP;
 
                 el.style.transform = `translateX(${offsetX}px) rotate(${angle}deg)`;
                 el.style.zIndex = idx + 1;
 
-                if (!hideP1) this.bindCardEvents(el, card, offsetX, angle, false);
+                if (!hideP1Cards) {
+                    this.bindCardEvents(el, card, offsetX, angle, false);
+                }
                 handContainer.appendChild(el);
             });
 
-            // Верхний игрок (Игрок 2 / Друг) - КАРТЫ ПОВЕРНУТЫ НА 180 ГРАДУСОВ (ЛИЦОМ К ДРУГУ)
+            // Игрок 2 / Бот (Сверху)
             const botContainer = document.getElementById('bot-hand');
             botContainer.innerHTML = '';
             const totalB = this.botHand.length;
             const stepB = totalB > 1 ? Math.min(38, maxSpread / totalB) : 0;
 
-            const hideP2 = !this.isTwoPlayers || (this.isTwoPlayers && this.currentTurnPlayer !== 'p2');
+            const hideP2Cards = !this.isTwoPlayers || (this.isTwoPlayers && !isP2Turn);
 
             this.botHand.forEach((card, idx) => {
-                const el = this.createCardEl(card, hideP2);
+                const el = this.createCardEl(card, hideP2Cards);
                 const angle = (idx - (totalB - 1) / 2) * (totalB > 10 ? -1.8 : -2.8);
                 const offsetX = (idx - (totalB - 1) / 2) * (this.isTwoPlayers ? stepB : (totalB > 12 ? 10 : 15));
 
-                // Поворот карт на 180 градусов, если они открыты у верхнего игрока
-                const rotateUpsideDown = (this.isTwoPlayers && !hideP2) ? 180 : 0;
+                // ПОВОРОТ НА 180 ГРАДУСОВ ДЛЯ УДОБСТВА ИГРОКА 2 (СИДЯЩЕГО НАПРОТИВ)
+                const rotation = 180 + angle;
 
-                el.style.transform = `translateX(${offsetX}px) rotate(${angle + rotateUpsideDown}deg)`;
+                el.style.transform = `translateX(${offsetX}px) rotate(${rotation}deg)`;
                 el.style.zIndex = idx + 1;
 
-                if (this.isTwoPlayers && !hideP2) {
-                    this.bindCardEvents(el, card, offsetX, angle + rotateUpsideDown, true);
+                if (this.isTwoPlayers && !hideP2Cards) {
+                    this.bindCardEvents(el, card, offsetX, rotation, true);
                 }
                 botContainer.appendChild(el);
             });
@@ -769,4 +775,3 @@
 </script>
 </body>
 </html>
-

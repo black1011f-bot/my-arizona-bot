@@ -573,7 +573,6 @@
             this.attackerIdx = firstPlayer;
             this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
 
-            // Анимация показа самой младшей козырной карты на столе на 2 секунды
             if (winningCard) {
                 document.getElementById('status-msg').textContent = firstPlayer === 0 ? 'Ваш младший козырь!' : `Младший козырь у Игрока ${firstPlayer + 1}`;
                 await this.animateFirstCardShow(winningCard, firstPlayer);
@@ -675,14 +674,31 @@
             return div;
         }
 
+        // Проверка: если у текущего игрока нет карт, пропускаем его ход автоматически
+        findActivePlayer(idx) {
+            let current = idx;
+            for (let i = 0; i < this.totalPlayers; i++) {
+                if (this.hands[current].length > 0) return current;
+                current = (current + 1) % this.totalPlayers;
+            }
+            return current;
+        }
+
         nextTurn() {
             if (this.checkGameOver()) return;
 
-            if (this.hands[0].length === 0 && this.deck.length === 0) {
+            // Пропускаем игроков без карт при переходе хода
+            while (this.hands[this.attackerIdx].length === 0 && this.deck.length === 0) {
                 this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
                 this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
-                this.nextTurn();
-                return;
+                if (this.checkGameOver()) return;
+            }
+
+            while (this.hands[this.defenderIdx].length === 0 && this.deck.length === 0) {
+                this.defenderIdx = (this.defenderIdx + 1) % this.totalPlayers;
+                if (this.attackerIdx === this.defenderIdx) {
+                    this.attackerIdx = (this.defenderIdx - 1 + this.totalPlayers) % this.totalPlayers;
+                }
             }
 
             this.passedPlayers.clear();
@@ -743,7 +759,7 @@
 
                     if (this.defendingCards.length === this.attackingCards.length) {
                         document.getElementById('status-msg').textContent = 'Отбито! Ждем Отбой от всех';
-                        document.getElementById('btn-action').disabled = (this.hands[0].length === 0 && this.deck.length === 0);
+                        document.getElementById('btn-action').disabled = (this.hands[0].length === 0 || this.deck.length === 0);
                         document.getElementById('btn-take').disabled = true;
                         
                         setTimeout(() => this.checkBotsPodkidOrPass(), 500);
@@ -755,15 +771,18 @@
 
         botTurn() {
             if (this.gameOver) return;
-            const hand = this.hands[this.attackerIdx];
-            if (!hand || hand.length === 0) {
+
+            // Если у ходящего бота нет карт, переводим ход дальше
+            if (this.hands[this.attackerIdx].length === 0) {
                 this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
                 this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
                 this.nextTurn();
                 return;
             }
 
+            const hand = this.hands[this.attackerIdx];
             let cardToPlay = null;
+
             if (this.attackingCards.length === 0) {
                 const nonTrumps = hand.filter(c => c.suit !== this.trumpSuit).sort((a,b) => a.rank - b.rank);
                 cardToPlay = nonTrumps.length > 0 ? nonTrumps[0] : hand[0];
@@ -807,11 +826,17 @@
             const activeRanks = [...this.attackingCards, ...this.defendingCards].map(c => c.rank);
 
             for (let p = 0; p < this.totalPlayers; p++) {
-                if (p === this.defenderIdx || p === 0 || this.passedPlayers.has(p)) continue;
+                if (p === this.defenderIdx || this.passedPlayers.has(p)) continue;
 
                 const hand = this.hands[p];
                 if (hand.length === 0) {
                     this.passedPlayers.add(p);
+                    continue;
+                }
+
+                // Если это вы (игрок 0), но у вас нет карт — просто отмечаем отбой
+                if (p === 0) {
+                    this.passedPlayers.add(0);
                     continue;
                 }
 
@@ -827,10 +852,7 @@
                 }
             }
 
-            if (this.hands[0].length === 0 && this.deck.length === 0 && !this.passedPlayers.has(0)) {
-                this.passedPlayers.add(0);
-            }
-
+            this.passedPlayers.add(0);
             this.checkRoundCompletion();
         }
 
@@ -853,7 +875,7 @@
         checkRoundCompletion() {
             let requiredPassCount = 0;
             for (let p = 0; p < this.totalPlayers; p++) {
-                if (p !== this.defenderIdx && (this.hands[p].length > 0 || (p === 0 && this.deck.length > 0))) {
+                if (p !== this.defenderIdx && this.hands[p].length > 0) {
                     requiredPassCount++;
                 }
             }
@@ -998,9 +1020,8 @@
                 handContainer.appendChild(el);
             });
 
-            const isUserWinner = myHand.length === 0 && this.deck.length === 0;
             const actionBtn = document.getElementById('btn-action');
-            if (isUserWinner && !actionBtn.disabled) {
+            if (myHand.length === 0 && !actionBtn.disabled) {
                 actionBtn.disabled = true;
             }
 

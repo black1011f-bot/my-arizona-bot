@@ -213,6 +213,10 @@
             if (this.suit === other.suit) return this.rank > other.rank;
             return false;
         }
+        // Сравнение для сортировки по силе (чем больше ранг, тем сильнее)
+        static compareStrength(a, b) {
+            return a.rank - b.rank;
+        }
     }
 
     // ================== КОЛОДА ==================
@@ -237,11 +241,11 @@
             this.tableCards = [];
             this.attackingCards = [];
             this.defendingCards = [];
-            this.isPlayerTurn = true;   // true – ход игрока, false – ход бота
-            this.isAttacking = true;    // true – фаза атаки, false – фаза защиты
+            this.isPlayerTurn = true;
+            this.isAttacking = true;
             this.gameOver = false;
-            this.waitingForPlayerAction = false; // игрок может сделать ход (атака/защита)
-            this.waitingForPass = false;         // игрок должен нажать "Отбой" после взятия ботом
+            this.waitingForPlayerAction = false;
+            this.waitingForPass = false;
             this.cardsToDeal = 6;
             this.maxTableCards = 6;
             this.suggestedCards = [];
@@ -257,7 +261,7 @@
             this.attackingCards = [];
             this.defendingCards = [];
             this.gameOver = false;
-            this.isPlayerTurn = true;   // игрок ходит первым
+            this.isPlayerTurn = true;
             this.isAttacking = true;
             this.suggestedCards = [];
             this.waitingForPass = false;
@@ -274,7 +278,6 @@
             this.updateUI();
             this.checkGameOver();
             if (!this.gameOver) {
-                // Начинаем с хода игрока
                 this.startPlayerTurn();
             }
         }
@@ -312,10 +315,42 @@
             return this.playerHand.some(c => ranks.includes(c.rank));
         }
 
+        // ----- Лучший выбор для бота -----
+        // Выбор карты для атаки: самая слабая не-козырь, иначе самый слабый козырь
+        botChooseAttackCard() {
+            const nonTrump = this.botHand.filter(c => c.suit !== this.trumpSuit);
+            if (nonTrump.length > 0) {
+                nonTrump.sort((a,b) => a.rank - b.rank);
+                return nonTrump[0];
+            } else {
+                this.botHand.sort((a,b) => a.rank - b.rank);
+                return this.botHand[0];
+            }
+        }
+
+        // Выбор защитной карты для бота: самая слабая карта, которая бьёт атакующую (стараясь не использовать козыри, если есть альтернатива)
+        botChooseDefenseCard(attackCard) {
+            // Собираем все карты, которые могут побить
+            const candidates = this.botHand.filter(c => c.beats(attackCard, this.trumpSuit));
+            if (candidates.length === 0) return null;
+            // Сортируем по силе (возрастание) – выбираем самую слабую
+            candidates.sort((a,b) => a.rank - b.rank);
+            // Если есть не-козырь, предпочитаем его (даже если он слабее козыря)
+            const nonTrump = candidates.filter(c => c.suit !== this.trumpSuit);
+            if (nonTrump.length > 0) {
+                // берём самую слабую не-козырь
+                nonTrump.sort((a,b) => a.rank - b.rank);
+                return nonTrump[0];
+            } else {
+                // все кандидаты - козыри, берём самый слабый
+                return candidates[0];
+            }
+        }
+
         // ----- Начало хода игрока -----
         startPlayerTurn() {
             this.isPlayerTurn = true;
-            this.isAttacking = true;    // игрок всегда атакует в свой ход
+            this.isAttacking = true;
             this.waitingForPlayerAction = true;
             this.waitingForPass = false;
             this.enableControls(false, false, false, true);
@@ -347,7 +382,6 @@
             this.suggestedCards = [];
             this.updateUI();
 
-            // Проверяем, может ли игрок ещё подкинуть
             const canAdd = this.canPlayerAdd() && this.tableCards.length < this.maxTableCards;
             if (canAdd) {
                 this.waitingForPlayerAction = true;
@@ -355,42 +389,66 @@
                 this.setStatus('Подкиньте ещё или нажмите "Отбой".');
                 this.highlightPossibleCards();
             } else {
-                // Не может подкинуть → автоматический отбой (завершаем атаку)
                 this.playerPassAttack();
             }
             return true;
         }
 
-        // Игрок нажал "Отбой" (завершает свою атаку)
         playerPassAttack() {
             if (this.gameOver) return;
             this.waitingForPlayerAction = false;
             this.waitingForPass = false;
             this.enableControls(false, false, false, false);
             this.setStatus('Бот защищается...');
-            // Теперь бот должен отбиться
             this.botDefend();
         }
 
-        // ----- Защита бота -----
+        // ----- Защита бота (улучшенная) -----
         botDefend() {
             if (this.gameOver) return;
             const attackCards = this.attackingCards;
             let defense = [];
             let usedIndices = [];
             let success = true;
+
             for (let atk of attackCards) {
-                let found = false;
+                // Ищем самую слабую подходящую карту
+                let bestCard = null;
+                let bestIdx = -1;
                 for (let i=0; i<this.botHand.length; i++) {
                     if (usedIndices.includes(i)) continue;
-                    if (this.botHand[i].beats(atk, this.trumpSuit)) {
-                        defense.push(this.botHand[i]);
-                        usedIndices.push(i);
-                        found = true;
-                        break;
+                    const candidate = this.botHand[i];
+                    if (candidate.beats(atk, this.trumpSuit)) {
+                        // Выбираем самую слабую (по рангу), и если есть не-козырь, предпочитаем его
+                        if (!bestCard) {
+                            bestCard = candidate;
+                            bestIdx = i;
+                        } else {
+                            // Сравниваем: предпочитаем не-козырь, затем меньший ранг
+                            const bestIsTrump = bestCard.suit === this.trumpSuit;
+                            const candIsTrump = candidate.suit === this.trumpSuit;
+                            if (bestIsTrump && !candIsTrump) {
+                                bestCard = candidate;
+                                bestIdx = i;
+                            } else if (!bestIsTrump && candIsTrump) {
+                                // оставляем текущий
+                            } else {
+                                // оба козыри или оба не-козыри, выбираем меньший ранг
+                                if (candidate.rank < bestCard.rank) {
+                                    bestCard = candidate;
+                                    bestIdx = i;
+                                }
+                            }
+                        }
                     }
                 }
-                if (!found) { success = false; break; }
+                if (bestCard && bestIdx !== -1) {
+                    defense.push(bestCard);
+                    usedIndices.push(bestIdx);
+                } else {
+                    success = false;
+                    break;
+                }
             }
 
             if (success) {
@@ -402,11 +460,9 @@
                 this.tableCards.push(...defense);
                 this.defendingCards.push(...defense);
                 this.updateUI();
-                // Все карты уходят в "бито"
                 this.clearTable();
                 this.setStatus('Бот отбился!');
-                // Ход переходит боту (следующий после игрока)
-                this.finishTurn(false); // false – ход переходит боту
+                this.finishTurn(false);
             } else {
                 // Бот не может отбиться – берёт карты
                 this.botHand.push(...this.tableCards);
@@ -415,11 +471,9 @@
                 this.defendingCards = [];
                 this.updateUI();
                 this.setStatus('Бот взял карты. Завершите ход, нажав "Отбой".');
-                // Теперь игрок должен нажать "Отбой"
                 this.waitingForPlayerAction = false;
                 this.waitingForPass = true;
-                this.enableControls(true, false, false, false); // только "Отбой"
-                // Не переключаем ход, ждём нажатия "Отбой"
+                this.enableControls(true, false, false, false);
             }
         }
 
@@ -429,37 +483,38 @@
             this.waitingForPass = false;
             this.enableControls(false, false, false, false);
             this.setStatus('Ход завершён.');
-            // Завершаем ход, ход переходит боту (следующий после игрока)
             this.finishTurn(false);
         }
 
-        // ----- Ход бота (атака) -----
+        // ----- Ход бота (улучшенный) -----
         botTurn() {
             if (this.gameOver) return;
             if (this.isPlayerTurn) return;
             if (this.botHand.length === 0) { this.checkGameOver(); return; }
 
             this.isAttacking = true;
-            // Бот выбирает самую младшую карту (можно улучшить стратегию)
-            let card = this.botHand[0];
-            this.botHand.splice(0, 1);
+            const card = this.botChooseAttackCard();
+            if (!card) return;
+            const idx = this.botHand.indexOf(card);
+            if (idx === -1) return;
+            this.botHand.splice(idx, 1);
             this.tableCards.push(card);
             this.attackingCards.push(card);
             this.updateUI();
             this.setStatus('Бот атакует картой ' + card.name + card.suit);
 
-            // Теперь игрок должен защищаться
+            // Игрок должен защищаться
             this.isPlayerTurn = true;
             this.isAttacking = false;
             this.waitingForPlayerAction = true;
             this.waitingForPass = false;
-            this.enableControls(false, true, false, true); // только "Взять" и "Подсказка"
+            this.enableControls(false, true, false, true);
             this.setStatus('Отбейтесь или нажмите "Взять".');
             this.highlightPossibleCards();
             this.updateUI();
         }
 
-        // ----- Защита игрока (отбой) -----
+        // ----- Защита игрока -----
         playerDefend(card) {
             if (!this.waitingForPlayerAction || this.isAttacking || !this.isPlayerTurn || this.gameOver) return false;
             const attackCards = this.attackingCards;
@@ -482,14 +537,11 @@
             this.suggestedCards = [];
             this.updateUI();
 
-            // Проверяем, все ли отбиты
             if (this.defendingCards.length === this.attackingCards.length) {
-                // Игрок отбился полностью
                 this.clearTable();
                 this.setStatus('Вы отбились!');
-                this.finishTurn(true); // ход переходит игроку (следующий после бота)
+                this.finishTurn(true);
             } else {
-                // Остались ещё атакующие карты – нужно отбивать дальше
                 this.waitingForPlayerAction = true;
                 this.enableControls(false, true, false, true);
                 this.setStatus('Отбейте следующую карту или нажмите "Взять".');
@@ -499,10 +551,9 @@
             return true;
         }
 
-        // ----- Игрок нажимает "Взять" (забирает все карты) -----
+        // ----- Игрок нажимает "Взять" -----
         playerTake() {
             if (!this.waitingForPlayerAction || this.isAttacking || !this.isPlayerTurn || this.gameOver) return;
-            // Игрок забирает все карты со стола
             this.playerHand.push(...this.tableCards);
             this.tableCards = [];
             this.attackingCards = [];
@@ -510,30 +561,25 @@
             this.suggestedCards = [];
             this.updateUI();
             this.setStatus('Вы взяли карты.');
-            // После взятия игроком, ход переходит игроку (следующий после бота)
             this.finishTurn(true);
         }
 
-        // ----- Завершение хода (общая функция) -----
+        // ----- Завершение хода (общая) -----
         finishTurn(nextIsPlayer) {
-            // nextIsPlayer: true – ход переходит игроку, false – боту
             this.waitingForPlayerAction = false;
             this.waitingForPass = false;
             this.enableControls(false, false, false, false);
 
-            // Добираем карты до 6
             this.dealCards();
             this.updateUI();
             this.checkGameOver();
             if (this.gameOver) return;
 
-            // Переключаем ход
             this.isPlayerTurn = nextIsPlayer;
-            this.isAttacking = true; // следующий ход всегда атака
+            this.isAttacking = true;
             if (this.isPlayerTurn) {
                 this.startPlayerTurn();
             } else {
-                // Ход бота
                 this.botTurn();
             }
         }
@@ -550,7 +596,7 @@
             this.sortHand(this.botHand);
         }
 
-        // ----- Очистка стола (все карты уходят в "бито") -----
+        // ----- Очистка стола -----
         clearTable() {
             this.tableCards = [];
             this.attackingCards = [];
@@ -575,9 +621,8 @@
             return false;
         }
 
-        // ----- UI обновления -----
+        // ----- UI -----
         setStatus(msg) { document.getElementById('status').textContent = msg; }
-
         enableControls(pass, take, add, hint) {
             document.getElementById('btnPass').disabled = !pass;
             document.getElementById('btnTake').disabled = !take;
@@ -616,7 +661,6 @@
             }
         }
 
-        // ----- Подсказка -----
         hint() {
             if (!this.waitingForPlayerAction && !this.waitingForPass) return;
             if (this.waitingForPass) {
@@ -752,7 +796,6 @@
             return div;
         }
 
-        // ----- Обработка кликов по картам -----
         onCardClick(card) {
             if (this.gameOver) return;
             if (this.waitingForPass) {
@@ -773,7 +816,6 @@
             }
         }
 
-        // ----- Обработка кнопок -----
         onPass() {
             if (this.waitingForPass) {
                 this.playerPassAfterBotTake();
@@ -835,4 +877,4 @@
     document.getElementById('menu').style.display = 'flex';
 </script>
 </body>
-</html>
+                </html>

@@ -9,128 +9,165 @@
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
         html, body {
             width: 100%; height: 100%; overflow: hidden;
-            background: #1a3a1a;
-            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #121212;
             touch-action: manipulation;
         }
-        #app {
-            width: 100%; height: 100%; max-width: 800px;
-            margin: 0 auto;
-            background: #2a6b2a;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
-        #splash {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            gap: 20px;
-            padding: 30px;
-            transition: opacity 0.4s ease;
-        }
-        #splash.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        #splash h1 { color: #ffd700; font-size: 3em; text-shadow: 0 0 20px #000; }
-        #splash .options { display: flex; flex-direction: column; gap: 10px; }
-        #splash label {
-            color: #fff; font-size: 1.2em; background: rgba(255,255,255,0.1);
-            padding: 10px 20px; border-radius: 20px; display: flex; align-items: center; gap: 10px; cursor: pointer;
-        }
-        #splash .start-btn {
-            font-size: 1.5em; padding: 12px 40px; background: #ffd700; border: none;
-            border-radius: 30px; color: #1a3a1a; font-weight: bold; cursor: pointer;
-        }
-        #table {
-            flex: 1; position: relative;
-            background: radial-gradient(circle at 50% 50%, #3a8a3a, #1e5a1e);
-            display: flex; flex-direction: column; overflow: hidden;
-        }
-        .zone { display: flex; justify-content: center; align-items: center; position: relative; }
-        #bot-zone { flex: 0 0 90px; background: rgba(0,0,0,0.1); }
-        #center-zone {
-            flex: 1; display: flex; justify-content: center; align-items: center;
-            position: relative; padding: 10px;
-        }
-        #player-zone { flex: 0 0 130px; background: rgba(0,0,0,0.1); position: relative; }
-        
-        .card-pair { position: relative; width: 60px; height: 84px; margin: 0 5px; }
-        
-        .card {
-            width: 60px; height: 84px; background: #fff; border-radius: 6px;
-            border: 1px solid #333; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            display: flex; flex-direction: column; justify-content: space-between;
-            padding: 4px; font-weight: bold; font-size: 0.9em; position: absolute;
-        }
-        .card.back { background: #1a3a8a; border: 2px solid #fff; }
-        .card.red { color: #c00; }
-        .card.black { color: #000; }
-        .card.trump-card { border: 2px solid gold; }
-        .card.highlight { box-shadow: 0 0 12px 3px #ffd700; border-color: #ffd700; z-index: 10; }
-        .card .top { display: flex; flex-direction: column; line-height: 1; }
-        .card .bottom { display: flex; flex-direction: column; line-height: 1; transform: rotate(180deg); align-self: flex-end; }
-        
-        .card-pair .attack-card { left: 0; top: 0; z-index: 1; }
-        .card-pair .defense-card { left: 12px; top: 12px; z-index: 2; }
-        
-        #deck-area { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; }
-        #deck-area .card { position: relative; }
-        #trump-info { color: #fff; font-weight: bold; margin-top: 5px; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 10px; }
-        
-        #controls { display: flex; justify-content: center; gap: 10px; padding: 10px; background: rgba(0,0,0,0.4); }
-        #controls button {
-            padding: 10px 18px; border: none; border-radius: 20px; font-weight: bold;
-            background: #ffd700; color: #1a3a1a; cursor: pointer;
-        }
-        #controls button:disabled { opacity: 0.3; pointer-events: none; }
-        #status { color: #fff; text-align: center; padding: 8px; background: rgba(0,0,0,0.5); font-size: 0.95em; }
 
-        @media (max-width: 480px) {
-            .card { width: 48px; height: 68px; font-size: 0.8em; }
-            .card-pair { width: 48px; height: 68px; }
-            #player-zone { flex-basis: 110px; }
-            #bot-zone { flex-basis: 75px; }
+        /* Игровой стол с деревянной текстурой */
+        #app {
+            width: 100%; height: 100%; max-width: 500px; margin: 0 auto;
+            background: #2b1d14 url('https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;
+            display: flex; flex-direction: column; justify-content: space-between;
+            position: relative; overflow: hidden;
+        }
+
+        /* Плашки игроков */
+        .player-badge {
+            position: absolute; background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px;
+            color: #fff; padding: 4px 8px; font-size: 12px; min-width: 90px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 20;
+        }
+        .player-badge .name { font-weight: bold; margin-bottom: 2px; }
+        .player-badge .info { display: flex; justify-content: space-between; align-items: center; color: #ccc; }
+        .player-badge .status-icon { font-size: 12px; }
+
+        #badge-bot1 { top: 40px; left: 10px; }
+        #badge-bot2 { top: 180px; left: 10px; }
+        #badge-bot3 { top: 180px; right: 10px; }
+        #badge-player { bottom: 140px; left: 10px; }
+
+        /* Зона колоды и козыря */
+        #deck-container {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center; z-index: 10;
+        }
+        .deck-card {
+            width: 65px; height: 90px; border-radius: 6px;
+            background: url('https://i.postimg.cc/BQv12ZJj/1788423565409.jpg') center/cover no-repeat;
+            border: 1px solid #fff; box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+            position: relative;
+        }
+        .deck-count {
+            position: absolute; top: -5px; right: -5px; background: #fff;
+            color: #000; font-weight: bold; font-size: 12px; padding: 2px 6px;
+            border-radius: 4px; border: 1px solid #000;
+        }
+        .trump-card-bg {
+            width: 65px; height: 90px; margin-top: -65px; transform: rotate(90deg);
+            z-index: -1; opacity: 0.9;
+        }
+
+        /* Игровое поле (стол) */
+        #table-field {
+            flex: 1; margin-top: 130px; margin-bottom: 150px;
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            gap: 12px; padding: 10px; z-index: 5;
+        }
+        .card-pair { position: relative; width: 65px; height: 92px; }
+
+        /* Карты */
+        .card {
+            width: 65px; height: 92px; background: #fff; border-radius: 6px;
+            border: 1px solid #ccc; box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            position: absolute; display: flex; flex-direction: column;
+            justify-content: space-between; padding: 3px 5px;
+            background-size: cover; background-position: center;
+        }
+        .card.back {
+            background-image: url('https://i.postimg.cc/BQv12ZJj/1788423565409.jpg') !important;
+            border: 1px solid #fff;
+        }
+        .card-center-logo {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 32px; height: 32px;
+            background: url('https://i.postimg.cc/0ycmL6ZT/1788346659518.jpg') center/contain no-repeat;
+            pointer-events: none; opacity: 0.85;
+        }
+        .card .corner { font-size: 11px; font-weight: bold; line-height: 1; text-align: center; }
+        .card .corner .suit { font-size: 12px; }
+        .card.red { color: #d32f2f; }
+        .card.black { color: #111; }
+        .card.bottom-corner { transform: rotate(180deg); }
+
+        .card-pair .attack-card { left: 0; top: 0; z-index: 1; }
+        .card-pair .defense-card { left: 14px; top: 14px; z-index: 2; }
+
+        /* Веер карт игрока */
+        #player-hand {
+            position: absolute; bottom: -20px; left: 0; width: 100%; height: 150px;
+            display: flex; justify-content: center; align-items: flex-end; z-index: 30;
+        }
+        #player-hand .card {
+            position: absolute; cursor: pointer; transition: transform 0.2s ease, bottom 0.2s ease;
+            transform-origin: bottom center;
+        }
+        #player-hand .card:active, #player-hand .card.selected {
+            bottom: 25px !important; box-shadow: 0 0 12px #ffd700;
+        }
+
+        /* Элементы управления и статусы */
+        #controls {
+            position: absolute; bottom: 150px; right: 15px;
+            display: flex; flex-direction: column; gap: 8px; z-index: 40;
+        }
+        .action-btn {
+            padding: 10px 20px; background: rgba(0,0,0,0.8); color: #fff;
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+            font-weight: bold; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px);
+        }
+        .action-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+        #status-msg {
+            position: absolute; top: 115px; width: 100%; text-align: center;
+            color: #ffd700; font-size: 13px; font-weight: bold;
+            text-shadow: 0 2px 4px #000; z-index: 15;
         }
     </style>
 </head>
 <body>
 <div id="app">
-    <div id="splash">
-        <h1>♠ Дурак ♥</h1>
-        <div class="options">
-            <label><input type="radio" name="mode" value="podkid" checked> Подкидной</label>
-        </div>
-        <button class="start-btn" id="startBtn">Играть</button>
+    <!-- Игроки -->
+    <div class="player-badge" id="badge-bot1">
+        <div class="name">Евклид</div>
+        <div class="info"><span id="count-bot1">6</span> <span class="status-icon" id="status-bot1">🛡️</span></div>
+    </div>
+    <div class="player-badge" id="badge-bot2">
+        <div class="name">Платон</div>
+        <div class="info"><span id="count-bot2">6</span> <span class="status-icon" id="status-bot2"></span></div>
+    </div>
+    <div class="player-badge" id="badge-bot3">
+        <div class="name">Сократ</div>
+        <div class="info"><span id="count-bot3">6</span> <span class="status-icon" id="status-bot3"></span></div>
+    </div>
+    <div class="player-badge" id="badge-player">
+        <div class="name">Игрок</div>
+        <div class="info"><span id="count-player">6</span> <span class="status-icon" id="status-player">⚔️</span></div>
     </div>
 
-    <div id="table">
-        <div id="bot-zone" class="zone"></div>
-        <div id="center-zone">
-            <div id="pairs-container" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px;"></div>
-            <div id="deck-area">
-                <div class="card back" id="deckCard"></div>
-                <div id="trump-info">♠</div>
-            </div>
+    <!-- Колода и козырь -->
+    <div id="deck-container">
+        <div class="deck-card" id="deck-el">
+            <div class="deck-count" id="deck-count">28</div>
         </div>
-        <div id="player-zone" class="zone"></div>
+        <div id="trump-card-slot"></div>
     </div>
 
-    <div id="status">Загрузка...</div>
+    <div id="status-msg">Ваш ход</div>
+
+    <!-- Стол -->
+    <div id="table-field"></div>
+
+    <!-- Кнопки управления -->
     <div id="controls">
-        <button id="btnPass" disabled>Отбой</button>
-        <button id="btnTake" disabled>Взять</button>
-        <button id="btnNewGame">Заново</button>
+        <button class="action-btn" id="btn-action" disabled>Отбой</button>
+        <button class="action-btn" id="btn-take" disabled>Взять</button>
     </div>
+
+    <!-- Рука игрока -->
+    <div id="player-hand"></div>
 </div>
 
 <script>
@@ -139,7 +176,8 @@
 
     class Card {
         constructor(suit, rank) {
-            this.suit = suit; this.rank = rank; this.id = suit + rank;
+            this.suit = suit; this.rank = rank;
+            this.id = suit + rank;
         }
         get name() {
             const names = { 6:'6',7:'7',8:'8',9:'9',10:'10',11:'В',12:'Д',13:'К',14:'Т' };
@@ -166,178 +204,144 @@
             this.trumpCard = this.deck[0];
             this.trumpSuit = this.trumpCard.suit;
             this.playerHand = [];
-            this.botHand = [];
+            this.bot1Hand = [];
             this.attackingCards = [];
             this.defendingCards = [];
             this.isPlayerTurn = true;
             this.isAttacking = true;
             this.gameOver = false;
-            this.waitingForPass = false;
         }
 
         init() {
             for (let i = 0; i < 6; i++) {
                 if (this.deck.length) this.playerHand.push(this.deck.pop());
-                if (this.deck.length) this.botHand.push(this.deck.pop());
+                if (this.deck.length) this.bot1Hand.push(this.deck.pop());
             }
             this.sortHands();
-            this.startTurn();
+            this.renderTrumpCard();
+            this.updateUI();
         }
 
         sortHands() {
             const score = c => (c.suit === this.trumpSuit ? 100 : 0) + c.rank;
             this.playerHand.sort((a,b) => score(a) - score(b));
-            this.botHand.sort((a,b) => score(a) - score(b));
         }
 
-        startTurn() {
-            this.updateUI();
-            if (this.checkGameOver()) return;
-
-            if (this.isPlayerTurn) {
-                this.setStatus('Ваш ход. Выберите карту.');
-                this.enableControls(false, false);
-            } else {
-                this.setStatus('Ход бота...');
-                setTimeout(() => this.botAttack(), 800);
-            }
+        renderTrumpCard() {
+            const slot = document.getElementById('trump-card-slot');
+            slot.innerHTML = '';
+            const el = this.createCardEl(this.trumpCard);
+            el.classList.add('trump-card-bg');
+            slot.appendChild(el);
         }
 
-        playerPlayCard(card) {
+        createCardEl(card) {
+            const div = document.createElement('div');
+            div.className = `card ${card.isRed ? 'red' : 'black'}`;
+            div.innerHTML = `
+                <div class="corner"><div class="rank">${card.name}</div><div class="suit">${card.suit}</div></div>
+                <div class="card-center-logo"></div>
+                <div class="corner bottom-corner"><div class="rank">${card.name}</div><div class="suit">${card.suit}</div></div>
+            `;
+            return div;
+        }
+
+        playCard(card) {
             if (this.gameOver) return;
 
             if (this.isPlayerTurn && this.isAttacking) {
                 if (this.attackingCards.length > 0) {
-                    const ranks = [...this.attackingCards, ...this.defendingCards].map(c => c.rank);
-                    if (!ranks.includes(card.rank)) return;
+                    const activeRanks = [...this.attackingCards, ...this.defendingCards].map(c => c.rank);
+                    if (!activeRanks.includes(card.rank)) return;
                 }
                 this.playerHand = this.playerHand.filter(c => c !== card);
                 this.attackingCards.push(card);
                 this.updateUI();
-                this.setStatus('Бот отбивается...');
-                this.enableControls(false, false);
+                document.getElementById('status-msg').textContent = 'Евклид отбивается...';
                 setTimeout(() => this.botDefend(), 800);
-
             } else if (!this.isPlayerTurn && !this.isAttacking) {
                 const target = this.attackingCards[this.defendingCards.length];
                 if (card.beats(target, this.trumpSuit)) {
                     this.playerHand = this.playerHand.filter(c => c !== card);
                     this.defendingCards.push(card);
                     this.updateUI();
-
                     if (this.defendingCards.length === this.attackingCards.length) {
-                        this.setStatus('Вы отбились! Ваш ход.');
-                        this.enableControls(true, false);
-                    } else {
-                        this.setStatus('Отбейте следующую карту или возьмите.');
-                        this.enableControls(false, true);
+                        document.getElementById('status-msg').textContent = 'Вы отбились! Нажмите "Отбой"';
+                        document.getElementById('btn-action').disabled = false;
+                        document.getElementById('btn-take').disabled = true;
                     }
                 }
             }
         }
 
-        botAttack() {
-            if (this.gameOver) return;
-            const card = this.botHand.find(c => c.suit !== this.trumpSuit) || this.botHand[0];
-            if (!card) { this.finishTurn(true); return; }
-
-            this.botHand = this.botHand.filter(c => c !== card);
-            this.attackingCards.push(card);
-            this.isAttacking = false;
-            this.updateUI();
-            this.setStatus('Бот походил. Отбивайтесь!');
-            this.enableControls(false, true);
-        }
-
         botDefend() {
             const target = this.attackingCards[this.defendingCards.length];
-            const card = this.botHand.find(c => c.beats(target, this.trumpSuit));
+            const card = this.bot1Hand.find(c => c.beats(target, this.trumpSuit));
 
             if (card) {
-                this.botHand = this.botHand.filter(c => c !== card);
+                this.bot1Hand = this.bot1Hand.filter(c => c !== card);
                 this.defendingCards.push(card);
                 this.updateUI();
-
                 if (this.defendingCards.length === this.attackingCards.length) {
-                    this.enableControls(true, false);
-                    this.setStatus('Бот отбился. Нажмите "Отбой".');
+                    document.getElementById('btn-action').disabled = false;
+                    document.getElementById('status-msg').textContent = 'Евклид отбился. Можно подкинуть или Отбой.';
                 } else {
                     setTimeout(() => this.botDefend(), 600);
                 }
             } else {
-                this.setStatus('Бот берет карты! Подкиньте еще или нажмите "Отбой".');
-                this.botHand.push(...this.attackingCards, ...this.defendingCards);
-                this.attackingCards = [];
-                this.defendingCards = [];
-                this.waitingForPass = true;
-                this.enableControls(true, false);
+                document.getElementById('status-msg').textContent = 'Евклид берет карты!';
+                this.bot1Hand.push(...this.attackingCards, ...this.defendingCards);
+                this.attackingCards = []; this.defendingCards = [];
+                setTimeout(() => this.finishTurn(true), 1200);
             }
         }
 
-        onPass() {
-            if (this.waitingForPass) {
-                this.waitingForPass = false;
-                this.finishTurn(true); // Ход остается игроку, т.к. бот взял
-            } else if (this.defendingCards.length === this.attackingCards.length) {
-                const nextTurn = !this.isPlayerTurn;
-                this.finishTurn(nextTurn);
-            }
+        onAction() {
+            this.finishTurn(!this.isPlayerTurn);
         }
 
         onTake() {
             this.playerHand.push(...this.attackingCards, ...this.defendingCards);
-            this.attackingCards = [];
-            this.defendingCards = [];
-            this.finishTurn(false); // Ход переходит боту
+            this.attackingCards = []; this.defendingCards = [];
+            this.finishTurn(false);
         }
 
         finishTurn(nextIsPlayer) {
-            this.attackingCards = [];
-            this.defendingCards = [];
-            
+            this.attackingCards = []; this.defendingCards = [];
             while (this.playerHand.length < 6 && this.deck.length) this.playerHand.push(this.deck.pop());
-            while (this.botHand.length < 6 && this.deck.length) this.botHand.push(this.deck.pop());
-            
+            while (this.bot1Hand.length < 6 && this.deck.length) this.bot1Hand.push(this.deck.pop());
+
             this.sortHands();
             this.isPlayerTurn = nextIsPlayer;
             this.isAttacking = true;
-            this.startTurn();
-        }
-
-        checkGameOver() {
-            if (this.deck.length === 0) {
-                if (this.playerHand.length === 0) { this.setStatus('🎉 Вы выиграли!'); this.gameOver = true; }
-                else if (this.botHand.length === 0) { this.setStatus('😞 Бот выиграл.'); this.gameOver = true; }
-            }
-            return this.gameOver;
-        }
-
-        setStatus(msg) { document.getElementById('status').textContent = msg; }
-        enableControls(pass, take) {
-            document.getElementById('btnPass').disabled = !pass;
-            document.getElementById('btnTake').disabled = !take;
+            document.getElementById('btn-action').disabled = true;
+            document.getElementById('btn-take').disabled = true;
+            document.getElementById('status-msg').textContent = this.isPlayerTurn ? 'Ваш ход' : 'Ход Евклида';
+            this.updateUI();
         }
 
         updateUI() {
-            // Отрисовка руки игрока
-            const pZone = document.getElementById('player-zone');
-            pZone.innerHTML = '';
+            // Рука игрока
+            const handContainer = document.getElementById('player-hand');
+            handContainer.innerHTML = '';
             const total = this.playerHand.length;
-            this.playerHand.forEach((card, i) => {
+            this.playerHand.forEach((card, idx) => {
                 const el = this.createCardEl(card);
-                const offset = (i - (total - 1) / 2) * 35;
-                el.style.transform = `translateX(${offset}px)`;
-                el.onclick = () => this.playerPlayCard(card);
-                pZone.appendChild(el);
+                const angle = (idx - (total - 1) / 2) * 8;
+                const offsetX = (idx - (total - 1) / 2) * 30;
+                el.style.transform = `translateX(${offsetX}px) rotate(${angle}deg)`;
+                el.onclick = () => this.playCard(card);
+                handContainer.appendChild(el);
             });
 
-            // Отрисовка бота
-            const bZone = document.getElementById('bot-zone');
-            bZone.innerHTML = `<span style="color:#fff">Карт у бота: ${this.botHand.length}</span>`;
+            // Счетчики карт
+            document.getElementById('count-player').textContent = this.playerHand.length;
+            document.getElementById('count-bot1').textContent = this.bot1Hand.length;
+            document.getElementById('deck-count').textContent = this.deck.length;
 
-            // Отрисовка стола
-            const pairsContainer = document.getElementById('pairs-container');
-            pairsContainer.innerHTML = '';
+            // Стол
+            const table = document.getElementById('table-field');
+            table.innerHTML = '';
             this.attackingCards.forEach((atk, i) => {
                 const pair = document.createElement('div');
                 pair.className = 'card-pair';
@@ -350,35 +354,16 @@
                     defEl.classList.add('defense-card');
                     pair.appendChild(defEl);
                 }
-                pairsContainer.appendChild(pair);
+                table.appendChild(pair);
             });
-
-            // Колода
-            document.getElementById('deckCard').style.display = this.deck.length ? 'block' : 'none';
-            document.getElementById('deckCard').textContent = this.deck.length;
-            document.getElementById('trump-info').textContent = 'Козырь: ' + this.trumpSuit;
-        }
-
-        createCardEl(card) {
-            const div = document.createElement('div');
-            div.className = `card ${card.isRed ? 'red' : 'black'} ${card.suit === this.trumpSuit ? 'trump-card' : ''}`;
-            div.innerHTML = `<div class="top"><span>${card.name}</span><span>${card.suit}</span></div>
-                             <div class="bottom"><span>${card.name}</span><span>${card.suit}</span></div>`;
-            return div;
         }
     }
 
-    let game;
-    document.getElementById('startBtn').onclick = () => {
-        document.getElementById('splash').classList.add('hidden');
-        game = new Game();
-        game.init();
-    };
-    document.getElementById('btnPass').onclick = () => game?.onPass();
-    document.getElementById('btnTake').onclick = () => game?.onTake();
-    document.getElementById('btnNewGame').onclick = () => {
-        document.getElementById('splash').classList.remove('hidden');
-    };
+    const game = new Game();
+    game.init();
+
+    document.getElementById('btn-action').onclick = () => game.onAction();
+    document.getElementById('btn-take').onclick = () => game.onTake();
 </script>
 </body>
 </html>

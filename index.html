@@ -193,12 +193,31 @@
         .game-click-area { width:100%; max-width:220px; aspect-ratio:1; margin:0 auto 1rem; cursor:pointer; border-radius:20px; overflow:hidden; border:4px solid var(--border); transition:transform 0.1s, border-color 0.3s; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
         .game-click-area:active { transform:scale(0.92); }
         .game-click-area img { width:100%; height:100%; object-fit:cover; pointer-events:none; display:block; }
+        /* ========== UPGRADES ========== */
+        .upgrade-card { display:flex; justify-content:space-between; align-items:center; padding:0.8rem; border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:0.6rem; background:var(--card); }
+        .upgrade-info { flex:1; }
+        .upgrade-name { font-weight:700; font-size:0.9rem; }
+        .upgrade-cost { font-size:0.75rem; color:var(--muted); }
+        /* ========== STAR RATING ========== */
+        .star-rating { display:flex; gap:0.4rem; font-size:2rem; cursor:pointer; }
+        .star-rating span { color:var(--border); transition:color 0.2s, transform 0.2s; }
+        .star-rating span.active { color:var(--gold); }
+        .star-rating span:hover { transform:scale(1.2); }
+        /* ========== REVIEWS ========== */
+        .review-item { border-bottom:1px solid var(--border); padding:0.6rem 0; }
+        .review-item:last-child { border-bottom:none; }
+        /* ========== PROGRESS BAR ========== */
+        .progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin:0.3rem 0; }
+        .progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.3s; }
         /* ========== GRID TILES ========== */
         .grid-tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.8rem; }
         .grid-tile { padding:1rem; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); text-align:center; cursor:pointer; font-weight:700; font-size:0.8rem; transition:transform 0.2s, border-color 0.2s, background 0.2s; }
         .grid-tile:active { transform:scale(0.95); }
         .grid-tile .tile-icon { font-size:2rem; display:block; margin-bottom:0.4rem; }
         .grid-tile.active { border-color:var(--accent); background:rgba(79,70,229,0.08); }
+        /* ========== SEARCH ========== */
+        .search-suggestion { padding:0.6rem 0.9rem; border-radius:8px; cursor:pointer; font-size:0.8rem; transition:background 0.2s; }
+        .search-suggestion:hover, .search-suggestion:active { background:var(--border); }
         /* ========== UTILITIES ========== */
         .hidden { display:none!important; }
         .flex-between { display:flex; justify-content:space-between; align-items:center; gap:0.5rem; }
@@ -210,68 +229,9 @@
         .gap-8 { gap:0.5rem; }
         .gap-12 { gap:0.8rem; }
         .text-center { text-align:center; }
+        /* ========== BAN ========== */
         .ban-image { width:100%; max-width:300px; margin:0 auto; border-radius:var(--radius); overflow:hidden; }
         .ban-image img { width:100%; height:auto; display:block; }
-
-        /* ========== ОКНО ИГРЫ «ДУРАК» ========== */
-        #durakWindow {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--bg);
-            z-index: 5000;
-            display: none;
-            flex-direction: column;
-            padding: 1rem;
-            overflow-y: auto;
-        }
-        #durakWindow.active { display: flex; }
-        .durak-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-        .durak-table {
-            background: rgba(16, 185, 129, 0.1);
-            border: 2px dashed #10B981;
-            border-radius: var(--radius);
-            min-height: 180px;
-            padding: 1rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1rem;
-        }
-        .durak-hand {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-            margin-bottom: 1rem;
-        }
-        .playing-card {
-            background: #fff;
-            color: #111;
-            border-radius: 8px;
-            width: 50px;
-            height: 75px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 5px;
-            font-weight: 800;
-            font-size: 0.9rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            cursor: pointer;
-            border: 1px solid #ccc;
-            transition: transform 0.2s;
-        }
-        .playing-card:active { transform: scale(0.95); }
-        .playing-card.red { color: #EF4444; }
     </style>
 </head>
 <body>
@@ -328,43 +288,11 @@
         </section>
         <section class="section" id="section-all">
             <h2 style="margin-bottom:1rem;font-weight:800;">☰ Все разделы</h2>
-            <!-- Кнопка запуска игры «Дурак» -->
-            <div class="card" id="openDurakBtn" style="background: linear-gradient(135deg, rgba(79,70,229,0.1), rgba(16,185,129,0.1)); border: 1px solid var(--accent); cursor: pointer;">
-                <div class="flex-between">
-                    <div>
-                        <div style="font-weight:800; font-size: 1.1rem;">🃏 Игра «Дурак»</div>
-                        <div style="font-size: 0.8rem; color: var(--muted);">Сыграть партию в классического подкидного дурака</div>
-                    </div>
-                    <span style="font-size: 1.5rem;">➡️</span>
-                </div>
-            </div>
-            <div class="grid-tiles" id="allTiles" style="margin-top: 1rem;"></div>
+            <div class="grid-tiles" id="allTiles"></div>
             <h3 style="margin:1.5rem 0 0.8rem;font-weight:800;">📦 Мои объявления</h3>
             <div id="myAdsList"></div>
         </section>
     </main>
-
-    <!-- ОТДЕЛЬНОЕ ОКНО ИГРЫ «ДУРАК» -->
-    <div id="durakWindow">
-        <div class="durak-header">
-            <h2 style="font-weight: 800;">🃏 Карточный Дурак</h2>
-            <button class="btn danger" id="closeDurakBtn">🚪 Выйти</button>
-        </div>
-        <div style="text-align: center; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--muted);" id="durakStatus">Козырь: ♠️ Пики | Карт в колоде: 24</div>
-        <div style="text-align: center; margin-bottom: 0.5rem; font-weight: 700;">Карты соперника: <span id="durakEnemyCount">6</span> шт.</div>
-        
-        <div class="durak-table" id="durakTable">
-            <div style="color: var(--muted); font-size: 0.9rem;">Стол пустой. Сделайте ход!</div>
-        </div>
-
-        <div style="text-align: center; font-weight: 700; margin-bottom: 0.5rem;">Ваши карты:</div>
-        <div class="durak-hand" id="durakPlayerHand"></div>
-
-        <div class="flex-between gap-12" style="margin-top: auto; padding-bottom: 1rem;">
-            <button class="btn secondary w-full" id="durakTakeBtn">Взять</button>
-            <button class="btn w-full" id="durakBitoBtn">Бито</button>
-        </div>
-    </div>
 
     <!-- Нижняя навигация -->
     <nav class="nav-bar" id="navBar" style="display:none;">
@@ -403,10 +331,11 @@
             let currentUser = { id:0, username:'', first_name:'' };
             let currentSection = 'home', currentTheme = 'light', sfxEnabled = true;
             let currentFilterServer = null, isAdmin = false, isOwner = false;
-            let audioCtx = null, wakeLock = null, unreadNotifications = 0;
+            let audioCtx = null, saveGameTimeout = null, wakeLock = null, unreadNotifications = 0;
             let userSettings = {}, userProgress = {};
+            let gameState = { money:0, clickPower:1, clickCost:50, autoIncome:0, autoCost:200, proCost:800, shopCost:3000, eliteCost:10000, oilCost:35000, cryptoCost:150000, scrapCost:500, last_seen:null };
             let homeAds = [], cartAds = [], myAds = [], pendingAds = [], pendingAppeals = [], pendingReports = [], searchHistory = [];
-            let allTilesLoaded = false;
+            let allTilesLoaded = false, barygaStateLoaded = false;
 
             // ===================== ИНИЦИАЛИЗАЦИЯ SUPABASE =====================
             function initSupabase() {
@@ -425,6 +354,7 @@
                         tg = window.Telegram.WebApp;
                         tg.expand();
                         tg.ready();
+                        // Настройка цвета заголовка и фона для лучшей интеграции
                         if (tg.setHeaderColor) tg.setHeaderColor(currentTheme === 'dark' ? '#0F172A' : '#F9FAFB');
                         if (tg.setBackgroundColor) tg.setBackgroundColor(currentTheme === 'dark' ? '#0F172A' : '#F9FAFB');
                         const initData = tg.initDataUnsafe || {};
@@ -445,6 +375,11 @@
             // ===================== УТИЛИТЫ =====================
             function withTimeout(promise, ms=10000) { return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout')),ms))]); }
 
+            /**
+             * Воспроизведение звукового эффекта через Web Audio API.
+             * Длительность звука теперь 30 мс (по требованию).
+             * @param {string} type - Тип звука: 'click', 'success', 'error', 'buy', 'splash'
+             */
             function playSfx(type='click') {
                 if(!sfxEnabled) return;
                 try {
@@ -454,17 +389,39 @@
                     const gain = audioCtx.createGain();
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
+
+                    // Настройка частоты и формы волны в зависимости от типа
                     const freqs = { click:800, success:1200, error:300, buy:1000, splash:600 };
                     osc.frequency.value = freqs[type] || 600;
                     osc.type = 'sine';
+
+                    // Короткая атака и быстрый спад (30 мс)
                     gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.1, audioCtx.currentTime + 0.005);
                     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
+
                     osc.start(audioCtx.currentTime);
                     osc.stop(audioCtx.currentTime + 0.04);
-                } catch(e) {}
+                } catch(e) {
+                    // Тихая обработка ошибок (например, если AudioContext ещё не разрешён)
+                    console.warn('Sfx error:', e);
+                }
             }
 
+            /**
+             * Воспроизведение звука при появлении сплэш-экрана.
+             * Вызывается однократно.
+             */
+            function playSplashSound() {
+                // Попытка воспроизвести звук. Если браузер блокирует автовоспроизведение,
+                // звук будет проигран при первом взаимодействии пользователя (глобальный обработчик).
+                playSfx('splash');
+            }
+
+            /**
+             * Вибрация через Telegram HapticFeedback (если доступно).
+             * @param {string} style - 'light', 'medium', 'heavy', 'rigid', 'soft'
+             */
             function hapticFeedback(style='light') {
                 if (tg && tg.HapticFeedback) {
                     try { tg.HapticFeedback.impactOccurred(style); } catch(e) {}
@@ -535,6 +492,8 @@
                 for(let link of links){ if(!isAllowedLink(link)) return {valid:false, message:`Ссылка ${link} не разрешена`}; }
                 return {valid:true, links};
             }
+            function getUserIdentifier() { return currentAuthUser?.username ? '@'+currentAuthUser.username : (currentUser.username? '@'+currentUser.username : 'ID:'+currentUser.id); }
+            function getUserId() { return currentAuthUser ? currentAuthUser.id : currentUser.id; }
             async function hashPassword(password) {
                 const msgBuffer = new TextEncoder().encode(password);
                 const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -542,10 +501,16 @@
                 return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
             }
 
+            // ===================== ГЛОБАЛЬНЫЙ ОБРАБОТЧИК КЛИКОВ ДЛЯ ЗВУКОВ И ВИБРАЦИИ =====================
+            /**
+             * Навешиваем делегирование кликов на документ.
+             * Если клик по интерактивному элементу (кнопка, карточка и т.п.) — воспроизводим звук и вибрацию.
+             */
             document.addEventListener('click', function(e) {
                 const interactiveSelectors = [
                     '.btn', '.nav-item', '.card', '.grid-tile', '.link-item', '.search-suggestion',
-                    '.theme-toggle', '.header-logo', '.header-search', '.modal-close', '.auth-tab', '.auth-theme-toggle', '.playing-card'
+                    '.game-click-area', '.upgrade-card button', '.theme-toggle', '.header-logo', '.header-search',
+                    '.modal-close', '.auth-tab', '.auth-theme-toggle', '.star-rating span', '[data-link]'
                 ];
                 const target = e.target.closest(interactiveSelectors.join(','));
                 if (target) {
@@ -577,49 +542,111 @@
                 document.getElementById('confirmOkBtn').addEventListener('click', ()=>{ closeModal(); onConfirm(); });
             }
 
-            // ===================== АУТЕНТИФИКАЦИЯ =====================
+            // ===================== АУТЕНТИФИКАЦИЯ (ИСПРАВЛЕНО: НАДЁЖНОЕ ВОССТАНОВЛЕНИЕ СЕССИИ) =====================
+            /**
+             * Проверка аутентификации.
+             * 1. Если в localStorage есть полный объект пользователя — используем его мгновенно.
+             * 2. В фоне проверяем актуальность через Supabase.
+             * 3. Если в localStorage ничего нет, но есть Telegram user — ищем в БД.
+             * 4. Если пользователь не найден — показываем экран входа.
+             */
             async function checkAuth() {
                 if (!supabaseClient) { if(!initSupabase()) return; }
+
+                // 1. Пытаемся восстановить из localStorage (полный объект)
                 const savedUser = localStorage.getItem('arizona_current_user_full');
                 if (savedUser) {
                     try {
                         const parsed = JSON.parse(savedUser);
                         if (parsed && parsed.id) {
+                            // Мгновенно устанавливаем пользователя и показываем приложение
                             currentAuthUser = parsed;
                             isAdmin = parsed.is_admin || parsed.username === OWNER_USERNAME;
                             isOwner = parsed.username === OWNER_USERNAME;
-                            await loadUserSettingsAndProgress();
+                            await loadUserSettingsAndProgress(); // загружаем настройки
                             hideSplashAndShowApp();
+                            // Фоновая проверка статуса (не блокирует интерфейс)
+                            setTimeout(async () => {
+                                try {
+                                    const { data, error } = await withTimeout(
+                                        supabaseClient.from('app_users').select('*').eq('id', parsed.id).maybeSingle(), 5000);
+                                    if (!error && data) {
+                                        if (data.banned) {
+                                            showBanScreen();
+                                            return;
+                                        }
+                                        // Обновляем данные, если изменились
+                                        if (data.telegram_id !== currentUser.id) {
+                                            // Возможно, пользователь вошёл с другого Telegram — выходим
+                                            localStorage.removeItem('arizona_current_user_full');
+                                            localStorage.removeItem('arizona_current_user');
+                                            currentAuthUser = null;
+                                            hideSplashAndShowAuth();
+                                            return;
+                                        }
+                                        currentAuthUser = data;
+                                        localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
+                                        localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
+                                        isAdmin = data.is_admin || data.username === OWNER_USERNAME;
+                                        isOwner = data.username === OWNER_USERNAME;
+                                        document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdmin);
+                                    } else {
+                                        // Пользователь удалён из БД
+                                        localStorage.removeItem('arizona_current_user_full');
+                                        localStorage.removeItem('arizona_current_user');
+                                        currentAuthUser = null;
+                                        hideSplashAndShowAuth();
+                                    }
+                                } catch(e) { /* Не критично, оставляем как есть */ }
+                            }, 0);
                             return;
                         }
-                    } catch(e) {}
+                    } catch(e) { console.warn('Ошибка парсинга сохранённого пользователя', e); }
                 }
+
+                // 2. Если full-объекта нет, пробуем старый ключ (id)
                 const saved = localStorage.getItem('arizona_current_user');
                 if (saved) {
                     try {
                         const parsed = JSON.parse(saved);
                         const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('id', parsed.id).maybeSingle(),5000);
                         if (!error && data) {
-                            currentAuthUser = data;
-                            localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
-                            await loadUserSettingsAndProgress();
-                            hideSplashAndShowApp();
-                            return;
+                            if (data.telegram_id !== currentUser.id) {
+                                localStorage.removeItem('arizona_current_user');
+                                localStorage.removeItem('arizona_current_user_full');
+                            } else {
+                                if (data.banned) { showBanScreen(); return; }
+                                currentAuthUser = data;
+                                localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
+                                localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
+                                await loadUserSettingsAndProgress();
+                                hideSplashAndShowApp();
+                                return;
+                            }
+                        } else {
+                            localStorage.removeItem('arizona_current_user');
+                            localStorage.removeItem('arizona_current_user_full');
                         }
-                    } catch(e) {}
+                    } catch(e) { console.warn('checkAuth restore error', e); localStorage.removeItem('arizona_current_user'); }
                 }
+
+                // 3. Если в localStorage ничего, но есть Telegram user — ищем в БД
                 if (currentUser.id) {
                     try {
                         const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('telegram_id', currentUser.id).maybeSingle(),5000);
                         if (!error && data) {
+                            if (data.banned) { showBanScreen(); return; }
                             currentAuthUser = data;
                             localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
+                            localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
                             await loadUserSettingsAndProgress();
                             hideSplashAndShowApp();
                             return;
                         }
-                    } catch(e) {}
+                    } catch(e) { console.warn('checkAuth telegram error', e); }
                 }
+
+                // 4. Ничего не нашли — показываем экран входа
                 hideSplashAndShowAuth();
             }
 
@@ -638,12 +665,24 @@
             async function loadUserSettingsAndProgress() {
                 if(!currentAuthUser) return;
                 try {
-                    const { data:sd } = await withTimeout(supabaseClient.from('user_settings').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
+                    const { data:sd, error:se } = await withTimeout(supabaseClient.from('user_settings').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
+                    if(se) throw se;
                     if(sd) { userSettings = sd; currentTheme = sd.theme||'light'; sfxEnabled = sd.sfx_enabled!==false; }
-                    const { data:pd } = await withTimeout(supabaseClient.from('user_progress').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
-                    userProgress = pd||{};
-                } catch(e) { currentTheme='light'; sfxEnabled=true; userProgress={}; }
+                    else { await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null}); currentTheme='light'; sfxEnabled=true; }
+                    const { data:pd, error:pe } = await withTimeout(supabaseClient.from('user_progress').select('*').eq('user_id', currentAuthUser.id).maybeSingle(),5000);
+                    if(pe) throw pe; userProgress = pd||{};
+                } catch(e) { console.warn('loadUserSettings error',e); currentTheme='light'; sfxEnabled=true; userProgress={}; }
                 applyTheme();
+            }
+
+            function showBanScreen() {
+                document.body.innerHTML = `
+                    <div class="fullscreen-overlay" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; text-align:center; padding:1rem;">
+                        <div class="ban-image"><img src="https://i.postimg.cc/QxHPzc8j/67a0788c2bc6a08c9814c8ddb26768ca.jpg" alt="Бан"></div>
+                        <h1 style="color:#EF4444;">🚫 Вы забанены</h1>
+                        <p style="color:var(--muted);">Ваш аккаунт заблокирован администрацией.</p>
+                        <button class="btn mt-12" onclick="window.open('https://t.me/${OWNER_USERNAME}','_blank')">Связаться с поддержкой</button>
+                    </div>`;
             }
 
             function showAuthScreen() {
@@ -685,34 +724,115 @@
                             if(mode==='login') {
                                 const { data, error } = await withTimeout(supabaseClient.from('app_users').select('*').eq('username',username).maybeSingle(),5000);
                                 if(error) throw error;
-                                if(!data){ errEl.textContent='Пользователь не найден'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
-                                if(data.password_hash!==hashedPassword){ errEl.textContent='Неверный пароль'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
+                                if(!data){ errEl.textContent='Пользователь не найден. Зарегистрируйтесь.'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
+                                if(data.password_hash!==hashedPassword){ errEl.textContent='Неверный логин или пароль'; isSubmitting=false; btn.disabled=false; btn.textContent='Войти'; return; }
+                                if(data.banned){ showBanScreen(); return; }
                                 currentAuthUser = data;
                                 localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
-                                await loadUserSettingsAndProgress(); container.innerHTML=''; hideSplashAndShowApp();
+                                localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
+                                await loadUserSettingsAndProgress(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
                             } else {
+                                const { data: existingTelegram } = await withTimeout(supabaseClient.from('app_users').select('id').eq('telegram_id', currentUser.id).maybeSingle(),5000);
+                                if(existingTelegram){ errEl.textContent='Этот Telegram уже привязан к аккаунту. Войдите.'; isSubmitting=false; btn.disabled=false; btn.textContent='Создать аккаунт'; return; }
                                 const { data: existing } = await withTimeout(supabaseClient.from('app_users').select('id').eq('username',username).maybeSingle(),5000);
-                                if(existing){ errEl.textContent='Пользователь существует'; isSubmitting=false; btn.disabled=false; btn.textContent='Создать аккаунт'; return; }
-                                const newUser = { username, password_hash:hashedPassword, telegram_id: currentUser.id||null, created_at:new Date().toISOString() };
+                                if(existing){ errEl.textContent='Такой пользователь уже существует'; isSubmitting=false; btn.disabled=false; btn.textContent='Создать аккаунт'; return; }
+                                const newUser = { username, password_hash:hashedPassword, telegram_id: currentUser.id||null, telegram_username: currentUser.username||null, banned:false, is_admin: username===OWNER_USERNAME, created_at:new Date().toISOString() };
                                 const { data: inserted, error: insertErr } = await withTimeout(supabaseClient.from('app_users').insert(newUser).select().single(),5000);
                                 if(insertErr) throw insertErr;
                                 currentAuthUser = inserted;
                                 localStorage.setItem('arizona_current_user_full', JSON.stringify(currentAuthUser));
-                                await loadUserSettingsAndProgress(); container.innerHTML=''; hideSplashAndShowApp();
+                                localStorage.setItem('arizona_current_user', JSON.stringify({ id: currentAuthUser.id }));
+                                await supabaseClient.from('user_settings').insert({user_id:currentAuthUser.id, theme:'light', sfx_enabled:true, admin_password_hash:null});
+                                await supabaseClient.from('user_progress').insert({user_id:currentAuthUser.id, tutorial_completed:false, admin_tutorial_completed:false});
+                                await loadUserSettingsAndProgress(); playSfx('success'); container.innerHTML=''; hideSplashAndShowApp();
                             }
-                        } catch(e) { errEl.textContent='Ошибка соединения'; isSubmitting=false; btn.disabled=false; }
+                        } catch(e) { console.error('Auth error',e); let msg='Ошибка соединения.'; if(e.message==='Timeout') msg='Превышено время ожидания.'; errEl.textContent=msg; isSubmitting=false; btn.disabled=false; btn.textContent = mode==='login'?'Войти':'Создать аккаунт'; }
                     });
                 }
                 renderAuthForm();
             }
 
-            function initApp() {
+            // ===================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =====================
+            async function initApp(isFirstLogin=false) {
                 if(!currentAuthUser){ showAuthScreen(); return; }
                 isAdmin = currentAuthUser.is_admin || (currentAuthUser.username===OWNER_USERNAME);
                 isOwner = currentAuthUser.username===OWNER_USERNAME;
                 document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdmin);
-                setupServerSelector();
+                await loadSearchHistory(); await loadNotificationsCount();
+                if (isFirstLogin || !userProgress.tutorial_completed) { showUserTutorial(); }
                 switchSection('home');
+                requestWakeLock();
+            }
+            async function loadSearchHistory() { if(!currentAuthUser)return; try{ const {data,error}=await withTimeout(supabaseClient.from('search_history').select('query').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).limit(10),5000); if(error)throw error; searchHistory = data?data.map(i=>i.query):[]; }catch(e){ searchHistory=[]; } }
+            async function saveSearchQuery(query) { if(!currentAuthUser||!query)return; try{ await supabaseClient.from('search_history').insert({user_id:currentAuthUser.id,query}); const {data:ids}=await supabaseClient.from('search_history').select('id').eq('user_id',currentAuthUser.id).order('created_at',{ascending:false}).range(10,9999); if(ids&&ids.length) await supabaseClient.from('search_history').delete().in('id',ids.map(r=>r.id)); await loadSearchHistory(); }catch(e){ console.warn('saveSearchQuery',e); } }
+            async function loadNotificationsCount() { if(!currentAuthUser)return; try{ const {count,error}=await withTimeout(supabaseClient.from('notifications').select('*',{count:'exact',head:true}).eq('user_id',currentAuthUser.id).eq('read',false),5000); if(!error) unreadNotifications=count||0; }catch(e){ unreadNotifications=0; } }
+            function requestWakeLock() { try{ if('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock=>{wakeLock=lock;}).catch(()=>{}); }catch(e){} }
+
+            // ===================== ТУТОРИАЛЫ =====================
+            function showUserTutorial() {
+                const slides = [
+                    { title:'⚠️ Предупреждение', text:'Мы не несём ответственности за скам. Запрещена продажа/покупка аккаунтов.' },
+                    { title:'Добро пожаловать!', text:'Это приложение для размещения объявлений на серверах Arizona RP.' },
+                    { title:'🏠 Главная', text:'Здесь отображаются все одобренные объявления. Нажмите на карточку, чтобы увидеть подробности.' },
+                    { title:'🛒 Корзина', text:'Сохраняйте понравившиеся объявления.' },
+                    { title:'➕ Отправка', text:'Создавайте свои объявления.' },
+                    { title:'☰ Все разделы', text:'Игра «Барыга», лента луков, попутчики, музыка и настройки.' },
+                    { title:'🔍 Поиск', text:'Используйте строку поиска вверху.' }
+                ];
+                let cur = 0;
+                const modalHtml = `
+                    <div class="modal-title" id="tutTitle"></div>
+                    <p style="color:var(--muted);margin-bottom:1.5rem;" id="tutText"></p>
+                    <div class="flex-between gap-12">
+                        <button class="btn secondary" id="tutBackBtn">← Назад</button>
+                        <button class="btn" id="tutNextBtn">Вперёд →</button>
+                    </div>
+                `;
+                const { overlay } = showModal(modalHtml);
+                const titleEl = document.getElementById('tutTitle');
+                const textEl = document.getElementById('tutText');
+                const backBtn = document.getElementById('tutBackBtn');
+                const nextBtn = document.getElementById('tutNextBtn');
+
+                function updateSlide() {
+                    const s = slides[cur];
+                    titleEl.textContent = s.title;
+                    textEl.textContent = s.text;
+                    backBtn.disabled = cur === 0;
+                    nextBtn.textContent = cur === slides.length - 1 ? 'Завершить' : 'Вперёд →';
+                }
+                backBtn.addEventListener('click', ()=>{ if(cur>0){ cur--; updateSlide(); } });
+                nextBtn.addEventListener('click', ()=>{ if(cur < slides.length - 1){ cur++; updateSlide(); } else { overlay.remove(); markTutorialCompleted(); } });
+                updateSlide();
+            }
+            async function markTutorialCompleted() { await supabaseClient.from('user_progress').update({tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.tutorial_completed=true; }
+
+            function showAdminTutorial() {
+                const slides = [
+                    { title:'🔧 Админ-панель', text:'Здесь вы управляете объявлениями.' },
+                    { title:'📨 Апелляции', text:'Одобряйте или отклоняйте апелляции.' },
+                    { title:'⚖️ Управление пользователями', text:'Баны, разбаны, назначение админов.' },
+                    { title:'🧹 Дополнительно', text:'Очистка ленты и другие действия.' }
+                ];
+                let cur = 0;
+                const modalHtml = `
+                    <div class="modal-title" id="adminTutTitle"></div>
+                    <p style="color:var(--muted);margin-bottom:1.5rem;" id="adminTutText"></p>
+                    <button class="btn w-full" id="adminTutNextBtn">Вперёд →</button>
+                `;
+                const { overlay } = showModal(modalHtml);
+                const titleEl = document.getElementById('adminTutTitle');
+                const textEl = document.getElementById('adminTutText');
+                const nextBtn = document.getElementById('adminTutNextBtn');
+
+                function updateSlide() {
+                    const s = slides[cur];
+                    titleEl.textContent = s.title;
+                    textEl.textContent = s.text;
+                    nextBtn.textContent = cur === slides.length - 1 ? 'Закрыть' : 'Вперёд →';
+                }
+                nextBtn.addEventListener('click', ()=>{ if(cur < slides.length - 1){ cur++; updateSlide(); } else { supabaseClient.from('user_progress').update({admin_tutorial_completed:true}).eq('user_id',currentAuthUser.id); userProgress.admin_tutorial_completed=true; overlay.remove(); } });
+                updateSlide();
             }
 
             // ===================== НАВИГАЦИЯ =====================
@@ -724,13 +844,14 @@
                 document.querySelector(`.nav-item[data-section="${section}"]`).classList.add('active');
                 if(section==='home') loadHomeFeed();
                 if(section==='cart') loadCart();
-                if(section==='send') initSendForm();
-                if(section==='admin' && isAdmin) loadAdminPanel();
-                if(section==='all') loadMyAds();
-                playSfx('click');
+                if(section==='send') { initSendForm(); }
+                if(section==='admin') { if(isAdmin) { checkAdminPassword(); } else { document.getElementById('adminPanelContent').innerHTML='<div class="empty-state">Нет доступа</div>'; } }
+                if(section==='all') { if(!allTilesLoaded) { loadAllTiles(); allTilesLoaded=true; } loadMyAds(); }
+                playSfx('click'); requestWakeLock();
             }
             document.querySelectorAll('.nav-item[data-section]').forEach(btn=>btn.addEventListener('click',()=>{ const sec = btn.dataset.section; if(sec==='admin'&&!isAdmin) return; switchSection(sec); }));
             document.getElementById('themeToggleBtn').addEventListener('click', async ()=>{ currentTheme = currentTheme==='light'?'dark':'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({theme:currentTheme}).eq('user_id',currentAuthUser.id); playSfx('click'); });
+            document.getElementById('headerSearchTrigger').addEventListener('click', openSearchModal);
             document.getElementById('logoBtn').addEventListener('click', openLinksModal);
 
             function openLinksModal() {
@@ -742,116 +863,46 @@
                 document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{ window.open(item.dataset.link,'_blank'); document.getElementById('modalOverlay').remove(); }));
             }
 
-            // ===================== ИГРА «ДУРАК» (ОТДЕЛЬНОЕ ОКНО) =====================
-            let durakGame = {
-                deck: [], playerHand: [], enemyHand: [], table: [], trumpCard: null, isPlayerTurn: true
-            };
-
-            function initDurakGame() {
-                const suits = ['♠️', '♣️', '♦️', '♥️'];
-                const values = ['6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-                let deck = [];
-                for(let s of suits) {
-                    for(let v of values) {
-                        deck.push({ suit: s, value: v, red: (s==='♦️'||s==='♥️') });
-                    }
-                }
-                // Перемешивание
-                deck.sort(() => Math.random() - 0.5);
-                durakGame.trumpCard = deck[0];
-                durakGame.deck = deck;
-                durakGame.playerHand = [];
-                durakGame.enemyHand = [];
-                durakGame.table = [];
-
-                for(let i=0; i<6; i++) {
-                    durakGame.playerHand.push(durakGame.deck.pop());
-                    durakGame.enemyHand.push(durakGame.deck.pop());
-                }
-                durakGame.isPlayerTurn = true;
-                renderDurak();
+            // ===================== АДМИН-ПАРОЛЬ =====================
+            async function checkAdminPassword(){
+                if(!currentAuthUser || !isAdmin) return;
+                const has = userSettings.admin_password_hash && userSettings.admin_password_hash !== null;
+                if(!has) showCreateAdminPasswordModal();
+                else showAdminLoginModal(userSettings.admin_password_hash);
             }
-
-            function renderDurak() {
-                document.getElementById('durakStatus').textContent = `Козырь: ${durakGame.trumpCard.suit} (${durakGame.trumpCard.value}) | Карт в колоде: ${durakGame.deck.length}`;
-                document.getElementById('durakEnemyCount').textContent = durakGame.enemyHand.length;
-
-                const tableEl = document.getElementById('durakTable');
-                if(durakGame.table.length === 0) {
-                    tableEl.innerHTML = '<div style="color: var(--muted); font-size: 0.9rem;">Стол пустой. Сделайте ход!</div>';
-                } else {
-                    tableEl.innerHTML = durakGame.table.map(pair => `
-                        <div style="display:flex; gap:5px; background:var(--card); padding:5px; border-radius:8px;">
-                            <div class="playing-card ${pair.att.red?'red':''}">${pair.att.value}<br>${pair.att.suit}</div>
-                            ${pair.def ? `<div class="playing-card ${pair.def.red?'red':''}">${pair.def.value}<br>${pair.def.suit}</div>` : '<div style="display:flex;align-items:center;color:var(--muted);">?</div>'}
-                        </div>
-                    `).join('');
-                }
-
-                const handEl = document.getElementById('durakPlayerHand');
-                handEl.innerHTML = durakGame.playerHand.map((card, idx) => `
-                    <div class="playing-card ${card.red?'red':''}" data-card-idx="${idx}">
-                        <div>${card.value}</div>
-                        <div style="text-align:right;">${card.suit}</div>
-                    </div>
-                `).join('');
-
-                handEl.querySelectorAll('.playing-card').forEach(el => {
-                    el.addEventListener('click', () => {
-                        const idx = parseInt(el.dataset.cardIdx);
-                        playerCardAction(idx);
-                    });
+            function showCreateAdminPasswordModal(){
+                showModal(`<h3 class="modal-title">🔒 Создайте пароль администратора</h3><p style="color:var(--muted);margin-bottom:1rem;">Этот пароль будет использоваться для входа в админ-панель.</p>
+                <div class="form-group"><label>Новый пароль</label><input type="password" id="newAdminPass" placeholder="Минимум 6 символов"></div>
+                <div class="form-group"><label>Повторите пароль</label><input type="password" id="confirmAdminPass" placeholder="Повторите пароль"></div>
+                <button class="btn w-full" id="createAdminPassBtn">Создать</button><p id="adminPassError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
+                document.getElementById('createAdminPassBtn').addEventListener('click', async ()=>{
+                    const p1 = document.getElementById('newAdminPass').value.trim();
+                    const p2 = document.getElementById('confirmAdminPass').value.trim();
+                    const errEl = document.getElementById('adminPassError');
+                    if(p1.length < 6){ errEl.textContent='Пароль слишком короткий'; return; }
+                    if(p1 !== p2){ errEl.textContent='Пароли не совпадают'; return; }
+                    const hash = await hashPassword(p1);
+                    await supabaseClient.from('user_settings').update({admin_password_hash:hash}).eq('user_id',currentAuthUser.id);
+                    userSettings.admin_password_hash = hash;
+                    playSfx('success'); showToast('Пароль администратора установлен','success');
+                    document.getElementById('modalOverlay').remove();
+                    showAdminTutorial();
+                    loadAdminPanel();
                 });
             }
-
-            function playerCardAction(idx) {
-                const card = durakGame.playerHand[idx];
-                if(durakGame.isPlayerTurn) {
-                    durakGame.table.push({ att: card, def: null });
-                    durakGame.playerHand.splice(idx, 1);
-                    durakGame.isPlayerTurn = false;
-                    renderDurak();
-                    setTimeout(enemyTurn, 1000);
-                }
-            }
-
-            function enemyTurn() {
-                if(durakGame.table.length > 0 && !durakGame.table[0].def) {
-                    if(durakGame.enemyHand.length > 0) {
-                        const defCard = durakGame.enemyHand.pop();
-                        durakGame.table[0].def = defCard;
-                    }
-                }
-                durakGame.isPlayerTurn = true;
-                renderDurak();
-            }
-
-            document.getElementById('openDurakBtn').addEventListener('click', () => {
-                document.getElementById('durakWindow').classList.add('active');
-                initDurakGame();
-            });
-
-            document.getElementById('closeDurakBtn').addEventListener('click', () => {
-                document.getElementById('durakWindow').classList.remove('active');
-            });
-
-            document.getElementById('durakBitoBtn').addEventListener('click', () => {
-                durakGame.table = [];
-                while(durakGame.playerHand.length < 6 && durakGame.deck.length > 0) durakGame.playerHand.push(durakGame.deck.pop());
-                while(durakGame.enemyHand.length < 6 && durakGame.deck.length > 0) durakGame.enemyHand.push(durakGame.deck.pop());
-                renderDurak();
-                showToast('Взятка отправлена в бито!', 'success');
-            });
-
-            document.getElementById('durakTakeBtn').addEventListener('click', () => {
-                durakGame.table.forEach(p => {
-                    durakGame.playerHand.push(p.att);
-                    if(p.def) durakGame.playerHand.push(p.def);
+            function showAdminLoginModal(storedHash){
+                showModal(`<h3 class="modal-title">🔒 Вход в админ-панель</h3><div class="form-group"><label>Пароль</label><input type="password" id="adminLoginPass" placeholder="Введите пароль"></div><button class="btn w-full" id="adminLoginBtn">Войти</button><p id="adminLoginError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
+                document.getElementById('adminLoginBtn').addEventListener('click', async ()=>{
+                    const pass = document.getElementById('adminLoginPass').value.trim();
+                    const errEl = document.getElementById('adminLoginError');
+                    const hash = await hashPassword(pass);
+                    if(hash !== storedHash){ errEl.textContent='Неверный пароль'; return; }
+                    playSfx('success');
+                    document.getElementById('modalOverlay').remove();
+                    showAdminTutorial();
+                    loadAdminPanel();
                 });
-                durakGame.table = [];
-                renderDurak();
-                showToast('Вы взяли карты со стола', 'info');
-            });
+            }
 
             // ===================== ГЛАВНАЯ ЛЕНТА =====================
             let feedPage = 0; const FEED_PAGE_SIZE = 20;
@@ -899,20 +950,38 @@
                     const img = firstImg || DEFAULT_AD_IMAGE;
                     const modeBadge = ad.mode==='sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
                     const catLabel = ALL_CATEGORIES.find(c=>c.id===ad.category)?.label || ad.category;
+                    let timer = '';
+                    if(ad.expires_at){
+                        const diff = new Date(ad.expires_at) - new Date();
+                        if(diff > 0){
+                            const total = Math.floor(diff/1000);
+                            const h = Math.floor(total/3600);
+                            const m = Math.floor((total%3600)/60);
+                            const s = total%60;
+                            timer = `<div class="countdown-timer">⏳ Удаление через: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}</div>`;
+                        } else { timer = '<div class="countdown-timer">⚠️ Удалено</div>'; }
+                    }
                     html += `<div class="card ad-card" data-ad-id="${ad.id}">
                         <div class="img-container" style="width:80px;height:100px;border-radius:12px;flex-shrink:0;background:var(--border);">
-                            <img src="${img}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onload="this.classList.add('loaded')" onerror="this.style.display='none'">
+                            <div class="skeleton" style="position:absolute;inset:0;border-radius:12px;"></div>
+                            <img src="${img}" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;" onload="this.classList.add('loaded')" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:var(--border);border-radius:12px;z-index:0;">📷</div>
                         </div>
                         <div class="ad-card-info">
                             <div class="ad-card-title">${ad.item_name || 'Без названия'}</div>
                             <div class="ad-card-price">${formatPrice(ad.price)}</div>
                             <div class="ad-card-badges">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>
                             <div class="ad-card-author">Автор: ${ad.author_username || ad.author_id}</div>
+                            ${timer}
                         </div>
                     </div>`;
                 });
                 cont.innerHTML = html;
                 cont.querySelectorAll('.ad-card').forEach(card=>card.addEventListener('click', ()=>{ const id = card.dataset.adId; const ad = homeAds.find(a=>a.id == id); if(ad) openAdDetail(ad); }));
+                const loadMore = document.createElement('button');
+                loadMore.className = 'btn secondary w-full mt-12'; loadMore.textContent = 'Загрузить ещё';
+                loadMore.addEventListener('click', ()=>loadHomeFeed(false));
+                cont.appendChild(loadMore);
             }
 
             // ===================== КОРЗИНА =====================
@@ -921,22 +990,27 @@
                 if(!currentAuthUser){ cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>'; return; }
                 cont.innerHTML = '<div class="loader"></div>';
                 try{
-                    const { data: favs } = await withTimeout(supabaseClient.from('favorites').select('ad_id').eq('user_id', currentAuthUser.id), 5000);
-                    const adIds = (favs||[]).map(f=>f.ad_id);
+                    const { data: favs, error: favErr } = await withTimeout(supabaseClient.from('favorites').select('ad_id').eq('user_id', currentAuthUser.id), 5000);
+                    if(favErr) throw favErr;
+                    const adIds = favs.map(f=>f.ad_id);
                     if(!adIds.length){ cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>'; return; }
-                    const { data: ads } = await withTimeout(supabaseClient.from('ads').select('*').in('id', adIds), 5000);
+                    const { data: ads, error: adsErr } = await withTimeout(supabaseClient.from('ads').select('*').in('id', adIds).order('created_at',{ascending:false}), 5000);
+                    if(adsErr) throw adsErr;
                     cartAds = ads || [];
                     if(!cartAds.length){ cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>'; return; }
                     let html = '';
                     cartAds.forEach(ad=>{
-                        html += `<div class="card" data-ad-id="${ad.id}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.8rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div><button class="btn danger" data-remove-cart="${ad.id}">🗑</button></div></div>`;
+                        const isDel = ad.status==='deleted';
+                        const statusBadge = isDel ? '<span class="badge status-deleted">🔴 Удалено</span>' : '<span class="badge status-approved">🟢 Висит</span>';
+                        html += `<div class="card ${isDel?'inactive-card':''}" data-ad-id="${ad.id}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.8rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><button class="btn danger" data-remove-cart="${ad.id}">🗑</button></div></div>`;
                     });
                     cont.innerHTML = html;
                     cont.querySelectorAll('[data-remove-cart]').forEach(btn=>btn.addEventListener('click', async (e)=>{ e.stopPropagation(); await supabaseClient.from('favorites').delete().eq('user_id', currentAuthUser.id).eq('ad_id', btn.dataset.removeCart); loadCart(); }));
+                    cont.querySelectorAll('.card[data-ad-id]').forEach(card=>card.addEventListener('click', (e)=>{ if(e.target.closest('button')) return; const ad = cartAds.find(a=>a.id == card.dataset.adId); if(ad) openAdDetail(ad); }));
                 } catch(e) { cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>'; }
             }
 
-            // ===================== ОТПРАВКА =====================
+            // ===================== ФОРМА ОТПРАВКИ =====================
             let sendFormData = { type:'sell', category:null, server:null };
             function initSendForm(){
                 const priceInput = document.getElementById('sendPrice');
@@ -962,35 +1036,57 @@
                 const priceRaw = document.getElementById('sendPrice').value.trim();
                 const description = document.getElementById('sendDescription').value.trim();
                 const images = document.getElementById('sendImages').value.trim();
-                if(!itemName || !priceRaw || !description){ showAlert('Ошибка','Заполните все поля'); return; }
+                if(!itemName || !priceRaw || !description){ showAlert('Ошибка','Заполните все обязательные поля'); return; }
                 const linkCheck = checkLinksString(images);
                 if(!linkCheck.valid){ showAlert('Ошибка', linkCheck.message); return; }
+                const last = localStorage.getItem('arizona_last_submit_time');
+                if(last){ const diff = Date.now() - parseInt(last); if(diff < 120000){ showAlert('Подождите', `Следующая отправка через ${Math.ceil((120000-diff)/1000)} сек.`); return; } }
                 if(!sendFormData.category || !sendFormData.server){ showAlert('Ошибка','Выберите категорию и сервер'); return; }
                 const newAd = {
                     mode: sendFormData.type, category: sendFormData.category, item_name: itemName, price: parsePriceToNumber(priceRaw),
                     description, images, server: sendFormData.server, author_id: currentAuthUser.id, author_username: currentAuthUser.username,
-                    status:'pending', created_at:new Date().toISOString()
+                    status:'pending', created_at:new Date().toISOString(), expires_at:null
                 };
-                try{ await withTimeout(supabaseClient.from('ads').insert(newAd), 5000); showToast('Объявление отправлено на модерацию','success'); document.getElementById('sendName').value=''; document.getElementById('sendPrice').value=''; document.getElementById('sendDescription').value=''; document.getElementById('sendImages').value=''; } catch(e){ showAlert('Ошибка','Не удалось отправить'); }
+                try{ await withTimeout(supabaseClient.from('ads').insert(newAd), 5000); localStorage.setItem('arizona_last_submit_time', Date.now().toString()); playSfx('success'); showToast('Объявление отправлено','success'); document.getElementById('sendName').value=''; document.getElementById('sendPrice').value=''; document.getElementById('sendDescription').value=''; document.getElementById('sendImages').value=''; } catch(e){ showAlert('Ошибка','Не удалось отправить'); }
             });
 
             // ===================== МОИ ОБЪЯВЛЕНИЯ =====================
             async function loadMyAds(){
                 const cont = document.getElementById('myAdsList');
-                if(!currentAuthUser){ cont.innerHTML='<div class="empty-state">У вас нет объявлений</div>'; return; }
+                if(!currentAuthUser){ cont.innerHTML='<div class="empty-state">У вас пока нет объявлений</div>'; return; }
                 cont.innerHTML = '<div class="loader"></div>';
                 try{
-                    const { data } = await withTimeout(supabaseClient.from('ads').select('*').eq('author_id', currentAuthUser.id).order('created_at',{ascending:false}), 5000);
+                    const { data, error } = await withTimeout(supabaseClient.from('ads').select('*').eq('author_id', currentAuthUser.id).order('created_at',{ascending:false}), 5000);
+                    if(error) throw error;
                     myAds = data || [];
-                    if(!myAds.length){ cont.innerHTML='<div class="empty-state">У вас нет объявлений</div>'; return; }
+                    if(!myAds.length){ cont.innerHTML='<div class="empty-state">У вас пока нет объявлений</div>'; return; }
                     let html = '';
                     myAds.forEach(ad=>{
                         let statusBadge = ad.status==='pending' ? '<span class="badge status-pending">🟡 На модерации</span>' : (ad.status==='deleted' ? '<span class="badge status-deleted">🔴 Удалено</span>' : '<span class="badge status-approved">🟢 Висит</span>');
-                        html += `<div class="card"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><button class="btn danger" data-perm-del="${ad.id}">🗑</button></div></div>`;
+                        html += `<div class="card ${ad.status==='deleted'?'inactive-card':''}"><div class="flex-between"><div><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div><div style="margin-top:0.2rem;">${statusBadge}</div></div><div class="flex-between gap-8"><button class="btn danger" data-perm-del="${ad.id}">🗑</button>${ad.status==='deleted'?`<button class="btn gold" data-appeal="${ad.id}">📨</button>`:''}</div></div></div>`;
                     });
                     cont.innerHTML = html;
-                    cont.querySelectorAll('[data-perm-del]').forEach(btn=>btn.addEventListener('click', async (e)=>{ e.stopPropagation(); await supabaseClient.from('ads').delete().eq('id', btn.dataset.permDel); loadMyAds(); }));
+                    cont.querySelectorAll('[data-perm-del]').forEach(btn=>btn.addEventListener('click', async (e)=>{ e.stopPropagation(); showConfirm('Удаление','Стереть объявление навсегда?', async ()=>{ await supabaseClient.from('ads').delete().eq('id', btn.dataset.permDel); await supabaseClient.from('favorites').delete().eq('ad_id', btn.dataset.permDel); loadMyAds(); }); }));
+                    cont.querySelectorAll('[data-appeal]').forEach(btn=>btn.addEventListener('click', (e)=>{ e.stopPropagation(); appealAdId = btn.dataset.appeal; openAppealModal(); }));
                 } catch(e) { cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>'; }
+            }
+
+            // ===================== АПЕЛЛЯЦИЯ =====================
+            let appealAdId = null;
+            function openAppealModal(){
+                if(!appealAdId) return;
+                showModal(`<h3 class="modal-title">📨 Апелляция</h3>
+                    <div class="form-group"><label>Причина</label><select id="appealReasonSelect">${APPEAL_REASONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+                    <div class="form-group"><label>Доказательства</label><input type="text" id="appealEvidence" placeholder="https://..."></div>
+                    <button class="btn w-full" id="appealSubmitBtn">Отправить</button>`);
+                document.getElementById('appealSubmitBtn').addEventListener('click', async ()=>{
+                    const reason = document.getElementById('appealReasonSelect').value;
+                    const evidence = document.getElementById('appealEvidence').value.trim();
+                    const lc = checkLinksString(evidence);
+                    if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    await supabaseClient.from('appeals').insert({ ad_id: appealAdId, author_id: currentAuthUser.id, reason, evidence, status:'pending', created_at:new Date().toISOString() });
+                    playSfx('success'); showAlert('Успех','Апелляция отправлена'); document.getElementById('modalOverlay').remove();
+                });
             }
 
             // ===================== АДМИН-ПАНЕЛЬ =====================
@@ -999,25 +1095,420 @@
                 if(!isAdmin){ cont.innerHTML='<div class="empty-state">Нет доступа</div>'; return; }
                 cont.innerHTML = '<div class="loader"></div>';
                 try{
-                    const { data } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','pending'), 5000);
-                    pendingAds = data || [];
+                    const [pr, ar, rr] = await Promise.all([
+                        withTimeout(supabaseClient.from('ads').select('*').eq('status','pending').order('created_at',{ascending:false}), 5000),
+                        withTimeout(supabaseClient.from('appeals').select('*').eq('status','pending').order('created_at',{ascending:false}), 5000),
+                        withTimeout(supabaseClient.from('reports').select('*').eq('status','pending').order('created_at',{ascending:false}), 5000)
+                    ]);
+                    if(pr.error) throw pr.error; if(ar.error) throw ar.error; if(rr.error) throw rr.error;
+                    pendingAds = pr.data || []; pendingAppeals = ar.data || []; pendingReports = rr.data || [];
                     let html = '<h3>📋 Объявления на модерации</h3>';
                     if(!pendingAds.length) html += '<div class="empty-state">Нет объявлений</div>';
-                    else pendingAds.forEach(ad=>{ html += `<div class="card"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${ad.author_username||ad.author_id} • ${formatPrice(ad.price)}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve="${ad.id}">✅</button><button class="btn danger" data-reject="${ad.id}">❌</button></div></div>`; });
+                    else pendingAds.forEach(ad=>{ html += `<div class="card"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${ad.author_username||ad.author_id} • ${formatPrice(ad.price)}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve="${ad.id}">✅</button><button class="btn danger" data-reject="${ad.id}">❌</button><button class="btn secondary" data-edit-ad="${ad.id}">✏️</button></div></div>`; });
+                    html += '<h3 style="margin-top:1rem;">📨 Апелляции</h3>';
+                    if(!pendingAppeals.length) html += '<div class="empty-state">Нет апелляций</div>';
+                    else pendingAppeals.forEach(ap=>{ html += `<div class="card"><div style="font-weight:700;">Объявление ID: ${ap.ad_id}</div><div style="font-size:0.75rem;color:var(--muted);">Автор: ${ap.author_username||ap.author_id}</div><div style="font-size:0.8rem;">Причина: ${ap.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-appeal="${ap.id}">✅</button><button class="btn danger" data-reject-appeal="${ap.id}">❌</button></div></div>`; });
+                    html += '<h3 style="margin-top:1rem;">🚨 Жалобы</h3>';
+                    if(!pendingReports.length) html += '<div class="empty-state">Нет жалоб</div>';
+                    else pendingReports.forEach(rp=>{ html += `<div class="card"><div style="font-weight:700;">Объявление ID: ${rp.ad_id}</div><div style="font-size:0.75rem;color:var(--muted);">От: ${rp.reporter_username||rp.reporter_id}</div><div style="font-size:0.8rem;">Причина: ${rp.reason}</div><div class="flex-between gap-8 mt-8"><button class="btn success" data-approve-report="${rp.id}">✅</button><button class="btn danger" data-reject-report="${rp.id}">❌</button></div></div>`; });
+                    if(isOwner){ html += `<h3 style="margin-top:1rem;">👤 Управление пользователями</h3><div class="form-group"><input type="text" id="adminUsernameInput" placeholder="username или ID"></div><div class="flex-between gap-8 mb-8"><button class="btn danger w-full" id="adminBanBtn">🔨 Забанить</button><button class="btn success w-full" id="adminUnbanBtn">🔓 Разбанить</button></div><div class="flex-between gap-8 mb-8"><button class="btn w-full" id="adminMakeAdminBtn">👑 Сделать админом</button><button class="btn secondary w-full" id="adminRemoveAdminBtn">⬇️ Снять админа</button></div><button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>`; }
                     cont.innerHTML = html;
-                    cont.querySelectorAll('[data-approve]').forEach(btn=>btn.addEventListener('click', async ()=>{ const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS*60*60*1000).toISOString(); await supabaseClient.from('ads').update({status:'approved', expires_at: expiresAt}).eq('id', btn.dataset.approve); loadAdminPanel(); }));
-                    cont.querySelectorAll('[data-reject]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('ads').update({status:'deleted'}).eq('id', btn.dataset.reject); loadAdminPanel(); }));
-                } catch(e) { cont.innerHTML = '<div class="empty-state">⚠️ Ошибка</div>'; }
+                    bindAdminEvents();
+                } catch(e) { cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>'; }
+            }
+            function bindAdminEvents(){
+                document.querySelectorAll('[data-approve]').forEach(btn=>btn.addEventListener('click', async ()=>{ const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS*60*60*1000).toISOString(); await supabaseClient.from('ads').update({status:'approved', expires_at: expiresAt}).eq('id', btn.dataset.approve); loadAdminPanel(); loadHomeFeed(); }));
+                document.querySelectorAll('[data-reject]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('ads').update({status:'deleted'}).eq('id', btn.dataset.reject); loadAdminPanel(); }));
+                document.querySelectorAll('[data-edit-ad]').forEach(btn=>btn.addEventListener('click', ()=>{ const ad = pendingAds.find(a=>a.id == btn.dataset.editAd); if(ad) openAdminEditModal(ad); }));
+                document.querySelectorAll('[data-approve-appeal]').forEach(btn=>btn.addEventListener('click', async ()=>{ const ap = pendingAppeals.find(a=>a.id == btn.dataset.approveAppeal); if(ap){ const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS*60*60*1000).toISOString(); await supabaseClient.from('ads').update({status:'approved', expires_at: expiresAt}).eq('id', ap.ad_id); } await supabaseClient.from('appeals').update({status:'approved'}).eq('id', btn.dataset.approveAppeal); loadAdminPanel(); }));
+                document.querySelectorAll('[data-reject-appeal]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('appeals').update({status:'rejected'}).eq('id', btn.dataset.rejectAppeal); loadAdminPanel(); }));
+                document.querySelectorAll('[data-approve-report]').forEach(btn=>btn.addEventListener('click', async ()=>{ const rp = pendingReports.find(r=>r.id == btn.dataset.approveReport); if(rp) await supabaseClient.from('ads').update({status:'deleted'}).eq('id', rp.ad_id); await supabaseClient.from('reports').update({status:'approved'}).eq('id', btn.dataset.approveReport); loadAdminPanel(); }));
+                document.querySelectorAll('[data-reject-report]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('reports').update({status:'rejected'}).eq('id', btn.dataset.rejectReport); loadAdminPanel(); }));
+                if(isOwner){
+                    document.getElementById('adminBanBtn')?.addEventListener('click', ()=>adminUserAction('ban'));
+                    document.getElementById('adminUnbanBtn')?.addEventListener('click', ()=>adminUserAction('unban'));
+                    document.getElementById('adminMakeAdminBtn')?.addEventListener('click', ()=>adminUserAction('make_admin'));
+                    document.getElementById('adminRemoveAdminBtn')?.addEventListener('click', ()=>adminUserAction('remove_admin'));
+                    document.getElementById('adminClearFeedBtn')?.addEventListener('click', async ()=>{ showConfirm('Очистка','Удалить ВСЕ объявления?', async ()=>{ await supabaseClient.from('ads').delete().neq('id', 0); await supabaseClient.from('favorites').delete().neq('id', 0); loadAdminPanel(); loadHomeFeed(); }); });
+                }
+            }
+            async function adminUserAction(action){
+                const target = document.getElementById('adminUsernameInput').value.trim();
+                if(!target){ showAlert('Ошибка','Введите username или ID'); return; }
+                try{
+                    let q = supabaseClient.from('app_users').select('*');
+                    if(!isNaN(target)) q = q.eq('id', target); else q = q.eq('username', target);
+                    const { data: users, error } = await withTimeout(q, 5000);
+                    if(error) throw error;
+                    if(!users.length){ showAlert('Ошибка','Пользователь не найден'); return; }
+                    const user = users[0];
+                    let updates = {};
+                    if(action==='ban') updates.banned = true;
+                    else if(action==='unban') updates.banned = false;
+                    else if(action==='make_admin') updates.is_admin = true;
+                    else if(action==='remove_admin') updates.is_admin = false;
+                    await supabaseClient.from('app_users').update(updates).eq('id', user.id);
+                    playSfx('success'); showAlert('Успех','Действие выполнено'); loadAdminPanel();
+                } catch(e) { showAlert('Ошибка','Не удалось выполнить'); }
+            }
+            function openAdminEditModal(ad){
+                showModal(`<h3 class="modal-title">✏️ Редактирование</h3><div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name||''}"></div><div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price||''}"></div><div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description||''}</textarea></div><div class="form-group"><label>Скриншоты</label><input type="text" id="editAdminImgs" value="${ad.images||''}"></div><button class="btn w-full" id="editAdminSaveBtn">Сохранить и одобрить</button>`);
+                document.getElementById('editAdminSaveBtn').addEventListener('click', async ()=>{
+                    const item_name = document.getElementById('editAdminName').value.trim();
+                    const price = parsePriceToNumber(document.getElementById('editAdminPrice').value);
+                    const description = document.getElementById('editAdminDesc').value.trim();
+                    const images = document.getElementById('editAdminImgs').value.trim();
+                    const lc = checkLinksString(images);
+                    if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS*60*60*1000).toISOString();
+                    await supabaseClient.from('ads').update({ item_name, price, description, images, status:'approved', expires_at: expiresAt }).eq('id', ad.id);
+                    playSfx('success'); document.getElementById('modalOverlay').remove(); loadAdminPanel(); loadHomeFeed();
+                });
             }
 
+            // ===================== ДЕТАЛИ ОБЪЯВЛЕНИЯ =====================
             async function openAdDetail(ad){
-                showModal(`<h3 class="modal-title">${ad.item_name}</h3><div style="font-size:1.5rem;font-weight:900;color:var(--accent);margin-bottom:0.5rem;">${formatPrice(ad.price)}</div><p style="color:var(--muted);margin-bottom:0.8rem;">${ad.description||'Нет описания'}</p><button class="btn w-full" onclick="window.open('https://t.me/${ad.author_username||''}','_blank')">💬 Написать автору</button>`);
+                const images = ad.images ? ad.images.split(',').map(s=>s.trim()).filter(s=>s) : [];
+                const gallery = images.length ? '<div class="image-gallery">'+images.map(img=>`<img src="${img}" loading="lazy" onerror="this.style.display='none'">`).join('')+'</div>' : '';
+                const catLabel = ALL_CATEGORIES.find(c=>c.id===ad.category)?.label || ad.category;
+                const modeBadge = ad.mode==='sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
+                let statusHtml = '';
+                if(ad.status==='pending') statusHtml = '<div class="empty-state">⏳ На модерации</div>';
+                else if(ad.status==='deleted'){ statusHtml = '<div class="empty-state">🗑️ Объявление удалено</div>'; if(ad.author_id === currentAuthUser.id) statusHtml += '<button class="btn gold w-full mt-8" id="detailAppealBtn">📨 Подать апелляцию</button>'; }
+                else statusHtml = `<button class="btn w-full mb-8" id="detailContactBtn">💬 Написать</button><button class="btn secondary w-full mb-8" id="detailCartToggleBtn">🛒 Корзина</button><button class="btn secondary w-full mb-8" id="detailReviewsBtn">⭐ Отзывы</button>${ad.author_id===currentAuthUser.id?'<button class="btn danger w-full" id="detailDeleteBtn">🗑 Удалить</button>':''}<button class="btn secondary w-full mt-8" id="detailReportBtn">🚨 Пожаловаться</button>`;
+                const isFav = await checkIfInCart(ad.id);
+                showModal(`<h3 class="modal-title">${ad.item_name}</h3><div class="ad-card-badges mb-8">${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>${gallery}<div style="font-size:1.5rem;font-weight:900;color:var(--accent);margin-bottom:0.5rem;">${formatPrice(ad.price)}</div><p style="color:var(--muted);margin-bottom:0.8rem;">${ad.description||'Нет описания'}</p><div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;">Автор: <span id="detailAuthorLink" style="cursor:pointer;color:var(--text);">${ad.author_username||ad.author_id}</span></div>${statusHtml}<div id="detailReviewsSection"></div><h4 style="margin:1rem 0 0.5rem;">📌 Похожие</h4><div id="detailSimilarAds"></div>`);
+                const overlay = document.getElementById('modalOverlay');
+                if(ad.status==='approved'){
+                    document.getElementById('detailContactBtn').addEventListener('click', ()=>window.open(`https://t.me/${ad.author_username||ad.author_id}`,'_blank'));
+                    const cartBtn = document.getElementById('detailCartToggleBtn');
+                    cartBtn.textContent = isFav ? '🛒 Убрать из корзины' : '🛒 В корзину';
+                    cartBtn.addEventListener('click', async ()=>{
+                        if(isFav){ await supabaseClient.from('favorites').delete().eq('user_id', currentAuthUser.id).eq('ad_id', ad.id); cartBtn.textContent = '🛒 В корзину'; }
+                        else { await supabaseClient.from('favorites').insert({ user_id: currentAuthUser.id, ad_id: ad.id }); cartBtn.textContent = '🛒 Убрать из корзины'; }
+                        loadCart();
+                    });
+                    document.getElementById('detailReviewsBtn').addEventListener('click', ()=>openReviewsModal(ad.id));
+                    if(ad.author_id === currentAuthUser.id){ document.getElementById('detailDeleteBtn').addEventListener('click', async ()=>{ showConfirm('Удаление','Удалить объявление?', async ()=>{ await supabaseClient.from('ads').update({status:'deleted'}).eq('id', ad.id); overlay.remove(); loadHomeFeed(); }); }); }
+                    document.getElementById('detailReportBtn').addEventListener('click', ()=>{ showModal(`<h3 class="modal-title">🚨 Пожаловаться</h3><div class="form-group"><label>Причина</label><textarea id="reportReason"></textarea></div><button class="btn w-full" id="reportSubmitBtn">Отправить</button>`); document.getElementById('reportSubmitBtn').addEventListener('click', async ()=>{ const reason = document.getElementById('reportReason').value.trim(); if(!reason){ showAlert('Ошибка','Введите причину'); return; } await supabaseClient.from('reports').insert({ ad_id: ad.id, reporter_id: currentAuthUser.id, reporter_username: currentAuthUser.username, reason, status:'pending', created_at:new Date().toISOString() }); showAlert('Успех','Жалоба отправлена'); document.getElementById('modalOverlay').remove(); }); });
+                }
+                if(ad.status==='deleted' && ad.author_id===currentAuthUser.id){ document.getElementById('detailAppealBtn')?.addEventListener('click', ()=>{ appealAdId = ad.id; openAppealModal(); }); }
+                document.getElementById('detailAuthorLink').addEventListener('click', ()=>openProfileModal(ad.author_id));
+                loadReviews(ad.id); loadSimilarAds(ad.category, ad.id);
+            }
+            async function checkIfInCart(adId){ if(!currentAuthUser) return false; const { data, error } = await supabaseClient.from('favorites').select('*').eq('user_id', currentAuthUser.id).eq('ad_id', adId).maybeSingle(); if(error) return false; return !!data; }
+            async function loadReviews(adId){
+                const cont = document.getElementById('detailReviewsSection'); if(!cont) return;
+                try{
+                    const { data: reviews, error } = await withTimeout(supabaseClient.from('reviews').select('*').eq('ad_id', adId).order('created_at',{ascending:false}), 5000);
+                    if(error) throw error;
+                    const revs = reviews || []; if(!revs.length){ cont.innerHTML='<p style="color:var(--muted);">⭐ Отзывов пока нет</p>'; return; }
+                    const avg = revs.reduce((s,r)=>s+r.stars,0)/revs.length;
+                    let html = `<div style="font-size:1.2rem;font-weight:800;">⭐ ${avg.toFixed(1)} (${revs.length})</div><div class="progress-bar mb-12"><div class="progress-fill" style="width:${(avg/5*100)}%;"></div></div>`;
+                    revs.forEach(r=>{ const canEdit = r.author_id===currentAuthUser.id && (Date.now()-new Date(r.created_at).getTime()) < 7*24*60*60*1000; html += `<div class="review-item"><div style="font-weight:600;">${r.author_username||r.author_id} <span style="color:var(--gold);">${'★'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</span></div><div style="font-size:0.7rem;color:var(--muted);">${new Date(r.created_at).toLocaleDateString('ru-RU')}</div><p style="font-size:0.8rem;margin:0.3rem 0;">${r.text||''}</p>${r.media_links?`<div style="font-size:0.7rem;color:var(--accent);">${r.media_links}</div>`:''}${canEdit?`<div class="flex-between gap-8 mt-8"><button class="btn secondary" data-edit-review="${r.id}">✏️</button><button class="btn danger" data-del-review="${r.id}">🗑</button></div>`:''}</div>`; });
+                    cont.innerHTML = html;
+                    cont.querySelectorAll('[data-edit-review]').forEach(btn=>btn.addEventListener('click', ()=>{ const r = revs.find(x=>x.id==btn.dataset.editReview); if(r) openEditReviewModal(r); }));
+                    cont.querySelectorAll('[data-del-review]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('reviews').delete().eq('id', btn.dataset.delReview); loadReviews(adId); }));
+                } catch(e) { cont.innerHTML='<p style="color:var(--muted);">⚠️ Не удалось загрузить отзывы</p>'; }
+            }
+            async function loadSimilarAds(category, currentId){
+                const cont = document.getElementById('detailSimilarAds'); if(!cont) return;
+                try{
+                    const { data } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').eq('category',category).neq('id',currentId).limit(3).order('created_at',{ascending:false}), 5000);
+                    const similar = data || []; if(!similar.length){ cont.innerHTML='<p style="color:var(--muted);">Похожих нет</p>'; return; }
+                    cont.innerHTML = similar.map(ad=>`<div class="card" data-sim="${ad.id}"><span style="font-weight:700;">${ad.item_name}</span> • ${formatPrice(ad.price)}</div>`).join('');
+                    cont.querySelectorAll('[data-sim]').forEach(el=>el.addEventListener('click', ()=>{ const found = similar.find(a=>a.id==el.dataset.sim); if(found){ document.getElementById('modalOverlay').remove(); openAdDetail(found); } }));
+                } catch(e){}
+            }
+            function openReviewsModal(adId){
+                showModal(`<h3 class="modal-title">⭐ Оставить отзыв</h3><div class="form-group"><label>Оценка</label><div class="star-rating" id="reviewStars">${[1,2,3,4,5].map(i=>`<span data-star="${i}">☆</span>`).join('')}</div></div><div class="form-group"><label>Ссылки</label><input type="text" id="reviewMedia" placeholder="https://..."></div><div class="form-group"><label>Текст</label><textarea id="reviewText"></textarea></div><button class="btn w-full" id="reviewSubmitBtn">Отправить</button>`);
+                let selected = 0; const stars = document.getElementById('reviewStars'); stars.querySelectorAll('span').forEach(s=>s.addEventListener('click', ()=>{ selected = parseInt(s.dataset.star); updateStars(stars, selected); }));
+                document.getElementById('reviewSubmitBtn').addEventListener('click', async ()=>{
+                    if(!selected){ showAlert('Ошибка','Выберите оценку'); return; }
+                    const text = document.getElementById('reviewText').value.trim(); const media = document.getElementById('reviewMedia').value.trim(); const lc = checkLinksString(media); if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    try{ await supabaseClient.from('reviews').insert({ ad_id: adId, author_id: currentAuthUser.id, author_username: currentAuthUser.username, stars: selected, text, media_links: media, created_at:new Date().toISOString() }); playSfx('success'); showAlert('Успех','Отзыв отправлен'); document.getElementById('modalOverlay').remove(); loadReviews(adId); } catch(e){ showAlert('Ошибка','Не удалось отправить отзыв'); }
+                });
+            }
+            function updateStars(container, selected){ container.querySelectorAll('span').forEach(s=>{ s.textContent = parseInt(s.dataset.star) <= selected ? '★' : '☆'; s.classList.toggle('active', parseInt(s.dataset.star) <= selected); }); }
+            function openEditReviewModal(review){
+                showModal(`<h3 class="modal-title">✏️ Редактировать отзыв</h3><div class="form-group"><label>Оценка</label><div class="star-rating" id="editReviewStars">${[1,2,3,4,5].map(i=>`<span data-star="${i}" class="${i<=review.stars?'active':''}">${i<=review.stars?'★':'☆'}</span>`).join('')}</div></div><div class="form-group"><label>Ссылки</label><input type="text" id="editReviewMedia" value="${review.media_links||''}"></div><div class="form-group"><label>Текст</label><textarea id="editReviewText">${review.text||''}</textarea></div><button class="btn w-full" id="editReviewSubmitBtn">Сохранить</button>`);
+                let selected = review.stars; const stars = document.getElementById('editReviewStars'); stars.querySelectorAll('span').forEach(s=>s.addEventListener('click', ()=>{ selected = parseInt(s.dataset.star); updateStars(stars, selected); }));
+                document.getElementById('editReviewSubmitBtn').addEventListener('click', async ()=>{ const text = document.getElementById('editReviewText').value.trim(); const media = document.getElementById('editReviewMedia').value.trim(); const lc = checkLinksString(media); if(!lc.valid){ showAlert('Ошибка', lc.message); return; } await supabaseClient.from('reviews').update({ stars:selected, text, media_links: media }).eq('id', review.id); playSfx('success'); document.getElementById('modalOverlay').remove(); loadReviews(review.ad_id); });
             }
 
-            // Инициализация при загрузке
-            if (initSupabase() && initTelegram()) {
-                checkAuth();
+            // ===================== ИГРА =====================
+            async function loadGameState(){
+                if(!currentAuthUser) return;
+                if(barygaStateLoaded) return;
+                const { data, error } = await withTimeout(supabaseClient.from('baryga').select('*').eq('user_id', currentAuthUser.id).maybeSingle(), 5000);
+                if(error) console.warn(error);
+                if(data){
+                    gameState = { money: data.money||0, clickPower: data.click_power||1, clickCost: data.click_cost||50, autoIncome: data.auto_income||0, autoCost: data.auto_cost||200, proCost: data.pro_cost||800, shopCost: data.shop_cost||3000, eliteCost: data.elite_cost||10000, oilCost: data.oil_cost||35000, cryptoCost: data.crypto_cost||150000, scrapCost: data.scrap_cost||500, last_seen: data.last_seen||new Date().toISOString() };
+                    const last = new Date(gameState.last_seen).getTime();
+                    const diff = Math.min((Date.now()-last)/1000, 3600);
+                    if(diff>0 && gameState.autoIncome>0){ gameState.money += gameState.autoIncome * diff; gameState.last_seen = new Date().toISOString(); saveGameState(); }
+                } else { gameState = { ...gameState, user_id: currentAuthUser.id, last_seen: new Date().toISOString() }; await supabaseClient.from('baryga').insert(gameState); }
+                barygaStateLoaded = true;
             }
+            function openBarygaGame(){
+                loadGameState().then(()=>{
+                    showModal(`<h3 class="modal-title">🎮 Игра «Барыга»</h3><div style="text-align:center;font-size:1.5rem;font-weight:900;margin-bottom:0.5rem;" id="gameMoneyDisplay">💰 ${formatPrice(gameState.money)}</div><div class="game-click-area" id="gameClickArea"><img src="https://i.postimg.cc/3RnGkVNw/4827782b1f3adf82a5db028d6ed0e8a7.jpg" loading="lazy" alt="Клик"></div><div style="font-size:0.75rem;color:var(--muted);text-align:center;" id="gameStatsDisplay">Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек</div><div class="mt-12" id="gameUpgradesContainer"></div>`, ()=>{ barygaStateLoaded = false; saveGameState(); });
+                    const clickArea = document.getElementById('gameClickArea');
+                    const upgradesCont = document.getElementById('gameUpgradesContainer');
+                    upgradesCont.innerHTML = renderUpgrades();
+                    let lastAuto = Date.now();
+                    function loop(){
+                        if(!document.getElementById('gameClickArea')) return;
+                        const now = Date.now();
+                        if(now - lastAuto >= 1000){
+                            if(gameState.autoIncome > 0){
+                                gameState.money += gameState.autoIncome;
+                                gameState.last_seen = new Date().toISOString();
+                                updateGameUIFast();
+                                saveGameStateDebounced();
+                            }
+                            lastAuto = now;
+                        }
+                        requestAnimationFrame(loop);
+                    }
+                    requestAnimationFrame(loop);
+                    clickArea.addEventListener('click', ()=>{ gameState.money += gameState.clickPower; updateGameUIFast(); saveGameStateDebounced(); clickArea.style.transform = 'scale(0.92)'; setTimeout(()=>clickArea.style.transform='', 80); });
+                    upgradesCont.addEventListener('click', (e)=>{ const btn = e.target.closest('[data-upgrade]'); if(!btn) return; const idx = parseInt(btn.dataset.upgrade); const up = getUpgradesList()[idx]; if(gameState.money >= up.cost){ gameState.money -= up.cost; up.action(); updateGameUIFast(); saveGameStateDebounced(); playSfx('buy'); } });
+                    window.addEventListener('beforeunload', saveGameState);
+                    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') saveGameState(); });
+                });
+            }
+            function getUpgradesList(){
+                return [
+                    { name:'Клик +1', cost: gameState.clickCost, action: ()=>{ gameState.clickPower += 1; gameState.clickCost *= 2; } },
+                    { name:'Авто +5/сек', cost: gameState.autoCost, action: ()=>{ gameState.autoIncome += 5; gameState.autoCost *= 2; } },
+                    { name:'Про +20/сек', cost: gameState.proCost, action: ()=>{ gameState.autoIncome += 20; gameState.proCost *= 2; } },
+                    { name:'Магазин +50/сек', cost: gameState.shopCost, action: ()=>{ gameState.autoIncome += 50; gameState.shopCost *= 2; } },
+                    { name:'Элита: клик +10', cost: gameState.eliteCost, action: ()=>{ gameState.clickPower += 10; gameState.eliteCost *= 2; } },
+                    { name:'Нефть +200/сек', cost: gameState.oilCost, action: ()=>{ gameState.autoIncome += 200; gameState.oilCost *= 2; } },
+                    { name:'Крипта +1000/сек', cost: gameState.cryptoCost, action: ()=>{ gameState.autoIncome += 1000; gameState.cryptoCost *= 2; } },
+                    { name:'Скупка лома +500/сек', cost: gameState.scrapCost, action: ()=>{ gameState.autoIncome += 500; gameState.scrapCost *= 2; } }
+                ];
+            }
+            function renderUpgrades(){ return getUpgradesList().map((u,i)=>`<div class="upgrade-card"><div class="upgrade-info"><div class="upgrade-name">${u.name}</div><div class="upgrade-cost" data-cost-idx="${i}">💰 ${formatPrice(u.cost)}</div></div><button class="btn secondary" data-upgrade="${i}" ${gameState.money < u.cost ? 'disabled' : ''}>Купить</button></div>`).join(''); }
+            function updateGameUIFast(){ const moneyEl = document.getElementById('gameMoneyDisplay'); if(moneyEl) moneyEl.textContent = '💰 ' + formatPrice(gameState.money); const statsEl = document.getElementById('gameStatsDisplay'); if(statsEl) statsEl.textContent = `Клик: +${gameState.clickPower} | Авто: +${gameState.autoIncome}/сек`; getUpgradesList().forEach((u,i)=>{ const btn = document.querySelector(`[data-upgrade="${i}"]`); const cost = document.querySelector(`[data-cost-idx="${i}"]`); if(btn && cost){ cost.textContent = '💰 ' + formatPrice(u.cost); if(gameState.money < u.cost) btn.setAttribute('disabled','true'); else btn.removeAttribute('disabled'); } }); }
+            function saveGameStateDebounced(){ if(saveGameTimeout) clearTimeout(saveGameTimeout); saveGameTimeout = setTimeout(saveGameState, 1000); }
+            async function saveGameState(){
+                if(!currentAuthUser) return;
+                try{
+                    const { data } = await supabaseClient.from('baryga').select('id').eq('user_id', currentAuthUser.id).single();
+                    if(data){
+                        await supabaseClient.from('baryga').update({ money: gameState.money, click_power: gameState.clickPower, click_cost: gameState.clickCost, auto_income: gameState.autoIncome, auto_cost: gameState.autoCost, pro_cost: gameState.proCost, shop_cost: gameState.shopCost, elite_cost: gameState.eliteCost, oil_cost: gameState.oilCost, crypto_cost: gameState.cryptoCost, scrap_cost: gameState.scrapCost, last_seen: new Date().toISOString() }).eq('id', data.id);
+                    } else {
+                        await supabaseClient.from('baryga').insert({ ...gameState, user_id: currentAuthUser.id });
+                    }
+                } catch(e){ console.warn('saveGameState', e); }
+            }
+
+            // ===================== ПОИСК И ПРОФИЛЬ =====================
+            function openSearchModal(){
+                showModal(`<h3 class="modal-title">🔍 Поиск</h3><div class="form-group"><input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off"></div><div class="flex-between gap-8 mb-12"><button class="btn w-full" id="searchItemBtn">📦 Предмет</button><button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button></div><div id="searchSuggestions"></div><div id="searchHistory"></div><div id="searchResults"></div>`);
+                const input = document.getElementById('searchInput'); setTimeout(()=>input.focus(),100);
+                const sugg = document.getElementById('searchSuggestions'), res = document.getElementById('searchResults'), hist = document.getElementById('searchHistory');
+                function renderHist(){
+                    if(!searchHistory.length){ hist.innerHTML=''; return; }
+                    hist.innerHTML = '<div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;">📜 История:</div>' + searchHistory.map(h=>`<span class="badge" style="cursor:pointer;margin:0.15rem;" data-hist="${h}">${h}</span>`).join('');
+                    hist.querySelectorAll('[data-hist]').forEach(el=>el.addEventListener('click', ()=>{ input.value = el.dataset.hist; input.dispatchEvent(new Event('input')); }));
+                }
+                renderHist();
+                input.addEventListener('input', async ()=>{
+                    const q = input.value.trim().toLowerCase(); if(!q){ sugg.innerHTML=''; res.innerHTML=''; return; }
+                    const { data, error } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name', `%${q}%`).limit(5), 5000);
+                    if(error) return;
+                    const items = data || [];
+                    sugg.innerHTML = items.map(ad=>`<div class="search-suggestion" data-sug="${ad.id}">📦 ${ad.item_name} • ${formatPrice(ad.price)}</div>`).join('');
+                    sugg.querySelectorAll('[data-sug]').forEach(el=>el.addEventListener('click', ()=>{ const ad = items.find(a=>a.id == el.dataset.sug); if(ad){ saveSearchQuery(q); document.getElementById('modalOverlay').remove(); openAdDetail(ad); } }));
+                });
+                document.getElementById('searchItemBtn').addEventListener('click', async ()=>{
+                    const q = input.value.trim().toLowerCase(); if(!q) return; saveSearchQuery(q);
+                    const { data, error } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').ilike('item_name', `%${q}%`), 5000);
+                    if(error) return;
+                    const items = data || [];
+                    if(!items.length){ res.innerHTML='<div class="empty-state">Ничего не найдено</div>'; return; }
+                    res.innerHTML = items.map(ad=>`<div class="card" data-res-id="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
+                    res.querySelectorAll('[data-res-id]').forEach(card=>card.addEventListener('click', ()=>{ const ad = items.find(a=>a.id == card.dataset.resId); if(ad){ document.getElementById('modalOverlay').remove(); openAdDetail(ad); } }));
+                });
+                document.getElementById('searchProfileBtn').addEventListener('click', ()=>{ const q = input.value.trim(); if(q) openProfileModal(q); });
+            }
+            async function openProfileModal(authorIdOrUsername){
+                let userId = authorIdOrUsername;
+                if(typeof authorIdOrUsername==='string' && authorIdOrUsername.startsWith('@')){
+                    const username = authorIdOrUsername.substring(1);
+                    const { data } = await supabaseClient.from('app_users').select('id').eq('username', username).maybeSingle();
+                    if(data) userId = data.id; else userId = null;
+                }
+                showModal(`<h3 class="modal-title">👤 Профиль: ${authorIdOrUsername}</h3>
+                    <div class="links-list mb-12">
+                        <div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">Менеджер</span></div>
+                        <div class="link-item" data-link="https://t.me/Bounty_Squad31"><span class="link-icon">📣</span><span class="link-label">Телеграм канал</span></div>
+                        <div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">📢</span><span class="link-label">ВК канал</span></div>
+                    </div>
+                    <div id="profileAdsList"><div class="loader"></div></div>`);
+                document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click', ()=>window.open(item.dataset.link,'_blank')));
+                if(!userId){ document.getElementById('profileAdsList').innerHTML='<div class="empty-state">Пользователь не найден</div>'; return; }
+                try{
+                    const { data } = await withTimeout(supabaseClient.from('ads').select('*').eq('status','approved').eq('author_id', userId).order('created_at',{ascending:false}), 5000);
+                    const ads = data || [];
+                    const { count } = await supabaseClient.from('ads').select('*',{ count:'exact', head:true }).eq('author_id', userId);
+                    const { data: reviews } = await supabaseClient.from('reviews').select('stars').eq('ad_id', userId);
+                    const avg = reviews && reviews.length ? (reviews.reduce((s,r)=>s+r.stars,0)/reviews.length).toFixed(1) : '—';
+                    const cont = document.getElementById('profileAdsList');
+                    let html = `<div style="margin-bottom:1rem;"><strong>Объявлений:</strong> ${count||0} • <strong>Средняя оценка:</strong> ⭐${avg}</div>`;
+                    if(!ads.length) html += '<div class="empty-state">Нет активных объявлений</div>';
+                    else html += ads.map(ad=>`<div class="card" data-prof-ad="${ad.id}"><div style="font-weight:700;">${ad.item_name}</div><div style="font-size:0.75rem;color:var(--muted);">${ad.server} • ${formatPrice(ad.price)}</div></div>`).join('');
+                    cont.innerHTML = html;
+                    cont.querySelectorAll('[data-prof-ad]').forEach(card=>card.addEventListener('click', ()=>{ const ad = ads.find(a=>a.id == card.dataset.profAd); if(ad){ document.getElementById('modalOverlay').remove(); openAdDetail(ad); } }));
+                } catch(e){ document.getElementById('profileAdsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; }
+            }
+
+            // ===================== ВСЕ РАЗДЕЛЫ =====================
+            function loadAllTiles(){
+                const tiles = [
+                    { id:'looks', icon:'📸', label:'Лента «Луков»' },
+                    { id:'companions', icon:'👥', label:'Попутчики' },
+                    { id:'music', icon:'🎵', label:'Музыка' },
+                    { id:'baryga', icon:'🎮', label:'Игра «Барыга»' },
+                    { id:'settings', icon:'⚙️', label:'Настройки' },
+                    { id:'chat', icon:'💬', label:'Переписки' },
+                    { id:'notifications', icon:'🔔', label:'Уведомления' }
+                ];
+                const cont = document.getElementById('allTiles');
+                cont.innerHTML = tiles.map(t=>`<div class="grid-tile" data-tile="${t.id}"><span class="tile-icon">${t.icon}</span><span>${t.label}</span></div>`).join('');
+                cont.querySelectorAll('[data-tile]').forEach(tile=>tile.addEventListener('click', ()=>{
+                    const id = tile.dataset.tile;
+                    if(id==='looks') openLooksModal();
+                    if(id==='companions') openCompanionsModal();
+                    if(id==='music') openMusicModal();
+                    if(id==='baryga') openBarygaGame();
+                    if(id==='settings') openSettingsModal();
+                    if(id==='chat') openChatModal();
+                    if(id==='notifications') openNotificationsModal();
+                }));
+            }
+
+            // ===================== ЛУКИ, ПОПУТЧИКИ, МУЗЫКА =====================
+            function openLooksModal(){
+                showModal(`<h3 class="modal-title">📸 Лента «Луков»</h3><div class="form-group"><label>Ссылка на фото</label><input type="text" id="lookImg" placeholder="https://..."></div><div class="form-group"><label>Описание</label><input type="text" id="lookDesc" placeholder="Мой лук"></div><button class="btn w-full mb-12" id="lookSubmitBtn">Опубликовать</button><div id="looksList"><div class="loader"></div></div>`);
+                loadLooksFeed();
+                document.getElementById('lookSubmitBtn').addEventListener('click', async ()=>{
+                    const img = document.getElementById('lookImg').value.trim(); const desc = document.getElementById('lookDesc').value.trim();
+                    const lc = checkLinksString(img); if(!lc.valid){ showAlert('Ошибка', lc.message); return; }
+                    await supabaseClient.from('looks').insert({ author_id: currentAuthUser.id, author_username: currentAuthUser.username, image_url: img, description: desc, created_at: new Date().toISOString() });
+                    playSfx('success'); document.getElementById('lookImg').value=''; document.getElementById('lookDesc').value=''; loadLooksFeed();
+                });
+            }
+            async function loadLooksFeed(){
+                const cont = document.getElementById('looksList'); if(!cont) return;
+                const { data, error } = await withTimeout(supabaseClient.from('looks').select('*').order('created_at',{ascending:false}), 5000);
+                if(error){ cont.innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; return; }
+                const looks = data || []; if(!looks.length){ cont.innerHTML='<div class="empty-state">📸 Образов пока нет</div>'; return; }
+                cont.innerHTML = looks.map(l=>`<div class="card"><div class="img-container" style="height:200px;border-radius:12px;background:var(--border);"><div class="skeleton" style="position:absolute;inset:0;border-radius:12px;"></div><img src="${l.image_url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;" onload="this.classList.add('loaded')" onerror="this.style.display='none';"></div><div style="font-weight:700;font-size:0.85rem;">${l.author_username||l.author_id}</div><p style="font-size:0.8rem;color:var(--muted);">${l.description||''}</p>${l.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-look="${l.id}">🗑</button>`:''}</div>`).join('');
+                cont.querySelectorAll('[data-del-look]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('looks').delete().eq('id', btn.dataset.delLook); loadLooksFeed(); }));
+            }
+            function openCompanionsModal(){
+                showModal(`<h3 class="modal-title">👥 Попутчики</h3><div class="form-group"><label>Цель</label><input type="text" id="compTarget" placeholder="Например: еду на шахту"></div><div class="form-group"><label>Контакты</label><input type="text" id="compContact" placeholder="@username"></div><button class="btn w-full mb-12" id="compSubmitBtn">Найти напарника</button><div id="companionsList"><div class="loader"></div></div>`);
+                loadCompanionsFeed();
+                document.getElementById('compSubmitBtn').addEventListener('click', async ()=>{
+                    const target = document.getElementById('compTarget').value.trim(); const contact = document.getElementById('compContact').value.trim();
+                    if(!target || !contact){ showAlert('Ошибка','Заполните все поля'); return; }
+                    await supabaseClient.from('companions').insert({ author_id: currentAuthUser.id, author_username: currentAuthUser.username, target, contact, created_at: new Date().toISOString() });
+                    playSfx('success'); document.getElementById('compTarget').value=''; document.getElementById('compContact').value=''; loadCompanionsFeed();
+                });
+            }
+            async function loadCompanionsFeed(){
+                const cont = document.getElementById('companionsList'); if(!cont) return;
+                const { data, error } = await withTimeout(supabaseClient.from('companions').select('*').order('created_at',{ascending:false}), 5000);
+                if(error){ cont.innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; return; }
+                const comps = data || []; if(!comps.length){ cont.innerHTML='<div class="empty-state">👥 Заявок нет</div>'; return; }
+                cont.innerHTML = comps.map(c=>`<div class="card"><div style="font-weight:700;">${c.target}</div><div style="font-size:0.75rem;color:var(--muted);">Автор: ${c.author_username||c.author_id} • Контакт: ${c.contact}</div>${c.author_id===currentAuthUser.id?`<button class="btn danger mt-8" data-del-comp="${c.id}">🗑</button>`:''}</div>`).join('');
+                cont.querySelectorAll('[data-del-comp]').forEach(btn=>btn.addEventListener('click', async ()=>{ await supabaseClient.from('companions').delete().eq('id', btn.dataset.delComp); loadCompanionsFeed(); }));
+            }
+            function openMusicModal(){
+                showModal(`<h3 class="modal-title">🎵 Музыка</h3><div class="form-group"><label>Ссылка на трек (mp3)</label><input type="text" id="musicUrl" placeholder="https://..."></div><div class="flex-between gap-8 mb-12"><button class="btn w-full" id="musicPlayBtn">▶️ Играть</button><button class="btn secondary w-full" id="musicPauseBtn">⏸ Пауза</button></div><button class="btn danger w-full" id="musicResetBtn">⏹ Сбросить</button>`);
+                let activeAudio = window.appCurrentAudio || null;
+                document.getElementById('musicPlayBtn').addEventListener('click', ()=>{ const url = document.getElementById('musicUrl').value.trim(); if(url){ if(activeAudio) activeAudio.pause(); activeAudio = new Audio(url); window.appCurrentAudio = activeAudio; activeAudio.play().catch(()=>showAlert('Ошибка','Не удалось воспроизвести')); } else if(activeAudio) activeAudio.play(); });
+                document.getElementById('musicPauseBtn').addEventListener('click', ()=>{ if(activeAudio) activeAudio.pause(); });
+                document.getElementById('musicResetBtn').addEventListener('click', ()=>{ if(activeAudio){ activeAudio.pause(); window.appCurrentAudio = null; } document.getElementById('musicUrl').value=''; });
+            }
+
+            // ===================== НАСТРОЙКИ =====================
+            function openSettingsModal(){
+                showModal(`<h3 class="modal-title">⚙️ Настройки</h3>
+                    <div class="form-group flex-between"><label>🔊 Звуки</label><input type="checkbox" id="settingsSfx" ${sfxEnabled?'checked':''} style="width:1.5rem;height:1.5rem;"></div>
+                    <div class="form-group flex-between"><label>🌙 Тёмная тема</label><input type="checkbox" id="settingsDark" ${currentTheme==='dark'?'checked':''} style="width:1.5rem;height:1.5rem;"></div>
+                    <button class="btn secondary w-full mt-12" id="settingsLogoutBtn">🚪 Выйти</button>
+                    <button class="btn danger w-full mt-8" id="settingsDeleteBtn">🗑 Удалить аккаунт</button>`);
+                document.getElementById('settingsSfx').addEventListener('change', async (e)=>{ sfxEnabled = e.target.checked; if(currentAuthUser) await supabaseClient.from('user_settings').update({ sfx_enabled: sfxEnabled }).eq('user_id', currentAuthUser.id); });
+                document.getElementById('settingsDark').addEventListener('change', async (e)=>{ currentTheme = e.target.checked ? 'dark' : 'light'; applyTheme(); if(currentAuthUser) await supabaseClient.from('user_settings').update({ theme: currentTheme }).eq('user_id', currentAuthUser.id); });
+                document.getElementById('settingsLogoutBtn').addEventListener('click', ()=>{ localStorage.removeItem('arizona_current_user'); localStorage.removeItem('arizona_current_user_full'); sessionStorage.clear(); currentAuthUser = null; document.getElementById('modalOverlay').remove(); showAuthScreen(); });
+                document.getElementById('settingsDeleteBtn').addEventListener('click', showDeleteAccountModal);
+            }
+            function showDeleteAccountModal(){
+                showModal(`<h3 class="modal-title">🗑 Удаление аккаунта</h3><p style="color:var(--muted);margin-bottom:1rem;">Введите пароль для подтверждения.</p><div class="form-group"><label>Пароль</label><input type="password" id="deletePassInput"></div><button class="btn danger w-full" id="confirmDeleteBtn">Удалить</button><p id="deleteError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
+                document.getElementById('confirmDeleteBtn').addEventListener('click', async ()=>{
+                    const pass = document.getElementById('deletePassInput').value.trim(); const errEl = document.getElementById('deleteError');
+                    if(!pass){ errEl.textContent='Введите пароль'; return; }
+                    const hash = await hashPassword(pass);
+                    if(hash !== currentAuthUser.password_hash){ errEl.textContent='Неверный пароль'; return; }
+                    showConfirm('Удаление','Удалить аккаунт и все данные?', async ()=>{
+                        try{
+                            await supabaseClient.from('app_users').delete().eq('id', currentAuthUser.id);
+                            await supabaseClient.from('user_settings').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('user_progress').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('ads').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('favorites').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('search_history').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('baryga').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('looks').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('companions').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('notifications').delete().eq('user_id', currentAuthUser.id);
+                            await supabaseClient.from('reviews').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('appeals').delete().eq('author_id', currentAuthUser.id);
+                            await supabaseClient.from('reports').delete().eq('reporter_id', currentAuthUser.id);
+                            localStorage.removeItem('arizona_current_user');
+                            localStorage.removeItem('arizona_current_user_full');
+                            currentAuthUser = null;
+                            document.getElementById('modalOverlay').remove(); showAuthScreen(); showToast('Аккаунт удалён','success');
+                        } catch(e){ showAlert('Ошибка','Не удалось удалить аккаунт'); }
+                    });
+                });
+            }
+
+            // ===================== ЧАТ =====================
+            function openChatModal(){
+                showModal(`<h3 class="modal-title">💬 Переписки</h3><div class="empty-state">Переписки ведутся напрямую в Telegram.</div><button class="btn w-full mt-12" id="chatTgBtn">📱 Перейти в Telegram</button>`);
+                document.getElementById('chatTgBtn').addEventListener('click', ()=>window.open('https://t.me/','_blank'));
+            }
+
+            // ===================== УВЕДОМЛЕНИЯ =====================
+            async function openNotificationsModal(){
+                showModal(`<h3 class="modal-title">🔔 Уведомления</h3><div id="notificationsList"><div class="loader"></div></div>`);
+                try{
+                    const { data, error } = await withTimeout(supabaseClient.from('notifications').select('*').eq('user_id', currentAuthUser.id).order('created_at',{ascending:false}), 5000);
+                    if(error) throw error;
+                    const notif = data || []; const cont = document.getElementById('notificationsList');
+                    if(!notif.length){ cont.innerHTML='<div class="empty-state">Нет уведомлений</div>'; return; }
+                    cont.innerHTML = notif.map(n=>`<div class="card ${!n.read?'inactive-card':''}"><div style="font-weight:600;">${n.message}</div><div style="font-size:0.7rem;color:var(--muted);">${new Date(n.created_at).toLocaleString('ru-RU')}</div></div>`).join('');
+                    await supabaseClient.from('notifications').update({ read:true }).eq('user_id', currentAuthUser.id).eq('read', false);
+                    unreadNotifications = 0;
+                } catch(e){ document.getElementById('notificationsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; }
+            }
+
+            // ===================== ЗАПУСК =====================
+            const telegramOk = initTelegram();
+            if (!telegramOk) return;
+            if (!initSupabase()) return;
+            // Воспроизводим звук сплэша (может быть заблокирован браузером)
+            playSplashSound();
+            setTimeout(() => { checkAuth(); }, 2000);
+            window.addEventListener('online', () => { if (currentSection === 'home') loadHomeFeed(); });
+            document.addEventListener('DOMContentLoaded', () => setupServerSelector());
+            console.log('Arizona Online App fully initialized');
         })();
     </script>
 </body>

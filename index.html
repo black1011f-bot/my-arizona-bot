@@ -200,7 +200,6 @@
         .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,215,0,0.3); border-top: 3px solid #ffd700; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Оверлей анимаций победы/поражения */
         #fx-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none; z-index: 90; overflow: hidden; display: none;
@@ -334,19 +333,14 @@
 </div>
 
 <script>
-    // Аудио менеджер с использованием синтезатора звуков (Web Audio API) без внешних файлов
     class SoundManager {
-        constructor() {
-            this.ctx = null;
-        }
+        constructor() { this.ctx = null; }
         init() {
             if (!this.ctx) {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 this.ctx = new AudioContext();
             }
-            if (this.ctx.state === 'suspended') {
-                this.ctx.resume();
-            }
+            if (this.ctx.state === 'suspended') this.ctx.resume();
         }
         playDeal() {
             this.init();
@@ -552,8 +546,30 @@
             await new Promise(r => setTimeout(r, 500));
 
             this.sortHands();
+            this.determineFirstAttacker();
             this.updateUI();
             this.nextTurn();
+        }
+
+        determineFirstAttacker() {
+            let lowestTrumpRank = 999;
+            let firstPlayer = 0;
+
+            for (let p = 0; p < this.totalPlayers; p++) {
+                for (let card of this.hands[p]) {
+                    if (card.suit === this.trumpSuit && card.rank < lowestTrumpRank) {
+                        lowestTrumpRank = card.rank;
+                        firstPlayer = p;
+                    }
+                }
+            }
+
+            if (lowestTrumpRank === 999) {
+                firstPlayer = Math.floor(Math.random() * this.totalPlayers);
+            }
+
+            this.attackerIdx = firstPlayer;
+            this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
         }
 
         async animateDealCard(playerIdx, card) {
@@ -617,7 +633,6 @@
         nextTurn() {
             if (this.checkGameOver()) return;
 
-            // Если игрок уже победил (карт нет, колода пуста), пропускаем его ход
             if (this.hands[0].length === 0 && this.deck.length === 0) {
                 this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
                 this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
@@ -705,11 +720,12 @@
 
             let cardToPlay = null;
             if (this.attackingCards.length === 0) {
-                const nonTrumps = hand.filter(c => c.suit !== this.trumpSuit);
+                // Умный выбор: бот ходит с минимальной некозырной карты, чтобы не тратить старвые
+                const nonTrumps = hand.filter(c => c.suit !== this.trumpSuit).sort((a,b) => a.rank - b.rank);
                 cardToPlay = nonTrumps.length > 0 ? nonTrumps[0] : hand[0];
             } else {
                 const activeRanks = [...this.attackingCards, ...this.defendingCards].map(c => c.rank);
-                const candidates = hand.filter(c => activeRanks.includes(c.rank));
+                const candidates = hand.filter(c => activeRanks.includes(c.rank)).sort((a,b) => a.rank - b.rank);
                 const nonTrumps = candidates.filter(c => c.suit !== this.trumpSuit);
                 cardToPlay = nonTrumps.length > 0 ? nonTrumps[0] : candidates[0];
             }
@@ -729,9 +745,13 @@
             const valid = hand.filter(c => c.beats(target, this.trumpSuit));
             
             if (valid.length > 0) {
-                const sameSuit = valid.filter(c => c.suit !== this.trumpSuit);
-                const option = sameSuit.length > 0 ? sameSuit[0] : valid[0];
-                this.playCard(option, this.defenderIdx);
+                // Жесткий отбор: берем самую слабую карту из тех, что бьют (сначала некозырные, экономя козыри)
+                valid.sort((a, b) => {
+                    const scoreA = (a.suit === this.trumpSuit ? 100 : 0) + a.rank;
+                    const scoreB = (b.suit === this.trumpSuit ? 100 : 0) + b.rank;
+                    return scoreA - scoreB;
+                });
+                this.playCard(valid[0], this.defenderIdx);
             } else {
                 document.getElementById('status-msg').textContent = `Игрок ${this.defenderIdx + 1} забирает!`;
                 setTimeout(() => this.onTake(), 700);
@@ -752,11 +772,11 @@
                     continue;
                 }
 
-                const candidates = hand.filter(c => activeRanks.includes(c.rank));
+                const candidates = hand.filter(c => activeRanks.includes(c.rank)).sort((a,b) => a.rank - b.rank);
                 const nonTrumps = candidates.filter(c => c.suit !== this.trumpSuit);
                 const cardToPodkid = nonTrumps.length > 0 ? nonTrumps[0] : candidates[0];
 
-                if (cardToPodkid && this.attackingCards.length < 6) {
+                if (cardToPodkid && this.attackingCards.length < 6 && this.attackingCards.length < this.hands[this.defenderIdx].length + this.defendingCards.length) {
                     this.playCard(cardToPodkid, p);
                     return;
                 } else {
@@ -764,7 +784,6 @@
                 }
             }
 
-            // Если игрок уже победил (карт нет), но раунд ждет его подтверждения отбоя — автоматически фиксируем отбой
             if (this.hands[0].length === 0 && this.deck.length === 0 && !this.passedPlayers.has(0)) {
                 this.passedPlayers.add(0);
             }
@@ -936,7 +955,6 @@
                 handContainer.appendChild(el);
             });
 
-            // Если игрок уже победил (карт нет и колода пуста), скрываем кнопку «Отбой»
             const isUserWinner = myHand.length === 0 && this.deck.length === 0;
             const actionBtn = document.getElementById('btn-action');
             if (isUserWinner && !actionBtn.disabled) {

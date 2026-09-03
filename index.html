@@ -2,20 +2,31 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Дурак — веер и анимация</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Дурак — финальная версия</title>
     <style>
-        * { box-sizing: border-box; user-select: none; }
-        body {
-            margin: 0; min-height: 100vh;
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             background: #1a3a1a;
-            display: flex; justify-content: center; align-items: center;
             font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            touch-action: manipulation;
         }
         #app {
-            width: 100%; max-width: 800px; height: 100vh; max-height: 900px;
-            background: #2a6b2a; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-            display: flex; flex-direction: column; position: relative; overflow: hidden;
+            width: 100%;
+            height: 100%;
+            max-width: 800px;
+            max-height: 900px;
+            margin: 0 auto;
+            background: #2a6b2a;
+            border-radius: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
             border: 8px solid #5a3a1a;
         }
         #menu {
@@ -71,9 +82,10 @@
         .card-pair .card.attack-only { left: 0; top: 0; z-index: 1; border-color: #d44; box-shadow: 0 0 10px rgba(200,50,50,0.5); }
 
         #player-zone {
-            flex: 0 0 120px; /* чуть больше для веера */
+            flex: 0 0 120px;
             border-top: 2px dashed rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.15); border-radius: 0 0 12px 12px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 0 0 12px 12px;
             position: relative;
             overflow: visible;
             height: 120px;
@@ -81,21 +93,14 @@
         #player-zone .card {
             position: absolute;
             cursor: pointer;
-            transition: none; /* позиционируем через transform */
             will-change: transform;
             transform-origin: center center;
-            width: 60px;
-            height: 84px;
-            background: #fff;
-            border-radius: 8px;
-            border: 2px solid #333;
+            width: 60px; height: 84px;
+            background: #fff; border-radius: 8px; border: 2px solid #333;
             box-shadow: 2px 4px 8px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 4px 6px;
-            font-size: 1.1em;
-            font-weight: bold;
+            display: flex; flex-direction: column;
+            justify-content: space-between; padding: 4px 6px;
+            font-size: 1.1em; font-weight: bold;
         }
         #player-zone .card .top { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
         #player-zone .card .bottom { display: flex; flex-direction: column; align-items: flex-end; transform: rotate(180deg); line-height: 1.1; }
@@ -165,6 +170,7 @@
             padding: 8px 14px; border: none; border-radius: 40px; font-size: 0.95em;
             font-weight: bold; background: #ffd700; color: #1a3a1a; cursor: pointer;
             box-shadow: 0 3px 0 #b8860b; transition: 0.1s linear; min-width: 60px;
+            touch-action: manipulation;
         }
         #controls button:active { transform: translateY(3px); box-shadow: none; }
         #controls button:disabled { opacity: 0.4; transform: translateY(3px); box-shadow: none; pointer-events: none; }
@@ -193,6 +199,7 @@
             #deck-area .card { width: 40px; height: 56px; font-size: 1em; }
             #controls button { padding: 6px 10px; font-size: 0.85em; min-width: 50px; }
             #menu h1 { font-size: 2em; }
+            #menu button { font-size: 1.4em; padding: 12px 40px; }
         }
         @media (max-width: 420px) {
             .card { width: 40px; height: 56px; font-size: 0.75em; padding: 2px 3px; }
@@ -213,7 +220,7 @@
         <label><input type="radio" name="mode" value="podkid" checked> Подкидной</label>
         <label><input type="radio" name="mode" value="perevod"> Переводной</label>
         <button id="startBtn">Начать игру</button>
-        <div class="info">Офлайн‑версия. Карты в руке изогнуты веером, с анимацией перелёта.</div>
+        <div class="info">Офлайн‑версия. Веер карт, анимация, умный бот.</div>
     </div>
 
     <div id="table">
@@ -243,11 +250,10 @@
     </div>
 </div>
 
-<!-- Слой для анимированных карт -->
 <div id="animation-layer"></div>
 
 <script>
-    // ================== КЛАСС КАРТЫ ==================
+    // ========== КЛАСС КАРТЫ ==========
     class Card {
         constructor(suit, rank) {
             this.suit = suit; this.rank = rank; this.id = suit + rank;
@@ -266,7 +272,7 @@
         }
     }
 
-    // ================== КОЛОДА ==================
+    // ========== КОЛОДА ==========
     function createDeck() {
         const suits = ['♠','♥','♦','♣'];
         const ranks = [6,7,8,9,10,11,12,13,14];
@@ -276,13 +282,12 @@
     }
     function shuffle(arr) { for (let i=arr.length-1; i>0; i--) { let j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
-    // ================== ГЕОМЕТРИЯ ВЕЕРА ==================
+    // ========== ГЕОМЕТРИЯ ВЕЕРА ==========
     function computeFanPositions(n, w, d, rot) {
         if (n === 0) return [];
         if (n === 1) {
             return [{ x: 0, y: 0, angle: 0 }];
         }
-        // Вычисляем по формуле из описания
         const a = Math.sqrt(d*d + (w*w/4));
         const p = 0.5 * (a + w + a);
         const R = (a * w * a) / (4 * Math.sqrt( p * (p-a) * (p-w) * (p-a) ));
@@ -293,15 +298,13 @@
             const L = L0 + dL*i + rot;
             const hx = -R * Math.cos(L) - R * Math.sin(rot);
             const hy = d + R * Math.sin(L) - R * Math.cos(rot);
-            // Угол поворота карты (чтобы смотреть в центр дуги)
-            // В оригинале угол поворота = L - Math.PI/2 (так как карта вертикальна)
             const angle = L - Math.PI/2;
             results.push({ x: hx, y: hy, angle: angle });
         }
         return results;
     }
 
-    // ================== ИГРА ==================
+    // ========== ОСНОВНОЙ КЛАСС ИГРЫ ==========
     class Game {
         constructor(mode) {
             this.mode = mode;
@@ -321,7 +324,7 @@
             this.cardsToDeal = 6;
             this.maxTableCards = 6;
             this.suggestedCards = [];
-            this.animating = false; // флаг, чтобы не кликать во время анимации
+            this.animating = false;
         }
 
         init() {
@@ -351,9 +354,7 @@
             this.sortHand(this.botHand);
             this.updateUI();
             this.checkGameOver();
-            if (!this.gameOver) {
-                this.startPlayerTurn();
-            }
+            if (!this.gameOver) this.startPlayerTurn();
         }
 
         sortHand(hand) {
@@ -445,38 +446,28 @@
                 }
             }
 
-            // Находим элемент карты в руке, чтобы анимировать от него
             const cardEl = this.findCardElement(card);
             if (!cardEl) return false;
-
-            // Получаем начальные координаты (абсолютные)
             const rect = cardEl.getBoundingClientRect();
             const startX = rect.left + rect.width/2;
             const startY = rect.top + rect.height/2;
-            const startAngle = this.getCardAngle(cardEl); // текущий угол поворота
+            const startAngle = this.getCardAngle(cardEl);
 
-            // Удаляем карту из руки (состояние)
             this.playerHand.splice(idx, 1);
-
-            // Перерисовываем руку (без этой карты)
             this.renderPlayerHand();
 
-            // Определяем целевую позицию (центр стола)
             const centerZone = document.getElementById('center-zone');
             const centerRect = centerZone.getBoundingClientRect();
             const targetX = centerRect.left + centerRect.width/2;
-            const targetY = centerRect.top + centerRect.height/2 - 20; // чуть выше центра
-            const targetAngle = 0; // на столе карта лежит ровно
+            const targetY = centerRect.top + centerRect.height/2 - 20;
+            const targetAngle = 0;
 
-            // Запускаем анимацию
             this.animating = true;
             this.animateCard(card, startX, startY, targetX, targetY, startAngle, targetAngle, () => {
-                // По окончании анимации добавляем карту на стол (состояние)
                 this.tableCards.push(card);
                 this.attackingCards.push(card);
                 this.animating = false;
                 this.updateUI();
-                // Проверяем, можно ли ещё подкинуть
                 const canAdd = this.canPlayerAdd() && this.tableCards.length < this.maxTableCards;
                 if (canAdd) {
                     this.waitingForPlayerAction = true;
@@ -484,14 +475,12 @@
                     this.setStatus('Подкиньте ещё или нажмите "Отбой".');
                     this.highlightPossibleCards();
                 } else {
-                    this.playerPassAttack(); // автоматический отбой
+                    this.playerPassAttack();
                 }
             });
-
             return true;
         }
 
-        // ----- Завершение атаки игрока (Отбой) -----
         playerPassAttack() {
             if (this.gameOver) return;
             this.waitingForPlayerAction = false;
@@ -517,20 +506,17 @@
                     const candidate = this.botHand[i];
                     if (candidate.beats(atk, this.trumpSuit)) {
                         if (!bestCard) {
-                            bestCard = candidate;
-                            bestIdx = i;
+                            bestCard = candidate; bestIdx = i;
                         } else {
                             const bestIsTrump = bestCard.suit === this.trumpSuit;
                             const candIsTrump = candidate.suit === this.trumpSuit;
                             if (bestIsTrump && !candIsTrump) {
-                                bestCard = candidate;
-                                bestIdx = i;
+                                bestCard = candidate; bestIdx = i;
                             } else if (!bestIsTrump && candIsTrump) {
-                                // оставляем текущий
+                                // leave
                             } else {
                                 if (candidate.rank < bestCard.rank) {
-                                    bestCard = candidate;
-                                    bestIdx = i;
+                                    bestCard = candidate; bestIdx = i;
                                 }
                             }
                         }
@@ -557,7 +543,6 @@
                 this.setStatus('Бот отбился!');
                 this.finishTurn(false);
             } else {
-                // Бот берёт карты
                 this.botHand.push(...this.tableCards);
                 this.tableCards = [];
                 this.attackingCards = [];
@@ -570,7 +555,6 @@
             }
         }
 
-        // ----- Игрок нажимает "Отбой" после взятия ботом -----
         playerPassAfterBotTake() {
             if (!this.waitingForPass || this.gameOver) return;
             this.waitingForPass = false;
@@ -579,7 +563,7 @@
             this.finishTurn(true);
         }
 
-        // ----- Ход бота (с анимацией) -----
+        // ----- Ход бота -----
         botTurn() {
             if (this.gameOver) return;
             if (this.isPlayerTurn) return;
@@ -591,13 +575,11 @@
             const idx = this.botHand.indexOf(card);
             if (idx === -1) return;
             this.botHand.splice(idx, 1);
-            // Добавляем на стол сразу (без анимации для бота)
             this.tableCards.push(card);
             this.attackingCards.push(card);
             this.updateUI();
             this.setStatus('Бот атакует картой ' + card.name + card.suit);
 
-            // Игрок должен защищаться
             this.isPlayerTurn = true;
             this.isAttacking = false;
             this.waitingForPlayerAction = true;
@@ -627,29 +609,24 @@
             const idx = this.playerHand.indexOf(card);
             if (idx === -1) return false;
 
-            // Находим элемент карты в руке
             const cardEl = this.findCardElement(card);
             if (!cardEl) return false;
-
             const rect = cardEl.getBoundingClientRect();
             const startX = rect.left + rect.width/2;
             const startY = rect.top + rect.height/2;
             const startAngle = this.getCardAngle(cardEl);
 
-            // Удаляем карту из руки
             this.playerHand.splice(idx, 1);
             this.renderPlayerHand();
 
-            // Цель: поверх атакующей карты (которая уже на столе)
-            // Найдём позицию атакующей карты на столе (первая неотбитая)
+            // Ищем атакующую карту на столе, чтобы положить поверх
             const attackEl = this.findTableCardElement(target);
             let targetX, targetY, targetAngle = 0;
             if (attackEl) {
                 const rect2 = attackEl.getBoundingClientRect();
-                targetX = rect2.left + rect2.width/2 + 10; // небольшое смещение вправо-вниз
+                targetX = rect2.left + rect2.width/2 + 10;
                 targetY = rect2.top + rect2.height/2 + 10;
             } else {
-                // запасной вариант — центр стола
                 const centerRect = document.getElementById('center-zone').getBoundingClientRect();
                 targetX = centerRect.left + centerRect.width/2;
                 targetY = centerRect.top + centerRect.height/2;
@@ -661,7 +638,6 @@
                 this.tableCards.push(card);
                 this.animating = false;
                 this.updateUI();
-
                 if (this.defendingCards.length === this.attackingCards.length) {
                     this.clearTable();
                     this.setStatus('Вы отбились!');
@@ -680,7 +656,6 @@
         // ----- Игрок нажимает "Взять" -----
         playerTake() {
             if (!this.waitingForPlayerAction || this.isAttacking || !this.isPlayerTurn || this.gameOver) return;
-            // Берём все карты без анимации (просто добавляем в руку)
             this.playerHand.push(...this.tableCards);
             this.tableCards = [];
             this.attackingCards = [];
@@ -691,27 +666,21 @@
             this.finishTurn(false);
         }
 
-        // ----- Завершение хода (общая) -----
+        // ----- Завершение хода -----
         finishTurn(nextIsPlayer) {
             this.waitingForPlayerAction = false;
             this.waitingForPass = false;
             this.enableControls(false, false, false, false);
-
             this.dealCards();
             this.updateUI();
             this.checkGameOver();
             if (this.gameOver) return;
-
             this.isPlayerTurn = nextIsPlayer;
             this.isAttacking = true;
-            if (this.isPlayerTurn) {
-                this.startPlayerTurn();
-            } else {
-                this.botTurn();
-            }
+            if (this.isPlayerTurn) this.startPlayerTurn();
+            else this.botTurn();
         }
 
-        // ----- Добирание карт -----
         dealCards() {
             while (this.playerHand.length < 6 && this.deck.length > 0) {
                 this.playerHand.push(this.deck.pop());
@@ -723,7 +692,6 @@
             this.sortHand(this.botHand);
         }
 
-        // ----- Очистка стола -----
         clearTable() {
             this.tableCards = [];
             this.attackingCards = [];
@@ -732,7 +700,6 @@
             this.updateUI();
         }
 
-        // ----- Проверка окончания игры -----
         checkGameOver() {
             if (this.deck.length === 0 && (this.playerHand.length === 0 || this.botHand.length === 0)) {
                 this.gameOver = true;
@@ -748,14 +715,12 @@
             return false;
         }
 
-        // ================== АНИМАЦИЯ ==================
+        // ========== АНИМАЦИЯ ==========
         animateCard(card, fromX, fromY, toX, toY, fromAngle, toAngle, callback) {
             const layer = document.getElementById('animation-layer');
-            // Создаём элемент-клон карты
             const el = document.createElement('div');
             el.className = 'card';
-            const color = card.isRed ? 'red' : 'black';
-            el.classList.add(color);
+            el.classList.add(card.isRed ? 'red' : 'black');
             if (card.suit === this.trumpSuit) el.classList.add('trump-card');
             const top = document.createElement('div'); top.className = 'top';
             top.innerHTML = `<span>${card.name}</span><span class="suit">${card.suitSymbol}</span>`;
@@ -764,35 +729,29 @@
             el.appendChild(top); el.appendChild(bottom);
             layer.appendChild(el);
 
-            // Начальное положение (абсолютные координаты окна)
-            el.style.left = '0px';
-            el.style.top = '0px';
+            el.style.left = '0px'; el.style.top = '0px';
             el.style.transform = `translate(${fromX}px, ${fromY}px) rotate(${fromAngle}rad)`;
             el.style.opacity = 1;
 
-            // Параметры движения
             const Sx = toX - fromX;
             const Sy = toY - fromY;
             const S = Math.sqrt(Sx*Sx + Sy*Sy);
-            const speed = 400; // пикселей в секунду
+            const speed = 400;
             if (S === 0) {
-                // если расстояние нулевое, просто завершаем
                 layer.removeChild(el);
                 callback();
                 return;
             }
-            const totalTime = S / speed; // секунд
+            const totalTime = S / speed;
             const constX = Sx / totalTime;
             const constY = Sy / totalTime;
             const dAngle = toAngle - fromAngle;
             const angleConst = dAngle / totalTime;
-
             const startTime = performance.now();
 
             const animateFrame = (now) => {
-                const elapsed = (now - startTime) / 1000; // секунды
-                let t = elapsed;
-                if (t >= totalTime) t = totalTime;
+                const elapsed = (now - startTime) / 1000;
+                let t = Math.min(elapsed, totalTime);
                 const currentX = fromX + constX * t;
                 const currentY = fromY + constY * t;
                 const currentAngle = fromAngle + angleConst * t;
@@ -800,7 +759,6 @@
                 if (t < totalTime) {
                     requestAnimationFrame(animateFrame);
                 } else {
-                    // Завершаем
                     layer.removeChild(el);
                     callback();
                 }
@@ -808,43 +766,34 @@
             requestAnimationFrame(animateFrame);
         }
 
-        // ================== ПОИСК ЭЛЕМЕНТОВ ==================
+        // ========== ПОИСК ЭЛЕМЕНТОВ ==========
         findCardElement(card) {
             const cards = document.querySelectorAll('#player-zone .card');
             for (let el of cards) {
                 const text = el.textContent.replace(/\s/g, '');
-                if (text.includes(card.name) && text.includes(card.suitSymbol)) {
-                    return el;
-                }
+                if (text.includes(card.name) && text.includes(card.suitSymbol)) return el;
             }
             return null;
         }
-
         findTableCardElement(card) {
             const cards = document.querySelectorAll('#center-zone .card');
             for (let el of cards) {
                 const text = el.textContent.replace(/\s/g, '');
-                if (text.includes(card.name) && text.includes(card.suitSymbol)) {
-                    return el;
-                }
+                if (text.includes(card.name) && text.includes(card.suitSymbol)) return el;
             }
             return null;
         }
-
         getCardAngle(el) {
-            // Парсим transform: translate(...) rotate(...)
             const style = window.getComputedStyle(el);
             const transform = style.transform;
             if (transform === 'none') return 0;
-            // Парсим матрицу
             const matrix = transform.match(/matrix\((.+)\)/);
             if (!matrix) return 0;
             const values = matrix[1].split(',').map(Number);
-            const angle = Math.atan2(values[1], values[0]);
-            return angle;
+            return Math.atan2(values[1], values[0]);
         }
 
-        // ================== UI ==================
+        // ========== UI ==========
         setStatus(msg) { document.getElementById('status').textContent = msg; }
         enableControls(pass, take, add, hint) {
             document.getElementById('btnPass').disabled = !pass;
@@ -909,7 +858,7 @@
             this.setStatus('Подсказка: сыграйте ' + card.name + card.suit);
         }
 
-        // ================== ОТРИСОВКА ==================
+        // ========== ОТРИСОВКА ==========
         updateUI() {
             this.renderPlayerHand();
             this.renderBotHand();
@@ -938,22 +887,17 @@
             const n = this.playerHand.length;
             if (n === 0) return;
 
-            // Параметры веера
-            const zoneWidth = zone.clientWidth - 40; // отступы
-            const d = 30; // смещение центра вверх (параметр)
-            const w = Math.min(zoneWidth, n * 70); // ширина
-            const rot = 0; // общий поворот
-
+            const zoneWidth = zone.clientWidth - 40;
+            const d = 30;
+            const w = Math.min(zoneWidth, n * 70);
+            const rot = 0;
             const positions = computeFanPositions(n, w, d, rot);
-
-            // Центрируем по горизонтали
             const offsetX = (zoneWidth - w) / 2;
-            const offsetY = 20; // отступ сверху
+            const offsetY = 20;
 
             this.playerHand.forEach((card, idx) => {
                 const pos = positions[idx] || { x: 0, y: 0, angle: 0 };
                 const el = this.createCardElement(card, false);
-                // Применяем transform
                 const px = offsetX + pos.x;
                 const py = offsetY + pos.y;
                 el.style.transform = `translate(${px}px, ${py}px) rotate(${pos.angle}rad)`;
@@ -962,11 +906,11 @@
                 el.style.top = '0';
                 el.style.width = '60px';
                 el.style.height = '84px';
-                el.addEventListener('click', () => this.onCardClick(card));
+                el.addEventListener('click', (e) => { e.stopPropagation(); this.onCardClick(card); });
+                el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); this.onCardClick(card); }, { passive: false });
                 zone.appendChild(el);
             });
 
-            // Подсветка suggested
             if (this.suggestedCards.length > 0) {
                 const cards = zone.querySelectorAll('.card');
                 for (let el of cards) {
@@ -986,7 +930,7 @@
             const indicator = zone.querySelector('.turn-indicator');
             zone.innerHTML = '';
             zone.appendChild(indicator);
-            this.botHand.forEach((card) => {
+            this.botHand.forEach(card => {
                 const el = this.createCardElement(card, true);
                 zone.appendChild(el);
             });
@@ -1104,7 +1048,7 @@
         }
     }
 
-    // ================== ЗАПУСК ==================
+    // ========== ЗАПУСК ==========
     let game = null;
     function startGame(mode) {
         game = new Game(mode);
@@ -1125,6 +1069,11 @@
         startGame(mode);
     });
     document.getElementById('menu').style.display = 'flex';
+
+    // Пересчитываем веер при изменении размера окна (для адаптивности)
+    window.addEventListener('resize', () => {
+        if (game && !game.gameOver) game.updateUI();
+    });
 </script>
 </body>
 </html>

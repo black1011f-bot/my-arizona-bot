@@ -546,20 +546,22 @@
             await new Promise(r => setTimeout(r, 500));
 
             this.sortHands();
-            this.determineFirstAttacker();
+            await this.determineFirstAttackerWithAnimation();
             this.updateUI();
             this.nextTurn();
         }
 
-        determineFirstAttacker() {
+        async determineFirstAttackerWithAnimation() {
             let lowestTrumpRank = 999;
             let firstPlayer = 0;
+            let winningCard = null;
 
             for (let p = 0; p < this.totalPlayers; p++) {
                 for (let card of this.hands[p]) {
                     if (card.suit === this.trumpSuit && card.rank < lowestTrumpRank) {
                         lowestTrumpRank = card.rank;
                         firstPlayer = p;
+                        winningCard = card;
                     }
                 }
             }
@@ -570,6 +572,49 @@
 
             this.attackerIdx = firstPlayer;
             this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
+
+            // Анимация показа самой младшей козырной карты на столе на 2 секунды
+            if (winningCard) {
+                document.getElementById('status-msg').textContent = firstPlayer === 0 ? 'Ваш младший козырь!' : `Младший козырь у Игрока ${firstPlayer + 1}`;
+                await this.animateFirstCardShow(winningCard, firstPlayer);
+            }
+        }
+
+        async animateFirstCardShow(card, playerIdx) {
+            return new Promise(resolve => {
+                const badgeEl = document.getElementById(playerIdx === 0 ? 'badge-p1' : `badge-p${playerIdx + 1}`);
+                const tableField = document.getElementById('table-field');
+                
+                const startRect = badgeEl.getBoundingClientRect();
+                const tableRect = tableField.getBoundingClientRect();
+
+                const animCard = this.createCardEl(card, false, false);
+                animCard.classList.add('animating-card');
+                animCard.style.left = (startRect.left + startRect.width / 2 - 34) + 'px';
+                animCard.style.top = (startRect.top + startRect.height / 2 - 48) + 'px';
+                document.body.appendChild(animCard);
+
+                sounds.playCard();
+
+                setTimeout(() => {
+                    animCard.style.left = (tableRect.left + tableRect.width / 2 - 34) + 'px';
+                    animCard.style.top = (tableRect.top + tableRect.height / 2 - 48) + 'px';
+                    animCard.style.transform = 'scale(1.2) rotate(0deg)';
+                }, 30);
+
+                setTimeout(() => {
+                    sounds.playAction();
+                    animCard.style.left = (startRect.left + startRect.width / 2 - 34) + 'px';
+                    animCard.style.top = (startRect.top + startRect.height / 2 - 48) + 'px';
+                    animCard.style.transform = 'scale(1) rotate(0deg)';
+                    animCard.style.opacity = '0.2';
+                }, 2000);
+
+                setTimeout(() => {
+                    animCard.remove();
+                    resolve();
+                }, 2500);
+            });
         }
 
         async animateDealCard(playerIdx, card) {
@@ -720,7 +765,6 @@
 
             let cardToPlay = null;
             if (this.attackingCards.length === 0) {
-                // Умный выбор: бот ходит с минимальной некозырной карты, чтобы не тратить старвые
                 const nonTrumps = hand.filter(c => c.suit !== this.trumpSuit).sort((a,b) => a.rank - b.rank);
                 cardToPlay = nonTrumps.length > 0 ? nonTrumps[0] : hand[0];
             } else {
@@ -745,7 +789,6 @@
             const valid = hand.filter(c => c.beats(target, this.trumpSuit));
             
             if (valid.length > 0) {
-                // Жесткий отбор: берем самую слабую карту из тех, что бьют (сначала некозырные, экономя козыри)
                 valid.sort((a, b) => {
                     const scoreA = (a.suit === this.trumpSuit ? 100 : 0) + a.rank;
                     const scoreB = (b.suit === this.trumpSuit ? 100 : 0) + b.rank;

@@ -571,7 +571,7 @@
             }
 
             this.attackerIdx = firstPlayer;
-            this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
+            this.defenderIdx = this.getNextActivePlayer(this.attackerIdx);
 
             if (winningCard) {
                 document.getElementById('status-msg').textContent = firstPlayer === 0 ? 'Ваш младший козырь!' : `Младший козырь у Игрока ${firstPlayer + 1}`;
@@ -674,31 +674,28 @@
             return div;
         }
 
-        // Проверка: если у текущего игрока нет карт, пропускаем его ход автоматически
-        findActivePlayer(idx) {
-            let current = idx;
-            for (let i = 0; i < this.totalPlayers; i++) {
-                if (this.hands[current].length > 0) return current;
-                current = (current + 1) % this.totalPlayers;
+        getNextActivePlayer(idx) {
+            let next = (idx + 1) % this.totalPlayers;
+            let count = 0;
+            while (this.hands[next].length === 0 && count < this.totalPlayers) {
+                next = (next + 1) % this.totalPlayers;
+                count++;
             }
-            return current;
+            return next;
         }
 
         nextTurn() {
             if (this.checkGameOver()) return;
 
-            // Пропускаем игроков без карт при переходе хода
-            while (this.hands[this.attackerIdx].length === 0 && this.deck.length === 0) {
-                this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
-                this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
-                if (this.checkGameOver()) return;
+            // Корректно находим живых игроков для атаки и защиты
+            if (this.hands[this.attackerIdx].length === 0) {
+                this.attackerIdx = this.getNextActivePlayer(this.attackerIdx);
             }
+            this.defenderIdx = this.getNextActivePlayer(this.attackerIdx);
 
-            while (this.hands[this.defenderIdx].length === 0 && this.deck.length === 0) {
-                this.defenderIdx = (this.defenderIdx + 1) % this.totalPlayers;
-                if (this.attackerIdx === this.defenderIdx) {
-                    this.attackerIdx = (this.defenderIdx - 1 + this.totalPlayers) % this.totalPlayers;
-                }
+            if (this.attackerIdx === this.defenderIdx) {
+                this.checkGameOver();
+                return;
             }
 
             this.passedPlayers.clear();
@@ -772,10 +769,9 @@
         botTurn() {
             if (this.gameOver) return;
 
-            // Если у ходящего бота нет карт, переводим ход дальше
             if (this.hands[this.attackerIdx].length === 0) {
-                this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
-                this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
+                this.attackerIdx = this.getNextActivePlayer(this.attackerIdx);
+                this.defenderIdx = this.getNextActivePlayer(this.attackerIdx);
                 this.nextTurn();
                 return;
             }
@@ -834,7 +830,6 @@
                     continue;
                 }
 
-                // Если это вы (игрок 0), но у вас нет карт — просто отмечаем отбой
                 if (p === 0) {
                     this.passedPlayers.add(0);
                     continue;
@@ -892,8 +887,11 @@
             sounds.playAction();
             this.discardPile += this.attackingCards.length + this.defendingCards.length;
             this.renderDiscard();
-            this.attackerIdx = (this.attackerIdx + 1) % this.totalPlayers;
-            this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
+            
+            // Жестко передаем ход по кругу: атакующий меняется, защищающийся идет следом за ним
+            this.attackerIdx = this.getNextActivePlayer(this.defenderIdx);
+            this.defenderIdx = this.getNextActivePlayer(this.attackerIdx);
+            
             await this.finishTurn();
         }
 
@@ -901,8 +899,11 @@
             this.stopTimer();
             sounds.playAction();
             this.hands[this.defenderIdx].push(...this.attackingCards, ...this.defendingCards);
-            this.attackerIdx = (this.defenderIdx + 1) % this.totalPlayers;
-            this.defenderIdx = (this.attackerIdx + 1) % this.totalPlayers;
+            
+            // Если защищавшийся забрал, то следующий атакующий — тот, кто сидит после защищающегося
+            this.attackerIdx = this.getNextActivePlayer(this.defenderIdx);
+            this.defenderIdx = this.getNextActivePlayer(this.attackerIdx);
+            
             await this.finishTurn();
         }
 

@@ -219,9 +219,9 @@
         .card.mini .corner { font-size: 7px; }
         .card.mini .corner .suit { font-size: 6px; }
 
-        .card.hand-card { width: 50px; height: 70px; border: 1.5px solid #ffd700; }
-        .card.hand-card .corner { font-size: 9px; }
-        .card.hand-card .corner .suit { font-size: 8px; }
+        .card.hand-card { width: 44px; height: 62px; border: 1.5px solid #ffd700; }
+        .card.hand-card .corner { font-size: 8px; }
+        .card.hand-card .corner .suit { font-size: 7px; }
 
         .card-center-icon {
             position: absolute; top: 50%; left: 50%;
@@ -244,13 +244,12 @@
         .card.bottom-corner { transform: rotate(180deg); }
 
         #player-hand { 
-            position: absolute; bottom: 5px; left: 0; width: 100%; height: 100px; 
+            position: absolute; bottom: 5px; left: 0; width: 100%; height: 85px; 
             display: flex; justify-content: center; align-items: flex-end; z-index: 30; 
         }
         #player-hand .card { cursor: pointer; transform-origin: bottom center; }
-        #player-hand .card:hover { transform: translateY(-10px) scale(1.05) !important; z-index: 99 !important; }
+        #player-hand .card:hover { transform: translateY(-8px) scale(1.05) !important; z-index: 99 !important; }
 
-        .card.dragging { transition: none !important; z-index: 99 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.8), 0 0 12px rgba(255,215,0,0.9) !important; }
         .animating-card { position: absolute; z-index: 80; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; }
 
         #controls { position: absolute; bottom: 115px; right: 45px; display: flex; gap: 5px; z-index: 40; }
@@ -1131,20 +1130,24 @@
             const myHand = this.hands[0] || [];
             const totalP = myHand.length;
             
-            // Плотный кучный веер без огромных расстояний
-            const maxSpread = Math.min(window.innerWidth - 65, totalP * 22);
+            // Плотный кучный веер
+            const maxSpread = Math.min(window.innerWidth - 65, totalP * 16);
             const stepP = totalP > 1 ? maxSpread / (totalP - 1) : 0;
             const startXOffset = -maxSpread / 2;
 
             myHand.forEach((card, idx) => {
                 const el = this.createCardEl(card, false, false, true);
-                const angle = (idx - (totalP - 1) / 2) * 3.5;
+                const angle = (idx - (totalP - 1) / 2) * 2.5;
                 const offsetX = totalP === 1 ? 0 : startXOffset + (idx * stepP);
 
                 el.style.transform = `translateX(${offsetX}px) rotate(${angle}deg)`;
                 el.style.zIndex = idx + 1;
 
-                this.bindCardEvents(el, card, offsetX, angle);
+                // Клик по карте сразу отправляет ее на стол
+                el.onclick = () => {
+                    this.playCard(card, 0);
+                };
+
                 handContainer.appendChild(el);
             });
 
@@ -1201,59 +1204,6 @@
                 }
                 wrapper.appendChild(pair);
             });
-        }
-
-        bindCardEvents(el, card, baseOffsetX, baseAngle) {
-            let isDragging = false;
-            let startX = 0, startY = 0;
-            let initialRect;
-
-            const handleStart = (e) => {
-                if (this.gameOver || this.isAnimating) return;
-                const touch = e.touches ? e.touches[0] : e;
-                startX = touch.clientX; startY = touch.clientY;
-                initialRect = el.getBoundingClientRect();
-                isDragging = false;
-            };
-
-            const handleMove = (e) => {
-                const touch = e.touches ? e.touches[0] : e;
-                const deltaX = touch.clientX - startX;
-                const deltaY = touch.clientY - startY;
-
-                if (Math.hypot(deltaX, deltaY) > 6) {
-                    isDragging = true;
-                    el.classList.add('dragging');
-                    el.style.left = (initialRect.left + deltaX) + 'px';
-                    el.style.top = (initialRect.top + deltaY) + 'px';
-                }
-            };
-
-            const handleEnd = (e) => {
-                if (isDragging) {
-                    el.classList.remove('dragging');
-                    el.style.left = ''; el.style.top = '';
-                    el.style.transform = `translateX(${baseOffsetX}px) rotate(${baseAngle}deg)`;
-
-                    const touch = e.changedTouches ? e.changedTouches[0] : e;
-                    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-                    
-                    if (dropTarget && (dropTarget.closest('#table-field') || dropTarget.closest('.card-pair'))) {
-                        this.playCard(card, 0);
-                    } else {
-                        this.updateUI();
-                    }
-                } else {
-                    this.playCard(card, 0);
-                }
-            };
-
-            el.addEventListener('touchstart', handleStart, {passive: true});
-            el.addEventListener('touchmove', handleMove, {passive: true});
-            el.addEventListener('touchend', handleEnd);
-            el.addEventListener('mousedown', handleStart);
-            window.addEventListener('mousemove', (e) => { if (isDragging) handleMove(e); });
-            window.addEventListener('mouseup', (e) => { if (isDragging) handleEnd(e); });
         }
     }
 

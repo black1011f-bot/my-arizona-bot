@@ -175,7 +175,6 @@
             border: 1px solid rgba(255,255,255,0.5); position: absolute; opacity: 0.85;
         }
 
-        /* ИСПРАВЛЕНО: поднят z-index, чтобы карты стола были видны */
         #table-field {
             flex: 1; margin-top: 95px; margin-bottom: 135px;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -184,11 +183,10 @@
         .table-cards-wrapper {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 6px;
             justify-items: center; align-items: center; max-width: 220px;
-            position: relative; z-index: 31; /* поверх оппонентов */
+            position: relative; z-index: 31;
         }
         
         .card-pair { position: relative; width: 38px; height: 52px; }
-        /* ИСПРАВЛЕНО: добавлены явные размеры для карт на столе */
         .card-pair .attack-card { position: absolute; left: 0; top: 0; z-index: 1; width: 36px; height: 50px; }
         .card-pair .defense-card { position: absolute; left: 8px; top: 4px; z-index: 2; width: 36px; height: 50px; }
 
@@ -815,7 +813,7 @@
             if (this.gameOver || this.isAnimating) return;
 
             if (this.isPerevodnoy && fromPlayerIdx === this.defenderIdx && this.attackingCards.length === 1 && this.defendingCards.length === 0) {
-                if (card.rank === this.attackingCards[0].rank && this.hands[this.defenderIdx].length > 1) {
+                if (card.rank === this.attackingCards[0].rank) {
                     this.hands[fromPlayerIdx] = this.hands[fromPlayerIdx].filter(c => c !== card);
                     this.attackingCards.push(card);
                     sounds.playCard();
@@ -866,8 +864,8 @@
                     sounds.playCard();
 
                     if (this.defendingCards.length === this.attackingCards.length) {
-                        document.getElementById('status-msg').textContent = 'Отбито! Ждем отбой';
-                        document.getElementById('btn-action').disabled = (this.hands[0].length === 0 || this.deck.length === 0);
+                        document.getElementById('status-msg').textContent = 'Отбито! Можно подкинуть или нажать Бито';
+                        document.getElementById('btn-action').disabled = false;  // игрок может пасовать
                         document.getElementById('btn-take').disabled = true;
                         setTimeout(() => this.checkBotsPodkidOrPass(), 400);
                     }
@@ -912,7 +910,7 @@
 
             const hand = this.hands[this.defenderIdx];
             if (this.isPerevodnoy && this.defendingCards.length === 0 && this.attackingCards.length === 1) {
-                const perevodCard = hand.find(c => c.rank === this.attackingCards[0].rank && hand.length > 1);
+                const perevodCard = hand.find(c => c.rank === this.attackingCards[0].rank);
                 if (perevodCard && Math.random() < 0.6) {
                     this.playCard(perevodCard, this.defenderIdx);
                     return;
@@ -953,14 +951,13 @@
                     this.botPass(p);
                 }
             }
-            this.passedPlayers.add(0);
-            this.checkRoundCompletion();
+            // Игрок не добавляется автоматически — он должен сам нажать "Бито" или подкинуть
         }
 
         botPass(playerIdx) {
             this.passedPlayers.add(playerIdx);
             this.updateUI();
-            this.checkRoundCompletion();
+            // Не вызываем checkRoundCompletion здесь, чтобы дать игроку шанс
         }
 
         onAction() {
@@ -968,6 +965,7 @@
             this.passedPlayers.add(0);
             document.getElementById('btn-action').disabled = true;
             this.updateUI();
+            // Проверяем, могут ли боты ещё подкинуть после паса игрока
             this.checkBotsPodkidOrPass();
             this.checkRoundCompletion();
         }
@@ -1170,4 +1168,4 @@
     document.getElementById('btn-take').onclick = () => game?.onTake();
 </script>
 </body>
-    </html>
+</html>

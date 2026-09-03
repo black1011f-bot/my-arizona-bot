@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Дурак (офлайн)</title>
+    <title>Дурак — веер и анимация</title>
     <style>
         * { box-sizing: border-box; user-select: none; }
         body {
@@ -43,6 +43,7 @@
             flex: 1; position: relative; background: radial-gradient(circle at 20% 30%, #3a8a3a, #1e5a1e);
             border-radius: 20px; margin: 8px; box-shadow: inset 0 0 30px rgba(0,0,0,0.6);
             min-height: 0; display: flex; flex-direction: column;
+            overflow: visible;
         }
         .zone {
             display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
@@ -68,10 +69,46 @@
         .card-pair .card.attack-card { left: 0; top: 0; z-index: 1; border-color: #d44; box-shadow: 0 0 10px rgba(200,50,50,0.5); }
         .card-pair .card.defense-card { left: 18px; top: 14px; z-index: 2; border-color: #44d; box-shadow: 0 0 10px rgba(50,100,200,0.5); }
         .card-pair .card.attack-only { left: 0; top: 0; z-index: 1; border-color: #d44; box-shadow: 0 0 10px rgba(200,50,50,0.5); }
-        .card-pair .card { animation: cardAppear 0.25s ease-out; }
-        @keyframes cardAppear { 0% { opacity: 0; transform: scale(0.8) translateY(-10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
 
-        #player-zone { flex: 0 0 110px; border-top: 2px dashed rgba(255,255,255,0.2); background: rgba(0,0,0,0.15); border-radius: 0 0 12px 12px; }
+        #player-zone {
+            flex: 0 0 120px; /* чуть больше для веера */
+            border-top: 2px dashed rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.15); border-radius: 0 0 12px 12px;
+            position: relative;
+            overflow: visible;
+            height: 120px;
+        }
+        #player-zone .card {
+            position: absolute;
+            cursor: pointer;
+            transition: none; /* позиционируем через transform */
+            will-change: transform;
+            transform-origin: center center;
+            width: 60px;
+            height: 84px;
+            background: #fff;
+            border-radius: 8px;
+            border: 2px solid #333;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px 6px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        #player-zone .card .top { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+        #player-zone .card .bottom { display: flex; flex-direction: column; align-items: flex-end; transform: rotate(180deg); line-height: 1.1; }
+        #player-zone .card .suit { font-size: 1.2em; }
+        #player-zone .card.red { color: #c00; }
+        #player-zone .card.black { color: #000; }
+        #player-zone .card.trump-card { border: 3px solid gold; }
+        #player-zone .card.highlight { box-shadow: 0 0 15px 5px #ffd700; transform: scale(1.05); border-color: #ffd700; z-index: 10; }
+        #player-zone .card.suggest { animation: pulse-gold 1s infinite alternate; border-color: #ffaa00; z-index: 10; }
+        @keyframes pulse-gold { 0% { box-shadow: 0 0 5px 2px #ffaa00; transform: scale(1); } 100% { box-shadow: 0 0 20px 10px #ffd700; transform: scale(1.08); } }
+        #player-zone .card.shake { animation: shake 0.3s ease; }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+
         .turn-indicator {
             position: absolute; top: -10px; right: 10px; background: #ffd700; color: #1a3a1a;
             font-weight: bold; padding: 2px 12px; border-radius: 30px; font-size: 0.8em;
@@ -88,31 +125,37 @@
         }
         #trump-info { color: #fff; font-weight: bold; text-shadow: 0 0 8px #000; font-size: 1.1em; background: rgba(0,0,0,0.5); padding: 4px 12px; border-radius: 20px; text-align: center; }
 
-        .card {
-            width: 60px; height: 84px; background: #fff; border-radius: 8px; border: 2px solid #333;
-            box-shadow: 2px 4px 8px rgba(0,0,0,0.4); display: inline-flex; flex-direction: column;
-            justify-content: space-between; padding: 4px 6px; font-size: 1.1em; font-weight: bold;
-            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; position: relative;
-            cursor: pointer; flex-shrink: 0;
+        /* Слой анимации поверх всего */
+        #animation-layer {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 200;
         }
-        .card .top { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
-        .card .bottom { display: flex; flex-direction: column; align-items: flex-end; transform: rotate(180deg); line-height: 1.1; }
-        .card .suit { font-size: 1.2em; }
-        .card.red { color: #c00; }
-        .card.black { color: #000; }
-        .card.back {
-            background: linear-gradient(135deg, #1a3a8a, #2a5a9a); border-color: #0a1a4a;
-            color: transparent; background-image: repeating-linear-gradient(45deg, #3a6aba 0px, #3a6aba 4px, #4a7aca 4px, #4a7aca 8px);
-            cursor: default;
+        #animation-layer .card {
+            position: absolute;
+            width: 60px; height: 84px;
+            background: #fff;
+            border-radius: 8px;
+            border: 2px solid #333;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px 6px;
+            font-size: 1.1em;
+            font-weight: bold;
+            will-change: transform;
+            transform-origin: center center;
+            pointer-events: none;
         }
-        .card.back .top, .card.back .bottom { display: none; }
-        .card.highlight { box-shadow: 0 0 15px 5px #ffd700; transform: scale(1.05); border-color: #ffd700; }
-        .card.suggest { animation: pulse-gold 1s infinite alternate; border-color: #ffaa00; }
-        @keyframes pulse-gold { 0% { box-shadow: 0 0 5px 2px #ffaa00; transform: scale(1); } 100% { box-shadow: 0 0 20px 10px #ffd700; transform: scale(1.08); } }
-        .card.disabled { opacity: 0.4; pointer-events: none; filter: grayscale(0.6); }
-        .card.trump-card { border: 3px solid gold; }
-        .card.shake { animation: shake 0.3s ease; }
-        @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+        #animation-layer .card .top { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+        #animation-layer .card .bottom { display: flex; flex-direction: column; align-items: flex-end; transform: rotate(180deg); line-height: 1.1; }
+        #animation-layer .card .suit { font-size: 1.2em; }
+        #animation-layer .card.red { color: #c00; }
+        #animation-layer .card.black { color: #000; }
+        #animation-layer .card.trump-card { border: 3px solid gold; }
 
         #controls {
             display: flex; justify-content: center; gap: 8px; padding: 8px 10px 10px;
@@ -138,22 +181,27 @@
             font-size: 0.8em; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
             white-space: nowrap; z-index: 5;
         }
+
         @media (max-width: 600px) {
             .card { width: 48px; height: 67px; font-size: 0.9em; padding: 3px 4px; }
+            #player-zone .card { width: 48px; height: 67px; font-size: 0.9em; padding: 3px 4px; }
+            #animation-layer .card { width: 48px; height: 67px; font-size: 0.9em; padding: 3px 4px; }
             .card-pair { width: 56px; height: 76px; }
             .card-pair .card.defense-card { left: 14px; top: 11px; }
             #bot-zone { flex-basis: 65px; }
-            #player-zone { flex-basis: 85px; }
+            #player-zone { flex-basis: 95px; height: 95px; }
             #deck-area .card { width: 40px; height: 56px; font-size: 1em; }
             #controls button { padding: 6px 10px; font-size: 0.85em; min-width: 50px; }
             #menu h1 { font-size: 2em; }
         }
         @media (max-width: 420px) {
             .card { width: 40px; height: 56px; font-size: 0.75em; padding: 2px 3px; }
+            #player-zone .card { width: 40px; height: 56px; font-size: 0.75em; padding: 2px 3px; }
+            #animation-layer .card { width: 40px; height: 56px; font-size: 0.75em; padding: 2px 3px; }
             .card-pair { width: 48px; height: 64px; }
             .card-pair .card.defense-card { left: 12px; top: 9px; }
             #bot-zone { flex-basis: 55px; }
-            #player-zone { flex-basis: 70px; }
+            #player-zone { flex-basis: 80px; height: 80px; }
             #center-zone { min-height: 90px; gap: 8px; }
         }
     </style>
@@ -165,7 +213,7 @@
         <label><input type="radio" name="mode" value="podkid" checked> Подкидной</label>
         <label><input type="radio" name="mode" value="perevod"> Переводной</label>
         <button id="startBtn">Начать игру</button>
-        <div class="info">Офлайн‑версия. Вы играете против компьютера.</div>
+        <div class="info">Офлайн‑версия. Карты в руке изогнуты веером, с анимацией перелёта.</div>
     </div>
 
     <div id="table">
@@ -195,6 +243,9 @@
     </div>
 </div>
 
+<!-- Слой для анимированных карт -->
+<div id="animation-layer"></div>
+
 <script>
     // ================== КЛАСС КАРТЫ ==================
     class Card {
@@ -213,9 +264,6 @@
             if (this.suit === other.suit) return this.rank > other.rank;
             return false;
         }
-        static compareStrength(a, b) {
-            return a.rank - b.rank;
-        }
     }
 
     // ================== КОЛОДА ==================
@@ -227,6 +275,31 @@
         return deck;
     }
     function shuffle(arr) { for (let i=arr.length-1; i>0; i--) { let j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+    // ================== ГЕОМЕТРИЯ ВЕЕРА ==================
+    function computeFanPositions(n, w, d, rot) {
+        if (n === 0) return [];
+        if (n === 1) {
+            return [{ x: 0, y: 0, angle: 0 }];
+        }
+        // Вычисляем по формуле из описания
+        const a = Math.sqrt(d*d + (w*w/4));
+        const p = 0.5 * (a + w + a);
+        const R = (a * w * a) / (4 * Math.sqrt( p * (p-a) * (p-w) * (p-a) ));
+        const L0 = Math.asin(1 - (d / R));
+        const dL = (Math.PI - 2*L0) / (n-1);
+        const results = [];
+        for (let i=0; i<n; i++) {
+            const L = L0 + dL*i + rot;
+            const hx = -R * Math.cos(L) - R * Math.sin(rot);
+            const hy = d + R * Math.sin(L) - R * Math.cos(rot);
+            // Угол поворота карты (чтобы смотреть в центр дуги)
+            // В оригинале угол поворота = L - Math.PI/2 (так как карта вертикальна)
+            const angle = L - Math.PI/2;
+            results.push({ x: hx, y: hy, angle: angle });
+        }
+        return results;
+    }
 
     // ================== ИГРА ==================
     class Game {
@@ -248,6 +321,7 @@
             this.cardsToDeal = 6;
             this.maxTableCards = 6;
             this.suggestedCards = [];
+            this.animating = false; // флаг, чтобы не кликать во время анимации
         }
 
         init() {
@@ -265,6 +339,7 @@
             this.suggestedCards = [];
             this.waitingForPass = false;
             this.waitingForPlayerAction = false;
+            this.animating = false;
 
             for (let i=0; i<this.cardsToDeal; i++) {
                 if (this.deck.length===0) break;
@@ -351,9 +426,10 @@
             this.updateUI();
         }
 
-        // ----- Ход игрока (атака) -----
+        // ----- Ход игрока (атака) с анимацией -----
         playerAttack(card) {
             if (!this.waitingForPlayerAction || !this.isAttacking || !this.isPlayerTurn || this.gameOver) return false;
+            if (this.animating) { this.setStatus('Подождите, анимация...'); return false; }
             if (this.tableCards.length >= this.maxTableCards) {
                 this.setStatus('На столе уже ' + this.maxTableCards + ' карт, больше нельзя.');
                 return false;
@@ -368,24 +444,54 @@
                     return false;
                 }
             }
-            this.playerHand.splice(idx, 1);
-            this.tableCards.push(card);
-            this.attackingCards.push(card);
-            this.suggestedCards = [];
-            this.updateUI();
 
-            const canAdd = this.canPlayerAdd() && this.tableCards.length < this.maxTableCards;
-            if (canAdd) {
-                this.waitingForPlayerAction = true;
-                this.enableControls(true, false, true, true);
-                this.setStatus('Подкиньте ещё или нажмите "Отбой".');
-                this.highlightPossibleCards();
-            } else {
-                this.playerPassAttack();
-            }
+            // Находим элемент карты в руке, чтобы анимировать от него
+            const cardEl = this.findCardElement(card);
+            if (!cardEl) return false;
+
+            // Получаем начальные координаты (абсолютные)
+            const rect = cardEl.getBoundingClientRect();
+            const startX = rect.left + rect.width/2;
+            const startY = rect.top + rect.height/2;
+            const startAngle = this.getCardAngle(cardEl); // текущий угол поворота
+
+            // Удаляем карту из руки (состояние)
+            this.playerHand.splice(idx, 1);
+
+            // Перерисовываем руку (без этой карты)
+            this.renderPlayerHand();
+
+            // Определяем целевую позицию (центр стола)
+            const centerZone = document.getElementById('center-zone');
+            const centerRect = centerZone.getBoundingClientRect();
+            const targetX = centerRect.left + centerRect.width/2;
+            const targetY = centerRect.top + centerRect.height/2 - 20; // чуть выше центра
+            const targetAngle = 0; // на столе карта лежит ровно
+
+            // Запускаем анимацию
+            this.animating = true;
+            this.animateCard(card, startX, startY, targetX, targetY, startAngle, targetAngle, () => {
+                // По окончании анимации добавляем карту на стол (состояние)
+                this.tableCards.push(card);
+                this.attackingCards.push(card);
+                this.animating = false;
+                this.updateUI();
+                // Проверяем, можно ли ещё подкинуть
+                const canAdd = this.canPlayerAdd() && this.tableCards.length < this.maxTableCards;
+                if (canAdd) {
+                    this.waitingForPlayerAction = true;
+                    this.enableControls(true, false, true, true);
+                    this.setStatus('Подкиньте ещё или нажмите "Отбой".');
+                    this.highlightPossibleCards();
+                } else {
+                    this.playerPassAttack(); // автоматический отбой
+                }
+            });
+
             return true;
         }
 
+        // ----- Завершение атаки игрока (Отбой) -----
         playerPassAttack() {
             if (this.gameOver) return;
             this.waitingForPlayerAction = false;
@@ -449,10 +555,9 @@
                 this.updateUI();
                 this.clearTable();
                 this.setStatus('Бот отбился!');
-                // Ход переходит боту (следующий после игрока)
                 this.finishTurn(false);
             } else {
-                // Бот не отбился – берёт карты
+                // Бот берёт карты
                 this.botHand.push(...this.tableCards);
                 this.tableCards = [];
                 this.attackingCards = [];
@@ -465,17 +570,16 @@
             }
         }
 
-        // ----- Игрок нажимает "Отбой" после того, как бот взял карты -----
+        // ----- Игрок нажимает "Отбой" после взятия ботом -----
         playerPassAfterBotTake() {
             if (!this.waitingForPass || this.gameOver) return;
             this.waitingForPass = false;
             this.enableControls(false, false, false, false);
             this.setStatus('Ход завершён.');
-            // После взятия ботом, ход переходит игроку (следующему после бота)
             this.finishTurn(true);
         }
 
-        // ----- Ход бота -----
+        // ----- Ход бота (с анимацией) -----
         botTurn() {
             if (this.gameOver) return;
             if (this.isPlayerTurn) return;
@@ -487,6 +591,7 @@
             const idx = this.botHand.indexOf(card);
             if (idx === -1) return;
             this.botHand.splice(idx, 1);
+            // Добавляем на стол сразу (без анимации для бота)
             this.tableCards.push(card);
             this.attackingCards.push(card);
             this.updateUI();
@@ -503,9 +608,10 @@
             this.updateUI();
         }
 
-        // ----- Защита игрока -----
+        // ----- Защита игрока (с анимацией) -----
         playerDefend(card) {
             if (!this.waitingForPlayerAction || this.isAttacking || !this.isPlayerTurn || this.gameOver) return false;
+            if (this.animating) { this.setStatus('Подождите, анимация...'); return false; }
             const attackCards = this.attackingCards;
             const idxDef = this.defendingCards.length;
             if (idxDef >= attackCards.length) {
@@ -520,30 +626,61 @@
             }
             const idx = this.playerHand.indexOf(card);
             if (idx === -1) return false;
-            this.playerHand.splice(idx, 1);
-            this.defendingCards.push(card);
-            this.tableCards.push(card);
-            this.suggestedCards = [];
-            this.updateUI();
 
-            if (this.defendingCards.length === this.attackingCards.length) {
-                this.clearTable();
-                this.setStatus('Вы отбились!');
-                // После отбоя игроком, ход переходит игроку (следующему после бота)
-                this.finishTurn(true);
+            // Находим элемент карты в руке
+            const cardEl = this.findCardElement(card);
+            if (!cardEl) return false;
+
+            const rect = cardEl.getBoundingClientRect();
+            const startX = rect.left + rect.width/2;
+            const startY = rect.top + rect.height/2;
+            const startAngle = this.getCardAngle(cardEl);
+
+            // Удаляем карту из руки
+            this.playerHand.splice(idx, 1);
+            this.renderPlayerHand();
+
+            // Цель: поверх атакующей карты (которая уже на столе)
+            // Найдём позицию атакующей карты на столе (первая неотбитая)
+            const attackEl = this.findTableCardElement(target);
+            let targetX, targetY, targetAngle = 0;
+            if (attackEl) {
+                const rect2 = attackEl.getBoundingClientRect();
+                targetX = rect2.left + rect2.width/2 + 10; // небольшое смещение вправо-вниз
+                targetY = rect2.top + rect2.height/2 + 10;
             } else {
-                this.waitingForPlayerAction = true;
-                this.enableControls(false, true, false, true);
-                this.setStatus('Отбейте следующую карту или нажмите "Взять".');
-                this.highlightPossibleCards();
-                this.updateUI();
+                // запасной вариант — центр стола
+                const centerRect = document.getElementById('center-zone').getBoundingClientRect();
+                targetX = centerRect.left + centerRect.width/2;
+                targetY = centerRect.top + centerRect.height/2;
             }
+
+            this.animating = true;
+            this.animateCard(card, startX, startY, targetX, targetY, startAngle, targetAngle, () => {
+                this.defendingCards.push(card);
+                this.tableCards.push(card);
+                this.animating = false;
+                this.updateUI();
+
+                if (this.defendingCards.length === this.attackingCards.length) {
+                    this.clearTable();
+                    this.setStatus('Вы отбились!');
+                    this.finishTurn(true);
+                } else {
+                    this.waitingForPlayerAction = true;
+                    this.enableControls(false, true, false, true);
+                    this.setStatus('Отбейте следующую карту или нажмите "Взять".');
+                    this.highlightPossibleCards();
+                    this.updateUI();
+                }
+            });
             return true;
         }
 
         // ----- Игрок нажимает "Взять" -----
         playerTake() {
             if (!this.waitingForPlayerAction || this.isAttacking || !this.isPlayerTurn || this.gameOver) return;
+            // Берём все карты без анимации (просто добавляем в руку)
             this.playerHand.push(...this.tableCards);
             this.tableCards = [];
             this.attackingCards = [];
@@ -551,13 +688,11 @@
             this.suggestedCards = [];
             this.updateUI();
             this.setStatus('Вы взяли карты.');
-            // После взятия игроком (он был защитником), ход переходит боту (следующему после игрока)
             this.finishTurn(false);
         }
 
         // ----- Завершение хода (общая) -----
         finishTurn(nextIsPlayer) {
-            // nextIsPlayer: true – ход игроку, false – ход боту
             this.waitingForPlayerAction = false;
             this.waitingForPass = false;
             this.enableControls(false, false, false, false);
@@ -613,7 +748,103 @@
             return false;
         }
 
-        // ----- UI -----
+        // ================== АНИМАЦИЯ ==================
+        animateCard(card, fromX, fromY, toX, toY, fromAngle, toAngle, callback) {
+            const layer = document.getElementById('animation-layer');
+            // Создаём элемент-клон карты
+            const el = document.createElement('div');
+            el.className = 'card';
+            const color = card.isRed ? 'red' : 'black';
+            el.classList.add(color);
+            if (card.suit === this.trumpSuit) el.classList.add('trump-card');
+            const top = document.createElement('div'); top.className = 'top';
+            top.innerHTML = `<span>${card.name}</span><span class="suit">${card.suitSymbol}</span>`;
+            const bottom = document.createElement('div'); bottom.className = 'bottom';
+            bottom.innerHTML = `<span>${card.name}</span><span class="suit">${card.suitSymbol}</span>`;
+            el.appendChild(top); el.appendChild(bottom);
+            layer.appendChild(el);
+
+            // Начальное положение (абсолютные координаты окна)
+            el.style.left = '0px';
+            el.style.top = '0px';
+            el.style.transform = `translate(${fromX}px, ${fromY}px) rotate(${fromAngle}rad)`;
+            el.style.opacity = 1;
+
+            // Параметры движения
+            const Sx = toX - fromX;
+            const Sy = toY - fromY;
+            const S = Math.sqrt(Sx*Sx + Sy*Sy);
+            const speed = 400; // пикселей в секунду
+            if (S === 0) {
+                // если расстояние нулевое, просто завершаем
+                layer.removeChild(el);
+                callback();
+                return;
+            }
+            const totalTime = S / speed; // секунд
+            const constX = Sx / totalTime;
+            const constY = Sy / totalTime;
+            const dAngle = toAngle - fromAngle;
+            const angleConst = dAngle / totalTime;
+
+            const startTime = performance.now();
+
+            const animateFrame = (now) => {
+                const elapsed = (now - startTime) / 1000; // секунды
+                let t = elapsed;
+                if (t >= totalTime) t = totalTime;
+                const currentX = fromX + constX * t;
+                const currentY = fromY + constY * t;
+                const currentAngle = fromAngle + angleConst * t;
+                el.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${currentAngle}rad)`;
+                if (t < totalTime) {
+                    requestAnimationFrame(animateFrame);
+                } else {
+                    // Завершаем
+                    layer.removeChild(el);
+                    callback();
+                }
+            };
+            requestAnimationFrame(animateFrame);
+        }
+
+        // ================== ПОИСК ЭЛЕМЕНТОВ ==================
+        findCardElement(card) {
+            const cards = document.querySelectorAll('#player-zone .card');
+            for (let el of cards) {
+                const text = el.textContent.replace(/\s/g, '');
+                if (text.includes(card.name) && text.includes(card.suitSymbol)) {
+                    return el;
+                }
+            }
+            return null;
+        }
+
+        findTableCardElement(card) {
+            const cards = document.querySelectorAll('#center-zone .card');
+            for (let el of cards) {
+                const text = el.textContent.replace(/\s/g, '');
+                if (text.includes(card.name) && text.includes(card.suitSymbol)) {
+                    return el;
+                }
+            }
+            return null;
+        }
+
+        getCardAngle(el) {
+            // Парсим transform: translate(...) rotate(...)
+            const style = window.getComputedStyle(el);
+            const transform = style.transform;
+            if (transform === 'none') return 0;
+            // Парсим матрицу
+            const matrix = transform.match(/matrix\((.+)\)/);
+            if (!matrix) return 0;
+            const values = matrix[1].split(',').map(Number);
+            const angle = Math.atan2(values[1], values[0]);
+            return angle;
+        }
+
+        // ================== UI ==================
         setStatus(msg) { document.getElementById('status').textContent = msg; }
         enableControls(pass, take, add, hint) {
             document.getElementById('btnPass').disabled = !pass;
@@ -678,7 +909,7 @@
             this.setStatus('Подсказка: сыграйте ' + card.name + card.suit);
         }
 
-        // ----- Отрисовка -----
+        // ================== ОТРИСОВКА ==================
         updateUI() {
             this.renderPlayerHand();
             this.renderBotHand();
@@ -703,12 +934,39 @@
             const indicator = zone.querySelector('.turn-indicator');
             zone.innerHTML = '';
             zone.appendChild(indicator);
+
+            const n = this.playerHand.length;
+            if (n === 0) return;
+
+            // Параметры веера
+            const zoneWidth = zone.clientWidth - 40; // отступы
+            const d = 30; // смещение центра вверх (параметр)
+            const w = Math.min(zoneWidth, n * 70); // ширина
+            const rot = 0; // общий поворот
+
+            const positions = computeFanPositions(n, w, d, rot);
+
+            // Центрируем по горизонтали
+            const offsetX = (zoneWidth - w) / 2;
+            const offsetY = 20; // отступ сверху
+
             this.playerHand.forEach((card, idx) => {
+                const pos = positions[idx] || { x: 0, y: 0, angle: 0 };
                 const el = this.createCardElement(card, false);
-                el.dataset.index = idx;
+                // Применяем transform
+                const px = offsetX + pos.x;
+                const py = offsetY + pos.y;
+                el.style.transform = `translate(${px}px, ${py}px) rotate(${pos.angle}rad)`;
+                el.style.position = 'absolute';
+                el.style.left = '0';
+                el.style.top = '0';
+                el.style.width = '60px';
+                el.style.height = '84px';
                 el.addEventListener('click', () => this.onCardClick(card));
                 zone.appendChild(el);
             });
+
+            // Подсветка suggested
             if (this.suggestedCards.length > 0) {
                 const cards = zone.querySelectorAll('.card');
                 for (let el of cards) {

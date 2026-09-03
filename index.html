@@ -20,7 +20,6 @@
             position: relative; overflow: hidden;
         }
 
-        /* ОБНОВЛЕННЫЙ СТИЛЬНЫЙ СТАРТОВЫЙ ЭКРАН */
         #splash {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(10, 8, 20, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -33,8 +32,7 @@
         .app-icon {
             width: 70px; height: 70px; border-radius: 20px;
             border: 2px solid #00ffff; box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
-            margin-bottom: 6px; object-fit: cover;
-            animation: floatIcon 3s ease-in-out infinite;
+            margin-bottom: 6px; object-fit: cover; animation: floatIcon 3s ease-in-out infinite;
         }
 
         .main-title {
@@ -76,7 +74,6 @@
         }
         .start-btn:active { transform: scale(0.96); }
 
-        /* ИГРОКИ (4 ИГРОКА ПО КРАЯМ) */
         .player-badge {
             position: absolute; background: rgba(15, 12, 28, 0.85);
             border: 1px solid rgba(0, 255, 255, 0.4); border-radius: 10px;
@@ -91,18 +88,14 @@
         #badge-p3 { top: 10px; left: 50%; transform: translateX(-50%); }
         #badge-p4 { top: 50%; right: 8px; transform: translateY(-50%); }
 
-        /* РУКИ СОПЕРНИКОВ ДЛЯ 4 ИГРОКОВ */
         .opponent-hand { position: absolute; z-index: 15; display: flex; justify-content: center; align-items: center; }
-        
         #opp-top { top: 35px; left: 0; width: 100%; height: 50px; }
         #opp-left { top: 50%; left: -10px; transform: translateY(-50%) rotate(90deg); width: 140px; height: 50px; }
         #opp-right { top: 50%; right: -10px; transform: translateY(-50%) rotate(-90deg); width: 140px; height: 50px; }
 
-        /* НОВОЕ РАСПОЛОЖЕНИЕ: КОЛОДА И БИТО В НИЖНИХ УГЛАХ */
         #deck-container {
             position: absolute; bottom: 135px; right: 12px;
-            width: 40px; height: 58px; z-index: 20;
-            transition: all 0.5s ease;
+            width: 40px; height: 58px; z-index: 20; transition: all 0.5s ease;
         }
         #deck-container.center-deal { top: 45%; right: 50%; bottom: auto; transform: translate(50%, -50%) scale(1.2); }
         .deck-card {
@@ -133,7 +126,6 @@
             border: 1px solid rgba(255,255,255,0.5); position: absolute; opacity: 0.85;
         }
 
-        /* ПОЛЕ СТОЛА */
         #table-field {
             flex: 1; margin-top: 90px; margin-bottom: 155px;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -151,7 +143,6 @@
             cursor: pointer; box-shadow: 0 0 12px rgba(255, 215, 0, 0.6); display: none; z-index: 50;
         }
 
-        /* СТИЛИ КАРТ */
         .card {
             border-radius: 5px; background: #ffffff;
             border: 1px solid #333; box-shadow: 0 3px 8px rgba(0,0,0,0.4);
@@ -187,7 +178,6 @@
         .card-pair .attack-card { left: 0; top: 0; z-index: 1; }
         .card-pair .defense-card { left: 8px; top: 8px; z-index: 2; }
 
-        /* КАРТЫ ИГРОКА */
         #player-hand { 
             position: absolute; bottom: 8px; left: 0; width: 100%; height: 125px; 
             display: flex; justify-content: center; align-items: flex-end; z-index: 30; 
@@ -210,7 +200,6 @@
 </head>
 <body>
 <div id="app">
-    <!-- СТАРТОВЫЙ ЭКРАН -->
     <div id="splash">
         <div class="header-container">
             <img src="https://i.postimg.cc/cJGSqNBZ/1788361335674.jpg" alt="Logo" class="app-icon">
@@ -260,7 +249,6 @@
         <button class="start-btn" id="start-btn">Играть</button>
     </div>
 
-    <!-- ИГРОКИ (ПОЛЕ ДЛЯ 4 ИГРОКОВ) -->
     <div class="player-badge" id="badge-p1">
         <div class="name">Вы</div>
         <div class="info"><span id="count-p1">0</span></div>
@@ -278,25 +266,21 @@
         <div class="info"><span id="count-p4">0</span></div>
     </div>
 
-    <!-- КОЛОДА СНИЗУ СПРАВА -->
     <div id="deck-container">
         <div class="deck-card" id="deck-el"><div class="deck-count" id="deck-count">36</div></div>
         <div id="trump-card-slot"></div>
     </div>
 
-    <!-- БИТО СНИЗУ СЛЕВА -->
     <div id="discard-container">
         <span>БИТО</span>
     </div>
 
-    <!-- КАРТЫ СОПЕРНИКОВ В 4 НАПРАВЛЕНИЯХ -->
     <div class="opponent-hand" id="opp-top"></div>
     <div class="opponent-hand" id="opp-left"></div>
     <div class="opponent-hand" id="opp-right"></div>
 
     <div id="status-msg"></div>
 
-    <!-- ПОЛЕ СТОЛА -->
     <div id="table-field">
         <div class="table-cards-wrapper" id="cards-wrapper"></div>
         <button class="restart-table-btn" id="btn-restart-table">В меню</button>
@@ -423,7 +407,7 @@
                     this.hands[playerIdx].push(card);
                     this.updateUI();
                     resolve();
-                }, 120);
+                }, 100);
             });
         }
 
@@ -459,7 +443,7 @@
 
             if (isPlayerAttacking) {
                 document.getElementById('status-msg').textContent = 'Ваш ход!';
-                document.getElementById('btn-action').disabled = true;
+                document.getElementById('btn-action').disabled = this.attackingCards.length === 0 || this.attackingCards.length !== this.defendingCards.length;
                 document.getElementById('btn-take').disabled = true;
             } else if (isPlayerDefending) {
                 document.getElementById('status-msg').textContent = 'Отбивайтесь!';
@@ -469,7 +453,7 @@
                 document.getElementById('status-msg').textContent = `Ходит Игрок ${this.attackerIdx + 1}...`;
                 document.getElementById('btn-action').disabled = true;
                 document.getElementById('btn-take').disabled = true;
-                setTimeout(() => this.botTurn(), 700);
+                setTimeout(() => this.botTurn(), 600);
             }
             this.updateUI();
         }
@@ -477,7 +461,8 @@
         playCard(card, fromPlayerIdx) {
             if (this.gameOver || this.isAnimating) return;
 
-            if (fromPlayerIdx === this.attackerIdx) {
+            if (fromPlayerIdx !== this.defenderIdx) {
+                // ПОДКИДЫВАНИЕ / АТАКА
                 if (this.attackingCards.length >= 6 || this.attackingCards.length >= this.hands[this.defenderIdx].length + this.defendingCards.length) return;
 
                 if (this.attackingCards.length > 0) {
@@ -497,6 +482,7 @@
                     setTimeout(() => this.botDefend(), 600);
                 }
             } else if (fromPlayerIdx === this.defenderIdx) {
+                // ЗАЩИТА
                 const target = this.attackingCards[this.defendingCards.length];
                 if (card.beats(target, this.trumpSuit)) {
                     this.hands[fromPlayerIdx] = this.hands[fromPlayerIdx].filter(c => c !== card);
@@ -504,16 +490,21 @@
 
                     if (this.defendingCards.length === this.attackingCards.length) {
                         document.getElementById('status-msg').textContent = 'Отбито! Подкиньте или Отбой';
-                        if (this.attackerIdx === 0) {
-                            document.getElementById('btn-action').textContent = 'Отбой';
+                        
+                        // Если игрок атакует или подкидывает, включаем ему кнопкy Отбой
+                        if (this.attackerIdx === 0 || this.defenderIdx !== 0) {
                             document.getElementById('btn-action').disabled = false;
                         }
+                        
+                        // Пробуем жесткое подкидывание от ботов
+                        setTimeout(() => this.tryBotsPodkid(), 500);
                     }
                     this.updateUI();
                 }
             }
         }
 
+        // ЖЕСТКАЯ ЛОГИКА БОТОВ (Атака слабейшими)
         botTurn() {
             if (this.gameOver) return;
             const hand = this.hands[this.attackerIdx];
@@ -521,10 +512,14 @@
 
             let cardToPlay = null;
             if (this.attackingCards.length === 0) {
-                cardToPlay = hand[0];
+                // Бот берет самую слабую НЕ-козырную карту
+                const nonTrumps = hand.filter(c => c.suit !== this.trumpSuit);
+                cardToPlay = nonTrumps.length > 0 ? nonTrumps[0] : hand[0];
             } else {
                 const activeRanks = [...this.attackingCards, ...this.defendingCards].map(c => c.rank);
-                cardToPlay = hand.find(c => activeRanks.includes(c.rank));
+                const candidates = hand.filter(c => activeRanks.includes(c.rank));
+                const nonTrumps = candidates.filter(c => c.suit !== this.trumpSuit);
+                cardToPlay = nonTrumps.length > 0 ? nonTrumps[0] : candidates[0];
             }
 
             if (cardToPlay && this.attackingCards.length < 6) {
@@ -534,18 +529,54 @@
             }
         }
 
+        // ЖЕСТКАЯ ЛОГИКА БОТОВ (Защита с экономией козырей)
         botDefend() {
             const target = this.attackingCards[this.defendingCards.length];
             if (!target) return;
 
             const hand = this.hands[this.defenderIdx];
-            const option = hand.find(c => c.beats(target, this.trumpSuit));
-
-            if (option) {
+            // Поиск всех карт, которые бьют
+            const valid = hand.filter(c => c.beats(target, this.trumpSuit));
+            
+            if (valid.length > 0) {
+                // Приоритет: сначала бьем мастью (не козырем), потом наименьшим козырем
+                const sameSuit = valid.filter(c => c.suit !== this.trumpSuit);
+                const option = sameSuit.length > 0 ? sameSuit[0] : valid[0];
                 this.playCard(option, this.defenderIdx);
             } else {
                 document.getElementById('status-msg').textContent = `Игрок ${this.defenderIdx + 1} забирает!`;
-                setTimeout(() => this.onTake(), 800);
+                setTimeout(() => this.onTake(), 700);
+            }
+        }
+
+        // ЖЕСТКОЕ ПОДКИДЫВАНИЕ ОТ ВСЕХ БОТОВ
+        tryBotsPodkid() {
+            if (this.gameOver || this.defendingCards.length !== this.attackingCards.length) return;
+            if (this.attackingCards.length >= 6) {
+                if (this.attackerIdx !== 0) this.onAction();
+                return;
+            }
+
+            const activeRanks = [...this.attackingCards, ...this.defendingCards].map(c => c.rank);
+            let podkidDone = false;
+
+            for (let p = 0; p < this.totalPlayers; p++) {
+                if (p === this.defenderIdx || p === 0) continue; // Не защитник и не игрок-человек
+
+                const hand = this.hands[p];
+                const candidates = hand.filter(c => activeRanks.includes(c.rank));
+                const nonTrumps = candidates.filter(c => c.suit !== this.trumpSuit);
+                const cardToPodkid = nonTrumps.length > 0 ? nonTrumps[0] : candidates[0];
+
+                if (cardToPodkid) {
+                    this.playCard(cardToPodkid, p);
+                    podkidDone = true;
+                    break;
+                }
+            }
+
+            if (!podkidDone && this.attackerIdx !== 0) {
+                setTimeout(() => this.onAction(), 600);
             }
         }
 
@@ -612,7 +643,6 @@
         }
 
         updateUI() {
-            // Рука Вы
             const handContainer = document.getElementById('player-hand');
             handContainer.innerHTML = '';
             const myHand = this.hands[0] || [];
@@ -631,7 +661,6 @@
                 handContainer.appendChild(el);
             });
 
-            // Отображение карт для 2, 3 или 4 игроков по краям
             if (this.totalPlayers === 2) {
                 this.renderOpponentHand('opp-top', this.hands[1] || []);
             } else if (this.totalPlayers === 3) {
@@ -643,7 +672,6 @@
                 this.renderOpponentHand('opp-right', this.hands[3] || []);
             }
 
-            // Счетчик карт
             for (let i = 0; i < this.totalPlayers; i++) {
                 const el = document.getElementById(`count-p${i+1}`);
                 if (el) el.textContent = this.hands[i].length;
@@ -652,7 +680,6 @@
             document.getElementById('deck-count').textContent = this.deck.length;
             document.getElementById('deck-el').style.display = this.deck.length === 0 ? 'none' : 'block';
 
-            // Стол (Сетка 3x2)
             const wrapper = document.getElementById('cards-wrapper');
             wrapper.innerHTML = '';
             this.attackingCards.forEach((atk, i) => {
@@ -745,7 +772,7 @@
                 loader.style.display = 'none';
                 game = new Game(isPerevod, deckSize, playersCount, true);
                 game.startWithAnimation();
-            }, 1400);
+            }, 1200);
         } else {
             document.getElementById('splash').classList.add('hidden');
             game = new Game(isPerevod, deckSize, playersCount, false);
@@ -761,3 +788,4 @@
 </script>
 </body>
 </html>
+

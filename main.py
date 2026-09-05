@@ -14,7 +14,7 @@ from datetime import datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 
 # ==========================================
-# ДИАГНОСТИКА (покажет, что переменные подгружены)
+# ДИАГНОСТИКА
 # ==========================================
 print("=== STARTING BOT ===")
 print(f"Python version: {sys.version}")
@@ -22,7 +22,6 @@ print(f"TELEGRAM_TOKEN set: {bool(os.getenv('TELEGRAM_TOKEN'))}")
 print(f"SUPABASE_URL set: {bool(os.getenv('SUPABASE_URL'))}")
 print(f"SUPABASE_SERVICE_KEY set: {bool(os.getenv('SUPABASE_SERVICE_KEY'))}")
 
-# Проверка импортов
 try:
     import telebot
     from telebot import types
@@ -51,7 +50,7 @@ if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
 # ==========================================
 # ПОДКЛЮЧЕНИЕ К TELEGRAM И SUPABASE
 # ==========================================
-bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=20)
+bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=4)  # уменьшено для стабильности
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # ==========================================
@@ -104,6 +103,22 @@ def get_msk_time():
     return datetime.now(ZoneInfo("Europe/Moscow"))
 
 # ==========================================
+# КЕШ ДЛЯ АДМИНОВ
+# ==========================================
+admin_cache = {}
+CACHE_TTL = 300  # 5 минут
+
+def get_cached_admin_status(telegram_id: int) -> bool | None:
+    if telegram_id in admin_cache:
+        entry = admin_cache[telegram_id]
+        if time.time() - entry['time'] < CACHE_TTL:
+            return entry['value']
+    return None
+
+def set_cached_admin_status(telegram_id: int, value: bool):
+    admin_cache[telegram_id] = {'value': value, 'time': time.time()}
+
+# ==========================================
 # ПОТОКОБЕЗОПАСНЫЕ СОСТОЯНИЯ
 # ==========================================
 user_states = {}
@@ -134,131 +149,196 @@ def clear_state(uid: int):
         user_states[uid] = {"server": srv} if srv else {}
 
 # ==========================================
-# РАБОТА С БАЗОЙ (UUID-версия)
+# ФУНКЦИИ РАБОТЫ С SUPABASE С RETRY
 # ==========================================
+def supabase_request_with_retry(func, max_retries=2, delay=0.5):
+    for attempt in range(max_retries + 1):
+        try:
+            return func()
+        except Exception as e:
+            if attempt == max_retries:
+                logger.error(f"Supabase request failed after {max_retries} retries: {e}")
+                raise
+            logger.warning(f"Supabase error, retrying ({attempt+1}/{max_retries}): {e}")
+            time.sleep(delay * (attempt + 1))
+    return None
 
 def get_user_uuid_by_telegram_id(telegram_id: int) -> str | None:
-    res = supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
-    if res.data:
-        return res.data[0]["id"]
+    try:
+        res = supabase_request_with_retry(
+            lambda: supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
+        )
+        if res and res.data:
+            return res.data[0]["id"]
+    except Exception as e:
+        logger.error(f"get_user_uuid_by_telegram_id error: {e}")
     return None
 
 def register_user(telegram_id: int, username: str) -> str:
-    res = supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
-    if res.data:
-        supabase.table("app_users").update({"username": username or ""}).eq("telegram_id", telegram_id).execute()
-        return res.data[0]["id"]
-    new_uuid = uuid.uuid4()
-    supabase.table("app_users").insert({
-        "id": str(new_uuid),
-        "username": username or "",
-        "telegram_id": telegram_id,
-        "telegram_username": username or "",
-        "server": SERVERS[0],
-        "last_ad_time": 0.0,
-        "created_at": datetime.utcnow().isoformat()
-    }).execute()
-    return str(new_uuid)
+    try:
+        res = supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
+        if res.data:
+            supabase.table("app_users").update({"username": username or ""}).eq("telegram_id", telegram_id).execute()
+            return res.data[0]["id"]
+        new_uuid = uuid.uuid4()
+        supabase.table("app_users").insert({
+            "id": str(new_uuid),
+            "username": username or "",
+            "telegram_id": telegram_id,
+            "telegram_username": username or "",
+            "server": SERVERS[0],
+            "last_ad_time": 0.0,
+            "created_at": datetime.utcnow().isoformat()
+        }).execute()
+        return str(new_uuid)
+    except Exception as e:
+        logger.error(f"register_user error: {e}")
+        return None
 
 def is_banned(user) -> bool:
     if not user:
         return False
-    uid = get_user_uuid_by_telegram_id(user.id)
-    if uid:
-        res = supabase.table("app_users").select("banned").eq("id", uid).execute()
-        if res.data and res.data[0].get("banned"):
-            return True
-    res2 = supabase.table("bans").select("target").or_(f"target.eq.{user.id},target.eq.{user.username}").execute()
-    return bool(res2.data)
+    try:
+        uid = get_user_uuid_by_telegram_id(user.id)
+        if uid:
+            res = supabase.table("app_users").select("banned").eq("id", uid).execute()
+            if res.data and res.data[0].get("banned"):
+                return True
+        res2 = supabase.table("bans").select("target").or_(f"target.eq.{user.id},target.eq.{user.username}").execute()
+        return bool(res2.data)
+    except Exception as e:
+        logger.error(f"is_banned error: {e}")
+        return False
 
 def is_admin_or_owner_id(telegram_id: int) -> bool:
-    uid = get_user_uuid_by_telegram_id(telegram_id)
-    if not uid:
+    cached = get_cached_admin_status(telegram_id)
+    if cached is not None:
+        return cached
+    try:
+        uid = get_user_uuid_by_telegram_id(telegram_id)
+        if not uid:
+            set_cached_admin_status(telegram_id, False)
+            return False
+        res = supabase.table("app_users").select("username, is_admin").eq("id", uid).execute()
+        if res.data:
+            data = res.data[0]
+            if data.get("username") and data["username"].lstrip("@") in ADMIN_USERNAMES:
+                set_cached_admin_status(telegram_id, True)
+                return True
+            if data.get("is_admin"):
+                set_cached_admin_status(telegram_id, True)
+                return True
+        res2 = supabase.table("approved_admins").select("user_id").eq("user_id", uid).execute()
+        result = bool(res2.data)
+        set_cached_admin_status(telegram_id, result)
+        return result
+    except Exception as e:
+        logger.error(f"is_admin_or_owner_id error: {e}")
+        set_cached_admin_status(telegram_id, False)
         return False
-    res = supabase.table("app_users").select("username, is_admin").eq("id", uid).execute()
-    if res.data:
-        data = res.data[0]
-        if data.get("username") and data["username"].lstrip("@") in ADMIN_USERNAMES:
-            return True
-        if data.get("is_admin"):
-            return True
-    res2 = supabase.table("approved_admins").select("user_id").eq("user_id", uid).execute()
-    return bool(res2.data)
 
 def is_owner(user) -> bool:
     if not user:
         return False
     if user.username and user.username.lstrip("@") == OWNER_USERNAME:
         return True
-    uid = get_user_uuid_by_telegram_id(user.id)
-    if not uid:
-        return False
-    res = supabase.table("app_users").select("username").eq("id", uid).execute()
-    if res.data and res.data[0].get("username", "").lstrip("@") == OWNER_USERNAME:
-        return True
+    try:
+        uid = get_user_uuid_by_telegram_id(user.id)
+        if not uid:
+            return False
+        res = supabase.table("app_users").select("username").eq("id", uid).execute()
+        if res.data and res.data[0].get("username", "").lstrip("@") == OWNER_USERNAME:
+            return True
+    except Exception as e:
+        logger.error(f"is_owner error: {e}")
     return False
 
 def get_owner_id() -> str | None:
-    res = supabase.table("app_users").select("id").eq("username", OWNER_USERNAME).execute()
-    if res.data:
-        return res.data[0]["id"]
+    try:
+        res = supabase.table("app_users").select("id").eq("username", OWNER_USERNAME).execute()
+        if res.data:
+            return res.data[0]["id"]
+    except Exception as e:
+        logger.error(f"get_owner_id error: {e}")
     return None
 
 def get_admin_chat_ids() -> list:
-    res = supabase.table("admin_chats").select("chat_id").execute()
-    return [row["chat_id"] for row in res.data]
+    try:
+        res = supabase.table("admin_chats").select("chat_id").execute()
+        return [row["chat_id"] for row in res.data]
+    except Exception as e:
+        logger.error(f"get_admin_chat_ids error: {e}")
+        return []
 
 def register_admin_chat(chat_id: int):
-    supabase.table("admin_chats").upsert({"chat_id": chat_id}).execute()
+    try:
+        supabase.table("admin_chats").upsert({"chat_id": chat_id}).execute()
+    except Exception as e:
+        logger.error(f"register_admin_chat error: {e}")
 
 def get_user_last_ad_time(telegram_id: int) -> float:
-    uid = get_user_uuid_by_telegram_id(telegram_id)
-    if not uid:
-        return 0.0
-    res = supabase.table("app_users").select("last_ad_time").eq("id", uid).execute()
-    if res.data:
-        return res.data[0].get("last_ad_time") or 0.0
+    try:
+        uid = get_user_uuid_by_telegram_id(telegram_id)
+        if not uid:
+            return 0.0
+        res = supabase.table("app_users").select("last_ad_time").eq("id", uid).execute()
+        if res.data:
+            return res.data[0].get("last_ad_time") or 0.0
+    except Exception as e:
+        logger.error(f"get_user_last_ad_time error: {e}")
     return 0.0
 
 def set_user_last_ad_time(telegram_id: int, t: float):
-    uid = get_user_uuid_by_telegram_id(telegram_id)
-    if uid:
-        supabase.table("app_users").update({"last_ad_time": t}).eq("id", uid).execute()
+    try:
+        uid = get_user_uuid_by_telegram_id(telegram_id)
+        if uid:
+            supabase.table("app_users").update({"last_ad_time": t}).eq("id", uid).execute()
+    except Exception as e:
+        logger.error(f"set_user_last_ad_time error: {e}")
 
 def is_user_premium(telegram_id: int) -> bool:
-    uid = get_user_uuid_by_telegram_id(telegram_id)
-    if not uid:
-        return False
-    now = time.time()
-    res = supabase.table("premium_users").select("expires_at").eq("user_id", uid).execute()
-    if res.data and res.data[0].get("expires_at", 0) > now:
-        return True
     try:
-        res2 = supabase.table("user_settings").select("vip_subscription").eq("user_id", uid).execute()
-        if res2.data and res2.data[0].get("vip_subscription"):
+        uid = get_user_uuid_by_telegram_id(telegram_id)
+        if not uid:
+            return False
+        now = time.time()
+        res = supabase.table("premium_users").select("expires_at").eq("user_id", uid).execute()
+        if res.data and res.data[0].get("expires_at", 0) > now:
             return True
-    except:
-        pass
+        try:
+            res2 = supabase.table("user_settings").select("vip_subscription").eq("user_id", uid).execute()
+            if res2.data and res2.data[0].get("vip_subscription"):
+                return True
+        except:
+            pass
+    except Exception as e:
+        logger.error(f"is_user_premium error: {e}")
     return False
 
 def set_user_server(telegram_id: int, server: str):
-    uid = get_user_uuid_by_telegram_id(telegram_id)
-    if uid:
-        supabase.table("app_users").update({"server": server}).eq("id", uid).execute()
-        update_state(telegram_id, server=server)
+    try:
+        uid = get_user_uuid_by_telegram_id(telegram_id)
+        if uid:
+            supabase.table("app_users").update({"server": server}).eq("id", uid).execute()
+            update_state(telegram_id, server=server)
+    except Exception as e:
+        logger.error(f"set_user_server error: {e}")
 
 def get_user_server(telegram_id: int) -> str:
     with state_lock:
         srv = user_states.get(telegram_id, {}).get("server")
         if srv:
             return srv
-    uid = get_user_uuid_by_telegram_id(telegram_id)
-    if uid:
-        res = supabase.table("app_users").select("server").eq("id", uid).execute()
-        if res.data and res.data[0].get("server"):
-            srv = res.data[0]["server"]
-            update_state(telegram_id, server=srv)
-            return srv
+    try:
+        uid = get_user_uuid_by_telegram_id(telegram_id)
+        if uid:
+            res = supabase.table("app_users").select("server").eq("id", uid).execute()
+            if res.data and res.data[0].get("server"):
+                srv = res.data[0]["server"]
+                update_state(telegram_id, server=srv)
+                return srv
+    except Exception as e:
+        logger.error(f"get_user_server error: {e}")
     default = SERVERS[0]
     update_state(telegram_id, server=default)
     return default
@@ -379,7 +459,7 @@ def kb_owner_input():
     return m
 
 # ==========================================
-# ОБРАБОТЧИКИ КОМАНД И КНОПОК (ВСЯ ЛОГИКА БОТА)
+# ОБРАБОТЧИКИ КОМАНД И КНОПОК (ПОЛНЫЙ НАБОР)
 # ==========================================
 
 @bot.message_handler(func=lambda m: is_flooding(m.from_user.id), content_types=["text", "photo"])
@@ -417,7 +497,6 @@ def cmd_start(m):
     if is_banned(m.from_user):
         return safe_send_message(m.chat.id, "⛔ <b>Вы заблокированы.</b>", reply_markup=types.ReplyKeyboardRemove())
 
-    # Реферальная ссылка
     args = m.text.split()
     if len(args) > 1 and args[1].startswith("ref_"):
         try:
@@ -1157,19 +1236,18 @@ def health():
     return "OK", 200
 
 def run_bot():
-    logger.info("Бот запущен (Supabase, UUID-версия)")
-    try:
-        bot.infinity_polling(skip_pending=True)
-    except Exception as e:
-        logger.error(f"Ошибка в боте: {e}")
-        traceback.print_exc()
+    logger.info("Бот запущен (Supabase, UUID-версия) с кешированием")
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True, timeout=60)
+        except Exception as e:
+            logger.error(f"Ошибка в polling: {e}")
+            traceback.print_exc()
+            time.sleep(5)
 
 if __name__ == "__main__":
-    # Запускаем бота в фоновом потоке
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
-
-    # Запускаем Flask в основном потоке
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"Запуск Flask на порту {port}")
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)

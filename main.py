@@ -18,18 +18,16 @@ from supabase import create_client, Client
 from flask import Flask
 
 # ==========================================
-# КОНФИГУРАЦИЯ С ВСТАВЛЕННЫМИ КЛЮЧАМИ
+# ЧТЕНИЕ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ
 # ==========================================
-TELEGRAM_TOKEN = "8916669266:AAGFjRyvwjBjViNrSErZekUMj7SsM69OVNE"
-SUPABASE_URL = "https://sbtitlayqkpllnaiyeld.supabase.co"
-SUPABASE_SERVICE_KEY = "sb_secret_4TUxbjgi-beOqXWdjrdKvw_nUU7sDnP"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
-    raise ValueError("Не заданы все необходимые ключи")
+    raise ValueError("❌ Не заданы переменные окружения: TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY")
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=20)
-
-# Подключение к Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # ==========================================
@@ -1080,8 +1078,21 @@ def show_my_ads(m):
         for a in ads:
             status_map = {"pending": "⏳ На модерации", "approved": "✅ Опубликовано", "deleted": "🗑 Удалено"}
             status_text = status_map.get(a["status"], a["status"])
-            text += f"#{a['id']} {a['item_name']} — {format_price(a['price'])} — {status_text}\n"
+            price_str = format_price(a["price"])
+            text += f"#{a['id']} {a['item_name']} — {price_str} — {status_text}\n"
     safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
+
+def format_price(value):
+    if not value:
+        return "0"
+    num = int(value)
+    if num >= 1_000_000_000:
+        return f"{num/1_000_000_000:.1f}ккк"
+    if num >= 1_000_000:
+        return f"{num/1_000_000:.1f}кк"
+    if num >= 1_000:
+        return f"{num/1_000:.1f}к"
+    return str(num)
 
 @bot.message_handler(func=lambda m: m.text == "💱 Курс VC и калькулятор")
 def show_vc_menu(m):
@@ -1108,7 +1119,7 @@ def show_category_ads(m):
     safe_send_message(m.chat.id, f"📦 Категория {m.text} — используйте мини-приложение для просмотра.", reply_markup=kb_main_menu(m.from_user.id))
 
 # ==========================================
-# ЗАПУСК FLASK И БОТА (ПРАВИЛЬНЫЙ ПОРЯДОК)
+# ЗАПУСК FLASK И БОТА
 # ==========================================
 
 app = Flask(__name__)

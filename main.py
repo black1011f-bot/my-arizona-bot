@@ -50,7 +50,7 @@ if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
 # ==========================================
 # ПОДКЛЮЧЕНИЕ К TELEGRAM И SUPABASE
 # ==========================================
-bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=4)  # уменьшено для стабильности
+bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=2)  # уменьшено до 2
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # ==========================================
@@ -1222,7 +1222,7 @@ def show_category_ads(m):
     safe_send_message(m.chat.id, f"📦 Категория {m.text} — используйте мини-приложение для просмотра.", reply_markup=kb_main_menu(m.from_user.id))
 
 # ==========================================
-# ЗАПУСК FLASK И БОТА
+# ЗАПУСК FLASK И БОТА (С ОБРАБОТКОЙ КОНФЛИКТА 409)
 # ==========================================
 
 app = Flask(__name__)
@@ -1237,9 +1237,24 @@ def health():
 
 def run_bot():
     logger.info("Бот запущен (Supabase, UUID-версия) с кешированием")
+    # Удаляем возможный старый вебхук
+    try:
+        bot.remove_webhook()
+        logger.info("Вебхук удалён")
+    except Exception as e:
+        logger.warning(f"Не удалось удалить вебхук: {e}")
+
     while True:
         try:
-            bot.infinity_polling(skip_pending=True, timeout=60)
+            bot.infinity_polling(skip_pending=True, timeout=20, long_polling_timeout=10)
+        except ApiTelegramException as e:
+            if e.result_json and e.result_json.get('error_code') == 409:
+                logger.error("Обнаружен конфликт (409): другой экземпляр бота уже запущен. Завершаем работу.")
+                break  # Выходим из цикла, чтобы процесс завершился
+            else:
+                logger.error(f"Ошибка в polling: {e}")
+                traceback.print_exc()
+                time.sleep(5)
         except Exception as e:
             logger.error(f"Ошибка в polling: {e}")
             traceback.print_exc()

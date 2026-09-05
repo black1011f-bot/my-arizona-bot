@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import threading
 import logging
@@ -8,25 +9,48 @@ import html
 import io
 import urllib.parse
 import uuid
+import traceback
 from datetime import datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 
-import telebot
-from telebot import types
-from telebot.apihelper import ApiTelegramException
-from supabase import create_client, Client
-from flask import Flask
+# ==========================================
+# ДИАГНОСТИКА (покажет, что переменные подгружены)
+# ==========================================
+print("=== STARTING BOT ===")
+print(f"Python version: {sys.version}")
+print(f"TELEGRAM_TOKEN set: {bool(os.getenv('TELEGRAM_TOKEN'))}")
+print(f"SUPABASE_URL set: {bool(os.getenv('SUPABASE_URL'))}")
+print(f"SUPABASE_SERVICE_KEY set: {bool(os.getenv('SUPABASE_SERVICE_KEY'))}")
+
+# Проверка импортов
+try:
+    import telebot
+    from telebot import types
+    from telebot.apihelper import ApiTelegramException
+    from supabase import create_client, Client
+    from flask import Flask
+except ImportError as e:
+    print(f"❌ Import error: {e}")
+    sys.exit(1)
 
 # ==========================================
-# ЧТЕНИЕ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ
+# ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
 # ==========================================
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
-    raise ValueError("❌ Не заданы переменные окружения: TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY")
+    error_msg = "❌ Не заданы переменные окружения:"
+    if not TELEGRAM_TOKEN: error_msg += " TELEGRAM_TOKEN"
+    if not SUPABASE_URL: error_msg += " SUPABASE_URL"
+    if not SUPABASE_SERVICE_KEY: error_msg += " SUPABASE_SERVICE_KEY"
+    print(error_msg)
+    sys.exit(1)
 
+# ==========================================
+# ПОДКЛЮЧЕНИЕ К TELEGRAM И SUPABASE
+# ==========================================
 bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=20)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
@@ -311,6 +335,18 @@ def send_log_file(chat_id, filename, text_content, caption=None, reply_markup=No
         logger.error(f"Ошибка отправки файла логов: {e}")
         safe_send_message(chat_id, text_content[:4000], reply_markup=reply_markup)
 
+def format_price(value):
+    if not value:
+        return "0"
+    num = int(value)
+    if num >= 1_000_000_000:
+        return f"{num/1_000_000_000:.1f}ккк"
+    if num >= 1_000_000:
+        return f"{num/1_000_000:.1f}кк"
+    if num >= 1_000:
+        return f"{num/1_000:.1f}к"
+    return str(num)
+
 # ==========================================
 # КЛАВИАТУРЫ
 # ==========================================
@@ -343,7 +379,7 @@ def kb_owner_input():
     return m
 
 # ==========================================
-# ОБРАБОТЧИКИ КОМАНД И КНОПОК
+# ОБРАБОТЧИКИ КОМАНД И КНОПОК (ВСЯ ЛОГИКА БОТА)
 # ==========================================
 
 @bot.message_handler(func=lambda m: is_flooding(m.from_user.id), content_types=["text", "photo"])
@@ -1082,18 +1118,6 @@ def show_my_ads(m):
             text += f"#{a['id']} {a['item_name']} — {price_str} — {status_text}\n"
     safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
 
-def format_price(value):
-    if not value:
-        return "0"
-    num = int(value)
-    if num >= 1_000_000_000:
-        return f"{num/1_000_000_000:.1f}ккк"
-    if num >= 1_000_000:
-        return f"{num/1_000_000:.1f}кк"
-    if num >= 1_000:
-        return f"{num/1_000:.1f}к"
-    return str(num)
-
 @bot.message_handler(func=lambda m: m.text == "💱 Курс VC и калькулятор")
 def show_vc_menu(m):
     safe_send_message(m.chat.id, "💱 Курс VC и калькулятор в разработке. Используйте мини-приложение.", reply_markup=kb_main_menu(m.from_user.id))
@@ -1134,7 +1158,11 @@ def health():
 
 def run_bot():
     logger.info("Бот запущен (Supabase, UUID-версия)")
-    bot.infinity_polling(skip_pending=True)
+    try:
+        bot.infinity_polling(skip_pending=True)
+    except Exception as e:
+        logger.error(f"Ошибка в боте: {e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     # Запускаем бота в фоновом потоке

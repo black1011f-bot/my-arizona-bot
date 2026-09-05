@@ -1237,7 +1237,7 @@ def health():
 
 def run_bot():
     logger.info("Бот запущен (Supabase, UUID-версия) с кешированием")
-    # Удаляем возможный старый вебхук
+    # Удаляем вебхук при старте
     try:
         bot.remove_webhook()
         logger.info("Вебхук удалён")
@@ -1249,8 +1249,9 @@ def run_bot():
             bot.infinity_polling(skip_pending=True, timeout=20, long_polling_timeout=10)
         except ApiTelegramException as e:
             if e.result_json and e.result_json.get('error_code') == 409:
-                logger.error("Обнаружен конфликт (409): другой экземпляр бота уже запущен. Завершаем работу.")
-                break  # Выходим из цикла, чтобы процесс завершился
+                logger.error("Обнаружен конфликт (409): другой экземпляр бота уже запущен. Завершаем процесс.")
+                # Принудительно завершаем процесс, чтобы Render перезапустил
+                os._exit(0)
             else:
                 logger.error(f"Ошибка в polling: {e}")
                 traceback.print_exc()

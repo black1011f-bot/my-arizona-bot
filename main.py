@@ -7,6 +7,7 @@ import re
 import html
 import io
 import urllib.parse
+import uuid
 from datetime import datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 from contextlib import contextmanager
@@ -15,21 +16,18 @@ import telebot
 from telebot import types
 from telebot.apihelper import ApiTelegramException
 from supabase import create_client, Client
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # ==========================================
-# КОНФИГУРАЦИЯ
+# КОНФИГУРАЦИЯ С ВСТАВЛЕННЫМИ КЛЮЧАМИ
 # ==========================================
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+TELEGRAM_TOKEN = "8916669266:AAGFjRyvwjBjViNrSErZekUMj7SsM69OVNE"
+SUPABASE_URL = "https://sbtitlayqkpllnaiyeld.supabase.co"
+SUPABASE_SERVICE_KEY = "sb_secret_4TUxbjgi-beOqXWdjrdKvw_nUU7sDnP"
 
-if not all([TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
-    raise ValueError("Не заданы переменные окружения: TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY")
+if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
+    raise ValueError("Не заданы все необходимые ключи")
 
-bot = telebot.TeleBot(TOKEN, threaded=True, num_threads=20)
+bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=20)
 
 # Подключение к Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -72,46 +70,6 @@ RATE_LIMIT_SECONDS = 0.6
 AD_EXPIRY_HOURS = 48
 
 # ==========================================
-# ИНИЦИАЛИЗАЦИЯ ТАБЛИЦ (ЕСЛИ ИХ НЕТ)
-# ==========================================
-def init_supabase_tables():
-    """Проверяет наличие нужных таблиц и создаёт их, если отсутствуют."""
-    # Список таблиц, которые должны существовать
-    required_tables = [
-        "app_users", "ads", "barter_ads", "auctions", "auction_logs",
-        "auction_complaints", "referrals", "user_bonuses", "bans",
-        "premium_users", "admin_chats", "approved_admins", "editor_stats",
-        "moderator_logs", "chat_logs_history", "active_dialogs", "bot_settings",
-        "favorites", "reviews", "appeals", "reports", "user_reports",
-        "warnings", "notifications"
-    ]
-    # Проверим существование хотя бы одной таблицы (например, app_users)
-    try:
-        res = supabase.table("app_users").select("id").limit(1).execute()
-    except Exception as e:
-        logging.error(f"Таблица app_users не найдена. Выполните SQL-скрипт для создания таблиц.\n{e}")
-        raise
-
-    # Добавим недостающие колонки в app_users (если их нет)
-    try:
-        # Проверим наличие колонки server
-        supabase.table("app_users").select("server").limit(1).execute()
-    except Exception:
-        # Если ошибка, значит колонки нет – добавим через ALTER
-        sql = """
-        ALTER TABLE app_users ADD COLUMN IF NOT EXISTS server TEXT;
-        ALTER TABLE app_users ADD COLUMN IF NOT EXISTS last_ad_time REAL DEFAULT 0;
-        ALTER TABLE app_users ADD COLUMN IF NOT EXISTS telegram_id BIGINT;
-        """
-        # Выполняем через сырой SQL (если есть доступ)
-        # В Supabase можно использовать rpc с pg_exec, но проще попросить администратора выполнить вручную
-        logging.warning("Не удалось добавить колонки автоматически. Выполните вручную:\n" + sql)
-    logging.info("Проверка таблиц завершена.")
-
-# Запускаем проверку при старте
-init_supabase_tables()
-
-# ==========================================
 # ЛОГИРОВАНИЕ
 # ==========================================
 logging.basicConfig(
@@ -137,7 +95,6 @@ def get_state(uid: int) -> dict:
 
 def set_state(uid: int, data: dict):
     with state_lock:
-        # Сохраняем сервер, если он был
         srv = user_states.get(uid, {}).get("server") or get_user_server(uid)
         user_states[uid] = data
         if srv and "server" not in user_states[uid]:
@@ -155,37 +112,62 @@ def clear_state(uid: int):
         user_states[uid] = {"server": srv} if srv else {}
 
 # ==========================================
-# РАБОТА С БАЗОЙ ДАННЫХ (ВСЕ ЗАПРОСЫ К SUPABASE)
+# РАБОТА С БАЗОЙ (UUID-версия)
 # ==========================================
 
+def get_user_uuid_by_telegram_id(telegram_id: int) -> str | None:
+    """Возвращает UUID пользователя по telegram_id."""
+    res = supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
+    if res.data:
+        return res.data[0]["id"]
+    return None
+
+def register_user(telegram_id: int, username: str) -> str:
+    """Создаёт запись в app_users с UUID, если пользователь с таким telegram_id ещё не существует."""
+    # Проверяем, есть ли пользователь с таким telegram_id
+    res = supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
+    if res.data:
+        # Обновляем username, если изменился
+        supabase.table("app_users").update({"username": username or ""}).eq("telegram_id", telegram_id).execute()
+        return res.data[0]["id"]
+
+    # Создаём нового пользователя
+    new_uuid = uuid.uuid4()
+    supabase.table("app_users").insert({
+        "id": str(new_uuid),
+        "username": username or "",
+        "telegram_id": telegram_id,
+        "telegram_username": username or "",
+        "server": SERVERS[0],
+        "last_ad_time": 0.0,
+        "created_at": datetime.utcnow().isoformat()
+    }).execute()
+    return str(new_uuid)
+
 def is_banned(user) -> bool:
-    """Проверяет, забанен ли пользователь (по id или username)."""
     if not user:
         return False
-    uid = user.id
-    username = user.username or ""
-    # Проверяем в таблице bans
-    res = supabase.table("bans").select("target").or_(f"target.eq.{uid},target.eq.{username}").execute()
-    if res.data:
-        return True
-    # Проверяем поле banned в app_users
-    res2 = supabase.table("app_users").select("banned").eq("id", uid).execute()
-    if res2.data and res2.data[0].get("banned"):
-        return True
-    return False
+    uid = get_user_uuid_by_telegram_id(user.id)
+    if uid:
+        res = supabase.table("app_users").select("banned").eq("id", uid).execute()
+        if res.data and res.data[0].get("banned"):
+            return True
+    # Проверяем также таблицу bans (для обратной совместимости)
+    res2 = supabase.table("bans").select("target").or_(f"target.eq.{user.id},target.eq.{user.username}").execute()
+    return bool(res2.data)
 
-def is_admin_or_owner_id(user_id: int) -> bool:
-    """Проверяет, является ли пользователь админом или владельцем."""
-    # Проверяем по username
-    res = supabase.table("app_users").select("username, is_admin").eq("id", user_id).execute()
+def is_admin_or_owner_id(telegram_id: int) -> bool:
+    uid = get_user_uuid_by_telegram_id(telegram_id)
+    if not uid:
+        return False
+    res = supabase.table("app_users").select("username, is_admin").eq("id", uid).execute()
     if res.data:
         data = res.data[0]
         if data.get("username") and data["username"].lstrip("@") in ADMIN_USERNAMES:
             return True
         if data.get("is_admin"):
             return True
-    # Проверяем в approved_admins
-    res2 = supabase.table("approved_admins").select("user_id").eq("user_id", user_id).execute()
+    res2 = supabase.table("approved_admins").select("user_id").eq("user_id", uid).execute()
     return bool(res2.data)
 
 def is_owner(user) -> bool:
@@ -193,16 +175,19 @@ def is_owner(user) -> bool:
         return False
     if user.username and user.username.lstrip("@") == OWNER_USERNAME:
         return True
-    res = supabase.table("app_users").select("username").eq("id", user.id).execute()
+    uid = get_user_uuid_by_telegram_id(user.id)
+    if not uid:
+        return False
+    res = supabase.table("app_users").select("username").eq("id", uid).execute()
     if res.data and res.data[0].get("username", "").lstrip("@") == OWNER_USERNAME:
         return True
     return False
 
-def get_owner_id() -> int:
+def get_owner_id() -> str | None:
     res = supabase.table("app_users").select("id").eq("username", OWNER_USERNAME).execute()
     if res.data:
         return res.data[0]["id"]
-    return 0
+    return None
 
 def get_admin_chat_ids() -> list:
     res = supabase.table("admin_chats").select("chat_id").execute()
@@ -211,72 +196,62 @@ def get_admin_chat_ids() -> list:
 def register_admin_chat(chat_id: int):
     supabase.table("admin_chats").upsert({"chat_id": chat_id}).execute()
 
-def register_user(user_id: int, username: str):
-    """Добавляет пользователя в app_users, если его нет."""
-    # Проверяем, есть ли уже
-    res = supabase.table("app_users").select("id").eq("id", user_id).execute()
-    if not res.data:
-        supabase.table("app_users").insert({
-            "id": user_id,
-            "username": username or "",
-            "telegram_id": user_id,
-            "server": SERVERS[0],
-            "last_ad_time": 0.0,
-            "created_at": datetime.utcnow().isoformat()
-        }).execute()
-    else:
-        # Обновляем username, если изменился
-        supabase.table("app_users").update({"username": username or ""}).eq("id", user_id).execute()
-
-def get_user_last_ad_time(user_id: int) -> float:
-    res = supabase.table("app_users").select("last_ad_time").eq("id", user_id).execute()
+def get_user_last_ad_time(telegram_id: int) -> float:
+    uid = get_user_uuid_by_telegram_id(telegram_id)
+    if not uid:
+        return 0.0
+    res = supabase.table("app_users").select("last_ad_time").eq("id", uid).execute()
     if res.data:
         return res.data[0].get("last_ad_time") or 0.0
     return 0.0
 
-def set_user_last_ad_time(user_id: int, t: float):
-    supabase.table("app_users").update({"last_ad_time": t}).eq("id", user_id).execute()
+def set_user_last_ad_time(telegram_id: int, t: float):
+    uid = get_user_uuid_by_telegram_id(telegram_id)
+    if uid:
+        supabase.table("app_users").update({"last_ad_time": t}).eq("id", uid).execute()
 
-def is_user_premium(user_id: int) -> bool:
-    """Проверяет наличие активного VIP в premium_users."""
+def is_user_premium(telegram_id: int) -> bool:
+    uid = get_user_uuid_by_telegram_id(telegram_id)
+    if not uid:
+        return False
     now = time.time()
-    res = supabase.table("premium_users").select("expires_at").eq("user_id", user_id).execute()
+    res = supabase.table("premium_users").select("expires_at").eq("user_id", uid).execute()
     if res.data and res.data[0].get("expires_at", 0) > now:
         return True
-    # Также проверим поле vip_subscription в user_settings (если есть)
     try:
-        res2 = supabase.table("user_settings").select("vip_subscription").eq("user_id", user_id).execute()
+        res2 = supabase.table("user_settings").select("vip_subscription").eq("user_id", uid).execute()
         if res2.data and res2.data[0].get("vip_subscription"):
             return True
     except:
         pass
     return False
 
-def set_user_server(user_id: int, server: str):
-    supabase.table("app_users").update({"server": server}).eq("id", user_id).execute()
-    update_state(user_id, server=server)
+def set_user_server(telegram_id: int, server: str):
+    uid = get_user_uuid_by_telegram_id(telegram_id)
+    if uid:
+        supabase.table("app_users").update({"server": server}).eq("id", uid).execute()
+        update_state(telegram_id, server=server)
 
-def get_user_server(user_id: int) -> str:
-    # Проверяем в состоянии
+def get_user_server(telegram_id: int) -> str:
     with state_lock:
-        srv = user_states.get(user_id, {}).get("server")
+        srv = user_states.get(telegram_id, {}).get("server")
         if srv:
             return srv
-    # Ищем в БД
-    res = supabase.table("app_users").select("server").eq("id", user_id).execute()
-    if res.data and res.data[0].get("server"):
-        srv = res.data[0]["server"]
-        update_state(user_id, server=srv)
-        return srv
+    uid = get_user_uuid_by_telegram_id(telegram_id)
+    if uid:
+        res = supabase.table("app_users").select("server").eq("id", uid).execute()
+        if res.data and res.data[0].get("server"):
+            srv = res.data[0]["server"]
+            update_state(telegram_id, server=srv)
+            return srv
     default = SERVERS[0]
-    update_state(user_id, server=default)
+    update_state(telegram_id, server=default)
     return default
 
 # ==========================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ==========================================
 def parse_flexible_price(text: str) -> int:
-    # (без изменений, как в оригинале)
     if not text:
         raise ValueError("Пустая цена")
     cleaned = text.strip().lower()
@@ -413,7 +388,7 @@ def cmd_start(m):
     uid = m.from_user.id
     username = m.from_user.username or ""
     register_user(uid, username)
-    set_user_server(uid, SERVERS[0])  # По умолчанию Phoenix
+    set_user_server(uid, SERVERS[0])
 
     if is_banned(m.from_user):
         return safe_send_message(m.chat.id, "⛔ <b>Вы заблокированы в системе модерации.</b>", reply_markup=types.ReplyKeyboardRemove())
@@ -422,29 +397,32 @@ def cmd_start(m):
     args = m.text.split()
     if len(args) > 1 and args[1].startswith("ref_"):
         try:
-            referrer_id = int(args[1].replace("ref_", ""))
-            if referrer_id != uid:
-                # Проверяем, не регистрировался ли уже
-                res = supabase.table("referrals").select("1").eq("referrer_id", referrer_id).eq("referred_id", uid).execute()
-                if not res.data:
-                    supabase.table("referrals").insert({
-                        "referrer_id": referrer_id,
-                        "referred_id": uid,
-                        "last_active_date": get_msk_time().strftime("%Y-%m-%d")
-                    }).execute()
-                    # Начисляем VIP обоим
-                    now_ts = time.time()
-                    for target_id in [referrer_id, uid]:
-                        res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", target_id).execute()
-                        existing_exp = res_prem.data[0]["expires_at"] if res_prem.data and res_prem.data[0]["expires_at"] > now_ts else now_ts
-                        new_exp = existing_exp + 10 * 86400
-                        supabase.table("premium_users").upsert({"user_id": target_id, "expires_at": new_exp}).execute()
-                    # Уведомления
-                    try:
-                        safe_send_message(referrer_id, "🎉 <b>По вашей реферальной ссылке зарегистрировался новый друг!</b>\nВам и вашему другу начислен VIP-статус на 10 дней!")
-                        safe_send_message(uid, "🎁 <b>Вы успешно зарегистрировались по реферальной ссылке!</b>\nВам начислен VIP-статус на 10 дней!")
-                    except:
-                        pass
+            referrer_telegram_id = int(args[1].replace("ref_", ""))
+            if referrer_telegram_id != uid:
+                referrer_uuid = get_user_uuid_by_telegram_id(referrer_telegram_id)
+                if referrer_uuid:
+                    # Проверяем, не регистрировался ли уже
+                    res = supabase.table("referrals").select("1").eq("referrer_id", referrer_uuid).eq("referred_id", uid).execute()
+                    if not res.data:
+                        supabase.table("referrals").insert({
+                            "referrer_id": referrer_uuid,
+                            "referred_id": uid,
+                            "last_active_date": get_msk_time().strftime("%Y-%m-%d")
+                        }).execute()
+                        # Начисляем VIP обоим
+                        now_ts = time.time()
+                        for target_tg_id in [referrer_telegram_id, uid]:
+                            target_uuid = get_user_uuid_by_telegram_id(target_tg_id)
+                            if target_uuid:
+                                res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", target_uuid).execute()
+                                existing_exp = res_prem.data[0]["expires_at"] if res_prem.data and res_prem.data[0]["expires_at"] > now_ts else now_ts
+                                new_exp = existing_exp + 10 * 86400
+                                supabase.table("premium_users").upsert({"user_id": target_uuid, "expires_at": new_exp}).execute()
+                        try:
+                            safe_send_message(referrer_telegram_id, "🎉 <b>По вашей реферальной ссылке зарегистрировался новый друг!</b>\nВам и вашему другу начислен VIP-статус на 10 дней!")
+                            safe_send_message(uid, "🎁 <b>Вы успешно зарегистрировались по реферальной ссылке!</b>\nВам начислен VIP-статус на 10 дней!")
+                        except:
+                            pass
         except Exception as e:
             logger.error(f"Реферальная ошибка: {e}")
 
@@ -499,12 +477,18 @@ def show_ref_bonus_menu(m):
     ref_link = f"https://t.me/{bot_info.username}?start=ref_{uid}"
     share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote('Залетай в лучший неофициальный бот объявлений Arizona RP!')}"
 
-    # Получаем количество рефералов
-    res = supabase.table("referrals").select("count", count="exact").eq("referrer_id", uid).execute()
+    # Получаем UUID пользователя
+    user_uuid = get_user_uuid_by_telegram_id(uid)
+    if not user_uuid:
+        safe_send_message(m.chat.id, "Ошибка: пользователь не найден")
+        return
+
+    # Количество рефералов
+    res = supabase.table("referrals").select("count", count="exact").eq("referrer_id", user_uuid).execute()
     ref_count = res.count or 0
 
     # Бонусы
-    res_bonus = supabase.table("user_bonuses").select("*").eq("user_id", uid).execute()
+    res_bonus = supabase.table("user_bonuses").select("*").eq("user_id", user_uuid).execute()
     bonus_row = res_bonus.data[0] if res_bonus.data else None
     last_claim_ts = bonus_row.get("last_claim_timestamp", 0.0) if bonus_row else 0.0
     vip_ads = bonus_row.get("vip_ads_count", 0) if bonus_row else 0
@@ -537,10 +521,18 @@ def show_ref_bonus_menu(m):
 @bot.callback_query_handler(func=lambda c: c.data in ["claim_daily_bonus", "bonus_cooldown_alert"])
 def cb_daily_bonus(call):
     uid = call.from_user.id
+    user_uuid = get_user_uuid_by_telegram_id(uid)
+    if not user_uuid:
+        try:
+            bot.answer_callback_query(call.id, "Ошибка: пользователь не найден", show_alert=True)
+        except:
+            pass
+        return
+
     current_ts = time.time()
     cooldown = 86400
 
-    res_bonus = supabase.table("user_bonuses").select("*").eq("user_id", uid).execute()
+    res_bonus = supabase.table("user_bonuses").select("*").eq("user_id", user_uuid).execute()
     bonus_row = res_bonus.data[0] if res_bonus.data else None
     last_claim_ts = bonus_row.get("last_claim_timestamp", 0.0) if bonus_row else 0.0
 
@@ -559,10 +551,10 @@ def cb_daily_bonus(call):
 
     if roll <= 5:
         # VIP на 13 дней
-        res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", uid).execute()
+        res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", user_uuid).execute()
         base_exp = res_prem.data[0]["expires_at"] if res_prem.data and res_prem.data[0]["expires_at"] > current_ts else current_ts
         new_exp = base_exp + 13 * 86400
-        supabase.table("premium_users").upsert({"user_id": uid, "expires_at": new_exp}).execute()
+        supabase.table("premium_users").upsert({"user_id": user_uuid, "expires_at": new_exp}).execute()
         msg_reward = "🎉 <b>Поздравляем! Вы выбили VIP-подписку на 13 дней!</b>"
     else:
         if roll <= 35:
@@ -578,7 +570,7 @@ def cb_daily_bonus(call):
         current_ads = bonus_row.get("vip_ads_count", 0) if bonus_row else 0
         new_ads = current_ads + ads_won
         supabase.table("user_bonuses").upsert({
-            "user_id": uid,
+            "user_id": user_uuid,
             "last_claim_date": today_str,
             "last_claim_timestamp": current_ts,
             "vip_ads_count": new_ads,
@@ -587,7 +579,7 @@ def cb_daily_bonus(call):
         msg_reward = f"🎁 <b>Поздравляем! Вы выбили VIP-объявлений: {ads_won} шт.</b>\n(⚠️ <i>Неиспользованные удаляются по 1 шт. каждый день!</i>)"
 
     # Обновляем last_claim_timestamp
-    supabase.table("user_bonuses").update({"last_claim_date": today_str, "last_claim_timestamp": current_ts}).eq("user_id", uid).execute()
+    supabase.table("user_bonuses").update({"last_claim_date": today_str, "last_claim_timestamp": current_ts}).eq("user_id", user_uuid).execute()
 
     try:
         bot.answer_callback_query(call.id, "🎉 Ежедневный бонус получен!", show_alert=True)
@@ -595,10 +587,10 @@ def cb_daily_bonus(call):
         pass
 
     safe_send_message(call.message.chat.id, msg_reward)
-    show_ref_bonus_menu(call.message)  # обновляем меню
+    show_ref_bonus_menu(call.message)
 
 # ==========================================
-# ОСТАЛЬНЫЕ ОБРАБОТЧИКИ (КНОПКИ)
+# ОСТАЛЬНЫЕ ОБРАБОТЧИКИ КНОПОК
 # ==========================================
 
 @bot.message_handler(func=lambda m: m.text == "🌐 Сменить игровой сервер")
@@ -629,10 +621,12 @@ def info_premium(m):
     uid = m.from_user.id
     is_prem = is_user_premium(uid)
     status_text = "✅ <b>Активен</b>" if is_prem else "❌ <b>Неактивен</b>"
-    res = supabase.table("premium_users").select("expires_at").eq("user_id", uid).execute()
-    if res.data and res.data[0]["expires_at"] > time.time():
-        exp_date = datetime.fromtimestamp(res.data[0]["expires_at"], ZoneInfo("Europe/Moscow")).strftime("%d.%m.%Y %H:%M")
-        status_text += f" (до {exp_date} МСК)"
+    user_uuid = get_user_uuid_by_telegram_id(uid)
+    if user_uuid:
+        res = supabase.table("premium_users").select("expires_at").eq("user_id", user_uuid).execute()
+        if res.data and res.data[0]["expires_at"] > time.time():
+            exp_date = datetime.fromtimestamp(res.data[0]["expires_at"], ZoneInfo("Europe/Moscow")).strftime("%d.%m.%Y %H:%M")
+            status_text += f" (до {exp_date} МСК)"
     text = (
         f"💎 <b>VIP-статус в системе</b>\n\n"
         f"Статус: {status_text}\n\n"
@@ -682,7 +676,7 @@ def cb_buy_vip(call):
 # ==========================================
 # ПРОДАЖА / СКУПКА (ОБЪЯВЛЕНИЯ)
 # ==========================================
-def validate_ad_submission(user_id: int) -> tuple[bool, str]:
+def validate_ad_submission(telegram_id: int) -> tuple[bool, str]:
     now_msk = get_msk_time()
     current_time = now_msk.time()
     start_window = dtime(8, 0, 0)
@@ -690,9 +684,9 @@ def validate_ad_submission(user_id: int) -> tuple[bool, str]:
     if not (start_window <= current_time <= end_window):
         return False, "❌ Отправка объявлений доступна только с <b>08:00 до 22:00 МСК</b>."
 
-    is_prem = is_user_premium(user_id)
+    is_prem = is_user_premium(telegram_id)
     cooldown_seconds = 60 if is_prem else 120
-    last_time = get_user_last_ad_time(user_id)
+    last_time = get_user_last_ad_time(telegram_id)
     elapsed = time.time() - last_time
     if elapsed < cooldown_seconds:
         remaining = int(cooldown_seconds - elapsed)
@@ -759,15 +753,20 @@ def process_ad_content(m):
     category = ad_data.get("category", CATEGORIES[0])
     is_vip = 1 if is_user_premium(uid) else 0
 
+    # Получаем UUID автора
+    author_uuid = get_user_uuid_by_telegram_id(uid)
+    if not author_uuid:
+        return safe_send_message(m.chat.id, "Ошибка: пользователь не найден", reply_markup=kb_main_menu(uid))
+
     # Вставляем объявление в таблицу ads со статусом 'pending'
     new_ad = {
-        "author_id": uid,
+        "author_id": author_uuid,
         "author_username": m.from_user.username or str(uid),
         "server": srv,
         "category": category,
-        "item_name": text[:100],  # Заголовок
+        "item_name": text[:100],
         "description": text,
-        "price": 0,  # Бот не просит цену отдельно, но можно добавить позже
+        "price": 0,
         "images": photo,
         "is_vip": bool(is_vip),
         "mode": "sell" if not is_buy else "buy",
@@ -776,7 +775,9 @@ def process_ad_content(m):
         "hidden": False
     }
     res = supabase.table("ads").insert(new_ad).execute()
-    post_id = res.data[0]["id"] if res.data else None
+    if not res.data:
+        return safe_send_message(m.chat.id, "Ошибка при создании объявления", reply_markup=kb_main_menu(uid))
+    post_id = res.data[0]["id"]
 
     set_user_last_ad_time(uid, time.time())
 
@@ -820,7 +821,7 @@ def cb_moderate_post(call):
     parts = data.split("_")
     is_buy_mod = "buy" in data
     action = parts[1]  # acc или rej
-    pid = int(parts[-1])
+    pid = parts[-1]    # UUID
 
     # Получаем объявление из ads
     res = supabase.table("ads").select("*").eq("id", pid).execute()
@@ -844,17 +845,16 @@ def cb_moderate_post(call):
         }).eq("id", pid).execute()
         # Логируем
         supabase.table("moderator_logs").insert({
-            "moderator_id": call.from_user.id,
+            "moderator_id": get_user_uuid_by_telegram_id(call.from_user.id),
             "moderator_username": admin_uname,
             "action": "approve_ad",
             "details": str(pid),
             "created_at": datetime.utcnow().isoformat()
         }).execute()
         # Обновляем статистику редактора
-        supabase.table("editor_stats").upsert({"username": admin_uname, "count": 1}).execute()  # increment не поддерживается, используем триггер, но для простоты будем делать select+update
-        # Уведомляем автора
+        supabase.table("editor_stats").upsert({"username": admin_uname, "count": 1}).execute()
         try:
-            safe_send_message(post["author_id"], f"✅ Ваше объявление (ID #{pid}) одобрено и опубликовано!")
+            safe_send_message(post["author_id"], f"✅ Ваше объявление (ID {pid}) одобрено и опубликовано!")
         except:
             pass
         try:
@@ -866,14 +866,14 @@ def cb_moderate_post(call):
         # Отклоняем: меняем статус на deleted
         supabase.table("ads").update({"status": "deleted"}).eq("id", pid).execute()
         supabase.table("moderator_logs").insert({
-            "moderator_id": call.from_user.id,
+            "moderator_id": get_user_uuid_by_telegram_id(call.from_user.id),
             "moderator_username": admin_uname,
             "action": "reject_ad",
             "details": str(pid),
             "created_at": datetime.utcnow().isoformat()
         }).execute()
         try:
-            safe_send_message(post["author_id"], f"❌ Ваше объявление (ID #{pid}) отклонено модератором.")
+            safe_send_message(post["author_id"], f"❌ Ваше объявление (ID {pid}) отклонено модератором.")
         except:
             pass
         try:
@@ -968,9 +968,9 @@ def process_broadcast(m):
     text = m.text or m.caption
     photo = m.photo[-1].file_id if m.photo else None
 
-    # Получаем всех пользователей
-    res = supabase.table("app_users").select("id").execute()
-    users = [row["id"] for row in res.data]
+    # Получаем всех пользователей (их telegram_id)
+    res = supabase.table("app_users").select("telegram_id").execute()
+    users = [row["telegram_id"] for row in res.data if row["telegram_id"]]
 
     safe_send_message(m.chat.id, f"🚀 Начинаю рассылку для {len(users)} пользователей...")
     success = 0
@@ -1011,7 +1011,6 @@ def cb_owner_logs(call):
         pass
 
     if call.data == "owner_view_chats":
-        # Логи чатов
         res = supabase.table("chat_logs_history").select("*").order("timestamp", desc=True).limit(100).execute()
         logs = res.data
         log_text = "ИСТОРИЯ ОБЩЕНИЯ ИГРОКОВ В СДЕЛКАХ (последние 100)\n" + "="*50 + "\n\n"
@@ -1023,7 +1022,6 @@ def cb_owner_logs(call):
             log_text += "История общения пуста."
         send_log_file(call.message.chat.id, "chat_history_logs.txt", log_text, caption="📁 <b>Файл истории переписок</b>")
     else:
-        # Логи действий админов
         res = supabase.table("moderator_logs").select("*").order("created_at", desc=True).limit(100).execute()
         logs = res.data
         log_text = "ЛОГИ ДЕЙСТВИЙ АДМИНОВ\n" + "="*50 + "\n\n"
@@ -1066,51 +1064,54 @@ def process_owner_action(m):
     if not is_owner(m.from_user):
         return safe_send_message(m.chat.id, "⛔ Доступ запрещён.")
 
-    # Находим пользователя по username или id
-    target_uid = None
+    # Ищем пользователя по telegram_id или username
+    target_telegram_id = None
+    target_uuid = None
     target_uname = target_str.lstrip("@")
     if target_str.isdigit():
-        target_uid = int(target_str)
-        res = supabase.table("app_users").select("username").eq("id", target_uid).execute()
-        if res.data:
-            target_uname = res.data[0]["username"] or ""
+        target_telegram_id = int(target_str)
+        target_uuid = get_user_uuid_by_telegram_id(target_telegram_id)
     else:
-        res = supabase.table("app_users").select("id").eq("username", target_uname).execute()
+        # Ищем по username
+        res = supabase.table("app_users").select("id, telegram_id").eq("username", target_uname).execute()
         if res.data:
-            target_uid = res.data[0]["id"]
+            target_uuid = res.data[0]["id"]
+            target_telegram_id = res.data[0].get("telegram_id")
 
     if action_type == "ban":
-        if target_uid:
-            supabase.table("app_users").update({"banned": True}).eq("id", target_uid).execute()
-            supabase.table("bans").upsert({"target": str(target_uid), "is_id": True}).execute()
+        if target_uuid:
+            supabase.table("app_users").update({"banned": True}).eq("id", target_uuid).execute()
+            supabase.table("bans").upsert({"target": str(target_telegram_id or target_str), "is_id": bool(target_telegram_id)}).execute()
             safe_send_message(m.chat.id, f"✅ Игрок <b>{html.escape(target_str)}</b> забанен.", reply_markup=kb_main_menu(uid))
-            try:
-                safe_send_message(target_uid, "⛔ Вы были забанены администрацией.")
-            except:
-                pass
+            if target_telegram_id:
+                try:
+                    safe_send_message(target_telegram_id, "⛔ Вы были забанены администрацией.")
+                except:
+                    pass
         else:
             safe_send_message(m.chat.id, "⚠️ Пользователь не найден.")
     elif action_type == "unban":
-        if target_uid:
-            supabase.table("app_users").update({"banned": False}).eq("id", target_uid).execute()
-            supabase.table("bans").delete().eq("target", str(target_uid)).execute()
+        if target_uuid:
+            supabase.table("app_users").update({"banned": False}).eq("id", target_uuid).execute()
+            supabase.table("bans").delete().eq("target", str(target_telegram_id or target_str)).execute()
             safe_send_message(m.chat.id, f"✅ Игрок <b>{html.escape(target_str)}</b> разбанен.", reply_markup=kb_main_menu(uid))
         else:
             safe_send_message(m.chat.id, "⚠️ Пользователь не найден.")
     elif action_type == "add_admin":
-        if not target_uid:
+        if not target_uuid:
             return safe_send_message(m.chat.id, "⚠️ Пользователь не найден. Пусть сначала запустит бота.", reply_markup=kb_main_menu(uid))
-        supabase.table("app_users").update({"is_admin": True}).eq("id", target_uid).execute()
-        supabase.table("approved_admins").upsert({"user_id": target_uid, "username": target_uname}).execute()
+        supabase.table("app_users").update({"is_admin": True}).eq("id", target_uuid).execute()
+        supabase.table("approved_admins").upsert({"user_id": target_uuid, "username": target_uname}).execute()
         safe_send_message(m.chat.id, f"👑 Пользователь @{target_uname} назначен администратором!", reply_markup=kb_main_menu(uid))
-        try:
-            safe_send_message(target_uid, "👑 Вам назначены права администратора в боте.")
-        except:
-            pass
+        if target_telegram_id:
+            try:
+                safe_send_message(target_telegram_id, "👑 Вам назначены права администратора в боте.")
+            except:
+                pass
     elif action_type == "remove_admin":
-        if target_uid:
-            supabase.table("app_users").update({"is_admin": False}).eq("id", target_uid).execute()
-            supabase.table("approved_admins").delete().eq("user_id", target_uid).execute()
+        if target_uuid:
+            supabase.table("app_users").update({"is_admin": False}).eq("id", target_uuid).execute()
+            supabase.table("approved_admins").delete().eq("user_id", target_uuid).execute()
         safe_send_message(m.chat.id, f"🚫 Администратор <b>{html.escape(target_str)}</b> снят.", reply_markup=kb_main_menu(uid))
 
 # ==========================================
@@ -1120,7 +1121,10 @@ def process_owner_action(m):
 def show_my_ads(m):
     uid = m.from_user.id
     srv = get_user_server(uid)
-    res = supabase.table("ads").select("*").eq("author_id", uid).eq("server", srv).order("created_at", desc=True).execute()
+    user_uuid = get_user_uuid_by_telegram_id(uid)
+    if not user_uuid:
+        return safe_send_message(m.chat.id, "Ошибка: пользователь не найден")
+    res = supabase.table("ads").select("*").eq("author_id", user_uuid).eq("server", srv).order("created_at", desc=True).execute()
     ads = res.data
     text = f"📋 <b>Ваши активные публикации на сервере {html.escape(srv)}:</b>\n\n"
     if not ads:
@@ -1137,7 +1141,6 @@ def show_my_ads(m):
 # ==========================================
 @bot.message_handler(func=lambda m: m.text == "💱 Курс VC и калькулятор")
 def show_vc_menu(m):
-    # Реализация такая же как в оригинале, пропустим для краткости
     safe_send_message(m.chat.id, "💱 Курс VC и калькулятор в разработке. Используйте мини-приложение.", reply_markup=kb_main_menu(m.from_user.id))
 
 @bot.message_handler(func=lambda m: m.text == "❤️ Сохраненные")
@@ -1164,5 +1167,5 @@ def show_category_ads(m):
 # ЗАПУСК
 # ==========================================
 if __name__ == "__main__":
-    logger.info("Бот запущен (Supabase версия)")
+    logger.info("Бот запущен (Supabase, UUID-версия)")
     bot.infinity_polling(skip_pending=True)

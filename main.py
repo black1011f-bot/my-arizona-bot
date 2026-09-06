@@ -10,7 +10,7 @@ import io
 import urllib.parse
 import uuid
 import traceback
-from datetime import datetime, time as dtime, timedelta
+from datetime import datetime, time as dtime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 # ==========================================
@@ -50,7 +50,7 @@ if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
 # ==========================================
 # ПОДКЛЮЧЕНИЕ К TELEGRAM И SUPABASE
 # ==========================================
-bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=2)  # уменьшено до 2
+bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=2)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # ==========================================
@@ -180,15 +180,20 @@ def register_user(telegram_id: int, username: str) -> str:
         if res.data:
             supabase.table("app_users").update({"username": username or ""}).eq("telegram_id", telegram_id).execute()
             return res.data[0]["id"]
+        
+        # Генерируем фиктивный password_hash (чтобы не нарушать NOT NULL)
+        fake_password_hash = "telegram_user_" + str(telegram_id) + "_" + uuid.uuid4().hex[:8]
+        
         new_uuid = uuid.uuid4()
         supabase.table("app_users").insert({
             "id": str(new_uuid),
             "username": username or "",
+            "password_hash": fake_password_hash,  # <-- ОБЯЗАТЕЛЬНО
             "telegram_id": telegram_id,
             "telegram_username": username or "",
             "server": SERVERS[0],
             "last_ad_time": 0.0,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()
         return str(new_uuid)
     except Exception as e:
@@ -489,53 +494,62 @@ def blocked_user_callback(c):
 
 @bot.message_handler(commands=["start"])
 def cmd_start(m):
-    uid = m.from_user.id
-    username = m.from_user.username or ""
-    register_user(uid, username)
-    set_user_server(uid, SERVERS[0])
+    try:
+        uid = m.from_user.id
+        username = m.from_user.username or ""
+        user_uuid = register_user(uid, username)
+        if not user_uuid:
+            safe_send_message(m.chat.id, "⚠️ Ошибка регистрации. Попробуйте позже или обратитесь к администратору.")
+            return
 
-    if is_banned(m.from_user):
-        return safe_send_message(m.chat.id, "⛔ <b>Вы заблокированы.</b>", reply_markup=types.ReplyKeyboardRemove())
+        set_user_server(uid, SERVERS[0])
 
-    args = m.text.split()
-    if len(args) > 1 and args[1].startswith("ref_"):
-        try:
-            referrer_telegram_id = int(args[1].replace("ref_", ""))
-            if referrer_telegram_id != uid:
-                referrer_uuid = get_user_uuid_by_telegram_id(referrer_telegram_id)
-                if referrer_uuid:
-                    res = supabase.table("referrals").select("1").eq("referrer_id", referrer_uuid).eq("referred_id", uid).execute()
-                    if not res.data:
-                        supabase.table("referrals").insert({
-                            "referrer_id": referrer_uuid,
-                            "referred_id": uid,
-                            "last_active_date": get_msk_time().strftime("%Y-%m-%d")
-                        }).execute()
-                        now_ts = time.time()
-                        for target_tg_id in [referrer_telegram_id, uid]:
-                            target_uuid = get_user_uuid_by_telegram_id(target_tg_id)
-                            if target_uuid:
-                                res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", target_uuid).execute()
-                                existing_exp = res_prem.data[0]["expires_at"] if res_prem.data and res_prem.data[0]["expires_at"] > now_ts else now_ts
-                                new_exp = existing_exp + 10 * 86400
-                                supabase.table("premium_users").upsert({"user_id": target_uuid, "expires_at": new_exp}).execute()
-                        try:
-                            safe_send_message(referrer_telegram_id, "🎉 <b>По вашей реферальной ссылке зарегистрировался новый друг!</b>\nВам и вашему другу начислен VIP-статус на 10 дней!")
-                            safe_send_message(uid, "🎁 <b>Вы успешно зарегистрировались по реферальной ссылке!</b>\nВам начислен VIP-статус на 10 дней!")
-                        except:
-                            pass
-        except Exception as e:
-            logger.error(f"Реферальная ошибка: {e}")
+        if is_banned(m.from_user):
+            return safe_send_message(m.chat.id, "⛔ <b>Вы заблокированы.</b>", reply_markup=types.ReplyKeyboardRemove())
 
-    text = (
-        f"👋 Приветствую, <b>{html.escape(m.from_user.first_name)}</b>!\n\n"
-        f"🤖 Мы — <b>неофициальный бот</b> объявлений Arizona RP, созданный игроком.\n\n"
-        f"🌐 <b>Игровой сервер по умолчанию:</b> {SERVERS[0]}.\n"
-        f"Если вам нужно его сменить, нажмите на кнопку <b>«🌐 Сменить игровой сервер»</b> в меню ниже.\n\n"
-        f"⚠️ <b>Безопасность и ответственность:</b> Бот является фанатским проектом. Администрация <b>не несет никакой ответственности</b> за ваши сделки, обмены и договоренности. Все действия вы совершаете на свой страх и риск!\n\n"
-        f"Выберите нужный раздел в меню ниже:"
-    )
-    safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
+        # Реферальная ссылка
+        args = m.text.split()
+        if len(args) > 1 and args[1].startswith("ref_"):
+            try:
+                referrer_telegram_id = int(args[1].replace("ref_", ""))
+                if referrer_telegram_id != uid:
+                    referrer_uuid = get_user_uuid_by_telegram_id(referrer_telegram_id)
+                    if referrer_uuid:
+                        res = supabase.table("referrals").select("1").eq("referrer_id", referrer_uuid).eq("referred_id", uid).execute()
+                        if not res.data:
+                            supabase.table("referrals").insert({
+                                "referrer_id": referrer_uuid,
+                                "referred_id": uid,
+                                "last_active_date": get_msk_time().strftime("%Y-%m-%d")
+                            }).execute()
+                            now_ts = time.time()
+                            for target_tg_id in [referrer_telegram_id, uid]:
+                                target_uuid = get_user_uuid_by_telegram_id(target_tg_id)
+                                if target_uuid:
+                                    res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", target_uuid).execute()
+                                    existing_exp = res_prem.data[0]["expires_at"] if res_prem.data and res_prem.data[0]["expires_at"] > now_ts else now_ts
+                                    new_exp = existing_exp + 10 * 86400
+                                    supabase.table("premium_users").upsert({"user_id": target_uuid, "expires_at": new_exp}).execute()
+                            try:
+                                safe_send_message(referrer_telegram_id, "🎉 <b>По вашей реферальной ссылке зарегистрировался новый друг!</b>\nВам и вашему другу начислен VIP-статус на 10 дней!")
+                                safe_send_message(uid, "🎁 <b>Вы успешно зарегистрировались по реферальной ссылке!</b>\nВам начислен VIP-статус на 10 дней!")
+                            except:
+                                pass
+            except Exception as e:
+                logger.error(f"Реферальная ошибка: {e}")
+
+        text = (
+            f"👋 Приветствую, <b>{html.escape(m.from_user.first_name)}</b>!\n\n"
+            f"🤖 Мы — <b>неофициальный бот</b> объявлений Arizona RP, созданный игроком.\n\n"
+            f"🌐 <b>Игровой сервер по умолчанию:</b> {SERVERS[0]}.\n"
+            f"Если вам нужно его сменить, нажмите на кнопку <b>«🌐 Сменить игровой сервер»</b> в меню ниже.\n\n"
+            f"⚠️ <b>Безопасность и ответственность:</b> Бот является фанатским проектом. Администрация <b>не несет никакой ответственности</b> за ваши сделки, обмены и договоренности. Все действия вы совершаете на свой страх и риск!\n\n"
+            f"Выберите нужный раздел в меню ниже:"
+        )
+        safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
+    except Exception as e:
+        logger.error(f"Ошибка в cmd_start: {e}")
+        safe_send_message(m.chat.id, "⚠️ Произошла ошибка. Попробуйте позже.")
 
 @bot.message_handler(commands=["help"])
 def cmd_help(m):
@@ -852,7 +866,7 @@ def process_ad_content(m):
         "is_vip": bool(is_vip),
         "mode": "sell" if not is_buy else "buy",
         "status": "pending",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "hidden": False
     }
     res = supabase.table("ads").insert(new_ad).execute()
@@ -913,7 +927,7 @@ def cb_moderate_post(call):
     admin_uname = call.from_user.username or str(call.from_user.id)
 
     if action == "acc":
-        expires_at = (datetime.utcnow() + timedelta(hours=AD_EXPIRY_HOURS)).isoformat()
+        expires_at = (datetime.now(timezone.utc) + timedelta(hours=AD_EXPIRY_HOURS)).isoformat()
         supabase.table("ads").update({
             "status": "approved",
             "expires_at": expires_at
@@ -923,7 +937,7 @@ def cb_moderate_post(call):
             "moderator_username": admin_uname,
             "action": "approve_ad",
             "details": str(pid),
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()
         supabase.table("editor_stats").upsert({"username": admin_uname, "count": 1}).execute()
         try:
@@ -942,7 +956,7 @@ def cb_moderate_post(call):
             "moderator_username": admin_uname,
             "action": "reject_ad",
             "details": str(pid),
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()
         try:
             safe_send_message(post["author_id"], f"❌ Ваше объявление (ID {pid}) отклонено модератором.")
@@ -1250,7 +1264,6 @@ def run_bot():
         except ApiTelegramException as e:
             if e.result_json and e.result_json.get('error_code') == 409:
                 logger.error("Обнаружен конфликт (409): другой экземпляр бота уже запущен. Завершаем процесс.")
-                # Принудительно завершаем процесс, чтобы Render перезапустил
                 os._exit(0)
             else:
                 logger.error(f"Ошибка в polling: {e}")

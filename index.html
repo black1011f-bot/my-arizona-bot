@@ -8,208 +8,104 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* ========== ПЕРЕМЕННЫЕ ========== */
         :root {
             --bg: #F9FAFB;
             --card: #FFFFFF;
             --border: #E5E7EB;
             --accent: #4F46E5;
+            --accent-hover: #4338CA;
             --gold: #F59E0B;
             --text: #111827;
             --muted: #6B7280;
-            --shadow: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
             --radius: 16px;
             --radius-sm: 10px;
             --btn-min-height: 48px;
-            --header-height: 60px;
-            --nav-height: 64px;
-            --font: 'Inter', sans-serif;
-            --base-font-size: 16px;
             --container-width: 1200px;
+            --nav-height: 64px;
+            --header-height: 60px;
+            --font: 'Inter', sans-serif;
+            --transition: 0.2s ease;
+            --base-font-size: 16px;
+            --logo-light: url('https://i.postimg.cc/nV1HDjcb/1788346659518.jpg');
+            --logo-dark: url('https://i.postimg.cc/zfWNX3c5/1788346752679.jpg');
         }
         [data-theme="dark"] {
             --bg: #0F172A;
             --card: #1E293B;
             --border: #334155;
             --accent: #818CF8;
+            --accent-hover: #6366F1;
             --gold: #FBBF24;
             --text: #F1F5F9;
             --muted: #94A3B8;
-            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 4px 6px -2px rgba(0,0,0,0.3);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; font-family: var(--font); }
         html { font-size: var(--base-font-size); }
         body {
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            transition: background 0.3s, color 0.3s;
-            overflow-x: hidden;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
+            background: var(--bg); color: var(--text); min-height: 100vh;
+            transition: background 0.3s, color 0.3s; overflow-x: hidden;
+            user-select: none; -webkit-user-select: none; touch-action: manipulation;
+            font-size: clamp(0.875rem, 0.8rem + 0.5vw, 1rem);
         }
         .container {
-            max-width: min(100% - 2rem, var(--container-width));
-            margin: 0 auto;
-            padding: 0 1rem;
+            max-width: min(100% - 2rem, var(--container-width)); margin: 0 auto; padding: 0 1rem;
             padding-top: calc(var(--header-height) + 1rem);
             padding-bottom: calc(var(--nav-height) + 2rem);
+            transition: max-width 0.3s;
         }
-        /* Header */
+        /* ========== HEADER (Glassmorphism) ========== */
         .header {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 100;
-            background: var(--bg);
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(249,250,251,0.8); backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            padding: 0.6rem 1rem;
-            height: var(--header-height);
-            gap: 0.6rem;
-            backdrop-filter: blur(12px);
+            display: flex; align-items: center; padding: 0.6rem 1rem; height: var(--header-height); gap: 0.6rem;
         }
-        .header-logo {
-            width: 40px; height: 40px;
-            border-radius: 12px;
-            overflow: hidden;
-            flex-shrink: 0;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
+        [data-theme="dark"] .header { background: rgba(15,23,42,0.8); }
+        .header-logo { width: 40px; height: 40px; border-radius: 12px; overflow: hidden; flex-shrink: 0; cursor: pointer; transition: transform 0.2s; }
         .header-logo:hover { transform: scale(1.05); }
         .header-logo img { width: 100%; height: 100%; object-fit: cover; }
-        .header-title {
-            font-weight: 800;
-            font-size: 1.4rem;
-            letter-spacing: -0.02em;
-            white-space: nowrap;
-        }
-        .header-search {
-            flex: 1;
-            cursor: pointer;
-            position: relative;
-        }
-        .header-search input {
-            width: 100%;
-            padding: 0.6rem 1rem;
-            border-radius: 50px;
-            border: 1px solid var(--border);
-            background: var(--card);
-            color: var(--text);
-            font-size: 0.9rem;
-            outline: none;
-            pointer-events: none;
-            box-shadow: var(--shadow);
-        }
-        .theme-toggle {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.2rem;
-            border-radius: 8px;
-        }
-        /* Navigation */
+        .header-title { font-weight: 800; font-size: 1.4rem; letter-spacing: -0.02em; white-space: nowrap; }
+        .header-search { flex: 1; cursor: pointer; position: relative; }
+        .header-search input { width: 100%; padding: 0.6rem 1rem; border-radius: 50px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.9rem; outline: none; pointer-events: none; box-shadow: var(--shadow); }
+        .theme-toggle { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0.2rem; border-radius: 8px; }
+        /* ========== BOTTOM NAV (Glassmorphism) ========== */
         .nav-bar {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            z-index: 100;
-            background: var(--bg);
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(249,250,251,0.85); backdrop-filter: blur(12px);
             border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            height: var(--nav-height);
-            padding-bottom: env(safe-area-inset-bottom);
+            display: flex; justify-content: space-around; align-items: center; height: var(--nav-height); padding-bottom: env(safe-area-inset-bottom);
         }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-            background: none;
-            border: none;
-            color: var(--muted);
-            font-size: 0.7rem;
-            font-weight: 600;
-            cursor: pointer;
-            padding: 0.25rem 0.3rem;
-            border-radius: 12px;
-            flex: 1;
-            max-width: 80px;
-            min-height: 48px;
-            transition: all 0.2s;
-        }
+        [data-theme="dark"] .nav-bar { background: rgba(15,23,42,0.85); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: none; color: var(--muted); font-size: 0.7rem; font-weight: 600; cursor: pointer; padding: 0.25rem 0.3rem; border-radius: 12px; flex: 1; max-width: 80px; min-height: 48px; transition: all 0.2s; }
         .nav-item:hover { background: rgba(79,70,229,0.05); }
-        .nav-item .nav-icon { font-size: 1.4rem; }
+        .nav-item .nav-icon { font-size: 1.4rem; transition: transform 0.2s; }
         .nav-item.active { color: var(--accent); background: rgba(79,70,229,0.1); }
-        /* Sections */
+        .nav-item.active .nav-icon { transform: translateY(-2px); }
+        /* ========== SECTIONS ========== */
         .section { display: none; opacity: 0; transform: translateY(10px); transition: opacity 0.25s, transform 0.25s; }
         .section.active { display: block; opacity: 1; transform: translateY(0); }
-        /* Cards */
-        .card {
-            background: var(--card);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow);
-            padding: 0.9rem;
-            margin-bottom: 0.9rem;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        /* ========== CARDS ========== */
+        .card { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 0.9rem; margin-bottom: 0.9rem; transition: all 0.2s; cursor: pointer; }
+        .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
         .card:active { transform: scale(0.98); }
         .card.inactive-card { opacity: 0.7; background: rgba(128,128,128,0.06); }
-        .ad-card {
-            display: flex;
-            gap: 0.8rem;
-            align-items: flex-start;
-        }
-        .ad-card-img {
-            width: 90px;
-            height: 110px;
-            border-radius: 12px;
-            object-fit: cover;
-            background: var(--border);
-            flex-shrink: 0;
-            position: relative;
-            overflow: hidden;
-        }
-        .ad-card-img img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s;
-        }
+        /* Объявления в ленте (сетка) */
+        .ads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        .ad-card { display: flex; flex-direction: column; background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; transition: all 0.2s; cursor: pointer; }
+        .ad-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+        .ad-card-img { width: 100%; height: 180px; object-fit: cover; background: var(--border); position: relative; overflow: hidden; }
+        .ad-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .ad-card:hover .ad-card-img img { transform: scale(1.05); }
-        .ad-card-info { flex: 1; min-width: 0; }
-        .ad-card-title {
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: 0.2rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .ad-card-price {
-            font-weight: 800;
-            font-size: 1.2rem;
-            color: var(--accent);
-        }
-        .badge {
-            display: inline-block;
-            padding: 0.2rem 0.6rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-right: 0.25rem;
-            background: var(--border);
-            color: var(--text);
-            white-space: nowrap;
-        }
+        .ad-card-info { padding: 0.8rem; }
+        .ad-card-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.2rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ad-card-price { font-weight: 800; font-size: 1.3rem; color: var(--accent); margin-bottom: 0.3rem; }
+        [data-theme="dark"] .ad-card-price { color: #34D399; }
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; margin-right: 0.25rem; background: var(--border); color: var(--text); white-space: nowrap; }
         .badge.sell { background: #10B981; color: #fff; }
         .badge.buy { background: #F97316; color: #fff; }
         .badge.server { background: var(--gold); color: #1a1a1a; }
@@ -217,167 +113,70 @@
         .badge.status-pending { background: #FBBF24; color: #1a1a1a; }
         .badge.status-deleted { background: #EF4444; color: #fff; }
         .badge.status-approved { background: #10B981; color: #fff; }
-        .ad-card-author { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+        .ad-card-author { font-size: 0.7rem; color: var(--muted); margin-top: 0.3rem; }
         .countdown-timer { font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
-        /* Buttons */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-            padding: 0.7rem 1.1rem;
-            border-radius: var(--radius-sm);
-            border: none;
-            background: var(--accent);
-            color: #fff;
-            font-weight: 700;
-            font-size: 0.9rem;
-            cursor: pointer;
-            min-height: var(--btn-min-height);
-            transition: all 0.2s;
-        }
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        /* ========== КАРУСЕЛЬ РЕКОМЕНДАЦИЙ ========== */
+        .carousel-container { margin-bottom: 1.5rem; }
+        .carousel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .carousel-title { font-weight: 800; font-size: 1.2rem; }
+        .carousel-scroll { display: flex; gap: 0.8rem; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 0.5rem; -webkit-overflow-scrolling: touch; }
+        .carousel-scroll::-webkit-scrollbar { display: none; }
+        .carousel-item { flex: 0 0 auto; width: 160px; scroll-snap-align: start; }
+        /* ========== БЫСТРЫЙ ПРОСМОТР ========== */
+        .quick-view-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 150; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .quick-view-overlay.show { opacity: 1; pointer-events: auto; }
+        .quick-view-panel { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; padding: 1.5rem; position: relative; transform: translateY(20px); transition: transform 0.3s; }
+        .quick-view-overlay.show .quick-view-panel { transform: translateY(0); }
+        /* ========== КНОПКИ ========== */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.7rem 1.1rem; border-radius: var(--radius-sm); border: none; background: var(--accent); color: #fff; font-weight: 700; font-size: 0.9rem; cursor: pointer; min-height: var(--btn-min-height); transition: all 0.2s; }
+        .btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
         .btn:active { transform: scale(0.97); }
         .btn.secondary { background: var(--border); color: var(--text); }
         .btn.danger { background: #EF4444; color: #fff; }
         .btn.gold { background: var(--gold); color: #1a1a1a; }
         .btn.success { background: #10B981; color: #fff; }
         .btn.w-full { width: 100%; }
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 200;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            opacity: 0;
-            transition: opacity 0.25s;
-            backdrop-filter: blur(4px);
-        }
+        /* ========== МОДАЛКИ ========== */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; transition: opacity 0.25s; backdrop-filter: blur(4px); }
         .modal-overlay.show { opacity: 1; }
-        .modal {
-            background: var(--card);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            width: 100%;
-            max-width: 520px;
-            max-height: 85vh;
-            overflow-y: auto;
-            padding: 1.5rem;
-            position: relative;
-            transform: translateY(20px);
-            transition: transform 0.25s;
-        }
+        .modal { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-lg); width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto; padding: 1.5rem; position: relative; transform: translateY(20px); transition: transform 0.25s; }
         .modal-overlay.show .modal { transform: translateY(0); }
-        .modal-close {
-            position: absolute;
-            top: 0.7rem;
-            right: 0.7rem;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: var(--muted);
-        }
-        .modal-title {
-            font-weight: 800;
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            padding-right: 2rem;
-        }
-        /* Form */
+        .modal-close { position: absolute; top: 0.7rem; right: 0.7rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--muted); }
+        .modal-title { font-weight: 800; font-size: 1.3rem; margin-bottom: 1rem; padding-right: 2rem; }
+        /* ========== ФОРМЫ ========== */
         .form-group { margin-bottom: 1rem; }
         .form-group label { display: block; font-weight: 600; font-size: 0.8rem; margin-bottom: 0.3rem; color: var(--muted); }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
-            padding: 0.7rem 1rem;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border);
-            background: var(--bg);
-            color: var(--text);
-            font-size: 0.9rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.7rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
-        /* Auth */
-        .auth-container {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            background: var(--bg);
-        }
-        .auth-background {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-position: center;
-            background-size: cover;
-            opacity: 0.8;
-            z-index: -1;
-        }
-        .auth-box {
-            width: 100%;
-            max-width: 400px;
-            background: var(--card);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            padding: 1.8rem;
-            box-shadow: var(--shadow);
-            position: relative;
-            z-index: 1;
-        }
-        .auth-tab {
-            flex: 1;
-            padding: 0.6rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-weight: 700;
-            color: var(--muted);
-            border-bottom: 2px solid transparent;
-        }
+        /* ========== АВТОРИЗАЦИЯ ========== */
+        .auth-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; background: var(--bg); }
+        .auth-background { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-position: center; background-size: cover; opacity: 0.8; z-index: -1; }
+        .auth-box { width: 100%; max-width: 400px; background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.8rem; box-shadow: var(--shadow); position: relative; z-index: 1; }
+        .auth-tab { flex: 1; padding: 0.6rem; background: none; border: none; cursor: pointer; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; }
         .auth-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
         .auth-theme-toggle { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
-        /* Splash */
-        #splash-screen {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--bg);
-            z-index: 3000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.8rem;
-            transition: opacity 0.5s, visibility 0.5s;
-        }
+        /* ========== СПЛЭШ ========== */
+        #splash-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; transition: opacity 0.5s, visibility 0.5s; }
         #splash-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
         .splash-icon { width: 100px; height: 100px; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.2); animation: zoom 1.2s ease-out; }
         .splash-icon img { width: 100%; height: 100%; object-fit: cover; }
         .splash-title { font-weight: 900; font-size: 2rem; }
         .splash-subtitle { font-size: 1rem; color: var(--muted); }
         @keyframes zoom { 0% { transform: scale(0.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        /* Toast */
+        /* ========== TOAST ========== */
         .toast-container { position: fixed; top: 70px; right: 1rem; z-index: 999; display: flex; flex-direction: column; gap: 0.5rem; max-width: 320px; }
         .toast { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.8rem 1rem; font-size: 0.8rem; animation: slideIn 0.3s; }
         .toast.success { border-left: 4px solid #10B981; }
         .toast.error { border-left: 4px solid #EF4444; }
         .toast.info { border-left: 4px solid var(--accent); }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        /* Loader, etc. */
+        /* ========== ЗАГРУЗКА ========== */
         .loader { border: 3px solid var(--border); border-top: 3px solid var(--accent); border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+        /* ========== ПРОЧЕЕ ========== */
         .grid-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; }
         .grid-tile { padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--card); text-align: center; cursor: pointer; font-weight: 700; font-size: 0.8rem; transition: all 0.2s; }
-        .grid-tile:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .grid-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
         .grid-tile .tile-icon { font-size: 2rem; display: block; margin-bottom: 0.4rem; }
         .hidden { display: none !important; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
@@ -406,22 +205,23 @@
         .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 0.3rem 0; }
         .progress-fill { height: 100%; background: var(--accent); }
         .empty-state { text-align: center; padding: 1.5rem 0; color: var(--muted); font-size: 0.9rem; }
-        /* Адаптация */
+
+        /* Адаптивность */
         @media (max-width: 768px) {
-            .ad-card-img { width: 80px; height: 100px; }
-            .container { padding-top: calc(56px + 1rem); }
+            .ads-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+            .ad-card-img { height: 140px; }
         }
     </style>
 </head>
 <body>
-    <!-- Splash screen -->
+    <!-- Сплэш -->
     <div id="splash-screen">
         <div class="splash-icon"><img src="https://i.postimg.cc/mgk2RL4g/1788361335674.jpg" alt="Arizona Online"></div>
         <div class="splash-title">Arizona Online</div>
         <div class="splash-subtitle">Market</div>
     </div>
 
-    <!-- Header -->
+    <!-- Хедер -->
     <header class="header" id="appHeader" style="display:none;">
         <div class="header-logo" id="logoBtn"><img id="headerLogoImg" src="https://i.postimg.cc/nV1HDjcb/1788346659518.jpg" alt=""></div>
         <div class="header-title">Arizona Online</div>
@@ -429,22 +229,24 @@
         <button class="theme-toggle" id="themeToggleBtn">🌓</button>
     </header>
 
-    <!-- Main container -->
+    <!-- Основной контейнер -->
     <main class="container" id="mainContainer" style="display:none;">
-        <!-- Home section -->
         <section class="section active" id="section-home">
-            <div id="serverSelector" style="margin-bottom:1rem;">
-                <button class="btn secondary w-full" id="serverSelectBtn">🌐 Все сервера</button>
+            <div id="serverSelector" style="margin-bottom:1rem;"><button class="btn secondary w-full" id="serverSelectBtn">🌐 Все сервера</button></div>
+            <!-- Карусель рекомендаций -->
+            <div class="carousel-container" id="recommendationsCarousel" style="display:none;">
+                <div class="carousel-header"><span class="carousel-title">🔥 Рекомендации для вас</span></div>
+                <div class="carousel-scroll" id="recommendationsScroll"></div>
             </div>
             <div class="ads-grid" id="homeFeed"></div>
             <div id="loadMoreTrigger" style="height:20px;"></div>
         </section>
-        <!-- Cart section -->
+
         <section class="section" id="section-cart">
             <h2>🛒 Корзина</h2>
             <div id="cartList"></div>
         </section>
-        <!-- Send ad section -->
+
         <section class="section" id="section-send">
             <h2>➕ Отправка объявления</h2>
             <div class="card">
@@ -458,12 +260,12 @@
                 <button class="btn w-full" id="sendSubmitBtn">Отправить объявление</button>
             </div>
         </section>
-        <!-- Admin section -->
+
         <section class="section" id="section-admin">
             <h2>🛡️ Админ-панель</h2>
             <div id="adminPanelContent"></div>
         </section>
-        <!-- All sections -->
+
         <section class="section" id="section-all">
             <h2>☰ Все разделы</h2>
             <div class="grid-tiles" id="allTiles"></div>
@@ -472,7 +274,7 @@
         </section>
     </main>
 
-    <!-- Navigation bar -->
+    <!-- Нижняя навигация -->
     <nav class="nav-bar" id="navBar" style="display:none;">
         <button class="nav-item active" data-section="home"><span class="nav-icon">🏠</span><span>Главная</span></button>
         <button class="nav-item" data-section="cart"><span class="nav-icon">🛒</span><span>Корзина</span></button>
@@ -481,16 +283,17 @@
         <button class="nav-item" data-section="all"><span class="nav-icon">☰</span><span>Все</span></button>
     </nav>
 
-    <!-- Containers -->
+    <!-- Модальные окна -->
     <div id="modalContainer"></div>
     <div id="authContainer"></div>
+    <div id="quickViewContainer"></div>
     <div class="toast-container" id="toastContainer"></div>
 
     <script>
     (function() {
         'use strict';
 
-        // Константы
+        // ===================== КОНСТАНТЫ =====================
         const OWNER_USERNAME = 'bounqy';
         const ALL_SERVERS = ['Phoenix','Tucson','Scottdale','Chandler','Brainburg','Saint-Rose','Mesa','Red-Rock','Yuma','Surprise','Prescott','Glendale','Kingman','Winslow','Payson','Gilbert','Show-Low','Casa-Grande','Page','Sun-City','Queen-Creek','Sedona','Holiday','Wednesday','Yava','Faraway','Bumble-Bee','Christmas','Mirage','Love','Drake','Space','Home','Mobile I','Mobile II','Mobile III'];
         const ALL_CATEGORIES = [
@@ -512,7 +315,7 @@
         const FEED_PAGE_SIZE = 20;
         const SPLASH_DURATION = 3000;
 
-        // Глобальное состояние
+        // ===================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====================
         let tg = null, supabaseClient = null, currentUser = null;
         let currentSection = 'home', currentTheme = 'light', sfxEnabled = true;
         let currentFilterServer = null, isAdmin = false, isOwner = false;
@@ -524,8 +327,9 @@
         let appealAdId = null;
         let sendFormData = { type:'sell', category:null, server:null };
         let adminPasswordHash = null;
+        let recentlyViewed = []; // для карусели рекомендаций
 
-        // Инициализация
+        // ===================== ИНИЦИАЛИЗАЦИЯ =====================
         function initSupabase() {
             try {
                 if (typeof window.supabase === 'undefined' || !window.supabase.createClient) return false;
@@ -548,7 +352,7 @@
             } catch(e) { console.error('Telegram init error:', e); return null; }
         }
 
-        // Утилиты
+        // ===================== УТИЛИТЫ =====================
         function withTimeout(promise, ms=10000) { return Promise.race([promise, new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout')),ms))]); }
         function playSfx(type='click') {
             if(!sfxEnabled) return;
@@ -648,7 +452,7 @@
             } catch(e) { return { safe:false, message:'Некорректная ссылка.' }; }
         }
 
-        // Модалки
+        // ===================== МОДАЛКИ =====================
         function showModal(html, onClose) {
             const container = document.getElementById('modalContainer');
             container.innerHTML = `<div class="modal-overlay" id="modalOverlay"><div class="modal"><button class="modal-close" id="modalCloseBtn">✕</button>${html}</div></div>`;
@@ -670,8 +474,39 @@
             document.getElementById('confirmCancelBtn').addEventListener('click', closeModal);
             document.getElementById('confirmOkBtn').addEventListener('click', ()=>{ closeModal(); onConfirm(); });
         }
+        // Быстрый просмотр
+        function showQuickView(ad) {
+            const container = document.getElementById('quickViewContainer');
+            container.innerHTML = `
+                <div class="quick-view-overlay show" id="quickViewOverlay">
+                    <div class="quick-view-panel">
+                        <button class="modal-close" id="quickViewClose">✕</button>
+                        <h3 class="modal-title">${ad.item_name}</h3>
+                        <div class="ad-card-img" style="height:200px; margin-bottom:0.5rem;">
+                            <img src="${ad.images?.split(',')[0] || DEFAULT_AD_IMAGE}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">
+                        </div>
+                        <div class="ad-card-price">${formatPrice(ad.price)}</div>
+                        <div>${ad.description?.substring(0,150) || ''}</div>
+                        <button class="btn w-full mt-12" id="quickViewCartBtn">🛒 В корзину</button>
+                        <button class="btn secondary w-full mt-8" id="quickViewFullBtn">Подробнее</button>
+                    </div>
+                </div>`;
+            document.getElementById('quickViewClose').addEventListener('click', ()=>container.innerHTML='');
+            document.getElementById('quickViewOverlay').addEventListener('click', (e)=>{ if(e.target===e.currentTarget) container.innerHTML=''; });
+            document.getElementById('quickViewCartBtn').addEventListener('click', async ()=>{
+                if(!currentUser){ showAlert('Ошибка','Вы не авторизованы'); return; }
+                await supabaseClient.from('favorites').insert({ user_id: currentUser.id, ad_id: ad.id });
+                showToast('Добавлено в корзину','success');
+                container.innerHTML='';
+                loadCart();
+            });
+            document.getElementById('quickViewFullBtn').addEventListener('click', ()=>{
+                container.innerHTML='';
+                openAdDetail(ad);
+            });
+        }
 
-        // Авторизация
+        // ===================== АВТОРИЗАЦИЯ =====================
         async function loginWithUsername(username, password) {
             if (!/^[a-zA-Z0-9_]+$/.test(username)) { showToast('Используйте только латинские буквы, цифры и знак подчёркивания','error'); return false; }
             if (!password || password.length < 6) { showToast('Пароль должен быть не короче 6 символов','error'); return false; }
@@ -790,7 +625,7 @@
             showAuthScreen(prefillUsername);
         }
 
-        // Инициализация приложения
+        // ===================== ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ =====================
         async function initApp() {
             if(!currentUser){ showAuthScreen(); return; }
             isAdmin = currentUser.is_admin || currentUser.username === OWNER_USERNAME;
@@ -806,6 +641,7 @@
             switchSection('home');
             setupServerSelector();
             setupInfiniteScroll();
+            loadRecentlyViewed();
             requestWakeLock();
         }
         async function loadUserSettingsAndProgress() {
@@ -825,41 +661,44 @@
         async function loadNotificationsCount() { if(!currentUser)return; try{ const {count,error}=await withTimeout(supabaseClient.from('notifications').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id).eq('read',false),5000); if(!error) unreadNotifications=count||0; }catch(e){ unreadNotifications=0; } }
         function requestWakeLock() { try{ if('wakeLock' in navigator) navigator.wakeLock.request('screen').then(lock=>{wakeLock=lock;}).catch(()=>{}); }catch(e){} }
 
-        // Админ пароль
-        function showCreateAdminPasswordModal() {
-            showModal(`<h3 class="modal-title">🔒 Создайте пароль администратора</h3><p style="color:var(--muted);margin-bottom:1rem;">Этот пароль будет использоваться для входа в админ-панель.</p>
-            <div class="form-group"><label>Новый пароль</label><input type="password" id="newAdminPass" placeholder="Минимум 6 символов"></div>
-            <div class="form-group"><label>Повторите пароль</label><input type="password" id="confirmAdminPass" placeholder="Повторите пароль"></div>
-            <button class="btn w-full" id="createAdminPassBtn">Создать</button><p id="adminPassError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
-            document.getElementById('createAdminPassBtn').addEventListener('click', async ()=>{
-                const p1 = document.getElementById('newAdminPass').value.trim();
-                const p2 = document.getElementById('confirmAdminPass').value.trim();
-                const errEl = document.getElementById('adminPassError');
-                if(p1.length < 6){ errEl.textContent='Пароль слишком короткий'; return; }
-                if(p1 !== p2){ errEl.textContent='Пароли не совпадают'; return; }
-                const hash = await hashPassword(p1);
-                await supabaseClient.from('user_settings').update({admin_password_hash:hash}).eq('user_id',currentUser.id);
-                userSettings.admin_password_hash = hash;
-                adminPasswordHash = hash;
-                playSfx('success'); showToast('Пароль администратора установлен','success');
-                document.getElementById('modalOverlay').remove();
-                switchSection('admin');
-            });
+        // ===================== РЕКОМЕНДАЦИИ (недавно просмотренные) =====================
+        function loadRecentlyViewed() {
+            const stored = localStorage.getItem('recently_viewed');
+            if (stored) recentlyViewed = JSON.parse(stored);
+            renderRecommendations();
         }
-        function showAdminLoginModal(storedHash) {
-            showModal(`<h3 class="modal-title">🔒 Вход в админ-панель</h3><div class="form-group"><label>Пароль</label><input type="password" id="adminLoginPass" placeholder="Введите пароль"></div><button class="btn w-full" id="adminLoginBtn">Войти</button><p id="adminLoginError" style="color:#EF4444;font-size:0.75rem;margin-top:0.4rem;"></p>`);
-            document.getElementById('adminLoginBtn').addEventListener('click', async ()=>{
-                const pass = document.getElementById('adminLoginPass').value.trim();
-                const errEl = document.getElementById('adminLoginError');
-                const hash = await hashPassword(pass);
-                if(hash !== storedHash){ errEl.textContent='Неверный пароль'; return; }
-                playSfx('success');
-                document.getElementById('modalOverlay').remove();
-                loadAdminPanel();
-            });
+        function addToRecentlyViewed(adId) {
+            if (!recentlyViewed.includes(adId)) {
+                recentlyViewed.unshift(adId);
+                if (recentlyViewed.length > 10) recentlyViewed.pop();
+                localStorage.setItem('recently_viewed', JSON.stringify(recentlyViewed));
+                renderRecommendations();
+            }
+        }
+        async function renderRecommendations() {
+            const carousel = document.getElementById('recommendationsCarousel');
+            const scroll = document.getElementById('recommendationsScroll');
+            if (!recentlyViewed.length) { carousel.style.display = 'none'; return; }
+            carousel.style.display = 'block';
+            scroll.innerHTML = '';
+            for (const id of recentlyViewed) {
+                const { data: ad, error } = await supabaseClient.from('ads').select('*').eq('id', id).maybeSingle();
+                if (ad && !error) {
+                    const item = document.createElement('div');
+                    item.className = 'carousel-item card';
+                    item.innerHTML = `
+                        <img src="${ad.images?.split(',')[0] || DEFAULT_AD_IMAGE}" style="width:100%;height:120px;object-fit:cover;border-radius:12px;" onerror="this.style.display='none'">
+                        <div style="padding:0.5rem;">
+                            <div style="font-weight:700;font-size:0.9rem;">${ad.item_name}</div>
+                            <div style="color:var(--accent);font-weight:800;">${formatPrice(ad.price)}</div>
+                        </div>`;
+                    item.addEventListener('click', ()=>{ addToRecentlyViewed(ad.id); openAdDetail(ad); });
+                    scroll.appendChild(item);
+                }
+            }
         }
 
-        // Навигация
+        // ===================== НАВИГАЦИЯ =====================
         function switchSection(section) {
             currentSection = section;
             document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -904,7 +743,7 @@
             document.querySelectorAll('.link-item').forEach(item=>item.addEventListener('click',()=>{ window.open(item.dataset.link,'_blank'); document.getElementById('modalOverlay').remove(); }));
         }
 
-        // Главная лента
+        // ===================== ГЛАВНАЯ ЛЕНТА =====================
         function setupServerSelector(){
             const btn = document.getElementById('serverSelectBtn');
             if (!btn) return;
@@ -960,41 +799,46 @@
         function renderHomeFeed(){
             const cont = document.getElementById('homeFeed');
             if(!homeAds.length){ cont.innerHTML='<div class="empty-state">📭 Объявлений пока нет</div>'; return; }
-            let html = '';
+            cont.innerHTML = '';
             homeAds.forEach(ad=>{
-                const firstImg = ad.images ? ad.images.split(',')[0].trim() : '';
-                const img = firstImg || DEFAULT_AD_IMAGE;
-                const modeBadge = ad.mode==='sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
-                const catLabel = ALL_CATEGORIES.find(c=>c.id===ad.category)?.label || ad.category;
-                let timer = '';
-                if(ad.expires_at){
-                    const diff = new Date(ad.expires_at) - new Date();
-                    if(diff > 0){
-                        const total = Math.floor(diff/1000);
-                        const h = Math.floor(total/3600);
-                        const m = Math.floor((total%3600)/60);
-                        const s = total%60;
-                        timer = `<div class="countdown-timer">⏳ Удаление через: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}</div>`;
-                    } else { timer = '<div class="countdown-timer">⚠️ Удалено</div>'; }
-                }
-                html += `<div class="card ad-card" data-ad-id="${ad.id}">
+                const card = document.createElement('div');
+                card.className = 'ad-card';
+                card.dataset.adId = ad.id;
+                card.innerHTML = `
                     <div class="ad-card-img">
-                        <img src="${img}" loading="lazy" onload="this.classList.add('loaded')" onerror="this.style.display='none'">
+                        <img src="${ad.images?.split(',')[0] || DEFAULT_AD_IMAGE}" loading="lazy" onload="this.classList.add('loaded')" onerror="this.style.display='none'">
                     </div>
                     <div class="ad-card-info">
                         <div class="ad-card-title">${ad.item_name || 'Без названия'}</div>
                         <div class="ad-card-price">${formatPrice(ad.price)}</div>
-                        <div>${modeBadge}<span class="badge server">${ad.server}</span><span class="badge category">${catLabel}</span></div>
+                        <div class="ad-card-badges">
+                            ${ad.mode==='sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>'}
+                            <span class="badge server">${ad.server}</span>
+                            <span class="badge category">${ALL_CATEGORIES.find(c=>c.id===ad.category)?.label || ad.category}</span>
+                        </div>
                         <div class="ad-card-author">Автор: ${ad.author_username || ad.author_id}</div>
-                        ${timer}
+                        ${ad.expires_at ? `<div class="countdown-timer">⏳ ${formatCountdown(ad.expires_at)}</div>` : ''}
                     </div>
-                </div>`;
+                `;
+                card.addEventListener('click', ()=>{
+                    addToRecentlyViewed(ad.id);
+                    openAdDetail(ad);
+                });
+                // Двойное нажатие для быстрого просмотра (или кнопка)
+                card.addEventListener('dblclick', (e)=>{ e.stopPropagation(); showQuickView(ad); });
+                cont.appendChild(card);
             });
-            cont.innerHTML = html;
-            cont.querySelectorAll('.ad-card').forEach(card=>card.addEventListener('click', ()=>{ const id = card.dataset.adId; const ad = homeAds.find(a=>a.id == id); if(ad) openAdDetail(ad); }));
+        }
+        function formatCountdown(expiresAt) {
+            const diff = new Date(expiresAt) - new Date();
+            if(diff <= 0) return 'Удалено';
+            const total = Math.floor(diff/1000);
+            const h = Math.floor(total/3600);
+            const m = Math.floor((total%3600)/60);
+            return `Удаление через: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
         }
 
-        // Корзина
+        // ===================== КОРЗИНА =====================
         async function loadCart(){
             const cont = document.getElementById('cartList');
             if(!currentUser){ cont.innerHTML='<div class="empty-state">🛒 Корзина пуста</div>'; return; }
@@ -1020,7 +864,7 @@
             } catch(e) { cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>'; }
         }
 
-        // Отправка объявления
+        // ===================== ФОРМА ОТПРАВКИ =====================
         function initSendForm(){
             const priceInput = document.getElementById('sendPrice');
             priceInput.removeEventListener('input', formatPriceInputHandler);
@@ -1090,7 +934,7 @@
             } catch(e) { showAlert('Ошибка','Не удалось отправить объявление'); }
         }
 
-        // Мои объявления
+        // ===================== МОИ ОБЪЯВЛЕНИЯ =====================
         async function loadMyAds(){
             const cont = document.getElementById('myAdsList');
             if(!currentUser){ cont.innerHTML='<div class="empty-state">У вас пока нет объявлений</div>'; return; }
@@ -1111,7 +955,7 @@
             } catch(e) { cont.innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>'; }
         }
 
-        // Апелляция
+        // ===================== АПЕЛЛЯЦИЯ =====================
         function openAppealModal(){
             if(!appealAdId) return;
             showModal(`<h3 class="modal-title">📨 Апелляция</h3>
@@ -1128,7 +972,7 @@
             });
         }
 
-        // Админ-панель
+        // ===================== АДМИН-ПАНЕЛЬ =====================
         async function loadAdminPanel() {
             const cont = document.getElementById('adminPanelContent');
             if (!isAdmin) { cont.innerHTML='<div class="empty-state">Нет доступа</div>'; return; }
@@ -1211,7 +1055,6 @@
             document.getElementById('btnAudit').addEventListener('click', () => loadAdminAuditForUser(document.getElementById('adminSearchUsername').value.trim()));
             document.getElementById('btnWarnHide').addEventListener('click', () => openWarnHideModal(document.getElementById('adminSearchUsername').value.trim()));
         }
-
         async function loadModeratorLogsForUser(username = '') {
             let query = supabaseClient.from('moderator_logs').select('*').order('created_at',{ascending:false}).limit(100);
             if (username) query = query.or(`details.ilike.%${username}%,moderator_username.ilike.%${username}%`);
@@ -1225,7 +1068,6 @@
             }).join('');
             showModal(`<h3 class="modal-title">📜 Журнал модераторов</h3>${html}`);
         }
-
         async function loadAdminAuditForUser(username = '') {
             let query = supabaseClient.from('moderator_logs').select('*').order('created_at',{ascending:false}).limit(500);
             if (username) query = query.or(`details.ilike.%${username}%,moderator_username.ilike.%${username}%`);
@@ -1241,7 +1083,6 @@
             html += logs.slice(0, 20).map(log => `${log.moderator_username} — ${log.action} — ${log.details} — ${new Date(log.created_at).toLocaleString('ru-RU')}`).join('<br>');
             showModal(`<h3 class="modal-title">🔍 Аудит модераторов</h3>${html}`);
         }
-
         function openWarnHideModal(username = '') {
             if (!username) { showAlert('Ошибка','Введите username пользователя'); return; }
             showModal(`<h3 class="modal-title">⚠️ Действия с @${username}</h3>
@@ -1264,7 +1105,6 @@
                 showAlert('Успех','Объявления скрыты'); document.getElementById('modalOverlay').remove();
             });
         }
-
         async function adminUserAction(action){
             const target = document.getElementById('adminUsernameInput').value.trim();
             if(!target){ showAlert('Ошибка','Введите username или ID'); return; }
@@ -1282,7 +1122,6 @@
                 playSfx('success'); showAlert('Успех','Действие выполнено'); loadAdminPanel();
             } catch(e) { showAlert('Ошибка','Не удалось выполнить'); }
         }
-
         function openAdminEditModal(ad){
             showModal(`<h3 class="modal-title">✏️ Редактирование</h3><div class="form-group"><label>Название</label><input type="text" id="editAdminName" value="${ad.item_name||''}"></div><div class="form-group"><label>Цена</label><input type="text" id="editAdminPrice" value="${ad.price||''}"></div><div class="form-group"><label>Описание</label><textarea id="editAdminDesc">${ad.description||''}</textarea></div><div class="form-group"><label>Скриншоты</label><input type="text" id="editAdminImgs" value="${ad.images||''}"></div><button class="btn w-full" id="editAdminSaveBtn">Сохранить и одобрить</button>`);
             document.getElementById('editAdminSaveBtn').addEventListener('click', async ()=>{
@@ -1298,12 +1137,11 @@
                 playSfx('success'); document.getElementById('modalOverlay').remove(); loadAdminPanel(); loadHomeFeed(true);
             });
         }
-
         async function logModeratorAction(action, details) {
             try { await supabaseClient.from('moderator_logs').insert({ moderator_id: currentUser.id, moderator_username: currentUser.username, action, details: details.toString(), created_at: new Date().toISOString() }); } catch(e) { console.warn('logModeratorAction error', e); }
         }
 
-        // Детали объявления (упрощенно)
+        // ===================== ДЕТАЛИ ОБЪЯВЛЕНИЯ =====================
         async function openAdDetail(ad){
             const images = ad.images ? ad.images.split(',').map(s=>s.trim()).filter(s=>s) : [];
             const gallery = images.length ? '<div class="image-gallery">'+images.map(img=>`<img src="${img}" loading="lazy" onerror="this.style.display='none'">`).join('')+'</div>' : '';
@@ -1432,7 +1270,7 @@
             } catch(e){ document.getElementById('profileAdsList').innerHTML='<div class="empty-state">⚠️ Ошибка</div>'; }
         }
 
-        // Все разделы
+        // ===================== ВСЕ РАЗДЕЛЫ =====================
         function loadAllTiles(){
             const tiles = [
                 { id:'looks', icon:'📸', label:'Лента «Луков»' },
@@ -1455,7 +1293,7 @@
             }));
         }
 
-        // Настройки
+        // ===================== НАСТРОЙКИ =====================
         function openSettingsModal(){
             showModal(`<h3 class="modal-title">⚙️ Настройки</h3>
                 <div class="form-group flex-between"><label>🔊 Звуки</label><input type="checkbox" id="settingsSfx" ${sfxEnabled?'checked':''} style="width:1.5rem;height:1.5rem;"></div>
@@ -1466,7 +1304,7 @@
             document.getElementById('settingsLogoutBtn').addEventListener('click', ()=>{ localStorage.removeItem('arizona_current_user'); currentUser = null; document.getElementById('modalOverlay').remove(); showAuthScreen(); });
         }
 
-        // Прочие функции (чат, уведомления, луки, попутчики, музыка)
+        // ===================== ПРОЧИЕ ФУНКЦИИ =====================
         function openChatModal(){ showModal(`<h3 class="modal-title">💬 Переписки</h3><div class="empty-state">Переписки ведутся напрямую в Telegram.</div><button class="btn w-full mt-12" id="chatTgBtn">📱 Перейти в Telegram</button>`); document.getElementById('chatTgBtn').addEventListener('click', ()=>window.open('https://t.me/','_blank')); }
         async function openNotificationsModal(){
             showModal(`<h3 class="modal-title">🔔 Уведомления</h3><div id="notificationsList"><div class="loader"></div></div>`);
@@ -1500,7 +1338,7 @@
             document.getElementById('musicResetBtn').addEventListener('click', ()=>{ if(activeAudio){ activeAudio.pause(); window.appCurrentAudio = null; } document.getElementById('musicUrl').value=''; });
         }
 
-        // Поиск
+        // ===================== ПОИСК =====================
         function openSearchModal(){
             showModal(`<h3 class="modal-title">🔍 Поиск</h3><div class="form-group"><input type="text" id="searchInput" placeholder="Введите запрос..." autocomplete="off"></div><div class="flex-between gap-8 mb-12"><button class="btn w-full" id="searchItemBtn">📦 Предмет</button><button class="btn secondary w-full" id="searchProfileBtn">👤 Профиль</button></div><div id="searchSuggestions"></div><div id="searchHistory"></div><div id="searchResults"></div>`);
             const input = document.getElementById('searchInput'); setTimeout(()=>input.focus(),100);
@@ -1527,7 +1365,7 @@
             document.getElementById('searchProfileBtn').addEventListener('click', ()=>{ const q = input.value.trim(); if(q) openProfileModal(q); });
         }
 
-        // Запуск
+        // ===================== ЗАПУСК =====================
         function bootApp() {
             console.log('Boot started');
             const tgUsername = initTelegram();

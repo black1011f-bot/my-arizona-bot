@@ -1,3 +1,8 @@
+# =========================================================
+# БОТ ДЛЯ ОБЪЯВЛЕНИЙ ARIZONA RP (ФИНАЛЬНАЯ ВЕРСИЯ)
+# Версия 2.0 — полный функционал
+# =========================================================
+
 import os
 import sys
 import time
@@ -10,54 +15,31 @@ import io
 import urllib.parse
 import uuid
 import traceback
+import json
 from datetime import datetime, time as dtime, timedelta, timezone
 from zoneinfo import ZoneInfo
+from functools import lru_cache
+from collections import defaultdict
+import schedule
+import telebot
+from telebot import types
+from telebot.apihelper import ApiTelegramException
+from supabase import create_client, Client
+from flask import Flask, request
 
-# ==========================================
-# ДИАГНОСТИКА
-# ==========================================
-print("=== STARTING BOT ===")
-print(f"Python version: {sys.version}")
-print(f"TELEGRAM_TOKEN set: {bool(os.getenv('TELEGRAM_TOKEN'))}")
-print(f"SUPABASE_URL set: {bool(os.getenv('SUPABASE_URL'))}")
-print(f"SUPABASE_SERVICE_KEY set: {bool(os.getenv('SUPABASE_SERVICE_KEY'))}")
-
-try:
-    import telebot
-    from telebot import types
-    from telebot.apihelper import ApiTelegramException
-    from supabase import create_client, Client
-    from flask import Flask
-except ImportError as e:
-    print(f"❌ Import error: {e}")
-    sys.exit(1)
-
-# ==========================================
-# ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
-# ==========================================
+# =========================================================
+# 1. КОНФИГУРАЦИЯ И ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
+# =========================================================
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
-    error_msg = "❌ Не заданы переменные окружения:"
-    if not TELEGRAM_TOKEN: error_msg += " TELEGRAM_TOKEN"
-    if not SUPABASE_URL: error_msg += " SUPABASE_URL"
-    if not SUPABASE_SERVICE_KEY: error_msg += " SUPABASE_SERVICE_KEY"
-    print(error_msg)
+    print("❌ Не заданы переменные окружения.")
     sys.exit(1)
 
-# ==========================================
-# ПОДКЛЮЧЕНИЕ К TELEGRAM И SUPABASE
-# ==========================================
-bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=2)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
-# ==========================================
-# НАСТРОЙКИ
-# ==========================================
+# Константы
 MANAGER_USERNAME = "bounqy31"
-BOT_USERNAME = "arizona_coin_bot"
 OWNER_USERNAME = "bounqy"
 ADMIN_USERNAMES = {"bounqy31", "bounqy"}
 
@@ -79,91 +61,86 @@ CATEGORIES = [
     "📦 Ресурсы и материалы",
 ]
 
-BAD_WORDS = [
-    "хуй", "хуе", "хуя", "хуи", "пизд", "еб", "бля", "сук", "залуп", "мраз",
-    "ебан", "долбоеб", "сука", "блять", "ебать", "хуесос", "пидорас", "пидар",
-    "мразь", "урод", "чмо", "шлюх", "блядь", "сукин", "залупа", "гандон",
-    "ондон", "дроч", "ебуч", "еблан", "пиздюк", "выбляд", "samp-rp", "advance",
-    "Arizona V", "Diamond", "продажа вирт", "продам вирты",
-]
+BAD_WORDS = ["хуй","хуе","хуя","хуи","пизд","еб","бля","сук","залуп","мраз",
+             "ебан","долбоеб","сука","блять","ебать","хуесос","пидорас","пидар",
+             "мразь","урод","чмо","шлюх","блядь","сукин","залупа","гандон",
+             "ондон","дроч","ебуч","еблан","пиздюк","выбляд","samp-rp","advance",
+             "Arizona V","Diamond","продажа вирт","продам вирты"]
 
 RATE_LIMIT_SECONDS = 0.6
 AD_EXPIRY_HOURS = 48
+MAX_DESCRIPTION_LENGTH = 2000
+MAX_IMAGES = 10
 
-# ==========================================
-# ЛОГИРОВАНИЕ
-# ==========================================
+# =========================================================
+# 2. ПОДКЛЮЧЕНИЕ К БАЗЕ И ЛОГИРОВАНИЕ
+# =========================================================
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("bot.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
-def get_msk_time():
-    return datetime.now(ZoneInfo("Europe/Moscow"))
+bot = telebot.TeleBot(TELEGRAM_TOKEN, threaded=True, num_threads=4)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# ==========================================
-# КЕШ ДЛЯ АДМИНОВ
-# ==========================================
+# =========================================================
+# 3. ГЛОБАЛЬНЫЕ КЕШИ И СОСТОЯНИЯ (потокобезопасные)
+# =========================================================
 admin_cache = {}
-CACHE_TTL = 300  # 5 минут
+user_cache = {}      # {telegram_id: {server, is_premium, last_ad_time, ...}}
+state_lock = threading.Lock()
+antispam_lock = threading.Lock()
+user_last_message_time = {}
+user_states = {}     # для многошаговых операций
+user_chat_sessions = {}  # для обмена сообщениями между пользователями
 
-def get_cached_admin_status(telegram_id: int) -> bool | None:
+CACHE_TTL = 300
+
+def get_cached_admin(telegram_id):
     if telegram_id in admin_cache:
         entry = admin_cache[telegram_id]
         if time.time() - entry['time'] < CACHE_TTL:
             return entry['value']
     return None
 
-def set_cached_admin_status(telegram_id: int, value: bool):
+def set_cached_admin(telegram_id, value):
     admin_cache[telegram_id] = {'value': value, 'time': time.time()}
 
-# ==========================================
-# ПОТОКОБЕЗОПАСНЫЕ СОСТОЯНИЯ
-# ==========================================
-user_states = {}
-state_lock = threading.Lock()
-antispam_lock = threading.Lock()
-user_last_message_time = {}
+def get_cached_user(telegram_id):
+    if telegram_id in user_cache:
+        entry = user_cache[telegram_id]
+        if time.time() - entry['time'] < CACHE_TTL:
+            return entry['value']
+    return None
 
-def get_state(uid: int) -> dict:
-    with state_lock:
-        return user_states.get(uid, {}).copy()
+def set_cached_user(telegram_id, data):
+    user_cache[telegram_id] = {'value': data, 'time': time.time()}
 
-def set_state(uid: int, data: dict):
-    with state_lock:
-        srv = user_states.get(uid, {}).get("server") or get_user_server(uid)
-        user_states[uid] = data
-        if srv and "server" not in user_states[uid]:
-            user_states[uid]["server"] = srv
+def invalidate_cache(telegram_id):
+    if telegram_id in admin_cache:
+        del admin_cache[telegram_id]
+    if telegram_id in user_cache:
+        del user_cache[telegram_id]
 
-def update_state(uid: int, **kwargs):
-    with state_lock:
-        if uid not in user_states:
-            user_states[uid] = {}
-        user_states[uid].update(kwargs)
-
-def clear_state(uid: int):
-    with state_lock:
-        srv = user_states.get(uid, {}).get("server") or get_user_server(uid)
-        user_states[uid] = {"server": srv} if srv else {}
-
-# ==========================================
-# ФУНКЦИИ РАБОТЫ С SUPABASE С RETRY
-# ==========================================
+# =========================================================
+# 4. РАБОТА С SUPABASE (RETRY, КЕШИРОВАНИЕ)
+# =========================================================
 def supabase_request_with_retry(func, max_retries=2, delay=0.5):
     for attempt in range(max_retries + 1):
         try:
             return func()
         except Exception as e:
             if attempt == max_retries:
-                logger.error(f"Supabase request failed after {max_retries} retries: {e}")
+                logger.error(f"Supabase failed: {e}")
                 raise
-            logger.warning(f"Supabase error, retrying ({attempt+1}/{max_retries}): {e}")
             time.sleep(delay * (attempt + 1))
-    return None
 
-def get_user_uuid_by_telegram_id(telegram_id: int) -> str | None:
+def get_user_uuid_by_telegram_id(telegram_id):
     try:
         res = supabase_request_with_retry(
             lambda: supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
@@ -171,24 +148,21 @@ def get_user_uuid_by_telegram_id(telegram_id: int) -> str | None:
         if res and res.data:
             return res.data[0]["id"]
     except Exception as e:
-        logger.error(f"get_user_uuid_by_telegram_id error: {e}")
+        logger.error(f"get_user_uuid error: {e}")
     return None
 
-def register_user(telegram_id: int, username: str) -> str:
+def register_user(telegram_id, username):
     try:
         res = supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
         if res.data:
             supabase.table("app_users").update({"username": username or ""}).eq("telegram_id", telegram_id).execute()
             return res.data[0]["id"]
-        
-        # Генерируем фиктивный password_hash (чтобы не нарушать NOT NULL)
-        fake_password_hash = "telegram_user_" + str(telegram_id) + "_" + uuid.uuid4().hex[:8]
-        
+        fake_hash = "telegram_user_" + str(telegram_id) + "_" + uuid.uuid4().hex[:8]
         new_uuid = uuid.uuid4()
         supabase.table("app_users").insert({
             "id": str(new_uuid),
             "username": username or "",
-            "password_hash": fake_password_hash,  # <-- ОБЯЗАТЕЛЬНО
+            "password_hash": fake_hash,
             "telegram_id": telegram_id,
             "telegram_username": username or "",
             "server": SERVERS[0],
@@ -200,7 +174,7 @@ def register_user(telegram_id: int, username: str) -> str:
         logger.error(f"register_user error: {e}")
         return None
 
-def is_banned(user) -> bool:
+def is_banned(user):
     if not user:
         return False
     try:
@@ -211,147 +185,189 @@ def is_banned(user) -> bool:
                 return True
         res2 = supabase.table("bans").select("target").or_(f"target.eq.{user.id},target.eq.{user.username}").execute()
         return bool(res2.data)
-    except Exception as e:
-        logger.error(f"is_banned error: {e}")
+    except:
         return False
 
-def is_admin_or_owner_id(telegram_id: int) -> bool:
-    cached = get_cached_admin_status(telegram_id)
+def is_admin_or_owner_id(telegram_id):
+    cached = get_cached_admin(telegram_id)
     if cached is not None:
         return cached
     try:
         uid = get_user_uuid_by_telegram_id(telegram_id)
         if not uid:
-            set_cached_admin_status(telegram_id, False)
+            set_cached_admin(telegram_id, False)
             return False
         res = supabase.table("app_users").select("username, is_admin").eq("id", uid).execute()
         if res.data:
             data = res.data[0]
             if data.get("username") and data["username"].lstrip("@") in ADMIN_USERNAMES:
-                set_cached_admin_status(telegram_id, True)
+                set_cached_admin(telegram_id, True)
                 return True
             if data.get("is_admin"):
-                set_cached_admin_status(telegram_id, True)
+                set_cached_admin(telegram_id, True)
                 return True
         res2 = supabase.table("approved_admins").select("user_id").eq("user_id", uid).execute()
         result = bool(res2.data)
-        set_cached_admin_status(telegram_id, result)
+        set_cached_admin(telegram_id, result)
         return result
-    except Exception as e:
-        logger.error(f"is_admin_or_owner_id error: {e}")
-        set_cached_admin_status(telegram_id, False)
+    except:
+        set_cached_admin(telegram_id, False)
         return False
 
-def is_owner(user) -> bool:
+def is_owner(user):
     if not user:
         return False
     if user.username and user.username.lstrip("@") == OWNER_USERNAME:
         return True
     try:
         uid = get_user_uuid_by_telegram_id(user.id)
-        if not uid:
-            return False
-        res = supabase.table("app_users").select("username").eq("id", uid).execute()
-        if res.data and res.data[0].get("username", "").lstrip("@") == OWNER_USERNAME:
-            return True
-    except Exception as e:
-        logger.error(f"is_owner error: {e}")
+        if uid:
+            res = supabase.table("app_users").select("username").eq("id", uid).execute()
+            if res.data and res.data[0].get("username", "").lstrip("@") == OWNER_USERNAME:
+                return True
+    except:
+        pass
     return False
 
-def get_owner_id() -> str | None:
+def get_owner_id():
     try:
         res = supabase.table("app_users").select("id").eq("username", OWNER_USERNAME).execute()
         if res.data:
             return res.data[0]["id"]
-    except Exception as e:
-        logger.error(f"get_owner_id error: {e}")
+    except:
+        pass
     return None
 
-def get_admin_chat_ids() -> list:
+def get_admin_chat_ids():
     try:
         res = supabase.table("admin_chats").select("chat_id").execute()
         return [row["chat_id"] for row in res.data]
-    except Exception as e:
-        logger.error(f"get_admin_chat_ids error: {e}")
+    except:
         return []
 
-def register_admin_chat(chat_id: int):
+def register_admin_chat(chat_id):
     try:
         supabase.table("admin_chats").upsert({"chat_id": chat_id}).execute()
-    except Exception as e:
-        logger.error(f"register_admin_chat error: {e}")
+    except:
+        pass
 
-def get_user_last_ad_time(telegram_id: int) -> float:
+def get_user_last_ad_time(telegram_id):
+    cached = get_cached_user(telegram_id)
+    if cached and "last_ad_time" in cached:
+        return cached["last_ad_time"]
     try:
         uid = get_user_uuid_by_telegram_id(telegram_id)
-        if not uid:
-            return 0.0
-        res = supabase.table("app_users").select("last_ad_time").eq("id", uid).execute()
-        if res.data:
-            return res.data[0].get("last_ad_time") or 0.0
-    except Exception as e:
-        logger.error(f"get_user_last_ad_time error: {e}")
+        if uid:
+            res = supabase.table("app_users").select("last_ad_time").eq("id", uid).execute()
+            if res.data:
+                val = res.data[0].get("last_ad_time") or 0.0
+                # обновить кеш
+                cur = get_cached_user(telegram_id) or {}
+                cur["last_ad_time"] = val
+                set_cached_user(telegram_id, cur)
+                return val
+    except:
+        pass
     return 0.0
 
-def set_user_last_ad_time(telegram_id: int, t: float):
+def set_user_last_ad_time(telegram_id, t):
     try:
         uid = get_user_uuid_by_telegram_id(telegram_id)
         if uid:
             supabase.table("app_users").update({"last_ad_time": t}).eq("id", uid).execute()
-    except Exception as e:
-        logger.error(f"set_user_last_ad_time error: {e}")
+            cur = get_cached_user(telegram_id) or {}
+            cur["last_ad_time"] = t
+            set_cached_user(telegram_id, cur)
+    except:
+        pass
 
-def is_user_premium(telegram_id: int) -> bool:
+def is_user_premium(telegram_id):
+    cached = get_cached_user(telegram_id)
+    if cached and "is_premium" in cached:
+        return cached["is_premium"]
     try:
         uid = get_user_uuid_by_telegram_id(telegram_id)
         if not uid:
             return False
         now = time.time()
         res = supabase.table("premium_users").select("expires_at").eq("user_id", uid).execute()
+        prem = False
         if res.data and res.data[0].get("expires_at", 0) > now:
-            return True
-        try:
-            res2 = supabase.table("user_settings").select("vip_subscription").eq("user_id", uid).execute()
-            if res2.data and res2.data[0].get("vip_subscription"):
-                return True
-        except:
-            pass
-    except Exception as e:
-        logger.error(f"is_user_premium error: {e}")
-    return False
+            prem = True
+        if not prem:
+            try:
+                res2 = supabase.table("user_settings").select("vip_subscription").eq("user_id", uid).execute()
+                if res2.data and res2.data[0].get("vip_subscription"):
+                    prem = True
+            except:
+                pass
+        cur = get_cached_user(telegram_id) or {}
+        cur["is_premium"] = prem
+        set_cached_user(telegram_id, cur)
+        return prem
+    except:
+        return False
 
-def set_user_server(telegram_id: int, server: str):
+def set_user_server(telegram_id, server):
     try:
         uid = get_user_uuid_by_telegram_id(telegram_id)
         if uid:
             supabase.table("app_users").update({"server": server}).eq("id", uid).execute()
-            update_state(telegram_id, server=server)
-    except Exception as e:
-        logger.error(f"set_user_server error: {e}")
+            cur = get_cached_user(telegram_id) or {}
+            cur["server"] = server
+            set_cached_user(telegram_id, cur)
+    except:
+        pass
 
-def get_user_server(telegram_id: int) -> str:
-    with state_lock:
-        srv = user_states.get(telegram_id, {}).get("server")
-        if srv:
-            return srv
+def get_user_server(telegram_id):
+    cached = get_cached_user(telegram_id)
+    if cached and "server" in cached:
+        return cached["server"]
     try:
         uid = get_user_uuid_by_telegram_id(telegram_id)
         if uid:
             res = supabase.table("app_users").select("server").eq("id", uid).execute()
             if res.data and res.data[0].get("server"):
                 srv = res.data[0]["server"]
-                update_state(telegram_id, server=srv)
+                cur = get_cached_user(telegram_id) or {}
+                cur["server"] = srv
+                set_cached_user(telegram_id, cur)
                 return srv
-    except Exception as e:
-        logger.error(f"get_user_server error: {e}")
-    default = SERVERS[0]
-    update_state(telegram_id, server=default)
-    return default
+    except:
+        pass
+    return SERVERS[0]
 
-# ==========================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-# ==========================================
-def parse_flexible_price(text: str) -> int:
+def get_user_bonus_ads(telegram_id):
+    """Возвращает количество доступных VIP-объявлений."""
+    try:
+        uid = get_user_uuid_by_telegram_id(telegram_id)
+        if uid:
+            res = supabase.table("user_bonuses").select("vip_ads_count").eq("user_id", uid).execute()
+            if res.data:
+                return res.data[0].get("vip_ads_count", 0)
+    except:
+        pass
+    return 0
+
+def decrement_bonus_ad(telegram_id):
+    """Уменьшает счётчик бонусных объявлений на 1 (если >0)."""
+    try:
+        uid = get_user_uuid_by_telegram_id(telegram_id)
+        if uid:
+            res = supabase.table("user_bonuses").select("vip_ads_count").eq("user_id", uid).execute()
+            if res.data:
+                current = res.data[0].get("vip_ads_count", 0)
+                if current > 0:
+                    supabase.table("user_bonuses").update({"vip_ads_count": current - 1}).eq("user_id", uid).execute()
+                    return True
+    except:
+        pass
+    return False
+
+# =========================================================
+# 5. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# =========================================================
+def parse_flexible_price(text):
     if not text:
         raise ValueError("Пустая цена")
     cleaned = text.strip().lower()
@@ -372,21 +388,21 @@ def parse_flexible_price(text: str) -> int:
         try:
             val = float(cleaned)
             return int(val * multiplier)
-        except ValueError:
+        except:
             cleaned = cleaned.replace(".", "")
     try:
         return int(float(cleaned) * multiplier)
-    except ValueError:
+    except:
         raise ValueError(f"Не удалось распознать цену: {text}")
 
-def check_auto_moderation(text: str) -> bool:
+def check_auto_moderation(text):
     t_lower = text.lower()
     for w in BAD_WORDS:
         if w in t_lower:
             return False
     return True
 
-def is_flooding(user_id: int) -> bool:
+def is_flooding(user_id):
     if is_admin_or_owner_id(user_id):
         return False
     current_time = time.time()
@@ -401,24 +417,23 @@ def safe_send_message(chat_id, text, parse_mode="HTML", reply_markup=None):
     try:
         return bot.send_message(chat_id, text, parse_mode=parse_mode, reply_markup=reply_markup)
     except ApiTelegramException as e:
-        logger.error(f"Ошибка отправки сообщения: {e}")
+        logger.error(f"Ошибка отправки: {e}")
         return bot.send_message(chat_id, text, parse_mode=None, reply_markup=reply_markup)
 
 def safe_send_photo(chat_id, photo, caption, parse_mode="HTML", reply_markup=None):
     try:
         return bot.send_photo(chat_id, photo, caption=caption, parse_mode=parse_mode, reply_markup=reply_markup)
     except ApiTelegramException as e:
-        logger.error(f"Ошибка отправки фото: {e}")
+        logger.error(f"Ошибка фото: {e}")
         return bot.send_photo(chat_id, photo, caption=caption, parse_mode=None, reply_markup=reply_markup)
 
-def send_log_file(chat_id, filename, text_content, caption=None, reply_markup=None):
+def send_log_file(chat_id, filename, text_content, caption=None):
     file_bytes = io.BytesIO(text_content.encode("utf-8"))
     file_bytes.name = filename
     try:
-        bot.send_document(chat_id, document=file_bytes, caption=caption, parse_mode="HTML", reply_markup=reply_markup)
-    except Exception as e:
-        logger.error(f"Ошибка отправки файла логов: {e}")
-        safe_send_message(chat_id, text_content[:4000], reply_markup=reply_markup)
+        bot.send_document(chat_id, document=file_bytes, caption=caption, parse_mode="HTML")
+    except:
+        safe_send_message(chat_id, text_content[:4000])
 
 def format_price(value):
     if not value:
@@ -432,9 +447,12 @@ def format_price(value):
         return f"{num/1_000:.1f}к"
     return str(num)
 
-# ==========================================
-# КЛАВИАТУРЫ
-# ==========================================
+def get_msk_time():
+    return datetime.now(ZoneInfo("Europe/Moscow"))
+
+# =========================================================
+# 6. КЛАВИАТУРЫ
+# =========================================================
 def kb_main_menu(user_id=None):
     m = types.ReplyKeyboardMarkup(resize_keyboard=True)
     m.row(types.KeyboardButton("🌐 Сменить игровой сервер"))
@@ -463,132 +481,221 @@ def kb_owner_input():
     m.row(types.KeyboardButton("🔨 Забанить игрока"), types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
     return m
 
-# ==========================================
-# ОБРАБОТЧИКИ КОМАНД И КНОПОК (ПОЛНЫЙ НАБОР)
-# ==========================================
+def kb_search_categories():
+    m = types.InlineKeyboardMarkup(row_width=1)
+    for cat in CATEGORIES:
+        m.add(types.InlineKeyboardButton(cat, callback_data=f"search_cat_{cat}"))
+    m.add(types.InlineKeyboardButton("🔍 Все категории", callback_data="search_all"))
+    return m
 
-@bot.message_handler(func=lambda m: is_flooding(m.from_user.id), content_types=["text", "photo"])
+# =========================================================
+# 7. УПРАВЛЕНИЕ СОСТОЯНИЯМИ
+# =========================================================
+def get_state(uid):
+    with state_lock:
+        return user_states.get(uid, {}).copy()
+
+def set_state(uid, data):
+    with state_lock:
+        user_states[uid] = data
+
+def update_state(uid, **kwargs):
+    with state_lock:
+        if uid not in user_states:
+            user_states[uid] = {}
+        user_states[uid].update(kwargs)
+
+def clear_state(uid):
+    with state_lock:
+        if uid in user_states:
+            del user_states[uid]
+
+# =========================================================
+# 8. ОБРАБОТЧИКИ КОМАНД И КНОПОК
+# =========================================================
+@bot.message_handler(func=lambda m: is_flooding(m.from_user.id))
 def handle_flood(m):
-    try:
-        bot.send_message(m.chat.id, "⚠️ <b>Слишком частые запросы!</b> Пожалуйста, отправляйте сообщения немного медленнее.")
-    except:
-        pass
+    safe_send_message(m.chat.id, "⚠️ <b>Слишком частые запросы!</b> Подождите немного.")
 
 @bot.callback_query_handler(func=lambda c: is_flooding(c.from_user.id))
 def handle_flood_callback(c):
-    try:
-        bot.answer_callback_query(c.id, "⚠️ Не так быстро! Подождите пару секунд.", show_alert=False)
-    except:
-        pass
+    bot.answer_callback_query(c.id, "⚠️ Не так быстро! Подождите.", show_alert=False)
 
 @bot.message_handler(func=lambda m: is_banned(m.from_user))
 def blocked_user_message(m):
-    safe_send_message(m.chat.id, "⛔ <b>Вы заблокированы в системе модерации.</b>", reply_markup=types.ReplyKeyboardRemove())
+    safe_send_message(m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove())
 
 @bot.callback_query_handler(func=lambda c: is_banned(c.from_user))
 def blocked_user_callback(c):
-    try:
-        bot.answer_callback_query(c.id, "⛔ Вы заблокированы!", show_alert=True)
-    except:
-        pass
+    bot.answer_callback_query(c.id, "⛔ Заблокированы!", show_alert=True)
 
+# ---------- /start ----------
 @bot.message_handler(commands=["start"])
 def cmd_start(m):
-    try:
-        uid = m.from_user.id
-        username = m.from_user.username or ""
-        user_uuid = register_user(uid, username)
-        if not user_uuid:
-            safe_send_message(m.chat.id, "⚠️ Ошибка регистрации. Попробуйте позже или обратитесь к администратору.")
-            return
+    uid = m.from_user.id
+    username = m.from_user.username or ""
+    user_uuid = register_user(uid, username)
+    if not user_uuid:
+        safe_send_message(m.chat.id, "⚠️ Ошибка регистрации.")
+        return
+    set_user_server(uid, SERVERS[0])
+    if is_banned(m.from_user):
+        return safe_send_message(m.chat.id, "⛔ Вы заблокированы.", reply_markup=types.ReplyKeyboardRemove())
 
-        set_user_server(uid, SERVERS[0])
+    # Реферальная ссылка
+    args = m.text.split()
+    if len(args) > 1 and args[1].startswith("ref_"):
+        try:
+            referrer_tg = int(args[1].replace("ref_", ""))
+            if referrer_tg != uid:
+                referrer_uuid = get_user_uuid_by_telegram_id(referrer_tg)
+                if referrer_uuid:
+                    res = supabase.table("referrals").select("1").eq("referrer_id", referrer_uuid).eq("referred_id", uid).execute()
+                    if not res.data:
+                        supabase.table("referrals").insert({
+                            "referrer_id": referrer_uuid,
+                            "referred_id": uid,
+                            "last_active_date": get_msk_time().strftime("%Y-%m-%d")
+                        }).execute()
+                        now_ts = time.time()
+                        for target_tg_id in [referrer_tg, uid]:
+                            target_uuid = get_user_uuid_by_telegram_id(target_tg_id)
+                            if target_uuid:
+                                res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", target_uuid).execute()
+                                base_exp = res_prem.data[0]["expires_at"] if res_prem.data and res_prem.data[0]["expires_at"] > now_ts else now_ts
+                                new_exp = base_exp + 10*86400
+                                supabase.table("premium_users").upsert({"user_id": target_uuid, "expires_at": new_exp}).execute()
+                        safe_send_message(referrer_tg, "🎉 По вашей реферальной ссылке зарегистрировался друг! Вам и другу VIP на 10 дней!")
+                        safe_send_message(uid, "🎁 Вы зарегистрировались по реферальной ссылке! Вам VIP на 10 дней!")
+        except:
+            pass
 
-        if is_banned(m.from_user):
-            return safe_send_message(m.chat.id, "⛔ <b>Вы заблокированы.</b>", reply_markup=types.ReplyKeyboardRemove())
+    text = (f"👋 Привет, <b>{html.escape(m.from_user.first_name)}</b>!\n"
+            f"🤖 Неофициальный бот объявлений Arizona RP.\n"
+            f"🌐 Текущий сервер: {get_user_server(uid)}\n"
+            f"⚠️ Все сделки на ваш риск.\nВыберите раздел:")
+    safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
 
-        # Реферальная ссылка
-        args = m.text.split()
-        if len(args) > 1 and args[1].startswith("ref_"):
-            try:
-                referrer_telegram_id = int(args[1].replace("ref_", ""))
-                if referrer_telegram_id != uid:
-                    referrer_uuid = get_user_uuid_by_telegram_id(referrer_telegram_id)
-                    if referrer_uuid:
-                        res = supabase.table("referrals").select("1").eq("referrer_id", referrer_uuid).eq("referred_id", uid).execute()
-                        if not res.data:
-                            supabase.table("referrals").insert({
-                                "referrer_id": referrer_uuid,
-                                "referred_id": uid,
-                                "last_active_date": get_msk_time().strftime("%Y-%m-%d")
-                            }).execute()
-                            now_ts = time.time()
-                            for target_tg_id in [referrer_telegram_id, uid]:
-                                target_uuid = get_user_uuid_by_telegram_id(target_tg_id)
-                                if target_uuid:
-                                    res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", target_uuid).execute()
-                                    existing_exp = res_prem.data[0]["expires_at"] if res_prem.data and res_prem.data[0]["expires_at"] > now_ts else now_ts
-                                    new_exp = existing_exp + 10 * 86400
-                                    supabase.table("premium_users").upsert({"user_id": target_uuid, "expires_at": new_exp}).execute()
-                            try:
-                                safe_send_message(referrer_telegram_id, "🎉 <b>По вашей реферальной ссылке зарегистрировался новый друг!</b>\nВам и вашему другу начислен VIP-статус на 10 дней!")
-                                safe_send_message(uid, "🎁 <b>Вы успешно зарегистрировались по реферальной ссылке!</b>\nВам начислен VIP-статус на 10 дней!")
-                            except:
-                                pass
-            except Exception as e:
-                logger.error(f"Реферальная ошибка: {e}")
-
-        text = (
-            f"👋 Приветствую, <b>{html.escape(m.from_user.first_name)}</b>!\n\n"
-            f"🤖 Мы — <b>неофициальный бот</b> объявлений Arizona RP, созданный игроком.\n\n"
-            f"🌐 <b>Игровой сервер по умолчанию:</b> {SERVERS[0]}.\n"
-            f"Если вам нужно его сменить, нажмите на кнопку <b>«🌐 Сменить игровой сервер»</b> в меню ниже.\n\n"
-            f"⚠️ <b>Безопасность и ответственность:</b> Бот является фанатским проектом. Администрация <b>не несет никакой ответственности</b> за ваши сделки, обмены и договоренности. Все действия вы совершаете на свой страх и риск!\n\n"
-            f"Выберите нужный раздел в меню ниже:"
-        )
-        safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
-    except Exception as e:
-        logger.error(f"Ошибка в cmd_start: {e}")
-        safe_send_message(m.chat.id, "⚠️ Произошла ошибка. Попробуйте позже.")
-
+# ---------- /help ----------
 @bot.message_handler(commands=["help"])
 def cmd_help(m):
-    uid = m.from_user.id
-    help_text = (
-        "❓ <b>Часто задаваемые вопросы (FAQ)</b>\n\n"
-        "<b>1. Этот бот официальный?</b>\n"
-        "Нет, это неофициальный бот объявлений, созданный игроком для игроков.\n\n"
-        "<b>2. Как подать объявление о продаже?</b>\n"
-        "Нажмите кнопку «📤 Продать товар», выберите сервер, категорию и отправьте текст с фото.\n\n"
-        "<b>3. Как подать объявление о скупке?</b>\n"
-        "Нажмите кнопку «📥 Скупить товар», укажите сервер, категорию и описание.\n\n"
-        "<b>4. Почему моё объявление не появилось сразу?</b>\n"
-        "Все объявления проходят предварительную модерацию администраторами.\n\n"
-        "<b>5. Как работает реферальная система?</b>\n"
-        "Приглашайте друзей по ссылке, и вы оба получаете VIP на 10 дней.\n\n"
-        "<b>6. Безопасны ли сделки через бота?</b>\n"
-        "⚠️ <b>Внимание:</b> администрация бота не несет ответственности за ваши сделки.\n\n"
-        "<b>7. Как получить ежедневный бонус?</b>\n"
-        "В разделе «👥 Рефералы и Бонусы» раз в 24 часа можно забирать случайную награду.\n\n"
-        "<b>8. Что даёт VIP-статус?</b>\n"
-        "Уменьшенный кулдаун на подачу объявлений (60 сек вместо 120).\n\n"
-        "<b>9. Как изменить сервер?</b>\n"
-        "Кнопка «🌐 Сменить игровой сервер».\n\n"
-        "<b>10. Куда писать при проблемах?</b>\n"
-        "Менеджер: @bounqy31 или VK: @bountyarz."
-    )
-    safe_send_message(m.chat.id, help_text, reply_markup=kb_main_menu(uid))
+    text = ("❓ <b>FAQ</b>\n\n"
+            "1. Бот неофициальный.\n"
+            "2. Продажа/скупка — кнопки в меню.\n"
+            "3. Модерация занимает до 24 ч.\n"
+            "4. VIP уменьшает кулдаун до 60 сек.\n"
+            "5. Рефералы — VIP за приглашённых.\n"
+            "6. Бонусы — ежедневный розыгрыш.\n"
+            "7. По вопросам: @bounqy31")
+    safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(m.from_user.id))
 
+# ---------- Навигация ----------
+@bot.message_handler(func=lambda m: m.text in ["❌ Отменить действие", "⬅️ Назад"])
+def cancel_action(m):
+    clear_state(m.from_user.id)
+    safe_send_message(m.chat.id, "❌ Отменено.", reply_markup=kb_main_menu(m.from_user.id))
+
+# ---------- Смена сервера ----------
+@bot.message_handler(func=lambda m: m.text == "🌐 Сменить игровой сервер")
+def change_server(m):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for i in range(0, len(SERVERS), 2):
+        row = [types.KeyboardButton(s) for s in SERVERS[i:i+2]]
+        markup.row(*row)
+    markup.row(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
+    safe_send_message(m.chat.id, "🌐 Выберите сервер:", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text in SERVERS)
+def select_srv(m):
+    set_user_server(m.from_user.id, m.text)
+    safe_send_message(m.chat.id, f"✅ Сервер изменён на {html.escape(m.text)}", reply_markup=kb_main_menu(m.from_user.id))
+
+# ---------- VIP ----------
+@bot.message_handler(func=lambda m: m.text == "💎 VIP-статус")
+def info_premium(m):
+    uid = m.from_user.id
+    is_prem = is_user_premium(uid)
+    status = "✅ Активен" if is_prem else "❌ Неактивен"
+    user_uuid = get_user_uuid_by_telegram_id(uid)
+    if user_uuid:
+        res = supabase.table("premium_users").select("expires_at").eq("user_id", user_uuid).execute()
+        if res.data and res.data[0]["expires_at"] > time.time():
+            exp_date = datetime.fromtimestamp(res.data[0]["expires_at"], ZoneInfo("Europe/Moscow")).strftime("%d.%m.%Y %H:%M")
+            status += f" (до {exp_date} МСК)"
+    text = (f"💎 VIP-статус\nСтатус: {status}\n\n"
+            "Преимущества:\n• Кулдаун 60 сек вместо 120\n• Приоритет\n\nКупить за Telegram Stars:")
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        types.InlineKeyboardButton("👑 30 дней — 100 ⭐", callback_data="buy_vip_30"),
+        types.InlineKeyboardButton("👑 Навсегда — 500 ⭐", callback_data="buy_vip_forever")
+    )
+    safe_send_message(m.chat.id, text, reply_markup=markup)
+
+# ---------- Обработка платежей ----------
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def handle_pre_checkout(query):
+    bot.answer_pre_checkout_query(query.id, ok=True)
+
+@bot.message_handler(content_types=['successful_payment'])
+def handle_successful_payment(message):
+    payload = message.successful_payment.invoice_payload
+    uid = message.from_user.id
+    user_uuid = get_user_uuid_by_telegram_id(uid)
+    if not user_uuid:
+        return
+    now = time.time()
+    if payload == "premium_30":
+        days = 30
+    else:
+        days = 9999  # навсегда
+    # Начисляем VIP
+    res = supabase.table("premium_users").select("expires_at").eq("user_id", user_uuid).execute()
+    base_exp = res.data[0]["expires_at"] if res.data and res.data[0]["expires_at"] > now else now
+    new_exp = base_exp + days * 86400
+    supabase.table("premium_users").upsert({"user_id": user_uuid, "expires_at": new_exp}).execute()
+    # Обновляем кеш
+    cur = get_cached_user(uid) or {}
+    cur["is_premium"] = True
+    set_cached_user(uid, cur)
+    safe_send_message(message.chat.id, f"✅ VIP-статус активирован на {days} дней!")
+
+@bot.callback_query_handler(func=lambda c: c.data in ["buy_vip_30", "buy_vip_forever"])
+def cb_buy_vip(call):
+    if call.data == "buy_vip_30":
+        prices = [types.LabeledPrice("VIP 30 дней", 100)]
+        payload = "premium_30"
+        title = "VIP 30 дней"
+        desc = "VIP на 30 дней"
+    else:
+        prices = [types.LabeledPrice("VIP навсегда", 500)]
+        payload = "premium_forever"
+        title = "VIP навсегда"
+        desc = "Пожизненный VIP"
+    try:
+        bot.send_invoice(
+            chat_id=call.message.chat.id,
+            title=title,
+            description=desc,
+            invoice_payload=payload,
+            provider_token="",
+            currency="XTR",
+            prices=prices,
+            start_parameter="vip_sub"
+        )
+    except Exception as e:
+        logger.error(f"Ошибка инвойса: {e}")
+
+# ---------- Рефералы и бонусы ----------
 @bot.message_handler(func=lambda m: m.text == "👥 Рефералы и Бонусы")
 def show_ref_bonus_menu(m):
     uid = m.from_user.id
     bot_info = bot.get_me()
     ref_link = f"https://t.me/{bot_info.username}?start=ref_{uid}"
-    share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote('Залетай в лучший неофициальный бот объявлений Arizona RP!')}"
+    share_url = f"https://t.me/share/url?url={urllib.parse.quote(ref_link)}&text={urllib.parse.quote('Залетай в лучший бот объявлений Arizona RP!')}"
 
     user_uuid = get_user_uuid_by_telegram_id(uid)
     if not user_uuid:
-        safe_send_message(m.chat.id, "Ошибка: пользователь не найден")
+        safe_send_message(m.chat.id, "Ошибка")
         return
 
     res = supabase.table("referrals").select("count", count="exact").eq("referrer_id", user_uuid).execute()
@@ -602,26 +709,22 @@ def show_ref_bonus_menu(m):
     current_ts = time.time()
     cooldown = 86400
     can_claim = (current_ts - last_claim_ts) >= cooldown
-    remaining_time = int(cooldown - (current_ts - last_claim_ts)) if not can_claim else 0
-    hours_rem = remaining_time // 3600
-    mins_rem = (remaining_time % 3600) // 60
+    remaining = int(cooldown - (current_ts - last_claim_ts)) if not can_claim else 0
+    h = remaining // 3600
+    m_rem = (remaining % 3600)//60
 
-    text = (
-        f"👥 <b>Рефералы и Бонусы</b>\n\n"
-        f"Приглашайте друзей по вашей реферальной ссылке и получайте <b>VIP-статус на 10 дней</b> (и ваш друг тоже)!\n\n"
-        f"🔗 <b>Ваша ссылка:</b>\n<code>{ref_link}</code>\n\n"
-        f"📊 Приглашено: <b>{ref_count}</b>\n"
-        f"⭐ Бонусных VIP-объявлений: <b>{vip_ads}</b> (⚠️ <i>Неиспользованные удаляются по 1 шт. каждые 24 часа!</i>)\n\n"
-        f"🎁 Ежедневный бонус обновляется каждые 24 часа!"
-    )
-
+    text = (f"👥 Рефералы и Бонусы\n\n"
+            f"Приглашайте друзей — получайте VIP на 10 дней!\n"
+            f"🔗 Ссылка: <code>{ref_link}</code>\n"
+            f"📊 Приглашено: {ref_count}\n"
+            f"⭐ Бонусных VIP-объявлений: {vip_ads}\n"
+            f"🎁 Ежедневный бонус (24ч):")
     markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("📤 Поделиться ссылкой", url=share_url))
+    markup.add(types.InlineKeyboardButton("📤 Поделиться", url=share_url))
     if can_claim:
-        markup.add(types.InlineKeyboardButton("🎁 Забрать ежедневный бонус", callback_data="claim_daily_bonus"))
+        markup.add(types.InlineKeyboardButton("🎁 Забрать бонус", callback_data="claim_daily_bonus"))
     else:
-        markup.add(types.InlineKeyboardButton(f"⏳ Бонус через {hours_rem}ч {mins_rem}мин", callback_data="bonus_cooldown_alert"))
-
+        markup.add(types.InlineKeyboardButton(f"⏳ Через {h}ч {m_rem}мин", callback_data="bonus_cooldown_alert"))
     safe_send_message(m.chat.id, text, reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda c: c.data in ["claim_daily_bonus", "bonus_cooldown_alert"])
@@ -629,49 +732,33 @@ def cb_daily_bonus(call):
     uid = call.from_user.id
     user_uuid = get_user_uuid_by_telegram_id(uid)
     if not user_uuid:
-        try:
-            bot.answer_callback_query(call.id, "Ошибка: пользователь не найден", show_alert=True)
-        except:
-            pass
-        return
-
+        return bot.answer_callback_query(call.id, "Ошибка", show_alert=True)
     current_ts = time.time()
     cooldown = 86400
-
     res_bonus = supabase.table("user_bonuses").select("*").eq("user_id", user_uuid).execute()
     bonus_row = res_bonus.data[0] if res_bonus.data else None
     last_claim_ts = bonus_row.get("last_claim_timestamp", 0.0) if bonus_row else 0.0
-
     if current_ts - last_claim_ts < cooldown:
         remaining = int(cooldown - (current_ts - last_claim_ts))
-        h = remaining // 3600
-        m = (remaining % 3600) // 60
-        try:
-            bot.answer_callback_query(call.id, f"⚠️ Бонус можно забирать раз в 24 часа! Осталось: {h}ч {m}мин.", show_alert=True)
-        except:
-            pass
-        return
+        h = remaining//3600
+        m = (remaining%3600)//60
+        return bot.answer_callback_query(call.id, f"⏳ Осталось {h}ч {m}мин", show_alert=True)
 
-    roll = random.randint(1, 100)
+    roll = random.randint(1,100)
     today_str = get_msk_time().strftime("%Y-%m-%d")
-
     if roll <= 5:
+        # VIP на 13 дней
         res_prem = supabase.table("premium_users").select("expires_at").eq("user_id", user_uuid).execute()
         base_exp = res_prem.data[0]["expires_at"] if res_prem.data and res_prem.data[0]["expires_at"] > current_ts else current_ts
-        new_exp = base_exp + 13 * 86400
+        new_exp = base_exp + 13*86400
         supabase.table("premium_users").upsert({"user_id": user_uuid, "expires_at": new_exp}).execute()
-        msg_reward = "🎉 <b>Поздравляем! Вы выбили VIP-подписку на 13 дней!</b>"
+        msg = "🎉 Поздравляем! Вы выбили VIP на 13 дней!"
     else:
-        if roll <= 35:
-            ads_won = 1
-        elif roll <= 60:
-            ads_won = 2
-        elif roll <= 80:
-            ads_won = 3
-        elif roll <= 92:
-            ads_won = 4
-        else:
-            ads_won = 5
+        if roll <= 35: ads_won = 1
+        elif roll <= 60: ads_won = 2
+        elif roll <= 80: ads_won = 3
+        elif roll <= 92: ads_won = 4
+        else: ads_won = 5
         current_ads = bonus_row.get("vip_ads_count", 0) if bonus_row else 0
         new_ads = current_ads + ads_won
         supabase.table("user_bonuses").upsert({
@@ -681,188 +768,161 @@ def cb_daily_bonus(call):
             "vip_ads_count": new_ads,
             "vip_ads_expiry": current_ts + 86400
         }).execute()
-        msg_reward = f"🎁 <b>Поздравляем! Вы выбили VIP-объявлений: {ads_won} шт.</b>\n(⚠️ <i>Неиспользованные удаляются по 1 шт. каждый день!</i>)"
-
+        msg = f"🎁 Вы выбили {ads_won} VIP-объявлений!"
     supabase.table("user_bonuses").update({"last_claim_date": today_str, "last_claim_timestamp": current_ts}).eq("user_id", user_uuid).execute()
-
-    try:
-        bot.answer_callback_query(call.id, "🎉 Ежедневный бонус получен!", show_alert=True)
-    except:
-        pass
-
-    safe_send_message(call.message.chat.id, msg_reward)
+    bot.answer_callback_query(call.id, "🎉 Бонус получен!")
+    safe_send_message(call.message.chat.id, msg)
     show_ref_bonus_menu(call.message)
 
-@bot.message_handler(func=lambda m: m.text == "🌐 Сменить игровой сервер")
-def change_server(m):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    for i in range(0, len(SERVERS), 2):
-        row_buttons = [types.KeyboardButton(s) for s in SERVERS[i:i+2]]
-        markup.row(*row_buttons)
-    markup.row(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
-    safe_send_message(m.chat.id, "🌐 Выберите ваш игровой сервер:", reply_markup=markup)
-
-@bot.message_handler(func=lambda m: m.text in SERVERS)
-def select_srv(m):
-    srv = m.text
-    uid = m.from_user.id
-    if srv in SERVERS:
-        set_user_server(uid, srv)
-        safe_send_message(m.chat.id, f"✅ Сервер изменён на: <b>{html.escape(srv)}</b>", reply_markup=kb_main_menu(uid))
-
-@bot.message_handler(func=lambda m: m.text in ["❌ Отменить действие", "⬅️ Назад"])
-def cancel_action(m):
-    uid = m.from_user.id
-    clear_state(uid)
-    safe_send_message(m.chat.id, "❌ Действие отменено.", reply_markup=kb_main_menu(uid))
-
-@bot.message_handler(func=lambda m: m.text == "💎 VIP-статус")
-def info_premium(m):
-    uid = m.from_user.id
-    is_prem = is_user_premium(uid)
-    status_text = "✅ <b>Активен</b>" if is_prem else "❌ <b>Неактивен</b>"
-    user_uuid = get_user_uuid_by_telegram_id(uid)
-    if user_uuid:
-        res = supabase.table("premium_users").select("expires_at").eq("user_id", user_uuid).execute()
-        if res.data and res.data[0]["expires_at"] > time.time():
-            exp_date = datetime.fromtimestamp(res.data[0]["expires_at"], ZoneInfo("Europe/Moscow")).strftime("%d.%m.%Y %H:%M")
-            status_text += f" (до {exp_date} МСК)"
-    text = (
-        f"💎 <b>VIP-статус в системе</b>\n\n"
-        f"Статус: {status_text}\n\n"
-        f"<b>Преимущества VIP:</b>\n"
-        f"• Уменьшенный кулдаун (60 сек вместо 120)\n"
-        f"• Приоритет и особый знак\n\n"
-        f"Выберите вариант приобретения VIP за Telegram Stars (⭐):"
-    )
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        types.InlineKeyboardButton("👑 VIP на 30 дней — 100 ⭐", callback_data="buy_vip_30"),
-        types.InlineKeyboardButton("👑 VIP навсегда — 500 ⭐", callback_data="buy_vip_forever")
-    )
-    safe_send_message(m.chat.id, text, reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda c: c.data in ["buy_vip_30", "buy_vip_forever"])
-def cb_buy_vip(call):
-    try:
-        bot.answer_callback_query(call.id)
-    except:
-        pass
-    if call.data == "buy_vip_30":
-        prices = [types.LabeledPrice(label="VIP на 30 дней", amount=100)]
-        payload = "premium_30"
-        title = "VIP на 30 дней"
-        description = "VIP-подписка на 30 дней за 100 звёзд"
-    else:
-        prices = [types.LabeledPrice(label="VIP навсегда", amount=500)]
-        payload = "premium_forever"
-        title = "VIP навсегда"
-        description = "Пожизненная VIP-подписка за 500 звёзд"
-
-    try:
-        bot.send_invoice(
-            chat_id=call.message.chat.id,
-            title=title,
-            description=description,
-            invoice_payload=payload,
-            provider_token="",
-            currency="XTR",
-            prices=prices,
-            start_parameter="vip_sub"
-        )
-    except Exception as e:
-        logger.error(f"Ошибка инвойса VIP: {e}")
-
-def validate_ad_submission(telegram_id: int) -> tuple[bool, str]:
+# =========================================================
+# 9. СОЗДАНИЕ ОБЪЯВЛЕНИЙ (ПОШАГОВОЕ) С ЦЕНОЙ И ФОТО
+# =========================================================
+def validate_ad_submission(telegram_id):
     now_msk = get_msk_time()
     current_time = now_msk.time()
-    start_window = dtime(8, 0, 0)
-    end_window = dtime(22, 0, 0)
-    if not (start_window <= current_time <= end_window):
-        return False, "❌ Отправка объявлений доступна только с <b>08:00 до 22:00 МСК</b>."
-
+    start = dtime(8,0,0); end = dtime(22,0,0)
+    if not (start <= current_time <= end):
+        return False, "❌ Объявления принимаются с 8:00 до 22:00 МСК."
     is_prem = is_user_premium(telegram_id)
-    cooldown_seconds = 60 if is_prem else 120
-    last_time = get_user_last_ad_time(telegram_id)
-    elapsed = time.time() - last_time
-    if elapsed < cooldown_seconds:
-        remaining = int(cooldown_seconds - elapsed)
-        cooldown_label = "1 минута" if is_prem else "2 минуты"
-        return False, f"⏳ <b>Кулдаун!</b> Подождите ещё <b>{remaining} сек.</b> (Ваш кулдаун: {cooldown_label})"
+    cooldown = 60 if is_prem else 120
+    last = get_user_last_ad_time(telegram_id)
+    elapsed = time.time() - last
+    if elapsed < cooldown:
+        remaining = int(cooldown - elapsed)
+        return False, f"⏳ Кулдаун {remaining} сек. (Ваш кулдаун: {'1 мин' if is_prem else '2 мин'})"
+    # Проверка бонусных объявлений
+    bonus = get_user_bonus_ads(telegram_id)
+    if bonus > 0:
+        return True, ""  # можно использовать бонус
     return True, ""
 
 @bot.message_handler(func=lambda m: m.text == "📤 Продать товар")
 def start_add_ad(m):
     uid = m.from_user.id
-    allowed, err = validate_ad_submission(uid)
-    if not allowed:
-        return safe_send_message(m.chat.id, err, reply_markup=kb_main_menu(uid))
-    update_state(uid, posting_ad={"step": "category", "is_buy": False})
+    ok, msg = validate_ad_submission(uid)
+    if not ok:
+        return safe_send_message(m.chat.id, msg, reply_markup=kb_main_menu(uid))
+    # Начинаем многошаговый процесс
+    update_state(uid, {"ad_step": "category", "is_buy": False, "images": []})
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
     for cat in CATEGORIES:
         markup.add(types.KeyboardButton(cat))
     markup.row(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
-    safe_send_message(m.chat.id, "📤 <b>Подача объявления о продаже</b>\n\nВыберите категорию:", reply_markup=markup)
+    safe_send_message(m.chat.id, "📤 <b>Продажа</b>\nВыберите категорию:", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: m.text == "📥 Скупить товар")
 def start_add_buy_ad(m):
     uid = m.from_user.id
-    allowed, err = validate_ad_submission(uid)
-    if not allowed:
-        return safe_send_message(m.chat.id, err, reply_markup=kb_main_menu(uid))
-    update_state(uid, posting_ad={"step": "category", "is_buy": True})
+    ok, msg = validate_ad_submission(uid)
+    if not ok:
+        return safe_send_message(m.chat.id, msg, reply_markup=kb_main_menu(uid))
+    update_state(uid, {"ad_step": "category", "is_buy": True, "images": []})
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
     for cat in CATEGORIES:
         markup.add(types.KeyboardButton(cat))
     markup.row(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
-    safe_send_message(m.chat.id, "📥 <b>Подача объявления о скупке</b>\n\nВыберите категорию:", reply_markup=markup)
+    safe_send_message(m.chat.id, "📥 <b>Скупка</b>\nВыберите категорию:", reply_markup=markup)
 
-@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("posting_ad", {}).get("step") == "category" and m.text in CATEGORIES)
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("ad_step") == "category" and m.text in CATEGORIES)
 def process_ad_category(m):
     uid = m.from_user.id
     cat = m.text
-    st = get_state(uid)
-    st["posting_ad"]["category"] = cat
-    st["posting_ad"]["step"] = "text_or_photo"
-    set_state(uid, st)
-    safe_send_message(m.chat.id, "📝 Отправьте текст объявления и прикрепите фото (по желанию):", reply_markup=kb_cancel())
+    update_state(uid, ad_step="price", category=cat)
+    safe_send_message(m.chat.id, "💰 Введите цену (например, 150к, 2.5кк, 1ккк):", reply_markup=kb_cancel())
 
-@bot.message_handler(content_types=["text", "photo"], func=lambda m: get_state(m.from_user.id).get("posting_ad", {}).get("step") == "text_or_photo")
-def process_ad_content(m):
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("ad_step") == "price")
+def process_ad_price(m):
+    uid = m.from_user.id
+    try:
+        price = parse_flexible_price(m.text)
+        if price < 0 or price > 10**12:
+            raise ValueError
+        update_state(uid, ad_step="name", price=price)
+        safe_send_message(m.chat.id, "📝 Введите краткое название товара (до 100 символов):", reply_markup=kb_cancel())
+    except:
+        safe_send_message(m.chat.id, "⚠️ Некорректная цена. Попробуйте снова (например, 150к, 2.5кк):", reply_markup=kb_cancel())
+
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("ad_step") == "name")
+def process_ad_name(m):
+    uid = m.from_user.id
+    name = m.text.strip()[:100]
+    if not name:
+        return safe_send_message(m.chat.id, "⚠️ Название не может быть пустым.")
+    update_state(uid, ad_step="description", item_name=name)
+    safe_send_message(m.chat.id, "📄 Введите описание (до 2000 символов). Можно добавить фото (до 10 шт.) на следующем шаге.", reply_markup=kb_cancel())
+
+@bot.message_handler(content_types=["text", "photo"], func=lambda m: get_state(m.from_user.id).get("ad_step") == "description")
+def process_ad_description(m):
     uid = m.from_user.id
     st = get_state(uid)
-    ad_data = st.get("posting_ad", {})
-    clear_state(uid)
+    if m.text:
+        desc = m.text.strip()
+        if len(desc) > MAX_DESCRIPTION_LENGTH:
+            return safe_send_message(m.chat.id, f"⚠️ Описание слишком длинное (макс {MAX_DESCRIPTION_LENGTH} символов).")
+        if not check_auto_moderation(desc):
+            return safe_send_message(m.chat.id, "🤬 Обнаружены запрещённые слова.")
+        update_state(uid, description=desc, ad_step="images")
+        safe_send_message(m.chat.id, "📸 Отправьте фото (до 10 шт.) или нажмите «Готово», если фото не будет.", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("✅ Готово (без фото)"), types.KeyboardButton("❌ Отменить действие")))
+    elif m.photo:
+        # Если пользователь отправил фото до описания — просим сначала описание
+        safe_send_message(m.chat.id, "Сначала отправьте текстовое описание.")
+    else:
+        safe_send_message(m.chat.id, "Отправьте текст описания.")
 
-    allowed, err = validate_ad_submission(uid)
-    if not allowed:
-        return safe_send_message(m.chat.id, err, reply_markup=kb_main_menu(uid))
+@bot.message_handler(content_types=["photo"], func=lambda m: get_state(m.from_user.id).get("ad_step") == "images")
+def process_ad_images(m):
+    uid = m.from_user.id
+    st = get_state(uid)
+    images = st.get("images", [])
+    if len(images) >= MAX_IMAGES:
+        return safe_send_message(m.chat.id, f"⚠️ Максимум {MAX_IMAGES} фото.")
+    file_id = m.photo[-1].file_id
+    images.append(file_id)
+    update_state(uid, images=images)
+    safe_send_message(m.chat.id, f"✅ Фото добавлено ({len(images)}/{MAX_IMAGES}). Отправьте ещё или нажмите «Готово».", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton("✅ Готово (без фото)"), types.KeyboardButton("❌ Отменить действие")))
 
-    text = m.text or m.caption
-    if not text:
-        return safe_send_message(m.chat.id, "⚠️ Текст объявления не может быть пустым.", reply_markup=kb_main_menu(uid))
-    if not check_auto_moderation(text):
-        return safe_send_message(m.chat.id, "🤬 Текст содержит запрещённые слова.", reply_markup=kb_main_menu(uid))
+@bot.message_handler(func=lambda m: m.text == "✅ Готово (без фото)" and get_state(m.from_user.id).get("ad_step") == "images")
+def finish_ad(m):
+    uid = m.from_user.id
+    st = get_state(uid)
+    # Проверяем наличие обязательных полей
+    if "description" not in st or "item_name" not in st or "price" not in st or "category" not in st:
+        return safe_send_message(m.chat.id, "⚠️ Что-то пошло не так. Начните заново.", reply_markup=kb_main_menu(uid))
+    # Проверяем кулдаун ещё раз
+    ok, msg = validate_ad_submission(uid)
+    if not ok:
+        clear_state(uid)
+        return safe_send_message(m.chat.id, msg, reply_markup=kb_main_menu(uid))
 
-    photo = m.photo[-1].file_id if m.photo else None
+    # Создаём объявление
     srv = get_user_server(uid)
-    is_buy = ad_data.get("is_buy", False)
-    category = ad_data.get("category", CATEGORIES[0])
+    is_buy = st.get("is_buy", False)
+    images = st.get("images", [])
+    images_json = json.dumps(images)  # сохраняем как JSON массив
     is_vip = 1 if is_user_premium(uid) else 0
+    # Используем бонусное объявление, если есть
+    used_bonus = False
+    bonus = get_user_bonus_ads(uid)
+    if bonus > 0 and not is_vip:
+        # можно использовать бонус вместо VIP
+        used_bonus = True
+        decrement_bonus_ad(uid)
+        is_vip = 1  # виртуально приравниваем к VIP (кулдаун уже проверен)
 
     author_uuid = get_user_uuid_by_telegram_id(uid)
     if not author_uuid:
-        return safe_send_message(m.chat.id, "Ошибка: пользователь не найден", reply_markup=kb_main_menu(uid))
+        clear_state(uid)
+        return safe_send_message(m.chat.id, "Ошибка пользователя.", reply_markup=kb_main_menu(uid))
 
     new_ad = {
         "author_id": author_uuid,
         "author_username": m.from_user.username or str(uid),
         "server": srv,
-        "category": category,
-        "item_name": text[:100],
-        "description": text,
-        "price": 0,
-        "images": photo,
+        "category": st["category"],
+        "item_name": st["item_name"],
+        "description": st["description"],
+        "price": st["price"],
+        "images": images_json,
         "is_vip": bool(is_vip),
         "mode": "sell" if not is_buy else "buy",
         "status": "pending",
@@ -871,15 +931,17 @@ def process_ad_content(m):
     }
     res = supabase.table("ads").insert(new_ad).execute()
     if not res.data:
-        return safe_send_message(m.chat.id, "Ошибка при создании объявления", reply_markup=kb_main_menu(uid))
+        clear_state(uid)
+        return safe_send_message(m.chat.id, "Ошибка сохранения.", reply_markup=kb_main_menu(uid))
     post_id = res.data[0]["id"]
 
     set_user_last_ad_time(uid, time.time())
 
+    # Уведомление админам
     admin_chats = get_admin_chat_ids()
     prefix = "скупки" if is_buy else "продажи"
-    callback_acc = f"mod_acc_buy_{post_id}" if is_buy else f"mod_acc_{post_id}"
-    callback_rej = f"mod_rej_buy_{post_id}" if is_buy else f"mod_rej_{post_id}"
+    callback_acc = f"mod_acc_{post_id}" if not is_buy else f"mod_acc_buy_{post_id}"
+    callback_rej = f"mod_rej_{post_id}" if not is_buy else f"mod_rej_buy_{post_id}"
 
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
@@ -887,40 +949,40 @@ def process_ad_content(m):
         types.InlineKeyboardButton("❌ Отклонить", callback_data=callback_rej),
     )
 
-    notif_text = f"🔔 <b>Новое объявление {prefix} (#{post_id}) на модерацию!</b>\n🌐 Сервер: {srv}\n👤 От: @{html.escape(m.from_user.username or str(uid))}\n\n{text}"
-
+    notif_text = f"🔔 Новое объявление {prefix} (#{post_id}) на модерацию!\n🌐 {srv}\n👤 @{html.escape(m.from_user.username or str(uid))}\n💰 {format_price(st['price'])}\n\n{st['description']}"
     for admin_id in admin_chats:
         try:
-            if photo:
-                bot.send_photo(admin_id, photo, caption=notif_text, reply_markup=markup)
+            if images:
+                # Отправляем первое фото с подписью
+                bot.send_photo(admin_id, images[0], caption=notif_text, reply_markup=markup)
+                # Остальные фото отправляем без подписи
+                for img in images[1:]:
+                    bot.send_photo(admin_id, img)
             else:
                 bot.send_message(admin_id, notif_text, reply_markup=markup)
         except Exception as e:
-            logger.error(f"Не удалось отправить уведомление админу {admin_id}: {e}")
+            logger.error(f"Не удалось уведомить админа {admin_id}: {e}")
 
-    safe_send_message(m.chat.id, "✅ Ваше объявление отправлено на модерацию администраторам!", reply_markup=kb_main_menu(uid))
+    clear_state(uid)
+    safe_send_message(m.chat.id, f"✅ Ваше объявление отправлено на модерацию. ID: {post_id}", reply_markup=kb_main_menu(uid))
 
+# =========================================================
+# 10. МОДЕРАЦИЯ (с комментарием при отклонении)
+# =========================================================
 @bot.callback_query_handler(func=lambda c: c.data.startswith("mod_acc_") or c.data.startswith("mod_rej_") or c.data.startswith("mod_acc_buy_") or c.data.startswith("mod_rej_buy_"))
 def cb_moderate_post(call):
     if not is_admin_or_owner_id(call.from_user.id):
-        try:
-            return bot.answer_callback_query(call.id, "⛔ Нет прав!", show_alert=True)
-        except:
-            return
+        return bot.answer_callback_query(call.id, "⛔ Нет прав!", show_alert=True)
 
     data = call.data
     parts = data.split("_")
-    is_buy_mod = "buy" in data
+    is_buy = "buy" in data
     action = parts[1]
     pid = parts[-1]
 
     res = supabase.table("ads").select("*").eq("id", pid).execute()
     if not res.data:
-        try:
-            bot.answer_callback_query(call.id, "⚠️ Объявление не найдено.", show_alert=True)
-            bot.delete_message(call.message.chat.id, call.message.message_id)
-        except:
-            pass
+        bot.answer_callback_query(call.id, "⚠️ Объявление не найдено.", show_alert=True)
         return
 
     post = res.data[0]
@@ -928,10 +990,7 @@ def cb_moderate_post(call):
 
     if action == "acc":
         expires_at = (datetime.now(timezone.utc) + timedelta(hours=AD_EXPIRY_HOURS)).isoformat()
-        supabase.table("ads").update({
-            "status": "approved",
-            "expires_at": expires_at
-        }).eq("id", pid).execute()
+        supabase.table("ads").update({"status": "approved", "expires_at": expires_at}).eq("id", pid).execute()
         supabase.table("moderator_logs").insert({
             "moderator_id": get_user_uuid_by_telegram_id(call.from_user.id),
             "moderator_username": admin_uname,
@@ -939,35 +998,129 @@ def cb_moderate_post(call):
             "details": str(pid),
             "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()
-        supabase.table("editor_stats").upsert({"username": admin_uname, "count": 1}).execute()
         try:
-            safe_send_message(post["author_id"], f"✅ Ваше объявление (ID {pid}) одобрено и опубликовано!")
+            safe_send_message(post["author_id"], f"✅ Ваше объявление #{pid} одобрено!")
         except:
             pass
-        try:
-            bot.answer_callback_query(call.id, "✅ Одобрено!")
-            bot.edit_message_caption(f"✅ <b>Одобрено администратором @{html.escape(admin_uname)}</b>\n\n{post['description']}", call.message.chat.id, call.message.message_id, reply_markup=None)
-        except:
-            pass
+        bot.answer_callback_query(call.id, "✅ Одобрено")
+        bot.edit_message_caption(f"✅ Одобрено @{html.escape(admin_uname)}\n\n{post['description']}", call.message.chat.id, call.message.message_id, reply_markup=None)
     else:
-        supabase.table("ads").update({"status": "deleted"}).eq("id", pid).execute()
-        supabase.table("moderator_logs").insert({
-            "moderator_id": get_user_uuid_by_telegram_id(call.from_user.id),
-            "moderator_username": admin_uname,
-            "action": "reject_ad",
-            "details": str(pid),
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
-        try:
-            safe_send_message(post["author_id"], f"❌ Ваше объявление (ID {pid}) отклонено модератором.")
-        except:
-            pass
-        try:
-            bot.answer_callback_query(call.id, "❌ Отклонено.")
-            bot.edit_message_caption(f"❌ <b>Отклонено администратором @{html.escape(admin_uname)}</b>\n\n{post['description']}", call.message.chat.id, call.message.message_id, reply_markup=None)
-        except:
-            pass
+        # Отклонение с комментарием
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(types.InlineKeyboardButton("Без комментария", callback_data=f"rej_no_comment_{pid}"))
+        for reason in ["Неверная цена", "Некорректный сервер", "Нарушение правил", "Дубликат"]:
+            markup.add(types.InlineKeyboardButton(reason, callback_data=f"rej_comment_{pid}_{reason}"))
+        bot.send_message(call.message.chat.id, "Выберите причину отклонения или введите свой текст:", reply_markup=markup)
+        bot.answer_callback_query(call.id)
 
+# Обработка выбора причины отклонения
+@bot.callback_query_handler(func=lambda c: c.data.startswith("rej_"))
+def cb_reject_reason(call):
+    if not is_admin_or_owner_id(call.from_user.id):
+        return
+    data = call.data
+    if data.startswith("rej_no_comment_"):
+        pid = data.replace("rej_no_comment_", "")
+        reason = "Без комментария"
+        finalize_reject(call, pid, reason)
+    elif data.startswith("rej_comment_"):
+        parts = data.split("_", 3)  # rej_comment_{pid}_{reason}
+        pid = parts[2]
+        reason = parts[3]
+        finalize_reject(call, pid, reason)
+    else:
+        # Ожидаем текстовый комментарий от администратора
+        bot.send_message(call.message.chat.id, "Введите текст причины отклонения:")
+        # сохраняем pid в состоянии админа
+        update_state(call.from_user.id, {"reject_pending": pid})
+        bot.answer_callback_query(call.id)
+
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("reject_pending") is not None)
+def process_reject_comment(m):
+    uid = m.from_user.id
+    pid = get_state(uid).get("reject_pending")
+    clear_state(uid)
+    if not pid:
+        return
+    finalize_reject(m, pid, m.text)
+
+def finalize_reject(sender, pid, reason):
+    # sender может быть call или message
+    chat_id = sender.chat.id if hasattr(sender, 'chat') else sender.message.chat.id
+    user_id = sender.from_user.id
+    # Получаем объявление
+    res = supabase.table("ads").select("*").eq("id", pid).execute()
+    if not res.data:
+        safe_send_message(chat_id, "Объявление не найдено.")
+        return
+    post = res.data[0]
+    supabase.table("ads").update({"status": "deleted"}).eq("id", pid).execute()
+    supabase.table("moderator_logs").insert({
+        "moderator_id": get_user_uuid_by_telegram_id(user_id),
+        "moderator_username": sender.from_user.username or str(user_id),
+        "action": "reject_ad",
+        "details": f"{pid}: {reason}",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }).execute()
+    try:
+        safe_send_message(post["author_id"], f"❌ Ваше объявление #{pid} отклонено. Причина: {reason}")
+    except:
+        pass
+    safe_send_message(chat_id, f"❌ Объявление #{pid} отклонено с причиной: {reason}")
+    # Попытка обновить исходное сообщение админа
+    try:
+        bot.edit_message_caption(f"❌ Отклонено @{html.escape(sender.from_user.username or str(user_id))}\nПричина: {reason}\n\n{post['description']}", chat_id, sender.message.message_id, reply_markup=None)
+    except:
+        pass
+
+# ---------- Модерация по кнопке в админ-панели ----------
+@bot.message_handler(func=lambda m: m.text == "модерация продажи")
+def show_pending_sales(m):
+    if not is_admin_or_owner_id(m.from_user.id):
+        return safe_send_message(m.chat.id, "⛔ Доступ запрещён.")
+    res = supabase.table("ads").select("*").eq("status", "pending").eq("mode", "sell").limit(10).execute()
+    posts = res.data
+    if not posts:
+        return safe_send_message(m.chat.id, "📭 Нет продаж на модерации.")
+    for p in posts:
+        pid = p["id"]
+        caption = f"📋 Пост продажи #{pid}\n🌐 {p['server']}\n💰 {format_price(p['price'])}\n\n{p['description']}"
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("✅ Одобрить", callback_data=f"mod_acc_{pid}"),
+            types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_rej_{pid}"),
+        )
+        images = json.loads(p["images"]) if p["images"] else []
+        if images:
+            safe_send_photo(m.chat.id, images[0], caption, reply_markup=markup)
+        else:
+            safe_send_message(m.chat.id, caption, reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "модерация скупки")
+def show_pending_buys(m):
+    if not is_admin_or_owner_id(m.from_user.id):
+        return safe_send_message(m.chat.id, "⛔ Доступ запрещён.")
+    res = supabase.table("ads").select("*").eq("status", "pending").eq("mode", "buy").limit(10).execute()
+    posts = res.data
+    if not posts:
+        return safe_send_message(m.chat.id, "📭 Нет скупки на модерации.")
+    for p in posts:
+        pid = p["id"]
+        caption = f"📋 Пост скупки #{pid}\n🌐 {p['server']}\n💰 {format_price(p['price'])}\n\n{p['description']}"
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            types.InlineKeyboardButton("✅ Одобрить", callback_data=f"mod_acc_buy_{pid}"),
+            types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_rej_buy_{pid}"),
+        )
+        images = json.loads(p["images"]) if p["images"] else []
+        if images:
+            safe_send_photo(m.chat.id, images[0], caption, reply_markup=markup)
+        else:
+            safe_send_message(m.chat.id, caption, reply_markup=markup)
+
+# =========================================================
+# 11. АДМИН-ПАНЕЛЬ (расширенная)
+# =========================================================
 @bot.message_handler(func=lambda m: m.text == "👑 Админ-панель")
 def admin_panel(m):
     uid = m.from_user.id
@@ -979,81 +1132,29 @@ def admin_panel(m):
         markup.row(types.KeyboardButton("рассылка"), types.KeyboardButton("📋 Логи чатов"))
         markup.row(types.KeyboardButton("🔨 Забанить игрока"), types.KeyboardButton("🔓 Разбанить игрока"))
         markup.row(types.KeyboardButton("👑 Добавить адм"), types.KeyboardButton("🚫 Снять с адм"))
+        markup.row(types.KeyboardButton("📊 Статистика модераторов"))
     markup.row(types.KeyboardButton("⬅️ Назад"), types.KeyboardButton("❌ Отменить действие"))
-    safe_send_message(m.chat.id, "👑 <b>Панель администратора / владельца:</b>", reply_markup=markup)
-
-@bot.message_handler(func=lambda m: m.text == "модерация продажи")
-def show_pending_sales(m):
-    if not is_admin_or_owner_id(m.from_user.id):
-        return safe_send_message(m.chat.id, "⛔ Доступ запрещён.")
-    res = supabase.table("ads").select("*").eq("status", "pending").eq("mode", "sell").limit(10).execute()
-    posts = res.data
-    if not posts:
-        return safe_send_message(m.chat.id, "📭 Нет объявлений о продаже на модерации.")
-    safe_send_message(m.chat.id, f"📋 <b>Очередь модерации продаж (найдено: {len(posts)}):</b>")
-    for p in posts:
-        pid = p["id"]
-        text = p["description"]
-        srv = p["server"]
-        photo = p["images"]
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            types.InlineKeyboardButton("✅ Одобрить", callback_data=f"mod_acc_{pid}"),
-            types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_rej_{pid}"),
-        )
-        caption = f"📋 <b>Пост продажи #{pid}</b>\n🌐 Сервер: {srv}\n\n{text}"
-        if photo:
-            safe_send_photo(m.chat.id, photo, caption=caption, reply_markup=markup)
-        else:
-            safe_send_message(m.chat.id, caption, reply_markup=markup)
-
-@bot.message_handler(func=lambda m: m.text == "модерация скупки")
-def show_pending_buys(m):
-    if not is_admin_or_owner_id(m.from_user.id):
-        return safe_send_message(m.chat.id, "⛔ Доступ запрещён.")
-    res = supabase.table("ads").select("*").eq("status", "pending").eq("mode", "buy").limit(10).execute()
-    posts = res.data
-    if not posts:
-        return safe_send_message(m.chat.id, "📭 Нет объявлений о скупке на модерации.")
-    safe_send_message(m.chat.id, f"📋 <b>Очередь модерации скупки (найдено: {len(posts)}):</b>")
-    for p in posts:
-        pid = p["id"]
-        text = p["description"]
-        srv = p["server"]
-        photo = p["images"]
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        markup.add(
-            types.InlineKeyboardButton("✅ Одобрить", callback_data=f"mod_acc_buy_{pid}"),
-            types.InlineKeyboardButton("❌ Отклонить", callback_data=f"mod_rej_buy_{pid}"),
-        )
-        caption = f"📋 <b>Пост скупки #{pid}</b>\n🌐 Сервер: {srv}\n\n{text}"
-        if photo:
-            safe_send_photo(m.chat.id, photo, caption=caption, reply_markup=markup)
-        else:
-            safe_send_message(m.chat.id, caption, reply_markup=markup)
+    safe_send_message(m.chat.id, "👑 Админ-панель", reply_markup=markup)
 
 @bot.message_handler(func=lambda m: m.text == "рассылка")
 def start_broadcast(m):
     if not is_owner(m.from_user):
-        return safe_send_message(m.chat.id, f"⛔ Только владелец (@{OWNER_USERNAME}).")
+        return safe_send_message(m.chat.id, "⛔ Только владелец.")
     update_state(m.from_user.id, broadcast_input=True)
-    safe_send_message(m.chat.id, "📢 Введите текст или отправьте пост (с фото) для рассылки всем пользователям:", reply_markup=kb_cancel())
+    safe_send_message(m.chat.id, "📢 Введите текст или отправьте пост для рассылки:", reply_markup=kb_cancel())
 
 @bot.message_handler(content_types=["text", "photo"], func=lambda m: get_state(m.from_user.id).get("broadcast_input") is True)
 def process_broadcast(m):
     uid = m.from_user.id
     clear_state(uid)
     if not is_owner(m.from_user):
-        return safe_send_message(m.chat.id, "⛔ Доступ запрещён.")
+        return
     text = m.text or m.caption
     photo = m.photo[-1].file_id if m.photo else None
-
     res = supabase.table("app_users").select("telegram_id").execute()
     users = [row["telegram_id"] for row in res.data if row["telegram_id"]]
-
     safe_send_message(m.chat.id, f"🚀 Начинаю рассылку для {len(users)} пользователей...")
-    success = 0
-    failed = 0
+    success = failed = 0
     for u_id in users:
         try:
             if photo:
@@ -1061,57 +1162,63 @@ def process_broadcast(m):
             else:
                 bot.send_message(u_id, text, parse_mode="HTML")
             success += 1
-            time.sleep(0.04)
+            time.sleep(0.05)
         except:
             failed += 1
-    safe_send_message(m.chat.id, f"✅ <b>Рассылка завершена!</b>\n📤 Успешно: {success}\n❌ Ошибок: {failed}", reply_markup=kb_main_menu(uid))
+    safe_send_message(m.chat.id, f"✅ Рассылка завершена! Успешно: {success}, Ошибок: {failed}", reply_markup=kb_main_menu(uid))
 
 @bot.message_handler(func=lambda m: m.text == "📋 Логи чатов")
 def show_owner_logs_menu(m):
     if not is_owner(m.from_user) and not is_admin_or_owner_id(m.from_user.id):
-        return safe_send_message(m.chat.id, f"⛔ Доступ только владельцу (@{OWNER_USERNAME}).")
+        return safe_send_message(m.chat.id, "⛔ Доступ только владельцу.")
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton("💬 Логи всех чатов (файлом)", callback_data="owner_view_chats"),
-        types.InlineKeyboardButton("📢 Логи действий админов (файлом)", callback_data="owner_view_admin_ads"),
+        types.InlineKeyboardButton("💬 Логи чатов", callback_data="owner_view_chats"),
+        types.InlineKeyboardButton("📢 Логи админов", callback_data="owner_view_admin_ads"),
+        types.InlineKeyboardButton("📈 Статистика модераторов", callback_data="owner_stats_mods"),
     )
-    safe_send_message(m.chat.id, "📋 <b>Единый центр логов системы</b>\nВыберите раздел:", reply_markup=markup)
+    safe_send_message(m.chat.id, "📋 Логи системы:", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda c: c.data in ["owner_view_chats", "owner_view_admin_ads"])
+@bot.callback_query_handler(func=lambda c: c.data.startswith("owner_"))
 def cb_owner_logs(call):
     if not is_owner(call.from_user) and not is_admin_or_owner_id(call.from_user.id):
-        try:
-            return bot.answer_callback_query(call.id, "⛔ Доступ запрещён.", show_alert=True)
-        except:
-            return
-    try:
-        bot.answer_callback_query(call.id)
-    except:
-        pass
-
+        return bot.answer_callback_query(call.id, "⛔ Нет прав", show_alert=True)
+    bot.answer_callback_query(call.id)
     if call.data == "owner_view_chats":
         res = supabase.table("chat_logs_history").select("*").order("timestamp", desc=True).limit(100).execute()
         logs = res.data
-        log_text = "ИСТОРИЯ ОБЩЕНИЯ ИГРОКОВ В СДЕЛКАХ (последние 100)\n" + "="*50 + "\n\n"
-        if logs:
-            for l in logs:
-                dt = datetime.fromtimestamp(l["timestamp"], ZoneInfo("Europe/Moscow")).strftime("%d.%m %H:%M:%S")
-                log_text += f"[{dt} МСК] (От ID {l['sender_id']} -> К ID {l['receiver_id']}): {l['text']}\n"
-        else:
-            log_text += "История общения пуста."
-        send_log_file(call.message.chat.id, "chat_history_logs.txt", log_text, caption="📁 <b>Файл истории переписок</b>")
-    else:
+        text = "ИСТОРИЯ ЧАТОВ (последние 100)\n" + "="*50 + "\n"
+        for l in logs:
+            dt = datetime.fromtimestamp(l["timestamp"], ZoneInfo("Europe/Moscow")).strftime("%d.%m %H:%M:%S")
+            text += f"[{dt} МСК] {l['sender_id']} -> {l['receiver_id']}: {l['text']}\n"
+        send_log_file(call.message.chat.id, "chat_logs.txt", text, caption="📁 История чатов")
+    elif call.data == "owner_view_admin_ads":
         res = supabase.table("moderator_logs").select("*").order("created_at", desc=True).limit(100).execute()
         logs = res.data
-        log_text = "ЛОГИ ДЕЙСТВИЙ АДМИНОВ\n" + "="*50 + "\n\n"
-        if logs:
-            for l in logs:
-                dt = datetime.fromisoformat(l["created_at"]).astimezone(ZoneInfo("Europe/Moscow")).strftime("%d.%m %H:%M:%S")
-                log_text += f"[{dt} МСК] Администратор (@{l['moderator_username']}): {l['action']} | Цель: {l['details']}\n"
-        else:
-            log_text += "Логи пусты."
-        send_log_file(call.message.chat.id, "admin_ads_action_logs.txt", log_text, caption="📁 <b>Файл логов действий админов</b>")
+        text = "ЛОГИ АДМИНОВ\n" + "="*50 + "\n"
+        for l in logs:
+            dt = datetime.fromisoformat(l["created_at"]).astimezone(ZoneInfo("Europe/Moscow")).strftime("%d.%m %H:%M:%S")
+            text += f"[{dt} МСК] @{l['moderator_username']}: {l['action']} | {l['details']}\n"
+        send_log_file(call.message.chat.id, "admin_logs.txt", text, caption="📁 Логи админов")
+    elif call.data == "owner_stats_mods":
+        res = supabase.table("moderator_logs").select("moderator_username, action").execute()
+        data = res.data
+        stats = {}
+        for row in data:
+            uname = row["moderator_username"]
+            action = row["action"]
+            if uname not in stats:
+                stats[uname] = {"approve":0, "reject":0}
+            if "approve" in action:
+                stats[uname]["approve"] += 1
+            elif "reject" in action:
+                stats[uname]["reject"] += 1
+        text = "СТАТИСТИКА МОДЕРАТОРОВ\n" + "="*50 + "\n"
+        for uname, vals in stats.items():
+            text += f"@{uname}: одобрено {vals['approve']}, отклонено {vals['reject']}\n"
+        safe_send_message(call.message.chat.id, text)
 
+# ---------- Управление игроками и админами ----------
 @bot.message_handler(func=lambda m: m.text in ["🔨 Забанить игрока", "🔓 Разбанить игрока", "👑 Добавить адм", "🚫 Снять с адм"])
 def owner_action_start(m):
     if not is_owner(m.from_user):
@@ -1122,13 +1229,13 @@ def owner_action_start(m):
         "👑 Добавить адм": "add_admin",
         "🚫 Снять с адм": "remove_admin"
     }
-    action = action_map.get(m.text)
+    action = action_map[m.text]
     update_state(m.from_user.id, owner_action_input=action)
     prompts = {
-        "ban": "🔨 Введите User ID или @username игрока для блокировки:",
-        "unban": "🔓 Введите User ID или @username игрока для разблокировки:",
-        "add_admin": "👑 Введите User ID или @username пользователя для назначения администратором:",
-        "remove_admin": "🚫 Введите User ID или @username администратора для снятия:"
+        "ban": "🔨 Введите User ID или @username для бана:",
+        "unban": "🔓 Введите User ID или @username для разбана:",
+        "add_admin": "👑 Введите User ID или @username для назначения админом:",
+        "remove_admin": "🚫 Введите User ID или @username для снятия:"
     }
     safe_send_message(m.chat.id, prompts[action], reply_markup=kb_owner_input())
 
@@ -1139,7 +1246,6 @@ def process_owner_action(m):
     action_type = st.get("owner_action_input")
     target_str = m.text.strip()
     clear_state(uid)
-
     if not is_owner(m.from_user):
         return safe_send_message(m.chat.id, "⛔ Доступ запрещён.")
 
@@ -1159,86 +1265,283 @@ def process_owner_action(m):
         if target_uuid:
             supabase.table("app_users").update({"banned": True}).eq("id", target_uuid).execute()
             supabase.table("bans").upsert({"target": str(target_telegram_id or target_str), "is_id": bool(target_telegram_id)}).execute()
-            safe_send_message(m.chat.id, f"✅ Игрок <b>{html.escape(target_str)}</b> забанен.", reply_markup=kb_main_menu(uid))
+            safe_send_message(m.chat.id, f"✅ Игрок {html.escape(target_str)} забанен.", reply_markup=kb_main_menu(uid))
             if target_telegram_id:
-                try:
-                    safe_send_message(target_telegram_id, "⛔ Вы были забанены администрацией.")
-                except:
-                    pass
+                safe_send_message(target_telegram_id, "⛔ Вы забанены.")
+            invalidate_cache(target_telegram_id)
         else:
             safe_send_message(m.chat.id, "⚠️ Пользователь не найден.")
     elif action_type == "unban":
         if target_uuid:
             supabase.table("app_users").update({"banned": False}).eq("id", target_uuid).execute()
             supabase.table("bans").delete().eq("target", str(target_telegram_id or target_str)).execute()
-            safe_send_message(m.chat.id, f"✅ Игрок <b>{html.escape(target_str)}</b> разбанен.", reply_markup=kb_main_menu(uid))
+            safe_send_message(m.chat.id, f"✅ {html.escape(target_str)} разбанен.", reply_markup=kb_main_menu(uid))
+            invalidate_cache(target_telegram_id)
         else:
             safe_send_message(m.chat.id, "⚠️ Пользователь не найден.")
     elif action_type == "add_admin":
         if not target_uuid:
-            return safe_send_message(m.chat.id, "⚠️ Пользователь не найден. Пусть сначала запустит бота.", reply_markup=kb_main_menu(uid))
+            return safe_send_message(m.chat.id, "⚠️ Пользователь не найден.", reply_markup=kb_main_menu(uid))
         supabase.table("app_users").update({"is_admin": True}).eq("id", target_uuid).execute()
         supabase.table("approved_admins").upsert({"user_id": target_uuid, "username": target_uname}).execute()
-        safe_send_message(m.chat.id, f"👑 Пользователь @{target_uname} назначен администратором!", reply_markup=kb_main_menu(uid))
+        safe_send_message(m.chat.id, f"👑 @{target_uname} назначен админом!", reply_markup=kb_main_menu(uid))
         if target_telegram_id:
-            try:
-                safe_send_message(target_telegram_id, "👑 Вам назначены права администратора в боте.")
-            except:
-                pass
+            safe_send_message(target_telegram_id, "👑 Вам назначены права администратора.")
+        invalidate_cache(target_telegram_id)
     elif action_type == "remove_admin":
         if target_uuid:
             supabase.table("app_users").update({"is_admin": False}).eq("id", target_uuid).execute()
             supabase.table("approved_admins").delete().eq("user_id", target_uuid).execute()
-        safe_send_message(m.chat.id, f"🚫 Администратор <b>{html.escape(target_str)}</b> снят.", reply_markup=kb_main_menu(uid))
+        safe_send_message(m.chat.id, f"🚫 Администратор {html.escape(target_str)} снят.", reply_markup=kb_main_menu(uid))
+        invalidate_cache(target_telegram_id)
 
+# =========================================================
+# 12. МОИ ПУБЛИКАЦИИ (с возможностью удалить/редактировать)
+# =========================================================
 @bot.message_handler(func=lambda m: m.text == "📋 Мои публикации")
 def show_my_ads(m):
     uid = m.from_user.id
     srv = get_user_server(uid)
     user_uuid = get_user_uuid_by_telegram_id(uid)
     if not user_uuid:
-        return safe_send_message(m.chat.id, "Ошибка: пользователь не найден")
+        return safe_send_message(m.chat.id, "Ошибка")
     res = supabase.table("ads").select("*").eq("author_id", user_uuid).eq("server", srv).order("created_at", desc=True).execute()
     ads = res.data
-    text = f"📋 <b>Ваши активные публикации на сервере {html.escape(srv)}:</b>\n\n"
     if not ads:
-        text += "У вас нет объявлений."
-    else:
-        for a in ads:
-            status_map = {"pending": "⏳ На модерации", "approved": "✅ Опубликовано", "deleted": "🗑 Удалено"}
-            status_text = status_map.get(a["status"], a["status"])
-            price_str = format_price(a["price"])
-            text += f"#{a['id']} {a['item_name']} — {price_str} — {status_text}\n"
-    safe_send_message(m.chat.id, text, reply_markup=kb_main_menu(uid))
+        return safe_send_message(m.chat.id, "📭 У вас нет объявлений на этом сервере.", reply_markup=kb_main_menu(uid))
+    # Показываем по одному с кнопками
+    for ad in ads[:10]:
+        status_map = {"pending":"⏳ На модерации", "approved":"✅ Опубликовано", "deleted":"🗑 Удалено"}
+        status_text = status_map.get(ad["status"], ad["status"])
+        caption = f"#{ad['id']} <b>{ad['item_name']}</b>\n💰 {format_price(ad['price'])}\n{status_text}\n{ad['description'][:300]}..."
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        if ad["status"] == "pending":
+            markup.add(types.InlineKeyboardButton("✏️ Редактировать", callback_data=f"edit_ad_{ad['id']}"))
+            markup.add(types.InlineKeyboardButton("🗑 Удалить", callback_data=f"del_ad_{ad['id']}"))
+        elif ad["status"] == "approved":
+            markup.add(types.InlineKeyboardButton("🗑 Удалить", callback_data=f"del_ad_{ad['id']}"))
+        else:
+            markup.add(types.InlineKeyboardButton("Удалено", callback_data="noop"))
+        images = json.loads(ad["images"]) if ad["images"] else []
+        if images:
+            safe_send_photo(m.chat.id, images[0], caption, reply_markup=markup)
+        else:
+            safe_send_message(m.chat.id, caption, reply_markup=markup)
 
-@bot.message_handler(func=lambda m: m.text == "💱 Курс VC и калькулятор")
-def show_vc_menu(m):
-    safe_send_message(m.chat.id, "💱 Курс VC и калькулятор в разработке. Используйте мини-приложение.", reply_markup=kb_main_menu(m.from_user.id))
+@bot.callback_query_handler(func=lambda c: c.data.startswith("del_ad_"))
+def cb_delete_ad(call):
+    uid = call.from_user.id
+    pid = call.data.replace("del_ad_", "")
+    # Проверяем, что объявление принадлежит пользователю
+    user_uuid = get_user_uuid_by_telegram_id(uid)
+    if not user_uuid:
+        return bot.answer_callback_query(call.id, "Ошибка", show_alert=True)
+    res = supabase.table("ads").select("author_id").eq("id", pid).execute()
+    if not res.data or res.data[0]["author_id"] != user_uuid:
+        return bot.answer_callback_query(call.id, "⛔ Не ваше объявление.", show_alert=True)
+    supabase.table("ads").update({"status": "deleted"}).eq("id", pid).execute()
+    bot.answer_callback_query(call.id, "🗑 Объявление удалено.")
+    bot.edit_message_caption(call.message.caption + "\n\n🗑 Удалено вами.", call.message.chat.id, call.message.message_id, reply_markup=None)
 
-@bot.message_handler(func=lambda m: m.text == "❤️ Сохраненные")
-def show_favorites(m):
-    safe_send_message(m.chat.id, "❤️ <b>Сохранённые объявления:</b>\n\nСписок пуст.", reply_markup=kb_main_menu(m.from_user.id))
+@bot.callback_query_handler(func=lambda c: c.data.startswith("edit_ad_"))
+def cb_edit_ad(call):
+    uid = call.from_user.id
+    pid = call.data.replace("edit_ad_", "")
+    user_uuid = get_user_uuid_by_telegram_id(uid)
+    if not user_uuid:
+        return bot.answer_callback_query(call.id, "Ошибка", show_alert=True)
+    res = supabase.table("ads").select("author_id, status").eq("id", pid).execute()
+    if not res.data or res.data[0]["author_id"] != user_uuid:
+        return bot.answer_callback_query(call.id, "⛔ Не ваше объявление.", show_alert=True)
+    if res.data[0]["status"] != "pending":
+        return bot.answer_callback_query(call.id, "⛔ Можно редактировать только на модерации.", show_alert=True)
+    # Начинаем процесс редактирования (можно упрощённо — пересоздать)
+    # Удаляем старое, создаём новое с теми же данными
+    # Для простоты — предлагаем удалить и создать заново
+    supabase.table("ads").update({"status": "deleted"}).eq("id", pid).execute()
+    bot.answer_callback_query(call.id, "✅ Старое объявление удалено. Создайте новое через меню.")
+    safe_send_message(call.message.chat.id, "Вы можете подать новое объявление через «📤 Продать товар» или «📥 Скупить товар».")
 
+# =========================================================
+# 13. ПОИСК ТОВАРА (с фильтрами)
+# =========================================================
 @bot.message_handler(func=lambda m: m.text == "🔍 Найти товар в базе")
 def start_search(m):
-    safe_send_message(m.chat.id, "🔍 <b>Поиск товара:</b> Используйте мини-приложение для полноценного поиска.", reply_markup=kb_main_menu(m.from_user.id))
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        types.InlineKeyboardButton("🔍 Поиск по ключевому слову", callback_data="search_keyword"),
+        types.InlineKeyboardButton("📂 По категориям", callback_data="search_categories")
+    )
+    safe_send_message(m.chat.id, "🔍 Выберите способ поиска:", reply_markup=markup)
 
-@bot.message_handler(func=lambda m: m.text == "📊 Анализ цен на сервере")
-def show_average_prices(m):
-    safe_send_message(m.chat.id, "📊 Анализ цен в разработке.", reply_markup=kb_main_menu(m.from_user.id))
+@bot.callback_query_handler(func=lambda c: c.data in ["search_keyword", "search_categories"])
+def cb_search_choose(c):
+    if c.data == "search_keyword":
+        bot.answer_callback_query(c.id)
+        update_state(c.from_user.id, search_step="keyword")
+        safe_send_message(c.message.chat.id, "🔍 Введите ключевое слово для поиска (до 50 символов):", reply_markup=kb_cancel())
+    else:
+        bot.answer_callback_query(c.id)
+        markup = kb_search_categories()
+        safe_send_message(c.message.chat.id, "📂 Выберите категорию:", reply_markup=markup)
 
-@bot.message_handler(func=lambda m: m.text == "💬 Связаться с менеджером")
-def contact_manager(m):
-    safe_send_message(m.chat.id, f"💬 Связаться с менеджером: @{MANAGER_USERNAME}", reply_markup=kb_main_menu(m.from_user.id))
+@bot.message_handler(func=lambda m: get_state(m.from_user.id).get("search_step") == "keyword")
+def process_search_keyword(m):
+    uid = m.from_user.id
+    keyword = m.text.strip()
+    clear_state(uid)
+    if len(keyword) < 2:
+        return safe_send_message(m.chat.id, "⚠️ Слишком короткий запрос.")
+    srv = get_user_server(uid)
+    # Ищем в описании и названии
+    res = supabase.table("ads").select("*").eq("server", srv).eq("status", "approved").ilike("item_name", f"%{keyword}%").execute()
+    ads = res.data
+    if not ads:
+        res2 = supabase.table("ads").select("*").eq("server", srv).eq("status", "approved").ilike("description", f"%{keyword}%").execute()
+        ads = res2.data
+    if not ads:
+        return safe_send_message(m.chat.id, "🔍 Ничего не найдено.", reply_markup=kb_main_menu(uid))
+    # Показываем первые 5
+    for ad in ads[:5]:
+        caption = f"#{ad['id']} <b>{ad['item_name']}</b>\n💰 {format_price(ad['price'])}\n{ad['description'][:300]}..."
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(types.InlineKeyboardButton("📩 Связаться с автором", callback_data=f"contact_{ad['author_id']}_{ad['id']}"))
+        images = json.loads(ad["images"]) if ad["images"] else []
+        if images:
+            safe_send_photo(m.chat.id, images[0], caption, reply_markup=markup)
+        else:
+            safe_send_message(m.chat.id, caption, reply_markup=markup)
 
-@bot.message_handler(func=lambda m: m.text in CATEGORIES)
-def show_category_ads(m):
-    safe_send_message(m.chat.id, f"📦 Категория {m.text} — используйте мини-приложение для просмотра.", reply_markup=kb_main_menu(m.from_user.id))
+@bot.callback_query_handler(func=lambda c: c.data.startswith("search_cat_"))
+def cb_search_category(c):
+    cat = c.data.replace("search_cat_", "")
+    uid = c.from_user.id
+    srv = get_user_server(uid)
+    res = supabase.table("ads").select("*").eq("server", srv).eq("status", "approved").eq("category", cat).execute()
+    ads = res.data
+    if not ads:
+        return bot.answer_callback_query(c.id, "В этой категории нет объявлений.", show_alert=True)
+    for ad in ads[:5]:
+        caption = f"#{ad['id']} <b>{ad['item_name']}</b>\n💰 {format_price(ad['price'])}\n{ad['description'][:300]}..."
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(types.InlineKeyboardButton("📩 Связаться", callback_data=f"contact_{ad['author_id']}_{ad['id']}"))
+        images = json.loads(ad["images"]) if ad["images"] else []
+        if images:
+            safe_send_photo(c.message.chat.id, images[0], caption, reply_markup=markup)
+        else:
+            safe_send_message(c.message.chat.id, caption, reply_markup=markup)
 
-# ==========================================
-# ЗАПУСК FLASK И БОТА (С ОБРАБОТКОЙ КОНФЛИКТА 409)
-# ==========================================
+@bot.callback_query_handler(func=lambda c: c.data == "search_all")
+def cb_search_all(c):
+    uid = c.from_user.id
+    srv = get_user_server(uid)
+    res = supabase.table("ads").select("*").eq("server", srv).eq("status", "approved").order("created_at", desc=True).limit(10).execute()
+    ads = res.data
+    if not ads:
+        return bot.answer_callback_query(c.id, "Нет объявлений.", show_alert=True)
+    for ad in ads:
+        caption = f"#{ad['id']} <b>{ad['item_name']}</b>\n💰 {format_price(ad['price'])}\n{ad['description'][:300]}..."
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(types.InlineKeyboardButton("📩 Связаться", callback_data=f"contact_{ad['author_id']}_{ad['id']}"))
+        images = json.loads(ad["images"]) if ad["images"] else []
+        if images:
+            safe_send_photo(c.message.chat.id, images[0], caption, reply_markup=markup)
+        else:
+            safe_send_message(c.message.chat.id, caption, reply_markup=markup)
 
+# =========================================================
+# 14. ЧАТ МЕЖДУ ПОЛЬЗОВАТЕЛЯМИ (связь с автором)
+# =========================================================
+@bot.callback_query_handler(func=lambda c: c.data.startswith("contact_"))
+def cb_contact_author(c):
+    parts = c.data.split("_")
+    author_uuid = parts[1]
+    ad_id = parts[2]
+    # Получаем telegram_id автора
+    res = supabase.table("app_users").select("telegram_id").eq("id", author_uuid).execute()
+    if not res.data:
+        return bot.answer_callback_query(c.id, "Автор не найден.", show_alert=True)
+    author_tg = res.data[0]["telegram_id"]
+    if not author_tg:
+        return bot.answer_callback_query(c.id, "У автора нет Telegram ID.", show_alert=True)
+    # Создаём сессию чата
+    uid = c.from_user.id
+    session_id = f"{uid}_{author_tg}_{ad_id}"
+    user_chat_sessions[session_id] = {"buyer": uid, "seller": author_tg, "ad_id": ad_id}
+    # Отправляем сообщение автору
+    safe_send_message(author_tg, f"🔔 Пользователь @{c.from_user.username or str(uid)} хочет связаться с вами по объявлению #{ad_id}.\nВы можете ответить ему в этом чате. (Ваши сообщения будут пересылаться ему, а его — вам.)")
+    safe_send_message(uid, f"💬 Вы начали диалог с автором объявления #{ad_id}. Пишите в этот чат, и ваши сообщения будут пересылаться.")
+    bot.answer_callback_query(c.id, "Чат открыт! Проверьте личные сообщения.")
+
+# Перехватываем сообщения для пересылки между участниками чата
+@bot.message_handler(func=lambda m: m.chat.type == "private" and m.text and not m.text.startswith("/") and not any(key in m.text for key in ["📤", "📥", "👥", "💎", "🔍", "🌐", "⬅️", "❌"]))
+def forward_chat_messages(m):
+    uid = m.from_user.id
+    # Проверяем, есть ли активная сессия
+    for session_id, data in list(user_chat_sessions.items()):
+        if data["buyer"] == uid or data["seller"] == uid:
+            other = data["seller"] if data["buyer"] == uid else data["buyer"]
+            # Пересылаем сообщение другому участнику
+            try:
+                bot.send_message(other, f"💬 Сообщение от @{m.from_user.username or str(uid)}:\n{m.text}")
+                # Сохраняем в историю
+                supabase.table("chat_logs_history").insert({
+                    "sender_id": uid,
+                    "receiver_id": other,
+                    "text": m.text,
+                    "timestamp": time.time()
+                }).execute()
+            except Exception as e:
+                safe_send_message(uid, f"⚠️ Не удалось отправить сообщение: {e}")
+            return
+    # Если нет активного чата, игнорируем
+
+# =========================================================
+# 15. ФОНОВЫЕ ЗАДАЧИ (удаление просрочек, сгорание бонусов)
+# =========================================================
+def background_jobs():
+    while True:
+        try:
+            # Удаляем просроченные объявления
+            now = datetime.now(timezone.utc).isoformat()
+            res = supabase.table("ads").select("id, author_id, expires_at").eq("status", "approved").lt("expires_at", now).execute()
+            for ad in res.data:
+                supabase.table("ads").update({"status": "deleted"}).eq("id", ad["id"]).execute()
+                # Уведомляем автора
+                author_tg = supabase.table("app_users").select("telegram_id").eq("id", ad["author_id"]).execute()
+                if author_tg.data and author_tg.data[0]["telegram_id"]:
+                    safe_send_message(author_tg.data[0]["telegram_id"], f"⏰ Ваше объявление #{ad['id']} истекло и удалено.")
+            # Сгорание бонусных VIP-объявлений (раз в сутки убираем по 1)
+            # Эту логику вынесем в отдельную функцию, вызываемую раз в день
+        except Exception as e:
+            logger.error(f"Ошибка в background_jobs: {e}")
+        time.sleep(3600)  # раз в час
+
+def daily_bonus_decay():
+    # Уменьшаем счётчик бонусов у всех пользователей на 1, если >0
+    try:
+        res = supabase.table("user_bonuses").select("user_id, vip_ads_count").execute()
+        for row in res.data:
+            if row["vip_ads_count"] > 0:
+                new_val = row["vip_ads_count"] - 1
+                supabase.table("user_bonuses").update({"vip_ads_count": new_val}).eq("user_id", row["user_id"]).execute()
+    except Exception as e:
+        logger.error(f"Ошибка daily_bonus_decay: {e}")
+
+def schedule_daily():
+    # Запускаем ежедневно в 00:00 МСК
+    schedule.every().day.at("00:00").do(daily_bonus_decay)
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+
+# Запускаем фоновые потоки
+threading.Thread(target=background_jobs, daemon=True).start()
+threading.Thread(target=schedule_daily, daemon=True).start()
+
+# =========================================================
+# 16. ЗАПУСК FLASK + БОТА
+# =========================================================
 app = Flask(__name__)
 
 @app.route('/')
@@ -1247,31 +1550,31 @@ def home():
 
 @app.route('/health')
 def health():
-    return "OK", 200
+    # Проверка соединения с Supabase
+    try:
+        supabase.table("app_users").select("count", count="exact").limit(1).execute()
+        return "OK", 200
+    except:
+        return "DB error", 500
 
 def run_bot():
-    logger.info("Бот запущен (Supabase, UUID-версия) с кешированием")
-    # Удаляем вебхук при старте
+    logger.info("Запуск бота (версия 2.0)")
     try:
         bot.remove_webhook()
-        logger.info("Вебхук удалён")
-    except Exception as e:
-        logger.warning(f"Не удалось удалить вебхук: {e}")
-
+    except:
+        pass
     while True:
         try:
             bot.infinity_polling(skip_pending=True, timeout=20, long_polling_timeout=10)
         except ApiTelegramException as e:
             if e.result_json and e.result_json.get('error_code') == 409:
-                logger.error("Обнаружен конфликт (409): другой экземпляр бота уже запущен. Завершаем процесс.")
+                logger.error("Конфликт 409 — другой экземпляр бота. Выход.")
                 os._exit(0)
             else:
-                logger.error(f"Ошибка в polling: {e}")
-                traceback.print_exc()
+                logger.error(f"Polling error: {e}")
                 time.sleep(5)
         except Exception as e:
-            logger.error(f"Ошибка в polling: {e}")
-            traceback.print_exc()
+            logger.error(f"Polling error: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":

@@ -11,11 +11,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* ============================================================
-           AURORA × SUNSET — фиолетово-циан + закатный градиент
+           AURORA × SUNSET THEME
            ============================================================ */
 
         :root {
-            /* === ТЁМНАЯ ТЕМА (по умолчанию) === */
             --bg:              #0F0A1E;
             --bg-2:            #150F28;
             --card:            #1A1230;
@@ -51,12 +50,10 @@
             --info:            #3B82F6;
             --info-soft:       rgba(59,130,246,.15);
 
-            /* Aurora градиент — основной */
             --grad-aurora:     linear-gradient(135deg, #8B5CF6 0%, #22D3EE 100%);
-            /* Sunset градиент — для особых элементов */
             --grad-sunset:     linear-gradient(135deg, #F97316 0%, #EC4899 50%, #8B5CF6 100%);
-            /* Смешанный для кнопок */
             --grad-mix:        linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #F97316 100%);
+            --grad-flow:       linear-gradient(90deg, #8B5CF6, #22D3EE, #EC4899, #F97316, #8B5CF6);
 
             --glass:           rgba(26,18,48,.75);
             --glass-2:         rgba(255,255,255,.04);
@@ -80,7 +77,6 @@
             --font-mono:       'Space Grotesk', monospace;
         }
 
-        /* === СВЕТЛАЯ ТЕМА === */
         [data-theme="light"] {
             --bg:              #FFF8F5;
             --bg-2:            #FDF2F8;
@@ -120,6 +116,7 @@
             --grad-aurora:     linear-gradient(135deg, #7C3AED 0%, #0891B2 100%);
             --grad-sunset:     linear-gradient(135deg, #EA580C 0%, #DB2777 50%, #7C3AED 100%);
             --grad-mix:        linear-gradient(135deg, #7C3AED 0%, #DB2777 50%, #EA580C 100%);
+            --grad-flow:       linear-gradient(90deg, #7C3AED, #0891B2, #DB2777, #EA580C, #7C3AED);
 
             --glass:           rgba(255,255,255,.78);
             --glass-2:         rgba(15,10,30,.03);
@@ -174,93 +171,228 @@
         ::selection { background: var(--accent-soft); color: var(--accent); }
 
         /* ============================================================
-           ПРЕЛОАДЕР — СТАРАЯ АНИМАЦИЯ (как в исходнике)
+           ГРАДИЕНТНЫЕ АНИМАЦИИ
            ============================================================ */
-        #preloader {
+        @keyframes gradient-flow {
+            0%   { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        @keyframes gradient-flow-rev {
+            0%   { background-position: 200% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes brand-pulse {
+            0%, 100% { filter: drop-shadow(0 0 8px var(--accent-glow)); }
+            50%      { filter: drop-shadow(0 0 20px var(--accent-glow)); }
+        }
+        @keyframes shine {
+            0%   { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .brand-animated {
+            background: var(--grad-flow);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: gradient-flow 4s linear infinite, brand-pulse 3s ease-in-out infinite;
+        }
+        .brand-team-animated {
+            background: var(--grad-flow);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: gradient-flow-rev 5s linear infinite;
+        }
+
+        /* ============================================================
+           SPLASH (СТАРАЯ АНИМАЦИЯ ИЗ ИСХОДНИКА)
+           ============================================================ */
+        #splash-screen {
             position: fixed;
             inset: 0;
             background: var(--bg);
+            z-index: 9999;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            z-index: 9999;
+            justify-content: center;
+            gap: .8rem;
             transition: opacity .5s ease, visibility .5s ease;
             background-image:
                 radial-gradient(900px 500px at 50% 40%, var(--accent-soft), transparent 70%);
         }
-        #preloader.hidden {
+        #splash-screen.hidden {
             opacity: 0;
             visibility: hidden;
             pointer-events: none;
         }
-        .preloader-container {
+        .splash-icon {
+            width: 96px;
+            height: 96px;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px var(--accent-glow), 0 0 0 2px var(--border-strong);
+            animation: splash-zoom 1.2s ease-out;
             position: relative;
-            width: 180px;
-            height: 180px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
-        .preloader-spinner {
+        .splash-icon::after {
+            content: '';
             position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            border: 4px solid var(--border);
-            border-top: 4px solid var(--accent);
-            border-radius: 50%;
-            animation: preloader-spin 1.2s linear infinite;
+            inset: 0;
+            background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.25) 50%, transparent 70%);
+            background-size: 200% 100%;
+            animation: shine 2s ease-in-out infinite;
+            pointer-events: none;
         }
-        .preloader-logo {
-            width: 130px;
-            height: 130px;
-            border-radius: 50%;
+        .splash-icon img {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
-            animation: preloader-pulse 1.8s infinite ease-in-out;
-            box-shadow: var(--shadow-md);
-            border: 2px solid var(--border-strong);
         }
-        .preloader-title {
-            margin-top: 22px;
-            font-family: var(--font-body);
-            font-size: 26px;
+        .splash-title {
             font-weight: 800;
+            font-size: 2rem;
             letter-spacing: -.02em;
-            background: var(--grad-mix);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+            margin-top: .5rem;
         }
-        .preloader-team {
-            margin-top: 4px;
+        .splash-subtitle {
             font-family: var(--font-mono);
-            font-size: 14px;
-            font-weight: 600;
-            letter-spacing: .12em;
+            font-size: .9rem;
             color: var(--muted);
-        }
-        .preloader-text {
-            margin-top: 20px;
-            font-family: var(--font-body);
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--muted);
-            letter-spacing: 3px;
+            letter-spacing: .2em;
             text-transform: uppercase;
-            animation: preloader-fade 1.5s infinite ease-in-out;
         }
-        @keyframes preloader-spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @keyframes splash-zoom {
+            0%   { transform: scale(.3); opacity: 0; }
+            60%  { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
         }
-        @keyframes preloader-pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.04); }
+
+        /* ============================================================
+           LOADER (СПИННЕР — ДЛЯ ЗАГРУЗКИ И ПРОБЛЕМ)
+           ============================================================ */
+        .loader-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.55);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .25s ease, visibility .25s ease;
         }
-        @keyframes preloader-fade {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 1; }
+        .loader-overlay.show {
+            opacity: 1;
+            visibility: visible;
         }
+        .loader-spinner-big {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent);
+            border-right: 3px solid var(--accent-2);
+            border-radius: 50%;
+            animation: spin .9s linear infinite;
+        }
+        .loader-overlay-text {
+            color: var(--text);
+            font-size: .9rem;
+            font-weight: 600;
+            letter-spacing: .05em;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loader {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--accent);
+            border-right: 3px solid var(--accent-2);
+            border-radius: 50%;
+            width: 34px; height: 34px;
+            animation: spin .9s linear infinite;
+            margin: 25px auto;
+        }
+
+        /* ============================================================
+           TOP PROGRESS BAR
+           ============================================================ */
+        .top-progress {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--grad-flow);
+            background-size: 200% auto;
+            animation: gradient-flow 2s linear infinite;
+            z-index: 9997;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform .3s ease, opacity .3s ease;
+            opacity: 0;
+        }
+        .top-progress.active {
+            transform: scaleX(1);
+            opacity: 1;
+        }
+
+        /* ============================================================
+           OFFLINE BANNER
+           ============================================================ */
+        .offline-banner {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            padding: 8px 12px;
+            background: var(--danger);
+            color: #fff;
+            font-size: .78rem;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: .03em;
+            z-index: 9998;
+            transform: translateY(-100%);
+            transition: transform .3s ease;
+            padding-top: calc(8px + env(safe-area-inset-top));
+        }
+        .offline-banner.visible { transform: translateY(0); }
+
+        /* ============================================================
+           BACK TO TOP
+           ============================================================ */
+        .back-to-top {
+            position: fixed;
+            bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
+            right: 16px;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: var(--grad-aurora);
+            color: #fff;
+            border: none;
+            box-shadow: 0 6px 24px var(--accent-glow);
+            cursor: pointer;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 90;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px) scale(.8);
+            transition: opacity .3s ease, visibility .3s ease, transform .3s cubic-bezier(.2,.8,.2,1);
+        }
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+        }
+        .back-to-top:active { transform: scale(.9); }
 
         /* ============================================================
            КОНТЕЙНЕР
@@ -306,38 +438,35 @@
             flex-shrink: 0;
             cursor: pointer;
             border: 2px solid transparent;
-            background-image: linear-gradient(var(--card), var(--card)), var(--grad-aurora);
+            background-image: linear-gradient(var(--card), var(--card)), var(--grad-flow);
+            background-size: 100% 100%, 200% auto;
             background-origin: border-box;
             background-clip: padding-box, border-box;
             transition: transform .2s ease;
+            animation: gradient-flow 4s linear infinite;
         }
         .header-logo:active { transform: scale(.92); }
-        .header-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .header-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
         .header-brand {
             display: flex;
             flex-direction: column;
             line-height: 1;
             white-space: nowrap;
             flex-shrink: 0;
+            cursor: pointer;
         }
         .header-title {
-            font-family: var(--font-body);
             font-weight: 800;
             font-size: 1rem;
             letter-spacing: -.02em;
-            background: var(--grad-mix);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            line-height: 1.1;
+            line-height: 1.15;
         }
         .header-team {
-            margin-top: 3px;
+            margin-top: 4px;
             font-family: var(--font-mono);
-            font-size: .62rem;
-            font-weight: 600;
-            letter-spacing: .1em;
-            color: var(--muted);
+            font-size: .64rem;
+            font-weight: 700;
+            letter-spacing: .12em;
             line-height: 1;
             white-space: nowrap;
         }
@@ -455,7 +584,6 @@
             transform: translateY(0);
         }
         .section h2 {
-            font-family: var(--font-body);
             font-size: 1.5rem;
             font-weight: 800;
             letter-spacing: -.03em;
@@ -463,7 +591,6 @@
             color: var(--text);
         }
         .section h3 {
-            font-family: var(--font-body);
             font-size: 1.1rem;
             font-weight: 700;
             letter-spacing: -.01em;
@@ -472,6 +599,39 @@
             display: flex;
             align-items: center;
             gap: .4rem;
+        }
+
+        /* ============================================================
+           SORT BAR
+           ============================================================ */
+        .sort-bar {
+            display: flex;
+            gap: .4rem;
+            margin-bottom: .8rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding-bottom: .2rem;
+        }
+        .sort-bar::-webkit-scrollbar { display: none; }
+        .sort-chip {
+            padding: .45rem .9rem;
+            border-radius: var(--radius-pill);
+            background: var(--glass-2);
+            border: 1px solid var(--border);
+            font-size: .75rem;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all .2s ease;
+            letter-spacing: .02em;
+        }
+        .sort-chip:hover { color: var(--text); border-color: var(--border-strong); }
+        .sort-chip.active {
+            background: var(--grad-aurora);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 2px 12px var(--accent-glow);
         }
 
         /* ============================================================
@@ -493,8 +653,16 @@
             border-color: var(--border-strong);
         }
         .card:active { transform: scale(.985); }
-        .card.inactive-card {
-            opacity: .55;
+        .card.inactive-card { opacity: .55; }
+        .card.viewed { opacity: .72; }
+        .card.viewed .ad-card-title { color: var(--muted); }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(14px) scale(.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .card.animate-in {
+            animation: cardIn .45s cubic-bezier(.2,.8,.2,1) backwards;
         }
 
         /* ============================================================
@@ -504,6 +672,7 @@
             display: flex;
             gap: .85rem;
             align-items: flex-start;
+            position: relative;
         }
         .ad-card-img {
             width: 86px; height: 106px;
@@ -515,7 +684,6 @@
         }
         .ad-card-info { flex: 1; min-width: 0; }
         .ad-card-title {
-            font-family: var(--font-body);
             font-weight: 700;
             font-size: 1rem;
             margin-bottom: .2rem;
@@ -524,6 +692,7 @@
             text-overflow: ellipsis;
             letter-spacing: -.01em;
             color: var(--text);
+            padding-right: 32px;
         }
         .ad-card-price {
             font-family: var(--font-mono);
@@ -547,6 +716,65 @@
             color: var(--muted);
             margin-top: .25rem;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: .3rem;
+            flex-wrap: wrap;
+        }
+        .ad-card-rating {
+            display: inline-flex;
+            align-items: center;
+            gap: .15rem;
+            font-size: .68rem;
+            color: var(--warning);
+            font-weight: 700;
+        }
+        .verified-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            background: var(--grad-aurora);
+            border-radius: 50%;
+            color: #fff;
+            font-size: .55rem;
+            font-weight: 900;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+        .fav-heart {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--glass-2);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .9rem;
+            cursor: pointer;
+            transition: all .2s ease;
+            z-index: 2;
+        }
+        .fav-heart:hover {
+            background: var(--pink-soft);
+            color: var(--pink);
+            border-color: var(--pink);
+        }
+        .fav-heart.active {
+            background: var(--pink-soft);
+            color: var(--pink);
+            border-color: var(--pink);
+            animation: heart-pop .3s ease;
+        }
+        @keyframes heart-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
         }
 
         /* ============================================================
@@ -567,41 +795,13 @@
             text-transform: uppercase;
             border: 1px solid var(--border);
         }
-        .badge.sell {
-            background: var(--success-soft);
-            color: var(--success);
-            border-color: transparent;
-        }
-        .badge.buy {
-            background: var(--info-soft);
-            color: var(--info);
-            border-color: transparent;
-        }
-        .badge.server {
-            background: var(--accent-soft);
-            color: var(--accent);
-            border-color: transparent;
-        }
-        .badge.category {
-            background: var(--cyan-soft);
-            color: var(--accent-2);
-            border-color: transparent;
-        }
-        .badge.status-pending {
-            background: var(--warning-soft);
-            color: var(--warning);
-            border-color: transparent;
-        }
-        .badge.status-deleted {
-            background: var(--danger-soft);
-            color: var(--danger);
-            border-color: transparent;
-        }
-        .badge.status-approved {
-            background: var(--success-soft);
-            color: var(--success);
-            border-color: transparent;
-        }
+        .badge.sell { background: var(--success-soft); color: var(--success); border-color: transparent; }
+        .badge.buy { background: var(--info-soft); color: var(--info); border-color: transparent; }
+        .badge.server { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+        .badge.category { background: var(--cyan-soft); color: var(--accent-2); border-color: transparent; }
+        .badge.status-pending { background: var(--warning-soft); color: var(--warning); border-color: transparent; }
+        .badge.status-deleted { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+        .badge.status-approved { background: var(--success-soft); color: var(--success); border-color: transparent; }
 
         /* ============================================================
            КНОПКИ
@@ -632,6 +832,8 @@
             color: #fff;
             border-color: transparent;
             box-shadow: 0 4px 20px var(--accent-glow);
+            background-size: 200% auto;
+            animation: gradient-flow 4s linear infinite;
         }
         .btn.primary:hover {
             filter: brightness(1.1);
@@ -659,6 +861,8 @@
         }
         .btn.gold {
             background: var(--grad-sunset);
+            background-size: 200% auto;
+            animation: gradient-flow 4s linear infinite;
             color: #fff;
             border-color: transparent;
             box-shadow: 0 4px 20px rgba(236,72,153,.3);
@@ -669,10 +873,7 @@
             color: var(--success);
             border-color: var(--success);
         }
-        .btn.success:hover {
-            background: var(--success);
-            color: #fff;
-        }
+        .btn.success:hover { background: var(--success); color: #fff; }
         .btn.w-full { width: 100%; }
 
         /* ============================================================
@@ -720,6 +921,7 @@
             color: var(--text);
             display: flex; align-items: center; justify-content: center;
             transition: all .2s ease;
+            z-index: 2;
         }
         .modal-close:hover {
             background: var(--accent);
@@ -727,7 +929,6 @@
             border-color: var(--accent);
         }
         .modal-title {
-            font-family: var(--font-body);
             font-weight: 800;
             font-size: 1.25rem;
             letter-spacing: -.02em;
@@ -770,9 +971,7 @@
             background: var(--card);
         }
         .form-group input::placeholder,
-        .form-group textarea::placeholder {
-            color: var(--muted-2);
-        }
+        .form-group textarea::placeholder { color: var(--muted-2); }
         .form-group textarea {
             min-height: 100px;
             resize: vertical;
@@ -840,30 +1039,27 @@
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid transparent;
-            background-image: linear-gradient(var(--card), var(--card)), var(--grad-aurora);
+            background-image: linear-gradient(var(--card), var(--card)), var(--grad-flow);
+            background-size: 100% 100%, 200% auto;
             background-origin: border-box;
             background-clip: padding-box, border-box;
             box-shadow: 0 0 40px var(--accent-glow);
+            animation: gradient-flow 4s linear infinite;
+            padding: 2px;
         }
         .auth-title {
             text-align: center;
-            font-family: var(--font-body);
             font-weight: 800;
             font-size: 1.7rem;
             letter-spacing: -.03em;
-            background: var(--grad-mix);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
             line-height: 1.1;
         }
         .auth-team {
             text-align: center;
             font-family: var(--font-mono);
-            font-weight: 600;
+            font-weight: 700;
             font-size: .85rem;
             letter-spacing: .16em;
-            color: var(--muted);
             margin-top: .3rem;
             margin-bottom: 1.5rem;
         }
@@ -893,6 +1089,8 @@
         .auth-tab.active {
             color: #fff;
             background: var(--grad-aurora);
+            background-size: 200% auto;
+            animation: gradient-flow 4s linear infinite;
             box-shadow: 0 2px 12px var(--accent-glow);
         }
         .auth-theme-toggle {
@@ -963,17 +1161,8 @@
         }
 
         /* ============================================================
-           LOADER / SKELETON
+           SKELETON
            ============================================================ */
-        .loader {
-            border: 3px solid var(--border);
-            border-top: 3px solid var(--accent);
-            border-radius: 50%;
-            width: 34px; height: 34px;
-            animation: spin .9s linear infinite;
-            margin: 25px auto;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
         .skeleton {
             background: linear-gradient(90deg, var(--border) 25%, var(--card-2) 50%, var(--border) 75%);
             background-size: 200% 100%;
@@ -984,6 +1173,29 @@
             0%   { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
+        .skeleton-card {
+            display: flex;
+            gap: .85rem;
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            margin-bottom: .9rem;
+        }
+        .skeleton-img {
+            width: 86px; height: 106px;
+            border-radius: var(--radius-sm);
+            flex-shrink: 0;
+        }
+        .skeleton-info { flex: 1; display: flex; flex-direction: column; gap: .5rem; }
+        .skeleton-line {
+            height: 14px;
+            border-radius: 7px;
+        }
+        .skeleton-line.short { width: 40%; }
+        .skeleton-line.medium { width: 65%; }
+        .skeleton-line.price { height: 22px; width: 50%; }
+        .skeleton-line.badge { height: 18px; width: 30%; border-radius: 999px; }
 
         /* ============================================================
            GRID TILES
@@ -1011,6 +1223,7 @@
             border-color: var(--accent);
             color: var(--accent);
             box-shadow: 0 0 0 3px var(--accent-soft);
+            transform: translateY(-2px);
         }
         .grid-tile:active { transform: scale(.96); }
         .grid-tile.active {
@@ -1120,6 +1333,8 @@
         .progress-fill {
             height: 100%;
             background: var(--grad-aurora);
+            background-size: 200% auto;
+            animation: gradient-flow 3s linear infinite;
             border-radius: 3px;
             transition: width .4s ease;
         }
@@ -1179,7 +1394,6 @@
             background: var(--bg);
         }
         .ban-screen h1 {
-            font-family: var(--font-body);
             font-size: 1.8rem;
             font-weight: 800;
             color: var(--danger);
@@ -1189,7 +1403,6 @@
         .ban-screen a { color: var(--accent); text-decoration: underline; }
         .ban-brand {
             font-family: var(--font-mono);
-            color: var(--muted);
             font-size: .85rem;
             letter-spacing: .12em;
             margin-top: .5rem;
@@ -1232,32 +1445,41 @@
             padding: 1.5rem 1rem 1rem;
             font-family: var(--font-mono);
             font-size: .78rem;
-            color: var(--muted);
             letter-spacing: .1em;
         }
     </style>
 </head>
 <body>
 
-    <!-- ПРЕЛОАДЕР — СТАРАЯ АНИМАЦИЯ -->
-    <div id="preloader">
-        <div class="preloader-container">
-            <div class="preloader-spinner"></div>
-            <img src="https://i.postimg.cc/mgk2RL4g/1788361335674.jpg" alt="Arizona Online" class="preloader-logo">
+    <!-- SPLASH (старая анимация из исходника) -->
+    <div id="splash-screen">
+        <div class="splash-icon">
+            <img src="https://i.postimg.cc/mgk2RL4g/1788361335674.jpg" alt="Arizona Online">
         </div>
-        <div class="preloader-title">Arizona Online</div>
-        <div class="preloader-team">× Bounty Team</div>
-        <div class="preloader-text">Загрузка...</div>
+        <div class="splash-title brand-animated">Arizona Online</div>
+        <div class="splash-subtitle brand-team-animated">× Bounty Team</div>
     </div>
+
+    <!-- LOADER (спиннер — для загрузки/проблем) -->
+    <div class="loader-overlay" id="loaderOverlay">
+        <div class="loader-spinner-big"></div>
+        <div class="loader-overlay-text" id="loaderOverlayText">Загрузка...</div>
+    </div>
+
+    <!-- TOP PROGRESS BAR -->
+    <div class="top-progress" id="topProgress"></div>
+
+    <!-- OFFLINE BANNER -->
+    <div class="offline-banner" id="offlineBanner">📶 Нет подключения к интернету</div>
 
     <!-- HEADER -->
     <header class="header" id="appHeader" style="display:none;">
         <div class="header-logo" id="logoBtn" role="button" aria-label="Сообщества">
             <img id="headerLogoImg" src="https://i.postimg.cc/nV1HDjcb/1788346659518.jpg" alt="Logo">
         </div>
-        <div class="header-brand">
-            <div class="header-title">Arizona Online</div>
-            <div class="header-team">× Bounty Team</div>
+        <div class="header-brand" id="headerBrand">
+            <div class="header-title brand-animated">Arizona Online</div>
+            <div class="header-team brand-team-animated">× Bounty Team</div>
         </div>
         <div class="header-search" id="headerSearchTrigger">
             <input type="text" placeholder="🔍 Поиск" readonly>
@@ -1271,7 +1493,14 @@
             <div id="serverSelector">
                 <button class="btn secondary w-full" id="serverSelectBtn">🌐 Все сервера</button>
             </div>
-            <div class="ads-grid mt-12" id="homeFeed"></div>
+            <div class="sort-bar mt-12" id="sortBar">
+                <div class="sort-chip active" data-sort="new">🔥 Новые</div>
+                <div class="sort-chip" data-sort="cheap">💰 Дешевле</div>
+                <div class="sort-chip" data-sort="expensive">💎 Дороже</div>
+                <div class="sort-chip" data-sort="sell">📤 Продажа</div>
+                <div class="sort-chip" data-sort="buy">📥 Покупка</div>
+            </div>
+            <div class="ads-grid" id="homeFeed"></div>
             <div id="loadMoreTrigger"></div>
         </section>
 
@@ -1325,10 +1554,14 @@
             <div class="grid-tiles" id="allTiles"></div>
             <h3>📦 Мои объявления</h3>
             <div id="myAdsList"></div>
-            <div class="brand-footer">Arizona Online × Bounty Team</div>
+            <div class="brand-footer"><span class="brand-animated">Arizona Online</span> <span class="brand-team-animated">× Bounty Team</span></div>
         </section>
     </main>
 
+    <!-- BACK TO TOP -->
+    <button class="back-to-top" id="backToTop" aria-label="Наверх">↑</button>
+
+    <!-- NAV -->
     <nav class="nav-bar" id="navBar" style="display:none;">
         <button class="nav-item active" data-section="home" aria-label="Главная"><span class="nav-icon">🏠</span><span>Главная</span></button>
         <button class="nav-item" data-section="cart" aria-label="Корзина"><span class="nav-icon">🛒</span><span>Корзина</span></button>
@@ -1377,25 +1610,34 @@
     const AD_EXPIRY_HOURS = 48;
     const NEW_USER_LIMIT = 3;
     const FEED_PAGE_SIZE = 20;
-    const PRELOADER_MIN_TIME = 1800;
+    const SPLASH_DURATION = 3000;
     const SUBMIT_COOLDOWN_MS = 120000;
+    const VERIFIED_MIN_RATING = 4.5;
     const FORBIDDEN_WORDS = ['продам аккаунт','куплю аккаунт','продажа аккаунтов','обмен аккаунтами','наркотики','оружие без лицензии'];
+    const CACHE_KEY_ADS = 'arizona_cache_ads';
+    const VIEWED_KEY = 'arizona_viewed';
+    const CACHE_TTL = 5 * 60 * 1000;
 
     /* ============================================================
        СОСТОЯНИЕ
        ============================================================ */
     let tg = null, supabaseClient = null, currentUser = null;
     let currentSection = 'home', currentTheme = 'dark', sfxEnabled = true;
-    let currentFilterServer = null, isAdmin = false, isOwner = false;
+    let currentFilterServer = null, currentSort = 'new', isAdmin = false, isOwner = false;
     let audioCtx = null, wakeLock = null, unreadNotifications = 0;
     let userSettings = {}, userProgress = {};
     let homeAds = [], cartAds = [], myAds = [], pendingAds = [], pendingAppeals = [], pendingReports = [], pendingUserReports = [], searchHistory = [];
+    let userRatings = {};
+    let cartIds = new Set();
+    let viewedIds = new Set();
     let allTilesLoaded = false;
     let feedPage = 0, isLoadingFeed = false, hasMoreAds = true;
     let appealAdId = null;
     let sendFormData = { type: 'sell', category: null, server: null };
     let adminPasswordHash = null;
     let feedObserver = null;
+    let splashShown = false;
+    let loaderTimeout = null;
 
     /* ============================================================
        УТИЛИТЫ
@@ -1407,12 +1649,12 @@
             new Promise(function(_, rej) { setTimeout(function() { rej(new Error('Timeout ' + ms + 'ms')); }, ms); })
         ]);
     }
-
     function log() {}
     function warn() {
         console.warn.apply(console, ['[Arizona]'].concat(Array.prototype.slice.call(arguments)));
     }
 
+    /* ---------- ЗВУК ---------- */
     function playSfx(type) {
         type = type || 'click';
         if (!sfxEnabled) return;
@@ -1433,7 +1675,6 @@
             osc.stop(audioCtx.currentTime + 0.04);
         } catch (e) {}
     }
-
     function hapticFeedback(style) {
         style = style || 'light';
         if (tg && tg.HapticFeedback) {
@@ -1441,6 +1682,7 @@
         }
     }
 
+    /* ---------- TOAST ---------- */
     function showToast(message, type, duration) {
         type = type || 'info';
         duration = duration || 3000;
@@ -1457,9 +1699,30 @@
         }, duration);
     }
 
-    /* SHA-256 fallback */
-    const SALT = 'ArizonaOnlineSalt_2024';
+    /* ---------- LOADER ---------- */
+    function showLoader(text) {
+        const el = document.getElementById('loaderOverlay');
+        const txt = document.getElementById('loaderOverlayText');
+        if (txt) txt.textContent = text || 'Загрузка...';
+        if (el) el.classList.add('show');
+    }
+    function hideLoader() {
+        const el = document.getElementById('loaderOverlay');
+        if (el) el.classList.remove('show');
+    }
 
+    /* ---------- TOP PROGRESS ---------- */
+    function showTopProgress() {
+        const el = document.getElementById('topProgress');
+        if (el) el.classList.add('active');
+    }
+    function hideTopProgress() {
+        const el = document.getElementById('topProgress');
+        if (el) { el.classList.remove('active'); el.style.transform = 'scaleX(0)'; }
+    }
+
+    /* ---------- SHA-256 (c fallback) ---------- */
+    const SALT = 'ArizonaOnlineSalt_2024';
     function sha256Fallback(ascii) {
         function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
         const mathPow = Math.pow;
@@ -1519,7 +1782,6 @@
         }
         return result;
     }
-
     async function hashPassword(password) {
         const data = SALT + password;
         if (window.crypto && window.crypto.subtle && typeof window.crypto.subtle.digest === 'function') {
@@ -1533,6 +1795,7 @@
         return sha256Fallback(unescape(encodeURIComponent(data)));
     }
 
+    /* ---------- THEME ---------- */
     function applyTheme() {
         document.documentElement.setAttribute('data-theme', currentTheme);
         const logoImg = document.getElementById('headerLogoImg');
@@ -1547,6 +1810,7 @@
         if (tg && tg.setBackgroundColor) tg.setBackgroundColor(currentTheme === 'dark' ? '#0F0A1E' : '#FFF8F5');
     }
 
+    /* ---------- ЦЕНА ---------- */
     function formatPrice(value) {
         if (!value && value !== 0) return '0';
         let num = typeof value === 'string' ? value.toLowerCase() : value.toString();
@@ -1564,7 +1828,6 @@
         if (num >= 1000)       return (num / 1000).toFixed(num % 1000 === 0 ? 0 : 1) + 'к';
         return num.toString();
     }
-
     function parsePriceToNumber(str) {
         if (!str) return 0;
         str = str.toLowerCase().trim();
@@ -1575,7 +1838,6 @@
         else if (kCount === 3) num *= 1000000000;
         return num;
     }
-
     function formatPriceInputHandler(e) {
         const input = e.target;
         let val = input.value.toLowerCase().replace(/[^0-9к]/g, '');
@@ -1588,6 +1850,7 @@
         input.value = formatPrice(num);
     }
 
+    /* ---------- ССЫЛКИ ---------- */
     function isAllowedLink(url) {
         try {
             const u = new URL(url);
@@ -1595,7 +1858,6 @@
             return ALLOWED_DOMAINS.some(function(d) { return host === d || host.endsWith('.' + d); });
         } catch (e) { return false; }
     }
-
     function checkLinksString(str) {
         if (!str || !str.trim()) return { valid: true, links: [] };
         const links = str.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
@@ -1605,14 +1867,12 @@
         }
         return { valid: true, links: links };
     }
-
     function checkForbiddenWords(text) {
         if (!text) return null;
         const lower = text.toLowerCase();
         const found = FORBIDDEN_WORDS.some(function(word) { return lower.indexOf(word) !== -1; });
         return found ? '⚠️ Текст содержит запрещённые слова' : null;
     }
-
     async function checkLinkSafety(url) {
         const suspiciousDomains = ['phishing.com', 'malware.org', 'scam.net'];
         try {
@@ -1624,27 +1884,66 @@
         } catch (e) { return { safe: false, message: 'Некорректная ссылка' }; }
     }
 
+    /* ---------- CACHE ---------- */
+    function saveAdsCache(ads) {
+        try {
+            localStorage.setItem(CACHE_KEY_ADS, JSON.stringify({ ts: Date.now(), data: ads.slice(0, 40) }));
+        } catch (e) {}
+    }
+    function loadAdsCache() {
+        try {
+            const raw = localStorage.getItem(CACHE_KEY_ADS);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (Date.now() - parsed.ts > CACHE_TTL) return null;
+            return parsed.data || null;
+        } catch (e) { return null; }
+    }
+
+    /* ---------- VIEWED ---------- */
+    function loadViewedIds() {
+        try {
+            const raw = localStorage.getItem(VIEWED_KEY);
+            if (raw) { viewedIds = new Set(JSON.parse(raw)); }
+        } catch (e) { viewedIds = new Set(); }
+    }
+    function saveViewedIds() {
+        try {
+            localStorage.setItem(VIEWED_KEY, JSON.stringify(Array.from(viewedIds).slice(-200)));
+        } catch (e) {}
+    }
+    function markViewed(adId) {
+        if (!viewedIds.has(adId)) {
+            viewedIds.add(adId);
+            saveViewedIds();
+        }
+    }
+
+    /* ---------- RATINGS ---------- */
+    function getRatingForAuthor(authorId) {
+        return userRatings[authorId] || null;
+    }
+
+    /* ============================================================
+       TELEGRAM / SUPABASE
+       ============================================================ */
     function initTelegram() {
         try {
             if (window.Telegram && window.Telegram.WebApp) {
                 tg = window.Telegram.WebApp;
                 tg.expand();
                 tg.ready();
-                if (tg.setHeaderColor) tg.setHeaderColor('#0F0A1E');
-                if (tg.setBackgroundColor) tg.setBackgroundColor('#0F0A1E');
+                if (tg.setHeaderColor) tg.setHeaderColor(currentTheme === 'dark' ? '#0F0A1E' : '#FFF8F5');
+                if (tg.setBackgroundColor) tg.setBackgroundColor(currentTheme === 'dark' ? '#0F0A1E' : '#FFF8F5');
                 const initData = tg.initDataUnsafe || {};
                 return initData.user ? (initData.user.username || '') : null;
             }
             return null;
         } catch (e) { warn('TG init:', e); return null; }
     }
-
     function initSupabase() {
         try {
-            if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
-                warn('supabase-js не загружен');
-                return false;
-            }
+            if (typeof window.supabase === 'undefined' || !window.supabase.createClient) return false;
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
                 auth: { persistSession: false, autoRefreshToken: false }
             });
@@ -1672,7 +1971,6 @@
         overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
         return { overlay: overlay, closeModal: closeModal };
     }
-
     function showAlert(title, message, type) {
         type = type || 'info';
         const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
@@ -1686,7 +1984,6 @@
         );
         document.getElementById('alertOkBtn').addEventListener('click', ref.closeModal);
     }
-
     function showConfirm(title, message, onConfirm) {
         const ref = showModal(
             '<div style="text-align:center;">' +
@@ -1703,6 +2000,22 @@
     }
 
     /* ============================================================
+       SPLASH
+       ============================================================ */
+    function hideSplash() {
+        const splash = document.getElementById('splash-screen');
+        if (splash && !splash.classList.contains('hidden')) {
+            splash.classList.add('hidden');
+            playSfx('splash');
+        }
+    }
+    function showApp() {
+        document.getElementById('appHeader').style.display = 'flex';
+        document.getElementById('mainContainer').style.display = 'block';
+        document.getElementById('navBar').style.display = 'flex';
+    }
+
+    /* ============================================================
        АУТЕНТИФИКАЦИЯ
        ============================================================ */
     async function loginWithUsername(username, password) {
@@ -1715,13 +2028,14 @@
             return false;
         }
         try {
+            showTopProgress();
             const hashedPassword = await hashPassword(password);
             const res = await withTimeout(
                 supabaseClient.from('app_users').select('*').eq('username', username).maybeSingle(),
                 8000
             );
+            hideTopProgress();
             if (res.error) {
-                warn('Ошибка запроса:', res.error);
                 showAlert('Ошибка соединения', res.error.message || 'Не удалось запросить пользователя', 'error');
                 return false;
             }
@@ -1735,18 +2049,17 @@
                         telegram_id: tg.initDataUnsafe.user.id,
                         telegram_username: tg.initDataUnsafe.user.username
                     }).eq('id', user.id);
-                } catch (e) { warn('tg_id update:', e); }
+                } catch (e) {}
             }
             currentUser = user;
             localStorage.setItem('arizona_current_user', JSON.stringify(user));
             return true;
         } catch (e) {
-            warn('Login error:', e);
+            hideTopProgress();
             showToast('Ошибка: ' + (e.message || 'неизвестно'), 'error');
             return false;
         }
     }
-
     async function registerUser(username, password) {
         if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
             showToast('Логин: 3-20 символов (латиница, цифры, _)', 'error');
@@ -1757,13 +2070,14 @@
             return false;
         }
         try {
+            showTopProgress();
             const hashedPassword = await hashPassword(password);
             const checkRes = await withTimeout(
                 supabaseClient.from('app_users').select('id').eq('username', username).maybeSingle(),
                 8000
             );
-            if (checkRes.error) { showAlert('Ошибка соединения', checkRes.error.message, 'error'); return false; }
-            if (checkRes.data) { showAlert('Ошибка', 'Пользователь с таким именем уже существует', 'error'); return false; }
+            if (checkRes.error) { hideTopProgress(); showAlert('Ошибка соединения', checkRes.error.message, 'error'); return false; }
+            if (checkRes.data) { hideTopProgress(); showAlert('Ошибка', 'Пользователь с таким именем уже существует', 'error'); return false; }
 
             const newUser = {
                 username: username,
@@ -1778,6 +2092,7 @@
                 supabaseClient.from('app_users').insert(newUser).select().single(),
                 8000
             );
+            hideTopProgress();
             if (insertRes.error) { showAlert('Ошибка БД', insertRes.error.message || 'Не удалось создать аккаунт', 'error'); return false; }
             currentUser = insertRes.data;
             localStorage.setItem('arizona_current_user', JSON.stringify(currentUser));
@@ -1786,7 +2101,7 @@
             try { await supabaseClient.from('user_progress').insert({ user_id: currentUser.id, tutorial_completed: false, admin_tutorial_completed: false }); } catch (e) {}
             return true;
         } catch (e) {
-            warn('Register error:', e);
+            hideTopProgress();
             showToast('Ошибка: ' + (e.message || 'неизвестно'), 'error');
             return false;
         }
@@ -1814,8 +2129,8 @@
                     '<button class="auth-theme-toggle" id="authThemeToggle" aria-label="Тема">🌓</button>' +
                     '<div class="auth-box">' +
                         '<div class="auth-logo-wrap"><img src="' + logoImg + '" class="auth-logo" alt="Logo"></div>' +
-                        '<h2 class="auth-title">Arizona Online</h2>' +
-                        '<p class="auth-team">× BOUNTY TEAM</p>' +
+                        '<h2 class="auth-title brand-animated">Arizona Online</h2>' +
+                        '<p class="auth-team brand-team-animated">× BOUNTY TEAM</p>' +
                         '<div class="auth-tabs">' +
                             '<button class="auth-tab ' + (mode === 'login' ? 'active' : '') + '" id="authTabLogin" type="button">Вход</button>' +
                             '<button class="auth-tab ' + (mode === 'register' ? 'active' : '') + '" id="authTabRegister" type="button">Создать</button>' +
@@ -1867,7 +2182,8 @@
                     else success = await registerUser(username, password);
                     if (success) {
                         container.innerHTML = '';
-                        hidePreloaderAndShowApp();
+                        showApp();
+                        try { initApp(); } catch (e) { warn('initApp error:', e); }
                         return;
                     }
                 } catch (e) {
@@ -1881,7 +2197,6 @@
                     }
                 }
             });
-
             const pw = document.getElementById('authPassword');
             if (pw) pw.addEventListener('keydown', function(e) { if (e.key === 'Enter') submitBtn.click(); });
             setTimeout(function() { const u = document.getElementById('authUsername'); if (u) u.focus(); }, 150);
@@ -1896,33 +2211,34 @@
                 '<h1>Доступ закрыт</h1>' +
                 '<p>Ваш аккаунт заблокирован. Обратитесь к администрации:</p>' +
                 '<a href="https://t.me/bounqy31" target="_blank">@bounqy31</a>' +
-                '<div class="ban-brand">ARIZONA ONLINE × BOUNTY TEAM</div>' +
+                '<div class="ban-brand"><span class="brand-animated">Arizona Online</span> <span class="brand-team-animated">× Bounty Team</span></div>' +
             '</div>'
         );
     }
 
-    function hidePreloaderAndShowApp() {
-        const preloader = document.getElementById('preloader');
-        if (preloader) preloader.classList.add('hidden');
-        document.getElementById('appHeader').style.display = 'flex';
-        document.getElementById('mainContainer').style.display = 'block';
-        document.getElementById('navBar').style.display = 'flex';
-        try { initApp(); } catch (e) { warn('initApp error:', e); }
-    }
-
+    /* ============================================================
+       ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ
+       ============================================================ */
     async function initApp() {
         if (!currentUser) { showAuthScreen(); return; }
         isAdmin = !!currentUser.is_admin || currentUser.username === OWNER_USERNAME;
         isOwner = currentUser.username === OWNER_USERNAME;
         const adminBtn = document.getElementById('adminNavBtn');
         if (adminBtn) adminBtn.classList.toggle('hidden', !isAdmin);
+
+        loadViewedIds();
         await loadSearchHistory();
         await loadNotificationsCount();
         await loadUserSettingsAndProgress();
         if (isAdmin) adminPasswordHash = userSettings.admin_password_hash || null;
+        await loadUserRatings();
+
         switchSection('home');
         setupServerSelector();
+        setupSortBar();
         setupInfiniteScroll();
+        setupBackToTop();
+        setupNetworkListeners();
         requestWakeLock();
     }
 
@@ -1960,7 +2276,6 @@
             searchHistory = res.data ? res.data.map(function(i) { return i.query; }) : [];
         } catch (e) { searchHistory = []; }
     }
-
     async function saveSearchQuery(query) {
         if (!currentUser || !query) return;
         try {
@@ -1970,9 +2285,8 @@
                 await supabaseClient.from('search_history').delete().in('id', idsRes.data.map(function(r) { return r.id; }));
             }
             await loadSearchHistory();
-        } catch (e) { warn('saveSearchQuery:', e); }
+        } catch (e) {}
     }
-
     async function loadNotificationsCount() {
         if (!currentUser) return;
         try {
@@ -1980,7 +2294,23 @@
             if (!res.error) unreadNotifications = res.count || 0;
         } catch (e) { unreadNotifications = 0; }
     }
-
+    async function loadUserRatings() {
+        try {
+            const res = await withTimeout(supabaseClient.from('reviews').select('ad_id, stars, ads(author_id)').limit(500), 5000);
+            if (res.error || !res.data) return;
+            const map = {};
+            res.data.forEach(function(r) {
+                const authorId = r.ads && r.ads.author_id;
+                if (!authorId) return;
+                if (!map[authorId]) map[authorId] = { sum: 0, count: 0 };
+                map[authorId].sum += r.stars;
+                map[authorId].count++;
+            });
+            for (const id in map) {
+                userRatings[id] = { avg: map[id].sum / map[id].count, count: map[id].count };
+            }
+        } catch (e) {}
+    }
     function requestWakeLock() {
         try {
             if ('wakeLock' in navigator) {
@@ -1988,7 +2318,31 @@
             }
         } catch (e) {}
     }
+    function setupBackToTop() {
+        const btn = document.getElementById('backToTop');
+        if (!btn) return;
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 600) btn.classList.add('visible');
+            else btn.classList.remove('visible');
+        });
+        btn.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+    function setupNetworkListeners() {
+        const banner = document.getElementById('offlineBanner');
+        function update() {
+            if (!navigator.onLine) banner.classList.add('visible');
+            else banner.classList.remove('visible');
+        }
+        window.addEventListener('online', update);
+        window.addEventListener('offline', update);
+        update();
+    }
 
+    /* ============================================================
+       АДМИН ПАРОЛЬ
+       ============================================================ */
     function showCreateAdminPasswordModal() {
         const ref = showModal(
             '<h3 class="modal-title">🔒 Пароль администратора</h3>' +
@@ -2014,7 +2368,6 @@
             loadAdminPanel();
         });
     }
-
     function showAdminLoginModal(storedHash) {
         const ref = showModal(
             '<h3 class="modal-title">🔒 Вход в админ-панель</h3>' +
@@ -2036,6 +2389,9 @@
         });
     }
 
+    /* ============================================================
+       НАВИГАЦИЯ
+       ============================================================ */
     function switchSection(section) {
         currentSection = section;
         document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
@@ -2064,7 +2420,6 @@
         playSfx('click');
         requestWakeLock();
     }
-
     document.querySelectorAll('.nav-item[data-section]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             const sec = btn.dataset.section;
@@ -2081,9 +2436,9 @@
         }
         playSfx('click');
     });
-
     document.getElementById('headerSearchTrigger').addEventListener('click', openSearchModal);
     document.getElementById('logoBtn').addEventListener('click', openLinksModal);
+    document.getElementById('headerBrand').addEventListener('click', openLinksModal);
 
     function openLinksModal() {
         const ref = showModal(
@@ -2094,9 +2449,7 @@
                 '<div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">📢</span><span class="link-label">ВК канал</span></div>' +
             '</div>' +
             '<div class="ornament" style="margin-top:1rem;">◈ ◈ ◈</div>' +
-            '<p style="text-align:center;font-family:var(--font-mono);color:var(--muted);font-size:.8rem;letter-spacing:.08em;">' +
-                'ARIZONA ONLINE × BOUNTY TEAM' +
-            '</p>'
+            '<p style="text-align:center;font-family:var(--font-mono);font-size:.8rem;letter-spacing:.08em;"><span class="brand-animated">Arizona Online</span> <span class="brand-team-animated">× Bounty Team</span></p>'
         );
         document.querySelectorAll('.link-item').forEach(function(item) {
             item.addEventListener('click', function() {
@@ -2106,6 +2459,24 @@
         });
     }
 
+    /* ============================================================
+       SORT BAR
+       ============================================================ */
+    function setupSortBar() {
+        const chips = document.querySelectorAll('.sort-chip');
+        chips.forEach(function(chip) {
+            chip.addEventListener('click', function() {
+                chips.forEach(function(c) { c.classList.remove('active'); });
+                chip.classList.add('active');
+                currentSort = chip.dataset.sort;
+                loadHomeFeed(true);
+            });
+        });
+    }
+
+    /* ============================================================
+       ГЛАВНАЯ ЛЕНТА
+       ============================================================ */
     function setupServerSelector() {
         const btn = document.getElementById('serverSelectBtn');
         if (!btn) return;
@@ -2132,12 +2503,10 @@
         });
         updateServerButtonText();
     }
-
     function updateServerButtonText() {
         const btn = document.getElementById('serverSelectBtn');
         if (btn) btn.textContent = currentFilterServer ? '🌐 ' + currentFilterServer : '🌐 Все сервера';
     }
-
     function setupInfiniteScroll() {
         const trigger = document.getElementById('loadMoreTrigger');
         if (!trigger) return;
@@ -2150,6 +2519,23 @@
         feedObserver.observe(trigger);
     }
 
+    function renderSkeletonFeed(count) {
+        count = count || 6;
+        let html = '';
+        for (let i = 0; i < count; i++) {
+            html += '<div class="skeleton-card">' +
+                '<div class="skeleton skeleton-img"></div>' +
+                '<div class="skeleton-info">' +
+                    '<div class="skeleton skeleton-line medium"></div>' +
+                    '<div class="skeleton skeleton-line price"></div>' +
+                    '<div class="skeleton skeleton-line badge"></div>' +
+                    '<div class="skeleton skeleton-line short"></div>' +
+                '</div>' +
+            '</div>';
+        }
+        document.getElementById('homeFeed').innerHTML = html;
+    }
+
     async function loadHomeFeed(reset) {
         if (reset === undefined) reset = true;
         if (isLoadingFeed) return;
@@ -2158,38 +2544,75 @@
             feedPage = 0;
             homeAds = [];
             hasMoreAds = true;
-            document.getElementById('homeFeed').innerHTML = '<div class="loader"></div>';
+            const cached = loadAdsCache();
+            if (cached && currentSort === 'new' && !currentFilterServer) {
+                homeAds = cached;
+                renderHomeFeed();
+            } else {
+                renderSkeletonFeed();
+            }
         }
         try {
+            showTopProgress();
             const from = feedPage * FEED_PAGE_SIZE;
             const to = from + FEED_PAGE_SIZE - 1;
             let query = supabaseClient.from('ads').select('*').eq('status', 'approved').eq('hidden', false).order('created_at', { ascending: false }).range(from, to);
             if (currentFilterServer) query = query.eq('server', currentFilterServer);
             const res = await withTimeout(query, 8000);
+            hideTopProgress();
             if (res.error) throw res.error;
             const newAds = res.data || [];
-            const validAds = newAds.filter(function(ad) { return !ad.expires_at || new Date(ad.expires_at) > new Date(); });
-            homeAds = reset ? validAds : homeAds.concat(validAds);
+            const validAds = newAds.filter(function(ad) {
+                return !ad.expires_at || new Date(ad.expires_at) > new Date();
+            });
+            let processed = validAds;
+            if (currentSort === 'cheap') processed = validAds.slice().sort(function(a, b) { return (a.price || 0) - (b.price || 0); });
+            else if (currentSort === 'expensive') processed = validAds.slice().sort(function(a, b) { return (b.price || 0) - (a.price || 0); });
+            else if (currentSort === 'sell') processed = validAds.filter(function(a) { return a.mode === 'sell'; });
+            else if (currentSort === 'buy') processed = validAds.filter(function(a) { return a.mode === 'buy'; });
+
+            homeAds = reset ? processed : homeAds.concat(processed);
             if (newAds.length < FEED_PAGE_SIZE) hasMoreAds = false;
             renderHomeFeed();
             feedPage++;
+            if (reset && currentSort === 'new' && !currentFilterServer) saveAdsCache(validAds);
         } catch (e) {
+            hideTopProgress();
             warn('loadHomeFeed:', e);
-            if (reset) document.getElementById('homeFeed').innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки</div>';
-            else showToast('Не удалось загрузить', 'error');
-        } finally { isLoadingFeed = false; }
+            if (reset) {
+                const cached = loadAdsCache();
+                if (cached) {
+                    homeAds = cached;
+                    renderHomeFeed();
+                    showToast('Показаны сохранённые объявления', 'info');
+                } else {
+                    document.getElementById('homeFeed').innerHTML = '<div class="empty-state">⚠️ Ошибка загрузки. Проверьте соединение.</div>';
+                }
+            } else {
+                showToast('Не удалось загрузить ещё', 'error');
+            }
+        } finally {
+            isLoadingFeed = false;
+        }
     }
 
     function renderHomeFeed() {
         const cont = document.getElementById('homeFeed');
-        if (!homeAds.length) { cont.innerHTML = '<div class="empty-state">📭 Объявлений пока нет</div>'; return; }
+        if (!homeAds.length) {
+            cont.innerHTML = '<div class="empty-state">📭 Объявлений пока нет</div>';
+            return;
+        }
         let html = '';
-        homeAds.forEach(function(ad) {
+        homeAds.forEach(function(ad, idx) {
             const firstImg = ad.images ? ad.images.split(',')[0].trim() : '';
             const img = firstImg || DEFAULT_AD_IMAGE;
             const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
             const cat = ALL_CATEGORIES.find(function(c) { return c.id === ad.category; });
             const catLabel = cat ? cat.label : (ad.category || '');
+            const isFav = cartIds.has(ad.id);
+            const isViewed = viewedIds.has(ad.id);
+            const rating = getRatingForAuthor(ad.author_id);
+            const isVerified = rating && rating.avg >= VERIFIED_MIN_RATING && rating.count >= 3;
             let timer = '';
             if (ad.expires_at) {
                 const diff = new Date(ad.expires_at) - new Date();
@@ -2199,10 +2622,12 @@
                     const m = Math.floor((total % 3600) / 60);
                     const s = total % 60;
                     timer = '<div class="countdown-timer">⏳ ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '</div>';
-                } else timer = '<div class="countdown-timer">⚠️ Удалено</div>';
+                }
             }
+            const delay = Math.min(idx * 40, 400);
             html += (
-                '<div class="card ad-card" data-ad-id="' + ad.id + '">' +
+                '<div class="card ad-card animate-in ' + (isViewed ? 'viewed' : '') + '" data-ad-id="' + ad.id + '" style="animation-delay:' + delay + 'ms;">' +
+                    '<button class="fav-heart ' + (isFav ? 'active' : '') + '" data-fav="' + ad.id + '" aria-label="В корзину">' + (isFav ? '❤️' : '🤍') + '</button>' +
                     '<div class="img-container" style="width:86px;height:106px;border-radius:12px;flex-shrink:0;background:var(--card-2);">' +
                         '<div class="skeleton" style="position:absolute;inset:0;border-radius:12px;"></div>' +
                         '<img src="' + img + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;position:relative;z-index:1;border-radius:12px;" onload="this.classList.add(\'loaded\');this.previousElementSibling&&this.previousElementSibling.remove();" onerror="this.style.display=\'none\';">' +
@@ -2212,7 +2637,11 @@
                         '<div class="ad-card-price">' + formatPrice(ad.price) + '</div>' +
                         '<div class="ad-card-badges">' + modeBadge + '<span class="badge server">' + ad.server + '</span></div>' +
                         '<div class="ad-card-badges"><span class="badge category">' + catLabel + '</span></div>' +
-                        '<div class="ad-card-author">— ' + (ad.author_username || ad.author_id) + '</div>' +
+                        '<div class="ad-card-author">' +
+                            (isVerified ? '<span class="verified-badge">✓</span>' : '') +
+                            '<span>' + (ad.author_username || ad.author_id) + '</span>' +
+                            (rating ? '<span class="ad-card-rating">⭐ ' + rating.avg.toFixed(1) + '</span>' : '') +
+                        '</div>' +
                         timer +
                     '</div>' +
                 '</div>'
@@ -2220,13 +2649,37 @@
         });
         cont.innerHTML = html;
         cont.querySelectorAll('.ad-card').forEach(function(card) {
-            card.addEventListener('click', function() {
+            card.addEventListener('click', function(e) {
+                if (e.target.closest('.fav-heart')) return;
                 const ad = homeAds.find(function(a) { return a.id == card.dataset.adId; });
                 if (ad) openAdDetail(ad);
             });
         });
+        cont.querySelectorAll('[data-fav]').forEach(function(btn) {
+            btn.addEventListener('click', async function(e) {
+                e.stopPropagation();
+                const adId = btn.dataset.fav;
+                if (!currentUser) return;
+                try {
+                    if (cartIds.has(adId)) {
+                        await supabaseClient.from('favorites').delete().eq('user_id', currentUser.id).eq('ad_id', adId);
+                        cartIds.delete(adId);
+                        btn.textContent = '🤍';
+                        btn.classList.remove('active');
+                    } else {
+                        await supabaseClient.from('favorites').insert({ user_id: currentUser.id, ad_id: adId });
+                        cartIds.add(adId);
+                        btn.textContent = '❤️';
+                        btn.classList.add('active');
+                    }
+                } catch (e) { showToast('Ошибка', 'error'); }
+            });
+        });
     }
 
+    /* ============================================================
+       КОРЗИНА
+       ============================================================ */
     async function loadCart() {
         const cont = document.getElementById('cartList');
         if (!currentUser) { cont.innerHTML = '<div class="empty-state">🛒 Корзина пуста</div>'; return; }
@@ -2235,6 +2688,7 @@
             const favRes = await withTimeout(supabaseClient.from('favorites').select('ad_id').eq('user_id', currentUser.id), 5000);
             if (favRes.error) throw favRes.error;
             const adIds = (favRes.data || []).map(function(f) { return f.ad_id; });
+            cartIds = new Set(adIds);
             if (!adIds.length) { cont.innerHTML = '<div class="empty-state">🛒 Корзина пуста</div>'; return; }
             const adsRes = await withTimeout(supabaseClient.from('ads').select('*').in('id', adIds).order('created_at', { ascending: false }), 5000);
             if (adsRes.error) throw adsRes.error;
@@ -2263,6 +2717,7 @@
                     e.stopPropagation();
                     try {
                         await supabaseClient.from('favorites').delete().eq('user_id', currentUser.id).eq('ad_id', btn.dataset.removeCart);
+                        cartIds.delete(btn.dataset.removeCart);
                         loadCart();
                     } catch (err) { showToast('Не удалось', 'error'); }
                 });
@@ -2277,6 +2732,9 @@
         } catch (e) { warn('loadCart:', e); cont.innerHTML = '<div class="empty-state">⚠️ Ошибка</div>'; }
     }
 
+    /* ============================================================
+       ФОРМА ОТПРАВКИ
+       ============================================================ */
     function initSendForm() {
         const priceInput = document.getElementById('sendPrice');
         priceInput.removeEventListener('input', formatPriceInputHandler);
@@ -2299,7 +2757,6 @@
                 });
             });
         };
-
         const catBtn = document.getElementById('sendCategoryBtn');
         catBtn.onclick = function() {
             const ref = showModal(
@@ -2319,7 +2776,6 @@
                 });
             });
         };
-
         const serverBtn = document.getElementById('sendServerBtn');
         serverBtn.onclick = function() {
             const ref = showModal(
@@ -2338,7 +2794,6 @@
                 });
             });
         };
-
         const submitBtn = document.getElementById('sendSubmitBtn');
         submitBtn.onclick = async function() {
             if (!currentUser) { showAlert('Ошибка', 'Вы не авторизованы'); return; }
@@ -2384,7 +2839,9 @@
             status: 'pending', created_at: new Date().toISOString(), expires_at: null, hidden: false
         };
         try {
+            showLoader('Отправка...');
             const res = await withTimeout(supabaseClient.from('ads').insert(newAd), 8000);
+            hideLoader();
             if (res.error) throw res.error;
             localStorage.setItem('arizona_last_submit_time', Date.now().toString());
             playSfx('success');
@@ -2398,9 +2855,16 @@
             document.getElementById('sendCategoryBtn').textContent = 'Выберите категорию';
             document.getElementById('sendServerBtn').textContent = 'Выберите сервер';
             if (currentSection === 'all') loadMyAds();
-        } catch (e) { warn('submitAd:', e); showAlert('Ошибка', 'Не удалось отправить'); }
+        } catch (e) {
+            hideLoader();
+            warn('submitAd:', e);
+            showAlert('Ошибка', 'Не удалось отправить');
+        }
     }
 
+    /* ============================================================
+       МОИ ОБЪЯВЛЕНИЯ
+       ============================================================ */
     async function loadMyAds() {
         const cont = document.getElementById('myAdsList');
         if (!currentUser) { cont.innerHTML = '<div class="empty-state">У вас пока нет объявлений</div>'; return; }
@@ -2480,6 +2944,9 @@
         });
     }
 
+    /* ============================================================
+       АДМИН-ПАНЕЛЬ
+       ============================================================ */
     async function loadAdminPanel() {
         const cont = document.getElementById('adminPanelContent');
         if (!isAdmin) { cont.innerHTML = '<div class="empty-state">Нет доступа</div>'; return; }
@@ -2509,7 +2976,6 @@
                     '</div>' +
                 '</div>';
             });
-
             html += '<h3>📨 Апелляции (' + pendingAppeals.length + ')</h3>';
             if (!pendingAppeals.length) html += '<div class="empty-state">Пусто</div>';
             else pendingAppeals.forEach(function(ap) {
@@ -2523,7 +2989,6 @@
                     '</div>' +
                 '</div>';
             });
-
             html += '<h3>🚨 Жалобы (' + pendingReports.length + ')</h3>';
             if (!pendingReports.length) html += '<div class="empty-state">Пусто</div>';
             else pendingReports.forEach(function(rp) {
@@ -2537,7 +3002,6 @@
                     '</div>' +
                 '</div>';
             });
-
             html += '<h3>👤 Жалобы на юзеров (' + pendingUserReports.length + ')</h3>';
             if (!pendingUserReports.length) html += '<div class="empty-state">Пусто</div>';
             else pendingUserReports.forEach(function(rp) {
@@ -2551,7 +3015,6 @@
                     '</div>' +
                 '</div>';
             });
-
             if (isOwner) {
                 html += '<div class="ornament">◈ ◈ ◈</div>' +
                     '<h3>👑 Управление</h3>' +
@@ -2567,7 +3030,6 @@
                     '</div>' +
                     '<button class="btn danger w-full mt-8" id="adminClearFeedBtn">🧹 Очистить ленту</button>';
             }
-
             cont.innerHTML = html;
             bindAdminEvents();
         } catch (e) { warn('Admin load:', e); cont.innerHTML = '<div class="empty-state">⚠️ Ошибка</div>'; }
@@ -2576,9 +3038,11 @@
     function bindAdminEvents() {
         document.querySelectorAll('[data-approve]').forEach(function(btn) {
             btn.addEventListener('click', async function() {
+                showLoader('Одобрение...');
                 const expiresAt = new Date(Date.now() + AD_EXPIRY_HOURS * 60 * 60 * 1000).toISOString();
                 await supabaseClient.from('ads').update({ status: 'approved', expires_at: expiresAt }).eq('id', btn.dataset.approve);
                 await logModeratorAction('approve_ad', btn.dataset.approve);
+                hideLoader();
                 loadAdminPanel();
                 loadHomeFeed(true);
             });
@@ -2646,9 +3110,11 @@
             const cf = document.getElementById('adminClearFeedBtn');
             if (cf) cf.addEventListener('click', function() {
                 showConfirm('Очистка', 'Удалить ВСЕ объявления?', async function() {
+                    showLoader('Очистка...');
                     await supabaseClient.from('ads').delete().neq('id', 0);
                     await supabaseClient.from('favorites').delete().neq('id', 0);
                     await logModeratorAction('clear_feed', 'all');
+                    hideLoader();
                     loadAdminPanel(); loadHomeFeed(true);
                 });
             });
@@ -2696,7 +3162,6 @@
         }).join('');
         showModal('<h3 class="modal-title">📜 Журнал</h3>' + html);
     }
-
     async function loadAdminAuditForUser(username) {
         username = username || '';
         let query = supabaseClient.from('moderator_logs').select('*').order('created_at', { ascending: false }).limit(500);
@@ -2715,7 +3180,6 @@
         }).join('');
         showModal('<h3 class="modal-title">🔍 Аудит</h3>' + html);
     }
-
     function openWarnHideModal(username) {
         if (!username) { showAlert('Ошибка', 'Введите username'); return; }
         const ref = showModal(
@@ -2745,7 +3209,6 @@
             ref.closeModal();
         });
     }
-
     async function adminUserAction(action) {
         const target = document.getElementById('adminUsernameInput').value.trim();
         if (!target) { showAlert('Ошибка', 'Введите username или ID'); return; }
@@ -2766,7 +3229,6 @@
             loadAdminPanel();
         } catch (e) { showAlert('Ошибка', 'Не удалось'); }
     }
-
     function openAdminEditModal(ad) {
         const ref = showModal(
             '<h3 class="modal-title">✏️ Редактирование</h3>' +
@@ -2792,22 +3254,27 @@
             loadHomeFeed(true);
         });
     }
-
     async function logModeratorAction(action, details) {
         try {
             await supabaseClient.from('moderator_logs').insert({
                 moderator_id: currentUser.id, moderator_username: currentUser.username,
                 action: action, details: String(details), created_at: new Date().toISOString()
             });
-        } catch (e) { warn('logModeratorAction:', e); }
+        } catch (e) {}
     }
 
+    /* ============================================================
+       ДЕТАЛИ ОБЪЯВЛЕНИЯ
+       ============================================================ */
     async function openAdDetail(ad) {
+        markViewed(ad.id);
         const images = ad.images ? ad.images.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s; }) : [];
         const gallery = images.length ? '<div class="image-gallery">' + images.map(function(img) { return '<img src="' + img + '" loading="lazy" onerror="this.style.display=\'none\'">'; }).join('') + '</div>' : '';
         const cat = ALL_CATEGORIES.find(function(c) { return c.id === ad.category; });
         const catLabel = cat ? cat.label : (ad.category || '');
         const modeBadge = ad.mode === 'sell' ? '<span class="badge sell">Продажа</span>' : '<span class="badge buy">Покупка</span>';
+        const rating = getRatingForAuthor(ad.author_id);
+        const isVerified = rating && rating.avg >= VERIFIED_MIN_RATING && rating.count >= 3;
 
         let statusHtml = '';
         if (ad.status === 'pending') statusHtml = '<div class="empty-state">⏳ На модерации</div>';
@@ -2824,23 +3291,24 @@
                 '<button class="btn secondary w-full mt-8" id="detailReportUserBtn">👤 Жалоба на автора</button>' +
                 '<button class="btn secondary w-full mt-8" id="detailShareBtn">📤 Поделиться</button>';
         }
-
         let isFav = await checkIfInCart(ad.id);
-
         const ref = showModal(
             '<h3 class="modal-title">' + ad.item_name + '</h3>' +
             '<div class="ad-card-badges mb-8">' + modeBadge + '<span class="badge server">' + ad.server + '</span><span class="badge category">' + catLabel + '</span></div>' +
             gallery +
             '<div class="ad-card-price" style="font-size:1.8rem;margin-bottom:.6rem;">' + formatPrice(ad.price) + '</div>' +
             '<p style="color:var(--muted);margin-bottom:.9rem;white-space:pre-wrap;word-break:break-word;line-height:1.6;">' + (ad.description || 'Нет описания') + '</p>' +
-            '<div style="font-size:.75rem;color:var(--muted);margin-bottom:1rem;">Автор: <span id="detailAuthorLink" style="cursor:pointer;color:var(--accent);font-weight:600;">' + (ad.author_username || ad.author_id) + '</span></div>' +
+            '<div style="font-size:.75rem;color:var(--muted);margin-bottom:1rem;">Автор: ' +
+                (isVerified ? '<span class="verified-badge">✓</span> ' : '') +
+                '<span id="detailAuthorLink" style="cursor:pointer;color:var(--accent);font-weight:600;">' + (ad.author_username || ad.author_id) + '</span>' +
+                (rating ? ' <span class="ad-card-rating">⭐ ' + rating.avg.toFixed(1) + ' (' + rating.count + ')</span>' : '') +
+            '</div>' +
             statusHtml +
             '<div id="detailReviewsSection"></div>' +
             '<div class="ornament" style="margin-top:1.2rem;">◈ ◈ ◈</div>' +
             '<h4 style="margin:.5rem 0 .7rem;font-weight:700;">📌 Похожие</h4>' +
             '<div id="detailSimilarAds"></div>'
         );
-
         if (ad.status === 'approved') {
             const cb = document.getElementById('detailContactBtn');
             if (cb) cb.addEventListener('click', function() { window.open('https://t.me/' + (ad.author_username || ad.author_id), '_blank'); });
@@ -2851,9 +3319,11 @@
                     try {
                         if (isFav) {
                             await supabaseClient.from('favorites').delete().eq('user_id', currentUser.id).eq('ad_id', ad.id);
+                            cartIds.delete(ad.id);
                             cartBtn.textContent = '🛒 В корзину'; isFav = false;
                         } else {
                             await supabaseClient.from('favorites').insert({ user_id: currentUser.id, ad_id: ad.id });
+                            cartIds.add(ad.id);
                             cartBtn.textContent = '🛒 Убрать из корзины'; isFav = true;
                         }
                         loadCart();
@@ -2900,10 +3370,10 @@
         if (!currentUser) return false;
         try {
             const res = await supabaseClient.from('favorites').select('*').eq('user_id', currentUser.id).eq('ad_id', adId).maybeSingle();
+            if (res.data) cartIds.add(adId);
             return !!res.data;
         } catch (e) { return false; }
     }
-
     async function loadReviews(adId) {
         const cont = document.getElementById('detailReviewsSection');
         if (!cont) return;
@@ -2958,9 +3428,8 @@
                     if (r) openReplyModal(r);
                 });
             });
-        } catch (e) { warn('loadReviews:', e); }
+        } catch (e) {}
     }
-
     function openReplyModal(review) {
         const ref = showModal(
             '<h3 class="modal-title">💬 Ответ</h3>' +
@@ -2976,7 +3445,6 @@
             loadReviews(review.ad_id);
         });
     }
-
     async function loadSimilarAds(category, currentId) {
         const cont = document.getElementById('detailSimilarAds');
         if (!cont) return;
@@ -2998,7 +3466,6 @@
             });
         } catch (e) {}
     }
-
     function openReviewsModal(adId) {
         const ref = showModal(
             '<h3 class="modal-title">⭐ Оставить отзыв</h3>' +
@@ -3033,7 +3500,6 @@
             } catch (e) { showAlert('Ошибка', 'Не удалось'); }
         });
     }
-
     function updateStars(container, selected) {
         container.querySelectorAll('span').forEach(function(s) {
             const v = parseInt(s.dataset.star);
@@ -3041,7 +3507,6 @@
             s.classList.toggle('active', v <= selected);
         });
     }
-
     function openEditReviewModal(review) {
         const ref = showModal(
             '<h3 class="modal-title">✏️ Редактировать</h3>' +
@@ -3065,7 +3530,6 @@
             playSfx('success'); ref.closeModal(); loadReviews(review.ad_id);
         });
     }
-
     function openReportUserModal(userId) {
         const ref = showModal(
             '<h3 class="modal-title">👤 Жалоба на юзера</h3>' +
@@ -3079,14 +3543,12 @@
             showAlert('Успех', 'Отправлено'); ref.closeModal();
         });
     }
-
     function shareAd(ad) {
         const text = ad.item_name + '\nЦена: ' + formatPrice(ad.price) + '\nСервер: ' + ad.server + '\n' + ad.description + '\n\nАвтор: ' + ad.author_username + '\n\nArizona Online × Bounty Team';
         const shareUrl = 'https://t.me/share/url?text=' + encodeURIComponent(text);
         if (tg && tg.openTelegramLink) tg.openTelegramLink(shareUrl);
         else window.open(shareUrl, '_blank');
     }
-
     async function openProfileModal(authorIdOrUsername) {
         let userId = authorIdOrUsername;
         if (typeof authorIdOrUsername === 'string' && authorIdOrUsername.charAt(0) === '@') {
@@ -3133,6 +3595,9 @@
         } catch (e) { document.getElementById('profileAdsList').innerHTML = '<div class="empty-state">⚠️ Ошибка</div>'; }
     }
 
+    /* ============================================================
+       ВСЕ РАЗДЕЛЫ
+       ============================================================ */
     function loadAllTiles() {
         const tiles = [
             { id: 'looks', icon: '📸', label: 'Лента «Луков»' },
@@ -3166,7 +3631,7 @@
             '<div class="form-group flex-between"><label>🌙 Тёмная тема</label><input type="checkbox" id="settingsDark" ' + (currentTheme === 'dark' ? 'checked' : '') + ' style="width:1.5rem;height:1.5rem;accent-color:var(--accent);"></div>' +
             '<div class="ornament">◈ ◈ ◈</div>' +
             '<button class="btn danger w-full mt-12" id="settingsLogoutBtn">🚪 Выйти</button>' +
-            '<p style="text-align:center;font-family:var(--font-mono);color:var(--muted);font-size:.72rem;margin-top:1rem;letter-spacing:.1em;">ARIZONA ONLINE × BOUNTY TEAM</p>'
+            '<p style="text-align:center;font-family:var(--font-mono);font-size:.72rem;margin-top:1rem;letter-spacing:.1em;"><span class="brand-animated">Arizona Online</span> <span class="brand-team-animated">× Bounty Team</span></p>'
         );
         document.getElementById('settingsSfx').addEventListener('change', async function(e) {
             sfxEnabled = e.target.checked;
@@ -3184,7 +3649,6 @@
             location.reload();
         });
     }
-
     function openChatModal() {
         const ref = showModal(
             '<h3 class="modal-title">💬 Переписки</h3>' +
@@ -3197,7 +3661,6 @@
             ref.closeModal();
         });
     }
-
     async function openNotificationsModal() {
         showModal('<h3 class="modal-title">🔔 Уведомления</h3><div id="notificationsList"><div class="loader"></div></div>');
         try {
@@ -3216,7 +3679,6 @@
             unreadNotifications = 0;
         } catch (e) { document.getElementById('notificationsList').innerHTML = '<div class="empty-state">⚠️ Ошибка</div>'; }
     }
-
     function openLooksModal() {
         showModal(
             '<h3 class="modal-title">📸 Лента «Луков»</h3>' +
@@ -3238,7 +3700,6 @@
             loadLooksFeed();
         });
     }
-
     async function loadLooksFeed() {
         const cont = document.getElementById('looksList');
         if (!cont) return;
@@ -3264,7 +3725,6 @@
             });
         });
     }
-
     function openCompanionsModal() {
         showModal(
             '<h3 class="modal-title">👥 Попутчики</h3>' +
@@ -3285,7 +3745,6 @@
             loadCompanionsFeed();
         });
     }
-
     async function loadCompanionsFeed() {
         const cont = document.getElementById('companionsList');
         if (!cont) return;
@@ -3307,7 +3766,6 @@
             });
         });
     }
-
     function openMusicModal() {
         showModal(
             '<h3 class="modal-title">🎵 Музыка</h3>' +
@@ -3334,7 +3792,6 @@
             document.getElementById('musicUrl').value = '';
         });
     }
-
     function openSearchModal() {
         const ref = showModal(
             '<h3 class="modal-title">🔍 Поиск</h3>' +
@@ -3352,7 +3809,6 @@
         const sugg = document.getElementById('searchSuggestions');
         const res = document.getElementById('searchResults');
         const hist = document.getElementById('searchHistory');
-
         function renderHist() {
             if (!searchHistory.length) { hist.innerHTML = ''; return; }
             hist.innerHTML = '<div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem;">📜 История:</div>' +
@@ -3367,7 +3823,6 @@
             });
         }
         renderHist();
-
         input.addEventListener('input', async function() {
             const q = input.value.trim().toLowerCase();
             if (!q) { sugg.innerHTML = ''; res.innerHTML = ''; return; }
@@ -3384,7 +3839,6 @@
                 });
             });
         });
-
         document.getElementById('searchItemBtn').addEventListener('click', async function() {
             const q = input.value.trim().toLowerCase();
             if (!q) return;
@@ -3406,32 +3860,34 @@
                 });
             });
         });
-
         document.getElementById('searchProfileBtn').addEventListener('click', function() {
             const q = input.value.trim();
             if (q) { ref.closeModal(); openProfileModal(q); }
         });
     }
 
+    /* ============================================================
+       BOOT
+       ============================================================ */
     function bootApp() {
-        const startTime = Date.now();
         const tgUsername = initTelegram();
         const supabaseOk = initSupabase();
+
         if (!supabaseOk) {
             setTimeout(function() {
-                const pre = document.getElementById('preloader');
-                if (pre) pre.classList.add('hidden');
-                document.body.innerHTML = '<div style="text-align:center;margin-top:50vh;padding:2rem;color:#EF4444;font-family:sans-serif;">Ошибка подключения. Обновите страницу.</div>';
-            }, PRELOADER_MIN_TIME);
+                hideSplash();
+                document.body.innerHTML = '<div style="text-align:center;margin-top:50vh;padding:2rem;color:#EF4444;font-family:sans-serif;">Ошибка подключения к базе данных. Обновите страницу.</div>';
+            }, SPLASH_DURATION);
             return;
         }
-        const elapsed = Date.now() - startTime;
-        const wait = Math.max(0, PRELOADER_MIN_TIME - elapsed);
+
         setTimeout(async function() {
-            const preloader = document.getElementById('preloader');
-            if (preloader) preloader.classList.add('hidden');
+            hideSplash();
             const saved = localStorage.getItem('arizona_current_user');
-            if (!saved) { showAuthScreen(tgUsername || ''); return; }
+            if (!saved) {
+                showAuthScreen(tgUsername || '');
+                return;
+            }
             try {
                 currentUser = JSON.parse(saved);
                 const res = await supabaseClient.from('app_users').select('*').eq('id', currentUser.id).maybeSingle();
@@ -3443,18 +3899,19 @@
                     return;
                 }
                 currentUser = res.data;
-                hidePreloaderAndShowApp();
+                showApp();
+                try { initApp(); } catch (e) { warn('initApp:', e); }
             } catch (e) {
                 warn('boot session:', e);
                 localStorage.removeItem('arizona_current_user');
                 currentUser = null;
                 showAuthScreen(tgUsername || '');
             }
-        }, wait);
+        }, SPLASH_DURATION);
     }
 
     document.addEventListener('click', function(e) {
-        const selectors = '.btn,.nav-item,.card,.grid-tile,.link-item,.search-suggestion,.theme-toggle,.header-logo,.header-search,.modal-close,.auth-theme-toggle,.star-rating span,.auth-tab';
+        const selectors = '.btn,.nav-item,.card,.grid-tile,.link-item,.search-suggestion,.theme-toggle,.header-logo,.header-search,.modal-close,.auth-theme-toggle,.star-rating span,.auth-tab,.sort-chip,.back-to-top,.fav-heart';
         if (e.target.closest(selectors)) {
             playSfx('click');
             hapticFeedback('light');

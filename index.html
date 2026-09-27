@@ -124,7 +124,6 @@ body::after{width:55vw;height:55vw;max-width:640px;max-height:640px;background:r
 .cap-item.active::before{content:'';position:absolute;top:-2px;left:50%;transform:translateX(-50%);width:18px;height:3px;border-radius:0 0 3px 3px;background:var(--grad-aurora);box-shadow:0 0 10px var(--violet)}
 .cap-item .cap-badge{position:absolute;top:2px;right:6px;background:var(--pink);color:#fff;font-size:.52rem;font-weight:800;min-width:.95rem;height:.95rem;padding:0 .2rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--bg);line-height:1}
 @media (max-width:340px){.cap-item{font-size:0}.cap-item .cap-icon{font-size:1.2rem}}
-/* POST FAB — теперь выше AI (который снизу справа) */
 .fab{display:none;position:fixed;bottom:calc(152px + env(safe-area-inset-bottom));right:.9rem;width:44px;height:44px;border-radius:14px;background:var(--grad-aurora);border:none;color:#fff;font-size:1.3rem;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(167,139,250,.5);cursor:pointer;z-index:101;animation:fab-in .35s cubic-bezier(.34,1.56,.64,1) backwards;transition:transform .12s;padding:0;line-height:1}
 .fab:active{transform:scale(.9)}
 @media (max-width:1023px){.capsule{display:flex}.fab{display:flex}.sidebar{display:none!important}:root{--feed-cols:1}}
@@ -405,9 +404,6 @@ body::after{width:55vw;height:55vw;max-width:640px;max-height:640px;background:r
 .history-chip:hover{border-color:var(--violet);color:var(--violet)}
 .history-chip .hist-del{background:transparent;border:none;color:var(--muted);font-size:.7rem;cursor:pointer;padding:0 .1rem;line-height:1;font-family:inherit}
 .history-chip .hist-del:hover{color:var(--danger)}
-/* ============================================================
-   AI ASSISTANT — FAB СПРАВА + PANEL
-   ============================================================ */
 .ai-fab{
   position:fixed;
   bottom:calc(84px + env(safe-area-inset-bottom));
@@ -446,7 +442,6 @@ body::after{width:55vw;height:55vw;max-width:640px;max-height:640px;background:r
 }
 .ai-fab.open{transform:rotate(90deg) scale(.9)}
 .ai-fab.open .ai-fab-icon{transform:rotate(-90deg)}
-/* AI chat panel — на ПК справа снизу, на мобиле почти на всю ширину снизу */
 .ai-panel{
   position:fixed;
   bottom:calc(152px + env(safe-area-inset-bottom));
@@ -670,7 +665,6 @@ body::after{width:55vw;height:55vw;max-width:640px;max-height:640px;background:r
 .ai-send-btn:hover{animation:brand-flow 3s linear infinite}
 .ai-send-btn:active{transform:scale(.9)}
 .ai-send-btn:disabled{opacity:.5;cursor:not-allowed;animation:none}
-/* Mobile adjustments */
 @media (max-width:500px){
   .ai-panel{
     bottom:calc(140px + env(safe-area-inset-bottom));
@@ -708,9 +702,16 @@ body::after{width:55vw;height:55vw;max-width:640px;max-height:640px;background:r
 .back-top.visible{opacity:1;visibility:visible;transform:translateY(0)}
 @media (min-width:1024px){.back-top{bottom:1.75rem;right:1.75rem}}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:9996}
+/* BOOT ERROR BOX */
+#bootError{position:fixed;inset:0;background:#08080F;color:#F87171;z-index:10000;padding:1.5rem;font-family:monospace;font-size:.82rem;overflow:auto;display:none}
+#bootError h2{color:#F87171;margin-bottom:.8rem;font-family:sans-serif}
+#bootError pre{background:#111;padding:.8rem;border-radius:.5rem;overflow:auto;color:#C8C2DC;font-size:.72rem;margin-top:.6rem;white-space:pre-wrap;word-break:break-word}
+#bootError .step{color:#22D3EE;font-size:.75rem;margin-top:.6rem;font-family:sans-serif}
 </style>
 </head>
 <body>
+
+<div id="bootError"></div>
 
 <div id="splash">
   <div class="splash-logo"><img src="https://i.postimg.cc/mgk2RL4g/1788361335674.jpg" alt="AZ"></div>
@@ -757,7 +758,6 @@ body::after{width:55vw;height:55vw;max-width:640px;max-height:640px;background:r
 </nav>
 <button class="fab" id="fabBtn" style="display:none" aria-label="Разместить">＋</button>
 
-<!-- AI ASSISTANT — справа снизу -->
 <button class="ai-fab" id="aiFab" style="display:none" aria-label="AI-помощник">
   <span class="ai-fab-icon">✦</span>
 </button>
@@ -854,9 +854,48 @@ body::after{width:55vw;height:55vw;max-width:640px;max-height:640px;background:r
 <canvas id="confetti"></canvas>
 
 <script>
+// === GLOBAL ERROR HANDLER — покажет любую ошибку на экране ===
+window.addEventListener('error', function(e){
+  console.error('[AZ GLOBAL ERROR]', e.error || e.message);
+  try {
+    var box = document.getElementById('bootError');
+    if (box && box.style.display === 'none') {
+      box.style.display = 'block';
+      box.innerHTML = '<h2>❌ Ошибка приложения</h2>' +
+        '<div class="step">Сообщение: ' + (e.message || 'unknown') + '</div>' +
+        '<div class="step">Файл: ' + (e.filename || '?') + ':' + (e.lineno || '?') + '</div>' +
+        '<pre>' + (e.error && e.error.stack ? e.error.stack : 'no stack') + '</pre>' +
+        '<p style="margin-top:1rem;font-family:sans-serif;color:#8A80A8">Обнови страницу (Ctrl+F5) и пришли этот текст разработчику.</p>';
+    }
+  } catch(_){}
+});
+window.addEventListener('unhandledrejection', function(e){
+  console.error('[AZ UNHANDLED PROMISE]', e.reason);
+});
+
 (function(){
 'use strict';
-const APP_VERSION='v3.6';
+
+// === EARLY DIAGNOSTICS ===
+console.log('%c[AZ v3.8.1] Script started', 'color:#22D3EE;font-weight:bold');
+console.log('[AZ] typeof supabase =', typeof window.supabase);
+console.log('[AZ] typeof Telegram =', typeof window.Telegram);
+console.log('[AZ] typeof QRCode  =', typeof window.QRCode);
+
+function showBootError(stage, err){
+  var box = document.getElementById('bootError');
+  if (!box) return;
+  box.style.display = 'block';
+  box.innerHTML = '<h2>❌ Ошибка инициализации</h2>' +
+    '<div class="step">Этап: ' + stage + '</div>' +
+    '<div class="step">Ошибка: ' + (err && err.message ? err.message : String(err)) + '</div>' +
+    '<pre>' + (err && err.stack ? err.stack : 'no stack') + '</pre>' +
+    '<p style="margin-top:1rem;font-family:sans-serif;color:#8A80A8">Проверь подключение к интернету и обнови страницу (Ctrl+F5).</p>';
+  var s = document.getElementById('splash');
+  if (s) s.classList.add('hidden');
+}
+
+const APP_VERSION='v3.8.1';
 const AI_FUNCTION_URL='https://sbtitlayqkpllnaiyeld.supabase.co/functions/v1/chat-with-ai';
 const OWNER='bounqy';
 const TG_BOT='arizona_coin_bot';
@@ -897,15 +936,13 @@ const HEARTBEAT_MS=120000;
 const MAX_MEDIA=20;
 const MAX_FILE_SIZE=20*1024*1024;
 const FORBIDDEN=['продам аккаунт','куплю аккаунт','продажа аккаунтов','обмен аккаунтами','наркотики','оружие без лицензии'];
-const PREFIX='az_v36';
+const PREFIX='az_v38';
 const LS={user:PREFIX+'_user',view:PREFIX+'_viewed',acc:PREFIX+'_accounts',sh:PREFIX+'_shortcuts',rl:PREFIX+'_rl',cache:PREFIX+'_ads_cache',first:PREFIX+'_first_ad',last:PREFIX+'_last_submit',lang:PREFIX+'_lang',theme:PREFIX+'_theme',aiChat:PREFIX+'_ai_chat',aiVoice:PREFIX+'_ai_voice'};
 const CACHE_TTL=3*60*1000;
 const VBUFFER=30;
 const RL={like:{w:500},review:{w:60000},report:{w:120000},appeal:{w:300000},dm:{w:1500},ai:{w:800}};
 const IS_TOUCH=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
-/* ============================================================
-   I18N
-   ============================================================ */
+
 const I18N={
   ru:{
     home:'Главная',home_s:'Главная',search:'Поиск',search_s:'Поиск',profile:'Профиль',profile_s:'Я',
@@ -1016,17 +1053,16 @@ const I18N={
     ai_clear_confirm:'Очистить историю чата?',ai_error:'Не удалось получить ответ. Попробуй ещё раз.',
     ai_voice_on:'Голос включён',ai_voice_off:'Голос выключен',ai_speaking:'Говорит...',ai_speak:'Озвучить',
     ai_nav_opening:'Открываю раздел...',ai_listening:'Говорите...'
-  },
-  en:{/* not used for AI text — falls back to ru */},
-  uk:{/* not used for AI text — falls back to ru */}
+  }
 };
-I18N.en=I18N.ru;I18N.uk=I18N.ru;
+// Важно: НЕ присваиваем один объект в другой (было I18N.en = I18N.ru — это ссылка на тот же объект!)
+I18N.en = Object.assign({}, I18N.ru);
+I18N.uk = Object.assign({}, I18N.ru);
+
 function t(k){return (I18N[currentLang]&&I18N[currentLang][k])||I18N.ru[k]||k}
 function catLabel(c){if(!c)return'';const l=currentLang==='en'?'en':currentLang==='uk'?'uk':'ru';return c[l]||c.ru}
 function appealLabel(r){const f=APPEAL_REASONS.find(x=>x.ru===r);if(!f)return r;return f[currentLang]||f.ru}
-/* ============================================================
-   STATE
-   ============================================================ */
+
 let tg=null,sb=null,currentUser=null,tgUserId=null;
 let currentSection='home',currentTheme='dark',sfx=true;
 let filterServer=null,isAdmin=false,isOwner=false;
@@ -1050,9 +1086,7 @@ let recognizer=null,voiceOn=false;
 let confettiActive=false,realtimeCh=null,rateLimits={};
 let urlChecked=false,heartbeatInt=null,chatPollInt=null;
 let aiHistory=[],aiBusy=false,aiPanelOpen=false,aiVoiceEnabled=false,aiSpeaking=false,aiMicActive=false;
-/* ============================================================
-   UTILS
-   ============================================================ */
+
 const $=(id)=>document.getElementById(id);
 const $$=(s)=>document.querySelectorAll(s);
 function warn(){try{console.warn.apply(console,['[AZ'+APP_VERSION+']'].concat([].slice.call(arguments)))}catch(e){}}
@@ -1099,24 +1133,18 @@ function timeAgo(iso){
 }
 function fmtDate(iso){if(!iso)return'—';try{return new Date(iso).toLocaleDateString()}catch(e){return'—'}}
 function msgTs(m){let v=0;try{v=new Date(m.created_at).getTime()}catch(e){v=0}if(!v||isNaN(v))v=0;return v}
-/* ============================================================
-   SESSION ISOLATION
-   ============================================================ */
+
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
 function sessionSuffix(){return tgUserId?'_tg'+tgUserId:'_web'}
 function sKey(base){return base+sessionSuffix()}
-/* ============================================================
-   RATE LIMITS
-   ============================================================ */
+
 function loadRL(){try{const r=lsGet(sKey(LS.rl));rateLimits=r?JSON.parse(r):{}}catch(e){rateLimits={}}}
 function saveRL(){try{lsSet(sKey(LS.rl),JSON.stringify(rateLimits))}catch(e){}}
 function canDo(a){const c=RL[a];if(!c)return true;const d=Date.now()-(rateLimits[a]||0);if(d<c.w){toast(t('rate_limit')+' — '+Math.ceil((c.w-d)/1000)+' '+t('sec'),'info',1800);return false}return true}
 function markRL(a){rateLimits[a]=Date.now();saveRL()}
-/* ============================================================
-   HASH
-   ============================================================ */
+
 const SALT='ArizonaOnlineSalt_2024';
 async function hashPwd(pw){
   const data=SALT+pw;
@@ -1126,9 +1154,7 @@ async function hashPwd(pw){
   let h=0;for(let i=0;i<data.length;i++){h=((h<<5)-h)+data.charCodeAt(i);h|=0}
   return 'fb'+Math.abs(h).toString(16);
 }
-/* ============================================================
-   THEME / FONT
-   ============================================================ */
+
 function applyTheme(){
   document.documentElement.setAttribute('data-theme',currentTheme);
   const src=currentTheme==='dark'?'https://i.postimg.cc/zfWNX3c5/1788346752679.jpg':'https://i.postimg.cc/nV1HDjcb/1788346659518.jpg';
@@ -1158,9 +1184,7 @@ function loadLocalPrefs(){
   aiVoiceEnabled=lsGet(LS.aiVoice)==='1';
 }
 function saveLang(l){lsSet(LS.lang,l)}
-/* ============================================================
-   PRICE
-   ============================================================ */
+
 function formatPrice(v){
   if(!v&&v!==0)return'0';
   let n=String(v).toLowerCase();
@@ -1184,18 +1208,19 @@ function parsePrice(s){
   if(kc===1)n*=1000;else if(kc===2)n*=1e6;else if(kc>=3)n*=1e9;
   return n;
 }
+// ИСПРАВЛЕНО: поддерживаем десятичные 5.5к → 5500
 function onPriceInput(e){
   const i=e.target;
-  let v=i.value.toLowerCase().replace(/[^0-9кk]/g,'');
+  let v=i.value.toLowerCase().replace(/,/g,'.').replace(/[^0-9.кk]/g,'');
   if(!v){i.value='';return}
-  let n=parseInt(v.replace(/[кk]/g,''))||0;
+  // Если есть точка — конвертим в число с плавающей точкой
+  let numPart = parseFloat(v.replace(/[кk].*$/,''))||0;
   const kc=(v.match(/[кk]/g)||[]).length;
-  if(kc===1)n*=1000;else if(kc===2)n*=1e6;else if(kc>=3)n*=1e9;
-  i.value=formatPrice(n);
+  if(kc===1)numPart*=1000;else if(kc===2)numPart*=1e6;else if(kc>=3)numPart*=1e9;
+  if(numPart<=0){i.value='';return}
+  i.value=formatPrice(Math.floor(numPart));
 }
-/* ============================================================
-   LINKS
-   ============================================================ */
+
 function linkOk(url){try{const u=new URL(url);const h=u.hostname.replace('www.','');return ALLOWED.some(d=>h===d||h.endsWith('.'+d))}catch(e){return false}}
 function isVideoLink(url){try{const u=new URL(url);const h=u.hostname.replace('www.','');return VIDEO_HOSTS.some(d=>h===d||h.endsWith('.'+d))}catch(e){return false}}
 function checkLinksStr(s){
@@ -1217,9 +1242,7 @@ function videoEmbed(url){
     return null;
   }catch(e){return null}
 }
-/* ============================================================
-   STORAGE
-   ============================================================ */
+
 function saveCache(ads){try{lsSet(sKey(LS.cache),JSON.stringify({ts:Date.now(),data:ads.slice(0,30)}))}catch(e){}}
 function loadCache(){try{const r=lsGet(sKey(LS.cache));if(!r)return null;const p=JSON.parse(r);if(Date.now()-p.ts>CACHE_TTL)return null;return p.data||null}catch(e){return null}}
 function loadViewed(){try{const r=lsGet(sKey(LS.view));if(r)viewedIds=new Set(JSON.parse(r))}catch(e){viewedIds=new Set()}}
@@ -1229,12 +1252,10 @@ function loadAccounts(){try{const r=lsGet(sKey(LS.acc));accounts=r?JSON.parse(r)
 function saveAccounts(){try{lsSet(sKey(LS.acc),JSON.stringify(accounts))}catch(e){}}
 function addAccount(u){if(!u||!u.id)return;accounts=accounts.filter(a=>a.id!==u.id);accounts.unshift({id:u.id,username:u.username,avatar_url:u.avatar_url||null,addedAt:Date.now()});accounts=accounts.slice(0,5);saveAccounts()}
 const DEF_SHORTCUTS={search:'k',new:'m',home:'h',favorites:'j',settings:'u',help:'/',ai:'i'};
-function loadShortcuts(){try{const r=lsGet(LS.sh);shortcuts=r?JSON.parse(r):{...DEF_SHORTCUTS}}catch(e){shortcuts={...DEF_SHORTCUTS}}}
+function loadShortcuts(){try{const r=lsGet(LS.sh);shortcuts=r?JSON.parse(r):Object.assign({},DEF_SHORTCUTS)}catch(e){shortcuts=Object.assign({},DEF_SHORTCUTS)}}
 function saveShortcuts(){try{lsSet(LS.sh,JSON.stringify(shortcuts))}catch(e){}}
 function getRating(id){return ratings[id]||null}
-/* ============================================================
-   IMG ZOOM
-   ============================================================ */
+
 function openImageViewer(url){
   if(!url)return;
   const c=$('imgViewContainer');
@@ -1246,9 +1267,7 @@ function openImageViewer(url){
   $('imgViewClose').addEventListener('click',e=>{e.stopPropagation();close()});
 }
 window.__openImg=function(url){openImageViewer(url)};
-/* ============================================================
-   EMPTY
-   ============================================================ */
+
 function emptyRich(icon,title,desc,cta,ctaAction){
   const html=cta?'<button class="empty-cta" data-cta="'+ctaAction+'">'+cta+'</button>':'';
   return '<div class="empty-rich"><span class="empty-icon">'+icon+'</span><div class="empty-title">'+esc(title)+'</div><div class="empty-desc">'+esc(desc)+'</div>'+html+'</div>';
@@ -1262,9 +1281,7 @@ function bindEmpty(container){
     else if(a==='retry')loadFeed(true);
   }));
 }
-/* ============================================================
-   TG / SB
-   ============================================================ */
+
 function initTg(){
   try{
     if(window.Telegram&&window.Telegram.WebApp){
@@ -1279,18 +1296,23 @@ function initTg(){
 }
 function initSb(){
   try{
-    if(typeof window.supabase==='undefined'||!window.supabase.createClient)return false;
+    if(typeof window.supabase==='undefined'||!window.supabase.createClient){
+      console.error('[AZ] Supabase library NOT loaded from CDN');
+      return false;
+    }
     sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+    console.log('[AZ] Supabase client created');
     return true;
-  }catch(e){return false}
+  }catch(e){
+    console.error('[AZ] initSb failed:',e);
+    return false;
+  }
 }
-/* ============================================================
-   REALTIME
-   ============================================================ */
+
 function startRealtime(){
   if(!sb||realtimeCh)return;
   try{
-    realtimeCh=sb.channel('az-live-v36')
+    realtimeCh=sb.channel('az-live-v38')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'ads'},p=>{
         const ad=p.new;
         if(ad.status==='approved'&&!ad.hidden&&!homeAds.find(x=>x.id===ad.id)){homeAds.unshift(ad);toast(t('new_ad_toast'),'success',2000);renderFeed()}
@@ -1308,16 +1330,10 @@ function startRealtime(){
         if(m.to_id===currentUser.id){if(currentChatUser&&m.from_id===currentChatUser.id){loadChatMessages(currentChatUser.id,true)}else{loadUnreadMsgs();if(currentSection==='chats')loadChats()}}
         if(m.from_id===currentUser.id&&currentChatUser&&m.to_id===currentChatUser.id){loadChatMessages(currentChatUser.id)}
       })
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages'},p=>{
-        const m=p.new;if(!currentUser)return;
-        if(m.from_id===currentUser.id&&m.read===true){if(currentSection==='chats')loadChats()}
-      })
       .subscribe();
   }catch(e){warn('realtime',e)}
 }
-/* ============================================================
-   MODAL
-   ============================================================ */
+
 function showModal(html,onClose){
   if(activeModal){try{activeModal.ov.remove()}catch(e){}activeModal=null}
   const c=$('modalContainer');
@@ -1348,9 +1364,7 @@ function confirmModal(title,msg,onYes){
   r.q('#cNo').addEventListener('click',r.close);
   r.q('#cYes').addEventListener('click',()=>{r.close();onYes()});
 }
-/* ============================================================
-   CONFETTI
-   ============================================================ */
+
 function confetti(dur){
   dur=dur||2500;
   const cv=$('confetti');if(!cv||confettiActive)return;
@@ -1373,9 +1387,7 @@ function confetti(dur){
     requestAnimationFrame(draw);
   })();
 }
-/* ============================================================
-   VOICE — распознавание
-   ============================================================ */
+
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 const SR_OK=!!SR;
 async function micPerm(){
@@ -1397,7 +1409,6 @@ async function voiceField(el,btn){
   r.onend=()=>{if(btn)btn.classList.remove('listening');voiceOn=false};
   try{r.start()}catch(e){if(btn)btn.classList.remove('listening');voiceOn=false}
 }
-/* Голосовой ввод для AI — заполняет поле и автоотправляет */
 async function aiVoiceInput(btn){
   if(!SR_OK){toast(t('voice_not_supported'),'error');return}
   if(aiMicActive){stopVoice();if(btn)btn.classList.remove('listening');return}
@@ -1412,7 +1423,6 @@ async function aiVoiceInput(btn){
     if(btn)btn.classList.remove('listening');aiMicActive=false;voiceOn=false;
     if(txt){
       const inp=$('aiInput');if(inp){inp.value=txt;}
-      // автоотправка через 250мс
       setTimeout(()=>sendAiMessage(),250);
     }
   };
@@ -1420,9 +1430,7 @@ async function aiVoiceInput(btn){
   r.onend=()=>{if(btn)btn.classList.remove('listening');aiMicActive=false;voiceOn=false;if($('aiStatus')&&!aiBusy)$('aiStatus').textContent=t('ai_online')};
   try{r.start()}catch(e){if(btn)btn.classList.remove('listening');aiMicActive=false;voiceOn=false}
 }
-/* ============================================================
-   TTS — озвучка ответов AI
-   ============================================================ */
+
 function loadVoices(){
   if(!window.speechSynthesis)return[];
   return window.speechSynthesis.getVoices()||[];
@@ -1440,7 +1448,6 @@ function stopSpeaking(){
 function speakText(text){
   if(!aiVoiceEnabled||!window.speechSynthesis||!text)return;
   stopSpeaking();
-  // Ограничим длину — не более 500 символов для скорости
   const clean=String(text).replace(/\s+/g,' ').trim().slice(0,500);
   if(!clean)return;
   const utter=new SpeechSynthesisUtterance(clean);
@@ -1449,7 +1456,6 @@ function speakText(text){
   utter.rate=1.0;
   utter.pitch=1.0;
   utter.volume=1.0;
-  // Ищем подходящий голос
   try{
     const voices=loadVoices();
     const prefix=(langMap[currentLang]||'ru-RU').slice(0,2).toLowerCase();
@@ -1465,9 +1471,7 @@ function speakText(text){
   utter.onerror=()=>{aiSpeaking=false;const h=$('aiHeaderAv');if(h)h.classList.remove('speaking');if($('aiStatus')&&!aiBusy)$('aiStatus').textContent=t('ai_online')};
   try{window.speechSynthesis.speak(utter)}catch(e){}
 }
-/* ============================================================
-   AI — история и логика
-   ============================================================ */
+
 function loadAiHistory(){
   try{
     const r=lsGet(sKey(LS.aiChat));
@@ -1492,7 +1496,6 @@ function renderAiMessages(){
   aiHistory.forEach((msg,i)=>{
     const cls=msg.role==='user'?'user':'bot';
     h+='<div class="ai-msg '+cls+(msg.error?' error':'')+'">'+esc(msg.content)+'<div class="ai-msg-time">'+esc(msg.time||'')+'</div>';
-    // Кнопка озвучки для ответов бота
     if(msg.role!=='user'&&!msg.error)h+='<button class="ai-speak-btn" data-speak-idx="'+i+'" title="'+t('ai_speak')+'">🔊</button>';
     h+='</div>';
   });
@@ -1519,10 +1522,8 @@ function showAiTyping(){
   if($('aiStatus'))$('aiStatus').textContent=t('ai_thinking');
 }
 function hideAiTyping(){const el=$('aiTypingIndicator');if(el)el.remove();if($('aiStatus')&&!aiSpeaking&&!aiBusy)$('aiStatus').textContent=t('ai_online')}
-/* Определение навигационного интента */
 function detectNavigationIntent(text){
   const lower=String(text||'').toLowerCase();
-  // Триггеры навигации
   const triggers=['откр','перейд','перейти','перейди','покаж','зайд','зайти','включи раздел','open','go to','show'];
   const hasTrigger=triggers.some(t=>lower.includes(t));
   if(!hasTrigger)return null;
@@ -1574,13 +1575,10 @@ async function sendAiMessage(){
   markRL('ai');
   aiBusy=true;
   const sendBtn=$('aiSendBtn');if(sendBtn)sendBtn.disabled=true;
-  // Показываем сообщение пользователя
   appendAiMessage('user',text);
   inp.value='';inp.style.height='auto';
-  // Проверяем — может быть это команда навигации
   const targetSection=detectNavigationIntent(text);
   if(targetSection&&!isGuest){
-    // Проверяем доступ
     const protected=['favorites','send','admin','my-ads','my-appeals','my-reviews','notifications','settings','chats'];
     if(!(protected.indexOf(targetSection)!==-1&&isGuest)){
       setTimeout(()=>{switchSection(targetSection)},500);
@@ -1593,7 +1591,6 @@ async function sendAiMessage(){
     hideAiTyping();
     appendAiMessage('assistant',answer);
     sfxPlay('success');
-    // Озвучиваем если включено
     if(aiVoiceEnabled)speakText(answer);
   }catch(e){
     hideAiTyping();
@@ -1657,7 +1654,6 @@ function bindAiHandlers(){
     inp.dataset.bound='1';
     inp.addEventListener('keydown',e=>{
       if(e.key==='Enter'&&!e.shiftKey){
-        // На тач-устройствах НЕ отправляем — пусть будет перенос строки
         if(IS_TOUCH)return;
         e.preventDefault();
         sendAiMessage();
@@ -1665,21 +1661,20 @@ function bindAiHandlers(){
     });
     inp.addEventListener('input',()=>{inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,96)+'px'});
   }
-  const sb=$('aiSendBtn');
-  if(sb&&!sb.dataset.bound){sb.dataset.bound='1';sb.addEventListener('click',sendAiMessage)}
+  const sb2=$('aiSendBtn');
+  if(sb2&&!sb2.dataset.bound){sb2.dataset.bound='1';sb2.addEventListener('click',sendAiMessage)}
   const mb=$('aiMicBtn');
   if(mb&&!mb.dataset.bound){mb.dataset.bound='1';mb.addEventListener('click',()=>aiVoiceInput(mb))}
   updateVoiceBtn();
 }
-/* ============================================================
-   INIT
-   ============================================================ */
+
 async function initApp(){
+  console.log('[AZ] initApp start');
   bindAiHandlers();
   loadAiHistory();
   if(aiPanelOpen)renderAiMessages();
   if(isGuest){loadViewed();loadAccounts();loadShortcuts();switchSection('home');setupServerBar();setupInfinite();setupBackTop();setupNet();return}
-  if(!currentUser){showAuth('');return}
+  if(!currentUser){console.log('[AZ] No user — showing auth');showAuth('');return}
   isAdmin=!!currentUser.is_admin||currentUser.username===OWNER;
   isOwner=currentUser.username===OWNER;
   loadViewed();loadAccounts();loadShortcuts();loadRL();
@@ -1694,6 +1689,7 @@ async function initApp(){
   startRealtime();
   startHeartbeat();
   checkURL();
+  console.log('[AZ] initApp complete');
 }
 async function loadSettings(){
   if(!currentUser)return;
@@ -1716,6 +1712,7 @@ async function loadRatings(){try{const r=await timeout(sb.from('reviews').select
 function setupBackTop(){const b=$('backTop');if(!b)return;const onScroll=throttle(()=>{b.classList.toggle('visible',scrollY>600)},200);addEventListener('scroll',onScroll,{passive:true});b.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}))}
 function setupNet(){const b=$('offlineBanner');function u(){b.classList.toggle('visible',!navigator.onLine)}addEventListener('online',u);addEventListener('offline',u);u()}
 function setupInfinite(){const tr=$('loadMore');if(!tr)return;if(feedObs)feedObs.disconnect();feedObs=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting&&!loadingFeed&&hasMore)loadFeed(false)})},{rootMargin:'300px'});feedObs.observe(tr)}
+// ИСПРАВЛЕНО: защита от повторного биндинга
 function setupServerBar(){
   const sBtn=$('serverChip');
   if(sBtn&&!sBtn.dataset.bound){sBtn.dataset.bound='1';sBtn.addEventListener('click',openServerPicker)}
@@ -1730,9 +1727,7 @@ function openServerPicker(){
   const r=showModal('<h3 class="modal-title">🌍 '+t('server')+'</h3><div class="prof-grid" style="grid-template-columns:repeat(3,1fr);gap:.4rem">'+'<button class="prof-tile '+(filterServer===null?'active':'')+'" data-s="" style="grid-column:1/-1"><span class="prof-tile-label" style="text-align:center;display:block">🌐 '+t('all_servers')+'</span></button>'+SERVERS.map(s=>'<button class="prof-tile '+(filterServer===s?'active':'')+'" data-s="'+s+'" style="padding:.6rem .4rem"><span class="prof-tile-label" style="font-size:.7rem;text-align:center;display:block">'+s+'</span></button>').join('')+'</div>');
   r.qa('[data-s]').forEach(b=>b.addEventListener('click',()=>{filterServer=b.dataset.s||null;r.close();const sc=$('serverChip');if(sc)sc.innerHTML='🌐 '+esc(filterServer||t('all_servers'));loadFeed(true)}));
 }
-/* ============================================================
-   NAV
-   ============================================================ */
+
 function switchSection(sec){
   const prot=['favorites','send','admin','my-ads','my-appeals','my-reviews','notifications','settings','chats'];
   if(isGuest&&prot.indexOf(sec)!==-1){toast(t('login_required'),'info');return}
@@ -1774,9 +1769,7 @@ function openLinks(){
   const r=showModal('<h3 class="modal-title">'+t('communities')+'</h3><div class="links"><div class="link-item" data-link="https://t.me/Bounty_Squad31"><span class="link-icon">📣</span><span class="link-label">'+t('tg_channel')+'</span></div><div class="link-item" data-link="https://t.me/bounqy31"><span class="link-icon">👨‍💼</span><span class="link-label">'+t('manager')+'</span></div><div class="link-item" data-link="https://vk.com/bountyarz"><span class="link-icon">📢</span><span class="link-label">'+t('vk_channel')+'</span></div></div><p style="text-align:center;font-size:.72rem;margin-top:.9rem"><span class="brand-flow">Arizona Online × Bounty Team</span></p>');
   r.qa('.link-item').forEach(el=>el.addEventListener('click',()=>{open(el.dataset.link,'_blank');r.close()}));
 }
-/* ============================================================
-   FEED
-   ============================================================ */
+
 window.__openAdById=function(id){
   try{
     if(!id)return;
@@ -1904,9 +1897,7 @@ window.__adminDelAd=function(id){
   });
 };
 function updateFavCount(){const b=$('sbFavCount');if(!b)return;b.textContent=favIds.size;b.classList.toggle('hidden',favIds.size===0)}
-/* ============================================================
-   FAVORITES
-   ============================================================ */
+
 async function loadFav(){
   const c=$('favList');
   if(isGuest||!currentUser){c.innerHTML=emptyRich('❤️',t('empty_fav'),t('empty_fav_desc'),t('cta_go_home'),'go_home');bindEmpty(c);return}
@@ -1933,9 +1924,7 @@ async function loadFav(){
 window.__unfav=async function(id){
   try{await sb.from('favorites').delete().eq('user_id',currentUser.id).eq('ad_id',id);favIds.delete(id);updateFavCount();loadFav()}catch(e){toast(t('error'),'error')}
 };
-/* ============================================================
-   SEND
-   ============================================================ */
+
 function initSendForm(){
   const pi=$('sendPrice');pi.removeEventListener('input',onPriceInput);pi.addEventListener('input',onPriceInput);
   const mediaTA=$('sendMedia');const mediaCount=$('sendMediaCount');
@@ -1982,9 +1971,7 @@ async function submitAdForm(){
     $('sendMediaCount').textContent='0 / '+MAX_MEDIA;
   }catch(e){loader(false);alertModal(t('error'),(e&&e.message)||t('error'))}
 }
-/* ============================================================
-   PROFILE
-   ============================================================ */
+
 async function renderProfile(){
   const h=$('profHeader'),g=$('profGrid');
   if(!currentUser||isGuest){
@@ -2079,9 +2066,7 @@ function openEditProfile(){
     }catch(e){loader(false);alertModal(t('error'),t('error'))}
   });
 }
-/* ============================================================
-   SEARCH
-   ============================================================ */
+
 function setupSearchSection(){
   const old=$('searchInput');if(!old)return;
   const inp=old.cloneNode(true);old.parentNode.replaceChild(inp,old);
@@ -2167,9 +2152,7 @@ window.__dmUser=async function(uid){
   if(ur.data)openChat(ur.data);
 };
 window.__openProfile=function(uid){openPublicProfile(uid)};
-/* ============================================================
-   PUBLIC PROFILE
-   ============================================================ */
+
 async function openPublicProfile(uid){
   if(!uid)return;
   const r=showModal('<h3 class="modal-title">'+t('profile')+'</h3><div id="ppBody"><div class="inline-loader"></div></div>');
@@ -2232,9 +2215,7 @@ function openReportUser(uid){
     markRL('report');alertModal(t('success'),t('success'));r.close();
   });
 }
-/* ============================================================
-   CHATS
-   ============================================================ */
+
 async function loadChats(){
   const c=$('chatsList');
   if(isGuest||!currentUser){c.innerHTML='';return}
@@ -2368,9 +2349,7 @@ async function openChat(user){
     }catch(e){loader(false);toast(t('error'),'error')}
   });
 }
-/* ============================================================
-   MY ADS
-   ============================================================ */
+
 async function loadMyAds(){
   const c=$('myAdsList');
   if(isGuest||!currentUser){c.innerHTML=emptyRich('📦',t('empty_my_ads'),t('empty_my_ads_desc'),t('cta_create_ad'),'create_ad');bindEmpty(c);return}
@@ -2446,9 +2425,7 @@ function openPriceChange(adId){
     }catch(e){loader(false);alertModal(t('error'),t('error'))}
   });
 }
-/* ============================================================
-   MY APPEALS / REVIEWS / NOTIFS
-   ============================================================ */
+
 async function loadMyAppeals(){
   const c=$('myAppealsList');
   if(isGuest||!currentUser){c.innerHTML='';return}
@@ -2507,9 +2484,7 @@ async function loadNotifs(){
     await sb.from('notifications').update({read:true}).eq('user_id',currentUser.id).eq('read',false);unread=0;
   }catch(e){c.innerHTML='<div class="empty-state" style="padding:1rem;text-align:center;color:var(--muted)">'+t('error')+'</div>'}
 }
-/* ============================================================
-   SETTINGS
-   ============================================================ */
+
 function renderSettings(){
   const fs=userSettings.font_size||'medium';const lang=userSettings.language||currentLang||'ru';
   const c=$('settingsContent');
@@ -2542,9 +2517,7 @@ function renderSettings(){
   $('sShortcuts').addEventListener('click',openShortcuts);
   $('sAccounts').addEventListener('click',openAccounts);
 }
-/* ============================================================
-   SHORTCUTS / ACCOUNTS
-   ============================================================ */
+
 function openShortcuts(){
   let h='<h3 class="modal-title">⌨️ '+t('shortcuts_title')+'</h3><p style="font-size:.72rem;color:var(--muted);margin-bottom:.8rem">'+t('shortcuts_about')+'</p>';
   const labels={search:t('search'),new:t('send'),home:t('home'),favorites:t('favorites'),settings:t('settings'),help:t('notifications'),ai:t('ai_title')};
@@ -2564,7 +2537,7 @@ function openShortcuts(){
       };
       document.addEventListener('keydown',handler,true);
     }));
-    r.q('#sReset').addEventListener('click',()=>{shortcuts={...DEF_SHORTCUTS};saveShortcuts();r.close();openShortcuts()});
+    r.q('#sReset').addEventListener('click',()=>{shortcuts=Object.assign({},DEF_SHORTCUTS);saveShortcuts();r.close();openShortcuts()});
   },100);
 }
 function openAccounts(){
@@ -2586,9 +2559,7 @@ function openAddAccount(){
     try{loader(true,t('loading'));const h=await hashPwd(p);const res=await sb.from('app_users').select('*').eq('username',u).maybeSingle();loader(false);if(!res.data){eEl.textContent=t('not_found');return}if(res.data.password_hash!==h){eEl.textContent=t('wrong_password');return}if(res.data.banned){eEl.textContent=t('banned');return}addAccount(res.data);r.close();openAccounts()}catch(err){loader(false);eEl.textContent=t('error')}
   });
 }
-/* ============================================================
-   AD DETAIL
-   ============================================================ */
+
 async function openAd(ad){
   if(!ad)return;
   markViewed(ad.id);
@@ -2740,9 +2711,7 @@ function openEditReview(rv,adId){
   stars.querySelectorAll('span').forEach(s=>s.addEventListener('click',()=>{sel=parseInt(s.dataset.s);stars.querySelectorAll('span').forEach(x=>{const v=parseInt(x.dataset.s);x.textContent=v<=sel?'★':'☆';x.classList.toggle('active',v<=sel)})}));
   r.q('#erSave').addEventListener('click',async()=>{const text=r.q('#erText').value.trim();await sb.from('reviews').update({stars:sel,text}).eq('id',rv.id);r.close()});
 }
-/* ============================================================
-   MUSIC
-   ============================================================ */
+
 function openMusic(){
   if(musicAudio){try{musicAudio.pause()}catch(e){}musicAudio=null}
   const r=showModal('<h3 class="modal-title">🎵 '+t('music')+'</h3><div class="music-box"><div class="music-row"><div class="music-icon">🎵</div><div style="min-width:0;flex:1"><div class="music-name" id="mn">—</div><div class="music-status" id="ms">—</div><div class="music-loop">'+t('loop_on')+'</div></div></div><div class="music-bar" id="mpb"><div class="music-bar-fill" id="mpf"></div></div><div class="music-controls"><button class="btn primary" id="mplay">'+t('play')+'</button><button class="btn secondary" id="mpause">'+t('pause')+'</button><button class="btn danger" id="mstop">'+t('reset')+'</button></div></div><div class="form-group mt-12"><label>'+t('link_track')+'</label><input type="text" id="murl" placeholder="https://..."></div><label class="file-up" for="mfile"><span>'+t('upload_file')+'</span><input type="file" id="mfile" accept="audio/*"></label>');
@@ -2769,9 +2738,7 @@ function openMusic(){
   pb.addEventListener('click',e=>{if(!musicAudio||!musicAudio.duration||!isFinite(musicAudio.duration))return;const rect=pb.getBoundingClientRect();const pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));musicAudio.currentTime=pct*musicAudio.duration});
   r.q('#mfile').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(!f)return;if(f.size>50*1024*1024){toast(t('error'),'error');return}try{play(URL.createObjectURL(f),f.name,true)}catch(err){}});
 }
-/* ============================================================
-   ADMIN
-   ============================================================ */
+
 function promptCreateAdminPass(){
   const r=showModal('<h3 class="modal-title">🔒 '+t('password_admin')+'</h3><p style="font-size:.78rem;color:var(--muted);margin-bottom:.8rem">'+t('create_pass')+'</p><div class="form-group"><label>'+t('new_pass')+'</label><input type="password" id="nap"></div><div class="form-group"><label>'+t('repeat_pass')+'</label><input type="password" id="cap"></div><button class="btn primary w-full" id="napBtn">'+t('create_btn')+'</button><p id="napErr" style="color:var(--danger);font-size:.72rem;text-align:center"></p>');
   r.q('#napBtn').addEventListener('click',async()=>{const p1=r.q('#nap').value.trim(),p2=r.q('#cap').value.trim();const eEl=r.q('#napErr');if(p1.length<6){eEl.textContent=t('pass_short');return}if(p1!==p2){eEl.textContent=t('pass_mismatch');return}const h=await hashPwd(p1);try{await sb.from('user_settings').update({admin_password_hash:h}).eq('user_id',currentUser.id)}catch(e){}userSettings.admin_password_hash=h;adminPassHash=h;toast(t('pass_installed'),'success');r.close();loadAdmin()});
@@ -2834,7 +2801,7 @@ function bindAdmin(){
     bd('aBan',()=>adminUserAction('ban'));bd('aUnban',()=>adminUserAction('unban'));
     bd('aMake',()=>adminUserAction('make_admin'));bd('aRem',()=>adminUserAction('remove_admin'));
     bd('aVer',()=>adminUserAction('verify'));bd('aUnv',()=>adminUserAction('unverify'));
-    bd('aClear',()=>confirmModal(t('clear_feed'),t('clear_feed_confirm'),async()=>{loader(true,t('clear_loading'));await sb.from('ads').delete().neq('id',0);await sb.from('favorites').delete().neq('id',0);loader(false);loadAdmin();loadFeed(true)}));
+    bd('aClear',()=>confirmModal(t('clear_feed'),t('clear_feed_confirm'),async()=>{loader(true,t('clear_loading'));await sb.from('ads').delete().neq('id','00000000-0000-0000-0000-000000000000');await sb.from('favorites').delete().neq('id','00000000-0000-0000-0000-000000000000');loader(false);loadAdmin();loadFeed(true)}));
   }
 }
 async function adminUserAction(action){
@@ -2867,9 +2834,7 @@ function openAdminEdit(ad){
   });
 }
 async function logModAction(action,details){try{await sb.from('moderator_logs').insert({moderator_id:currentUser.id,moderator_username:currentUser.username,action,details:String(details),created_at:new Date().toISOString()})}catch(e){warn('logModAction failed',action,details,e)}}
-/* ============================================================
-   AUTH
-   ============================================================ */
+
 async function tryLogin(u,p){
   if(!/^[a-zA-Z0-9_]{3,20}$/.test(u)){toast(t('login_short'),'error');return false}
   if(!p||p.length<6){toast(t('password_short'),'error');return false}
@@ -2926,7 +2891,7 @@ function showAuth(prefill){
       if(!u){eEl.textContent=t('login_short');eEl.classList.add('shake');return}
       if(!p){eEl.textContent=t('password_short');eEl.classList.add('shake');return}
       submitting=true;btn.disabled=true;btn.textContent='⏳';
-      try{const ok=mode==='login'?await tryLogin(u,p):await tryRegister(u,p);if(ok){c.innerHTML='';showApp();try{initApp()}catch(e){}return}}
+      try{const ok=mode==='login'?await tryLogin(u,p):await tryRegister(u,p);if(ok){c.innerHTML='';showApp();try{initApp()}catch(e){console.error('[AZ] initApp error:',e)}}}
       catch(e){eEl.textContent=t('error');eEl.classList.add('shake')}
       finally{submitting=false;if($('authSubmit')){btn.disabled=false;btn.textContent=mode==='login'?t('login'):t('register')}}
     });
@@ -2948,9 +2913,7 @@ function showApp(){
   if(innerWidth>=1024){$('sidebar').style.display='flex';$('capsule').style.display='none';$('fabBtn').style.display='none'}
   else{$('sidebar').style.display='none';$('capsule').style.display='flex';$('fabBtn').style.display='flex'}
 }
-/* ============================================================
-   DEEP LINK
-   ============================================================ */
+
 function checkURL(){
   if(urlChecked)return;
   urlChecked=true;
@@ -2964,18 +2927,13 @@ function checkURL(){
     if(sb)sb.from('ads').select('*').eq('id',id).maybeSingle().then(r=>{if(r.data)setTimeout(()=>window.__openAdById(r.data.id),700)}).catch(()=>{});
   }catch(e){}
 }
-/* ============================================================
-   HEARTBEAT
-   ============================================================ */
 function startHeartbeat(){
   stopHeartbeat();if(!currentUser||isGuest||!sb)return;
   const beat=async()=>{try{if(typeof sb.rpc==='function')await sb.rpc('heartbeat',{uid:currentUser.id});else await sb.from('app_users').update({last_seen_at:new Date().toISOString()}).eq('id',currentUser.id)}catch(e){}};
   beat();heartbeatInt=setInterval(beat,HEARTBEAT_MS);
 }
 function stopHeartbeat(){if(heartbeatInt){clearInterval(heartbeatInt);heartbeatInt=null}}
-/* ============================================================
-   GLOBAL HANDLERS
-   ============================================================ */
+
 let handlersBound=false;
 function bindGlobals(){
   if(handlersBound)return;handlersBound=true;
@@ -3014,34 +2972,87 @@ function bindGlobals(){
     if(d!==isDesktop){isDesktop=d;if(currentUser||isGuest)showApp()}
   },150));
 }
-/* ============================================================
-   BOOT
-   ============================================================ */
+
+// === BOOT with error handling ===
 function boot(){
-  loadLocalPrefs();
-  loadShortcuts();
-  bindGlobals();
-  bindAiHandlers();
-  applyTheme();
-  applyTranslations();
-  const tgUser=initTg();
-  const ok=initSb();
-  if(!ok){setTimeout(()=>{hideSplash();document.body.innerHTML='<div style="text-align:center;margin-top:50vh;padding:2rem;color:var(--danger);font-family:sans-serif">'+t('error_connection')+'</div>'},SPLASH_MS);return}
-  setTimeout(async()=>{
-    hideSplash();checkURL();
-    const saved=lsGet(sKey(LS.user));
-    if(!saved){showAuth(tgUser||'');return}
-    try{
-      currentUser=JSON.parse(saved);
-      const r=await sb.from('app_users').select('*').eq('id',currentUser.id).maybeSingle();
-      if(r.error||!r.data||r.data.banned){if(r.data&&r.data.banned){showBanScreen();return}lsDel(sKey(LS.user));currentUser=null;showAuth(tgUser||'');return}
-      if(tgUserId&&r.data.telegram_id&&String(r.data.telegram_id)!==tgUserId){lsDel(sKey(LS.user));currentUser=null;showAuth(tgUser||'');return}
-      currentUser=r.data;addAccount(currentUser);
-      showApp();
-      try{initApp()}catch(e){warn('init',e)}
-    }catch(e){warn('boot',e);lsDel(sKey(LS.user));currentUser=null;showAuth(tgUser||'')}
-  },SPLASH_MS);
+  console.log('[AZ] Boot start');
+  try {
+    loadLocalPrefs();
+    console.log('[AZ] Step: loadLocalPrefs OK');
+    loadShortcuts();
+    console.log('[AZ] Step: loadShortcuts OK');
+    bindGlobals();
+    console.log('[AZ] Step: bindGlobals OK');
+    bindAiHandlers();
+    console.log('[AZ] Step: bindAiHandlers OK');
+    applyTheme();
+    console.log('[AZ] Step: applyTheme OK');
+    applyTranslations();
+    console.log('[AZ] Step: applyTranslations OK');
+    const tgUser=initTg();
+    console.log('[AZ] Step: initTg OK, tgUserId=', tgUserId);
+    const ok=initSb();
+    console.log('[AZ] Step: initSb OK =', ok);
+    if(!ok){
+      setTimeout(function(){
+        hideSplash();
+        showBootError('Supabase CDN', new Error('Не удалось загрузить библиотеку Supabase. Проверь интернет или отключи блокировщик рекламы.'));
+      }, SPLASH_MS);
+      return;
+    }
+    setTimeout(async function(){
+      try {
+        hideSplash();
+        checkURL();
+        const saved=lsGet(sKey(LS.user));
+        if(!saved){console.log('[AZ] No saved user — showing auth');showAuth(tgUser||'');return}
+        try{
+          currentUser=JSON.parse(saved);
+          console.log('[AZ] Restoring session for', currentUser.username);
+          const r=await sb.from('app_users').select('*').eq('id',currentUser.id).maybeSingle();
+          if(r.error||!r.data||r.data.banned){
+            if(r.data&&r.data.banned){showBanScreen();return}
+            console.log('[AZ] Session invalid — showing auth');
+            lsDel(sKey(LS.user));currentUser=null;showAuth(tgUser||'');return;
+          }
+          if(tgUserId&&r.data.telegram_id&&String(r.data.telegram_id)!==tgUserId){
+            console.log('[AZ] TG id mismatch — logout');
+            lsDel(sKey(LS.user));currentUser=null;showAuth(tgUser||'');return;
+          }
+          currentUser=r.data;addAccount(currentUser);
+          showApp();
+          try{initApp()}catch(e){console.error('[AZ] initApp error:',e);showBootError('initApp',e)}
+        }catch(e){
+          console.error('[AZ] Session restore error:',e);
+          lsDel(sKey(LS.user));currentUser=null;showAuth(tgUser||'');
+        }
+      } catch(e) {
+        console.error('[AZ] Boot inner error:', e);
+        showBootError('boot/timeout', e);
+      }
+    }, SPLASH_MS);
+  } catch(e) {
+    console.error('[AZ] Boot outer error:', e);
+    showBootError('boot (sync)', e);
+  }
 }
+
+// Splash kill-switch: если через 5 сек приложение не запустилось — показать экран ошибки
+setTimeout(function(){
+  var s = document.getElementById('splash');
+  if (s && !s.classList.contains('hidden')) {
+    console.warn('[AZ] Splash still visible after 5s — force hiding');
+    s.classList.add('hidden');
+    var auth = document.getElementById('authContainer');
+    var main = document.getElementById('main');
+    var mainShown = main && main.style.display !== 'none';
+    var authShown = auth && auth.innerHTML.trim().length > 0;
+    if (!mainShown && !authShown) {
+      showBootError('timeout (5s)', new Error('Приложение не загрузилось за 5 секунд. Скорее всего проблема с интернетом или CDN-библиотеками.'));
+    }
+  }
+}, 5000);
+
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
 else boot();
 

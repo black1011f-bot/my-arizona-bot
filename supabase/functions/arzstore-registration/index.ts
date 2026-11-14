@@ -10,7 +10,13 @@ const cors = {
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: cors });
 
-function publicUser(user: any) {\n  if (!user || typeof user !== "object") return user;\n  const { password_hash: _passwordHash, ...safe } = user;\n  return safe;\n}\n\nasync function sha256(value: string): Promise<string> {
+function publicUser(user: any) {
+  if (!user || typeof user !== "object") return user;
+  const { password_hash: _passwordHash, ...safe } = user;
+  return safe;
+}
+
+async function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2, "0")).join("");
 }

@@ -91,6 +91,47 @@ Deno.serve(async (req: Request) => {
     const existingRows = await rest(`${table}?telegram_id=eq.${tg.id}&select=*`, serviceKey);
     const old = Array.isArray(existingRows) ? existingRows[0] : null;
 
+    if (body.action === "login") {
+      const username = String(body.username || "").trim().toLowerCase();
+      const passwordHash = String(body.password_hash || "");
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(username) || !/^[a-f0-9]{64}$/i.test(passwordHash)) {
+        return json(400, { ok: false, error: "Проверьте логин и пароль." });
+      }
+      const found = await rest(`app_users?username=eq.${encodeURIComponent(username)}&select=*&limit=1`, serviceKey);
+      const user = Array.isArray(found) ? found[0] : null;
+      if (!user || !user.password_hash || user.password_hash !== passwordHash) {
+        return json(401, { ok: false, error: "Неверный логин или пароль." });
+      }
+      if (user.banned) return json(403, { ok: false, error: "Аккаунт заблокирован." });
+      if (user.telegram_id && Number(user.telegram_id) !== tg.id) {
+        return json(409, { ok: false, error: "Этот аккаунт уже привязан к другому Telegram." });
+      }
+      const linked = await rest(`app_users?telegram_id=eq.${tg.id}&select=id&limit=2`, serviceKey);
+      if (Array.isArray(linked) && linked.some((row: any) => row.id !== user.id)) {
+        return json(409, { ok: false, error: "К этому Telegram уже привязан другой аккаунт." });
+      }
+      const updated = await rest(`app_users?id=eq.${user.id}`, serviceKey, {
+        method: "PATCH",
+        body: JSON.stringify({ telegram_id: tg.id, last_seen_at: new Date().toISOString() }),
+      });
+      const safeUser = Array.isArray(updated) ? updated[0] : user;
+      return json(200, { ok: true, user: safeUser });
+    }
+
+    if (body.action === "session") {
+      const userId = String(body.user_id || "");
+      if (!/^[0-9a-f-]{36}$/i.test(userId)) return json(400, { ok: false, error: "Некорректная сессия." });
+      const found = await rest(`app_users?id=eq.${encodeURIComponent(userId)}&telegram_id=eq.${tg.id}&select=*&limit=1`, serviceKey);
+      const user = Array.isArray(found) ? found[0] : null;
+      if (!user) return json(401, { ok: false, error: "Сессия не найдена. Войдите снова." });
+      if (user.banned) return json(403, { ok: false, error: "Аккаунт заблокирован." });
+      const updated = await rest(`app_users?id=eq.${user.id}`, serviceKey, {
+        method: "PATCH",
+        body: JSON.stringify({ last_seen_at: new Date().toISOString() }),
+      });
+      return json(200, { ok: true, user: Array.isArray(updated) ? updated[0] : user });
+    }
+
     if (body.action === "request") {
       const username = String(body.username || "").trim().toLowerCase();
       const passwordHash = String(body.password_hash || "");

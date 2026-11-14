@@ -167,7 +167,7 @@ Deno.serve(async (req: Request) => {
       } else {
         users = await rest("app_users", serviceKey, {
           method: "POST", body: JSON.stringify({
-            id: crypto.randomUUID(), ...fields, banned: false, is_admin: username === "bounqy",
+            id: crypto.randomUUID(), ...fields, banned: false, is_admin: false,
             created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
           }),
         });

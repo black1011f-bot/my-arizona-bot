@@ -8289,15 +8289,26 @@ async function boot() {
         if (!saved) { showAuth(tgUser || ''); return; }
         try {
           currentUser = JSON.parse(saved);
-          const r = await sb.from('app_users').select('*').eq('id', currentUser.id).maybeSingle();
-          if (r.error || !r.data || r.data.banned) {
-            if (r.data && r.data.banned) { showBanScreen(); return; }
+          if (!tg || !tg.initData || !currentUser.id) {
             lsDel(sKey(LS.user));
             currentUser = null;
             showAuth(tgUser || '');
             return;
           }
-          currentUser = r.data;
+          const sessionResponse = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+            body: JSON.stringify({ action: 'session', initData: tg.initData, user_id: currentUser.id })
+          }), 15000);
+          const sessionData = await sessionResponse.json().catch(() => ({}));
+          if (!sessionResponse.ok || !sessionData.ok || !sessionData.user) {
+            if (sessionResponse.status === 403) { showBanScreen(); return; }
+            lsDel(sKey(LS.user));
+            currentUser = null;
+            showAuth(tgUser || '');
+            return;
+          }
+          currentUser = sessionData.user;
           addAccount(currentUser);
           showApp();
           try { initApp(); } catch (e) { console.error('[ARZ] initApp:', e); }

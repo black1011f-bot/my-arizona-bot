@@ -254,7 +254,11 @@ def register_user(telegram_id, username):
     try:
         res = supabase.table("app_users").select("id").eq("telegram_id", telegram_id).execute()
         if res.data:
-            supabase.table("app_users").update({"username": username or ""}).eq("telegram_id", telegram_id).execute()
+            # Telegram username is not the ARZstore login; never overwrite the user's chosen login.
+            supabase.table("app_users").update({
+                "telegram_id": telegram_id,
+                "last_seen_at": datetime.now(timezone.utc).isoformat()
+            }).eq("telegram_id", telegram_id).execute()
             return res.data[0]["id"]
         fake_hash = "telegram_user_" + str(telegram_id) + "_" + uuid.uuid4().hex[:8]
         new_uuid = uuid.uuid4()

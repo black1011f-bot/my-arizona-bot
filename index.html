@@ -5109,24 +5109,30 @@ window.__ARZ_INTERNAL = { esc };
 async function tryLogin(u, p) {
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(u)) { toast(t('login_short'), 'error'); return false; }
   if (!p || p.length < 6) { toast(t('password_short'), 'error'); return false; }
+  if (!tg || !tg.initData) {
+    alertModal(t('error'), 'Войдите через Telegram Mini App, чтобы подтвердить аккаунт.', 'error');
+    return false;
+  }
   try {
     topProg(true);
     const h = await hashPwd(p);
-    const r = await timeout(sb.from('app_users').select('*').eq('username', u).maybeSingle(), 10000);
-    topProg(false);
-    if (r.error) { alertModal(t('error'), 'Supabase: ' + (r.error.message || ''), 'error'); return false; }
-    const d = r.data;
-    if (!d) { alertModal(t('account_not_found'), 'Логин: ' + u, 'error'); return false; }
-    if (d.password_hash !== h) { alertModal(t('wrong_password'), '', 'error'); return false; }
-    if (d.banned) { showBanScreen(); return false; }
-    currentUser = d;
-    lsSet(sKey(LS.user), JSON.stringify(d));
-    addAccount(d);
+    if (!/^[a-f0-9]{64}$/i.test(h)) throw new Error('Не удалось безопасно обработать пароль. Обновите Telegram и повторите.');
+    const response = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ action: 'login', initData: tg.initData, username: u, password_hash: h })
+    }), 15000);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok || !data.user) throw new Error(data.error || 'Не удалось войти.');
+    currentUser = data.user;
+    lsSet(sKey(LS.user), JSON.stringify(currentUser));
+    addAccount(currentUser);
     return true;
   } catch (e) {
-    topProg(false);
-    alertModal(t('error'), 'Исключение: ' + (e.message || e), 'error');
+    alertModal(t('error'), e.message || 'Ошибка входа.', 'error');
     return false;
+  } finally {
+    topProg(false);
   }
 }
 
@@ -8266,16 +8272,20 @@ function boot() {
         const saved = lsGet(sKey(LS.user));
         if (!saved) { showAuth(tgUser || ''); return; }
         try {
-          currentUser = JSON.parse(saved);
-          const r = await sb.from('app_users').select('*').eq('id', currentUser.id).maybeSingle();
-          if (r.error || !r.data || r.data.banned) {
-            if (r.data && r.data.banned) { showBanScreen(); return; }
-            lsDel(sKey(LS.user));
-            currentUser = null;
-            showAuth(tgUser || '');
-            return;
+          const cachedUser = JSON.parse(saved);
+          if (!tg || !tg.initData || !cachedUser || !cachedUser.id) throw new Error('Telegram session missing');
+          const sessionResponse = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+            body: JSON.stringify({ action: 'session', initData: tg.initData, user_id: cachedUser.id })
+          }), 12000);
+          const sessionData = await sessionResponse.json().catch(() => ({}));
+          if (!sessionResponse.ok || !sessionData.ok || !sessionData.user) {
+            if (sessionResponse.status === 403) { showBanScreen(); return; }
+            throw new Error(sessionData.error || 'Session expired');
           }
-          currentUser = r.data;
+          currentUser = sessionData.user;
+          lsSet(sKey(LS.user), JSON.stringify(currentUser));
           addAccount(currentUser);
           showApp();
           try { initApp(); } catch (e) { console.error('[ARZ] initApp:', e); }

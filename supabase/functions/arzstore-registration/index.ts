@@ -24,7 +24,6 @@ async function verifyInitData(initData: string, botToken: string) {
     throw new Error("Сессия Telegram устарела. Закройте и снова откройте Mini App.");
   }
   params.delete("hash");
-  params.delete("signature");
   const check = Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${k}=${v}`).join("\n");
   const enc = new TextEncoder();
@@ -33,14 +32,10 @@ async function verifyInitData(initData: string, botToken: string) {
   const dataKey = await crypto.subtle.importKey("raw", secret, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const expected = Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", dataKey, enc.encode(check))))
     .map(x => x.toString(16).padStart(2, "0")).join("");
-  if (expected.length !== receivedHash.length || !crypto.subtle.timingSafeEqual) {
-    // Deno WebCrypto has no timingSafeEqual; use a constant-time byte comparison below.
-    if (expected !== receivedHash) throw new Error("Не удалось подтвердить аккаунт Telegram.");
-  } else {
-    const a = new TextEncoder().encode(expected), b = new TextEncoder().encode(receivedHash);
-    let diff = 0; for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-    if (diff !== 0) throw new Error("Не удалось подтвердить аккаунт Telegram.");
-  }
+  const a = new TextEncoder().encode(expected), b = new TextEncoder().encode(receivedHash);
+  if (a.length !== b.length) throw new Error("Не удалось подтвердить аккаунт Telegram.");
+  let diff = 0; for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  if (diff !== 0) throw new Error("Не удалось подтвердить аккаунт Telegram.");
   const rawUser = params.get("user");
   if (!rawUser) throw new Error("В Telegram-профиле не найден пользователь.");
   const user = JSON.parse(rawUser);

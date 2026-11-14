@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
         method: "PATCH",
         body: JSON.stringify({ telegram_id: tg.id, last_seen_at: new Date().toISOString() }),
       });
-      const safeUser = Array.isArray(updated) ? updated[0] : user;
+      const safeUser = publicUser(Array.isArray(updated) ? updated[0] : user);
       return json(200, { ok: true, user: safeUser });
     }
 

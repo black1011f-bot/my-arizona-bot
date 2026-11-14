@@ -263,7 +263,6 @@ def register_user(telegram_id, username):
             "username": username or "",
             "password_hash": fake_hash,
             "telegram_id": telegram_id,
-            "telegram_username": username or "",
             "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()
         # Создаём запись в user_settings

@@ -47,6 +47,21 @@ async function handleMessage(m:any) {
  if(text==="❌ Отменить действие"||text==="/cancel"){await clearState(uid);return send(chat,"Действие отменено.",mainKb);}
  if(text==="🌐 Сменить сервер"){await setState(uid,{step:"server"});return send(chat,"Выберите сервер:",kb(SERVERS.reduce((a,v,i)=>{(a[Math.floor(i/2)]??=[]).push(v);return a},[] as string[][]).concat([["⬅️ Назад"]])));}
  if(s.step==="server"){if(SERVERS.includes(text)){await db(`app_users?telegram_id=eq.${uid}`,"PATCH",{server:text});await clearState(uid);return send(chat,"Сервер изменён: "+text,mainKb);} }
+ if(text==="👑 Админ-панель"||text==="/admin"){
+  if(!MANAGER.has(String(from.username||"").toLowerCase()))return send(chat,"⛔ Доступ запрещён.");
+  return send(chat,"👑 <b>Панель модерации</b>",kb([["модерация продажи","модерация скупки"],["📊 Статистика","⬅️ Назад"]]));
+ }
+ if(text==="модерация продажи"||text==="модерация скупки"){
+  if(!MANAGER.has(String(from.username||"").toLowerCase()))return send(chat,"⛔ Доступ запрещён.");
+  const mode=text==="модерация скупки"?"buy":"sell";
+  const pending=await db(`ads?status=eq.pending&mode=eq.${mode}&select=id,item_name,description,price,server,author_id&order=created_at.asc&limit=10`);
+  if(!pending?.length)return send(chat,"📭 Нет объявлений на модерации.");
+  for(const ad of pending)await send(chat,`#${ad.id} · ${ad.server}\\n<b>${ad.item_name}</b>\\n${ad.description||""}\\nЦена: ${money(Number(ad.price||0))}`,inline([[{text:"✅ Одобрить",callback_data:"approve:"+ad.id},{text:"❌ Отклонить",callback_data:"reject:"+ad.id}]]));
+  return;
+ }
+ if(text==="📊 Статистика"&&MANAGER.has(String(from.username||"").toLowerCase())){
+  const counts=await db("ads?select=status");const pending=(counts||[]).filter((x:any)=>x.status==="pending").length;return send(chat,`📊 Всего объявлений: ${counts?.length||0}\\n⏳ На модерации: ${pending}`);
+ }
  if(text==="📤 Продать товар"||text==="📥 Скупить товар"){await setState(uid,{step:"category",mode:text.includes("Скупить")?"buy":"sell",images:[]});return send(chat,"Выберите категорию:",kb(CATS.map(x=>[x]).concat([["❌ Отменить действие"]])));}
  if(s.step==="category"&&CATS.includes(text)){await setState(uid,{...s,step:"price",category:text});return send(chat,"Введите цену (например 150к, 2.5кк):",kb([["❌ Отменить действие"]]));}
  if(s.step==="price"){const n=price(text);if(!Number.isSafeInteger(n)||n<0||n>1e12)return send(chat,"Некорректная цена. Пример: 150к или 2.5кк.");await setState(uid,{...s,step:"name",price:n});return send(chat,"Введите название товара (до 100 символов):");}

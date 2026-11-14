@@ -10,7 +10,7 @@ const cors = {
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: cors });
 
-async function sha256(value: string): Promise<string> {
+function publicUser(user: any) {\n  if (!user || typeof user !== "object") return user;\n  const { password_hash: _passwordHash, ...safe } = user;\n  return safe;\n}\n\nasync function sha256(value: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2, "0")).join("");
 }
@@ -129,7 +129,7 @@ Deno.serve(async (req: Request) => {
         method: "PATCH",
         body: JSON.stringify({ last_seen_at: new Date().toISOString() }),
       });
-      return json(200, { ok: true, user: Array.isArray(updated) ? updated[0] : user });
+      return json(200, { ok: true, user: publicUser(Array.isArray(updated) ? updated[0] : user) });
     }
 
     if (body.action === "request") {
@@ -216,7 +216,7 @@ Deno.serve(async (req: Request) => {
       const user = Array.isArray(users) ? users[0] : users;
       if (!user || user.banned) return json(403, { ok: false, error: "Регистрация недоступна для этого аккаунта." });
       await rest(`${table}?telegram_id=eq.${tg.id}`, serviceKey, { method: "DELETE" });
-      return json(200, { ok: true, user });
+      return json(200, { ok: true, user: publicUser(user) });
     }
 
     return json(400, { ok: false, error: "Неизвестное действие." });

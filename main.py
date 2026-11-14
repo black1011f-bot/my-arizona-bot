@@ -21,6 +21,9 @@ from zoneinfo import ZoneInfo
 from functools import lru_cache
 from collections import defaultdict
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import telebot
 from telebot import types
 from telebot.apihelper import ApiTelegramException
@@ -28,14 +31,14 @@ from supabase import create_client, Client
 from flask import Flask
 
 # =========================================================
-# 1. КОНФИГУРАЦИЯ (токены вставлены)
+# 1. КОНФИГУРАЦИЯ (секреты только через переменные окружения)
 # =========================================================
-TELEGRAM_TOKEN = "8916669266:AAGFjRyvwjBjViNrSErZekUMj7SsM69OVNE"
+TELEGRAM_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN", "")
 SUPABASE_URL = "https://sbtitlayqkpllnaiyeld.supabase.co"
 SUPABASE_SERVICE_KEY = "sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO"
 
 if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
-    print("❌ Не заданы переменные окружения.")
+    print("❌ Не заданы BOT_TOKEN, SUPABASE_URL или SUPABASE_SERVICE_KEY в окружении.")
     sys.exit(1)
 
 MANAGER_USERNAME = "bounqy31"
@@ -260,7 +263,6 @@ def register_user(telegram_id, username):
             "username": username or "",
             "password_hash": fake_hash,
             "telegram_id": telegram_id,
-            "telegram_username": username or "",
             "created_at": datetime.now(timezone.utc).isoformat()
         }).execute()
         # Создаём запись в user_settings

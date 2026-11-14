@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -1997,6 +1998,12 @@ body.ai-open .media-player-btn { opacity: 0; pointer-events: none; }
     width: 48px; height: 48px;
   }
 }
+
+/* SVG icon system: replaces decorative emoji in rendered interface */
+.ui-svg-icon{width:1.08em;height:1.08em;display:inline-block;vertical-align:-.18em;flex:0 0 auto;stroke:currentColor;}
+.sb-icon .ui-svg-icon,.cap-icon .ui-svg-icon{width:1.2em;height:1.2em;}
+.icon-btn .ui-svg-icon,.fab-main .ui-svg-icon,.fab-item .ui-svg-icon{width:1.15em;height:1.15em;}
+.emoji-svg-icon{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;line-height:1;}
 </style>
 </head>
 <body>
@@ -2297,6 +2304,7 @@ function esc(s) {
 const SB_URL = 'https://sbtitlayqkpllnaiyeld.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNidGl0bGF5cWtwbGxuYWl5ZWxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMzQ3MTQsImV4cCI6MjEwMzYxMDcxNH0.nIp0DN5MxrjP-g6ANaFQYOUPrGAjVPhiGMfkySUNYsQ';
 const AI_FUNCTION_URL = SB_URL + '/functions/v1/chat-with-ai';
+const REGISTRATION_FUNCTION_URL = SB_URL + '/functions/v1/arzstore-registration';
 const APP_VERSION = 'v7.0';
 
 const OWNER = 'bounqy';
@@ -5125,38 +5133,74 @@ async function tryLogin(u, p) {
 async function tryRegister(u, p) {
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(u)) { toast(t('login_short'), 'error'); return false; }
   if (!p || p.length < 6) { toast(t('password_short'), 'error'); return false; }
+  if (!tg || !tg.initData) {
+    alertModal(t('error'), 'Регистрация доступна только через Telegram Mini App. Откройте приложение через бота @' + TG_BOT + '.', 'error');
+    return false;
+  }
   try {
     topProg(true);
     const h = await hashPwd(p);
-    const ck = await timeout(sb.from('app_users').select('id').eq('username', u).maybeSingle(), 10000);
-    if (ck.error) { topProg(false); alertModal(t('error'), 'Проверка: ' + ck.error.message, 'error'); return false; }
-    if (ck.data) { topProg(false); alertModal(t('error'), 'Логин ' + u + ' занят', 'error'); return false; }
-    const nu = {
-      username: u, password_hash: h,
-      telegram_id: tgUserId ? parseInt(tgUserId) : null,
-      banned: false, is_admin: u === OWNER,
-      created_at: new Date().toISOString(),
-      last_seen_at: new Date().toISOString()
-    };
-    const ins = await timeout(sb.from('app_users').insert(nu), 10000);
-    if (ins.error) { topProg(false); alertModal(t('error'), 'Вставка: ' + ins.error.message, 'error'); return false; }
-    const rb = await timeout(sb.from('app_users').select('*').eq('username', u).maybeSingle(), 10000);
+    if (!/^[a-f0-9]{64}$/i.test(h)) throw new Error('Не удалось безопасно обработать пароль. Обновите Telegram и повторите.');
+    const request = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ action: 'request', initData: tg.initData, username: u, password_hash: h })
+    }), 15000);
+    const data = await request.json().catch(() => ({}));
+    if (!request.ok || !data.ok) throw new Error(data.error || 'Не удалось отправить код');
     topProg(false);
-    if (rb.error || !rb.data) { alertModal(t('error'), 'Создан, но не прочитан', 'error'); return false; }
-    currentUser = rb.data;
-    lsSet(sKey(LS.user), JSON.stringify(currentUser));
-    addAccount(currentUser);
-    try {
-      await sb.from('user_settings').insert({
-        user_id: currentUser.id, theme: 'dark', theme_mode: 'manual',
-        font_size: 'medium', language: currentLang, sfx_enabled: true
+    return await new Promise(resolve => {
+      let completed = false;
+      const modal = showModal(
+        '<div class="auth-code-modal">' +
+        '<div class="auth-code-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg></div>' +
+        '<h3 class="modal-title">Подтверждение Telegram</h3>' +
+        '<p class="form-hint">Мы отправили шестизначный код в бот @' + TG_BOT + '. Код действует 5 минут.</p>' +
+        '<div class="form-group"><label for="regCode">Код подтверждения</label><input id="regCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"></div>' +
+        '<p class="form-hint" id="regCodeHint">Если код не пришёл, проверьте, что вы нажали /start в боте. Повторная отправка доступна через 5 минут.</p>' +
+        '<button class="btn primary w-full" id="regVerify">Подтвердить и создать аккаунт</button>' +
+        '</div>'
+      , () => { if (!completed) resolve(false); });
+      modal.q('#regCode').focus();
+      modal.q('#regVerify').addEventListener('click', async () => {
+        const code = (modal.q('#regCode').value || '').replace(/\D/g, '');
+        const hint = modal.q('#regCodeHint');
+        if (!/^\d{6}$/.test(code)) { hint.textContent = 'Введите шестизначный код из бота.'; return; }
+        const verifyBtn = modal.q('#regVerify');
+        verifyBtn.disabled = true; verifyBtn.textContent = 'Проверяем...';
+        try {
+          const vr = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+            body: JSON.stringify({ action: 'verify', initData: tg.initData, code })
+          }), 15000);
+          const vd = await vr.json().catch(() => ({}));
+          if (!vr.ok || !vd.ok || !vd.user) throw new Error(vd.error || 'Неверный или просроченный код');
+          currentUser = vd.user;
+          lsSet(sKey(LS.user), JSON.stringify(currentUser));
+          addAccount(currentUser);
+          try {
+            await sb.from('user_settings').upsert({
+              user_id: currentUser.id, theme: 'dark', theme_mode: 'manual',
+              font_size: 'medium', language: currentLang, sfx_enabled: true
+            }, { onConflict: 'user_id', ignoreDuplicates: true });
+          } catch (e) {}
+          completed = true;
+          modal.close();
+          resolve(true);
+        } catch (e) {
+          hint.textContent = e.message || 'Ошибка подтверждения';
+          verifyBtn.disabled = false; verifyBtn.textContent = 'Подтвердить и создать аккаунт';
+        }
       });
-    } catch (e) {}
-    return true;
+      modal.q('#regCode').addEventListener('keydown', e => { if (e.key === 'Enter') modal.q('#regVerify').click(); });
+    });
   } catch (e) {
     topProg(false);
-    alertModal(t('error'), 'Исключение: ' + (e.message || e), 'error');
+    alertModal(t('error'), e.message || 'Ошибка регистрации', 'error');
     return false;
+  } finally {
+    topProg(false);
   }
 }
 
@@ -5176,13 +5220,13 @@ function showAuth(prefill) {
     c.innerHTML =
       '<div class="auth-screen">' +
       '<div class="auth-bg"></div>' +
-      '<button class="auth-theme" id="authTheme">🌓</button>' +
+      '<button class="auth-theme" id="authTheme" aria-label="Сменить тему"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 8.5 8.5 0 1 0 20.5 15.2Z"/></svg></button>' +
       '<div class="auth-box">' +
       '<div class="auth-brand">' +
       '<img id="authLogo" class="auth-logo" alt="ARZstore">' +
       '<div class="auth-brand-text">' +
       '<h2 class="auth-title brand-flow">ARZstore</h2>' +
-      '<p class="auth-team brand-flow">❖ Bounty Team</p>' +
+      '<p class="auth-team brand-flow"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 2 2.4 6.1L21 10l-6.6 1.9L12 18l-2.4-6.1L3 10l6.6-1.9L12 2Z"/></svg> Bounty Team</p>' +
       '</div></div>' +
       '<div class="auth-tabs">' +
       '<button class="auth-tab ' + (mode === 'login' ? 'active' : '') + '" id="tabLogin">' + t('login') + '</button>' +
@@ -5195,7 +5239,7 @@ function showAuth(prefill) {
       '<button class="btn primary w-full" id="authSubmit"' + (submitting ? ' disabled' : '') + '>' +
       (submitting ? '⏳' : (mode === 'login' ? t('login') : t('register'))) + '</button>' +
       '<p class="auth-error" id="authErr">' + err + '</p>' +
-      '<button class="auth-guest" id="authGuest">👀 ' + t('guest') + '</button>' +
+      '<button class="auth-guest" id="authGuest"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg> ' + t('guest') + '</button>' +
       '<p style="text-align:center;font-size:.65rem;color:var(--muted);margin-top:.7rem">' + APP_VERSION + '</p>' +
       '</div></div>';
 
@@ -8098,10 +8142,86 @@ function bindGlobals() {
   }, true);
 }
 
+
+/* ============================================================
+   SVG ICONS — render every decorative emoji as a consistent SVG
+   ============================================================ */
+function initSvgEmojiIcons() {
+  const emojiIconMap = {
+    '📶':'signal','👀':'eye','🔍':'search','🌓':'moon-star','🏠':'house',
+    '❤️':'heart','➕':'plus','💬':'message-circle','👤':'user','🎬':'clapperboard',
+    '🗑':'trash-2','📎':'paperclip','⏹':'square','↗':'external-link','🌐':'globe',
+    '🎤':'mic','📦':'package','📷':'camera','🚪':'door-open','🕘':'clock-3',
+    '👥':'users','❌':'x-circle','💡':'lightbulb','💍':'gem','🚗':'car',
+    '💼':'briefcase-business','🔫':'crosshair','👕':'shirt','📱':'smartphone',
+    '▶':'play','📁':'folder','✅':'check-circle','ℹ️':'info','⚠️':'alert-triangle',
+    '🎉':'party-popper','▶️':'play-circle','⏸':'pause','🆕':'badge-plus',
+    '💰':'wallet','📋':'clipboard','🔄':'refresh-cw','🎮':'gamepad-2',
+    '⚔️':'swords','⏳':'hourglass','🚫':'ban','🌍':'earth','📣':'megaphone',
+    '👨':'user-round','📢':'megaphone','✈️':'send','📡':'radio-tower',
+    '📅':'calendar-days','⬇':'arrow-down','⬆':'arrow-up','📭':'inbox',
+    '🤍':'heart','⭐':'star','👑':'crown','🟢':'circle-check','🛒':'shopping-cart',
+    '⚙️':'settings','📸':'camera','✏️':'pencil','📨':'mail','🔔':'bell',
+    '🎵':'music','🛡️':'shield-check','📄':'file-text','🔗':'link','🔊':'volume-2',
+    '📏':'ruler','⌨️':'keyboard','🔒':'lock','🔨':'hammer','🔓':'lock-open',
+    '⬇️':'arrow-down','🧹':'brush','🚨':'siren','📜':'scroll','🙈':'eye-off',
+    '📩':'mail','📊':'chart-no-axes-column'
+  };
+  const emojiPattern = /\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\uFE0E)?)*/gu;
+  const fallbackSvg = '<svg class="ui-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2L12 3z"/><path d="M19 14l1 2.5 2 1-2 1-1 2.5-1-2.5-2-1 2-1 1-2.5z"/></svg>';
+  function convertTextNode(node) {
+    const value = node.nodeValue;
+    if (!value || !emojiPattern.test(value)) { emojiPattern.lastIndex = 0; return; }
+    emojiPattern.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0, match;
+    while ((match = emojiPattern.exec(value))) {
+      if (match.index > last) frag.appendChild(document.createTextNode(value.slice(last, match.index)));
+      const iconName = emojiIconMap[match[0]] || 'sparkles';
+      const holder = document.createElement('span');
+      holder.className = 'emoji-svg-icon';
+      holder.setAttribute('aria-hidden', 'true');
+      const icon = document.createElement('i');
+      icon.setAttribute('data-lucide', iconName);
+      icon.className = 'ui-svg-icon';
+      holder.appendChild(icon);
+      frag.appendChild(holder);
+      last = match.index + match[0].length;
+    }
+    if (last < value.length) frag.appendChild(document.createTextNode(value.slice(last)));
+    if (last) node.parentNode.replaceChild(frag, node);
+  }
+  function scan(root) {
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(convertTextNode);
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      try { window.lucide.createIcons({attrs:{class:'ui-svg-icon','stroke-width':2}}); } catch (e) {}
+    }
+    root.querySelectorAll && root.querySelectorAll('i[data-lucide]').forEach(el => { el.outerHTML = fallbackSvg; });
+  }
+  scan(document.body);
+  const observer = new MutationObserver(records => {
+    const roots = new Set();
+    records.forEach(record => {
+      if (record.type === 'characterData') roots.add(record.target.parentNode);
+      record.addedNodes && record.addedNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) convertTextNode(node);
+        else if (node.nodeType === Node.ELEMENT_NODE) roots.add(node);
+      });
+    });
+    roots.forEach(root => scan(root));
+  });
+  observer.observe(document.body, {subtree:true,childList:true,characterData:true});
+}
+
 /* ============================================================
    BOOT
    ============================================================ */
 function boot() {
+  initSvgEmojiIcons();
   console.log('%c[ARZ ' + APP_VERSION + ']', 'color:#22D3EE;font-weight:bold');
   try {
     loadLocalPrefs();

@@ -9,10 +9,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script async src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script>
+<script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script async src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
 <style>
 /* ============================================================
@@ -8220,7 +8220,20 @@ function initSvgEmojiIcons() {
 /* ============================================================
    BOOT
    ============================================================ */
-function boot() {
+async function boot() {
+  const dependencyStartedAt = Date.now();
+  while (!(window.supabase && window.supabase.createClient) && Date.now() - dependencyStartedAt < 5500) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  if (!(window.supabase && window.supabase.createClient)) {
+    hideSplash();
+    showBootError('Supabase SDK', new Error('Не удалось загрузить библиотеку Supabase. Проверьте подключение и обновите Mini App.'));
+    return;
+  }
+  const telegramStartedAt = Date.now();
+  while (!(window.Telegram && window.Telegram.WebApp) && Date.now() - telegramStartedAt < 1800) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
   initSvgEmojiIcons();
   console.log('%c[ARZ ' + APP_VERSION + ']', 'color:#22D3EE;font-weight:bold');
   try {
@@ -8299,10 +8312,19 @@ setTimeout(() => {
     const a = auth && auth.innerHTML.trim().length > 0;
     if (!m && !a) showBootError('timeout 6s', new Error('Не загрузилось за 6 сек'));
   }
-}, 6000);
+}, 7000);
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-else boot();
+let bootStarted = false;
+function startBoot() {
+  if (bootStarted) return;
+  bootStarted = true;
+  boot().catch(error => {
+    hideSplash();
+    showBootError('boot/unhandled', error);
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startBoot, { once: true });
+else startBoot();
 
 })();
 </script>

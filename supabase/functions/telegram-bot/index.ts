@@ -119,9 +119,12 @@ Deno.serve(async(req:Request)=>{
  if(req.method==="GET"){
   const url=new URL(req.url);
   if(url.searchParams.get("setup")==="webhook"){
-   if(!BOT_TOKEN)return reply({ok:false,error:"TELEGRAM_BOT_TOKEN is missing"},503);
+   if(!BOT_TOKEN||!SERVICE||!SUPABASE_URL)return reply({ok:false,error:"Required Supabase or Telegram secrets are missing"},503);
+   const config=await db("bot_webhook_config?select=secret&limit=1");
+   const webhookSecret=String(config?.[0]?.secret||"");
+   if(!webhookSecret)return reply({ok:false,error:"Webhook secret is not configured"},503);
    const webhookUrl=`${SUPABASE_URL}/functions/v1/telegram-bot`;
-   const response=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,{method:"POST",headers:HEAD,body:JSON.stringify({url:webhookUrl,allowed_updates:["message","callback_query","pre_checkout_query"],drop_pending_updates:false})});
+   const response=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,{method:"POST",headers:HEAD,body:JSON.stringify({url:webhookUrl,secret_token:webhookSecret,allowed_updates:["message","callback_query","pre_checkout_query"],drop_pending_updates:false})});
    const result=await response.json();
    if(!response.ok||!result.ok)return reply({ok:false,error:result.description||"Telegram setWebhook failed"},502);
    const info=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
@@ -133,6 +136,9 @@ Deno.serve(async(req:Request)=>{
  if(req.method!=="POST")return reply({ok:false,error:"Method not allowed"},405);
  if(!BOT_TOKEN||!SERVICE||!SUPABASE_URL)return reply({ok:false,error:"Missing Supabase/Telegram secrets"},503);
  try{
+  const config=await db("bot_webhook_config?select=secret&limit=1");
+  const webhookSecret=String(config?.[0]?.secret||"");
+  if(!webhookSecret||req.headers.get("x-telegram-bot-api-secret-token")!==webhookSecret)return reply({ok:false,error:"Unauthorized webhook request"},401);
   const update=await req.json();const updateId=Number(update.update_id);
   if(Number.isFinite(updateId)){try{await db("bot_event_logs","POST",{update_id:updateId,event_type:update.message?"message":"callback",telegram_user_id:update.message?.from?.id||update.callback_query?.from?.id||null,chat_id:update.message?.chat?.id||update.callback_query?.message?.chat?.id||null,username:update.message?.from?.username||update.callback_query?.from?.username||null,callback_data:update.callback_query?.data||null,outcome:"received"},"return=minimal");}catch(e){if(String(e).includes("duplicate")||String(e).includes("unique"))return reply({ok:true,duplicate:true});}}
  if(update.pre_checkout_query){await tg("answerPreCheckoutQuery",{pre_checkout_query_id:update.pre_checkout_query.id,ok:true});}

@@ -5747,13 +5747,18 @@ async function loadFeed(reset) {
   try {
     topProg(true);
     const from = feedPage * PAGE, to = from + PAGE - 1;
-    let q = sb.from('ads').select('*').eq('status', 'approved').eq('hidden', false)
-      .order('created_at', { ascending: false }).range(from, to);
-    if (filterServer) q = q.eq('server', filterServer);
-    const r = await timeout(q, 8000);
+    const response = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({
+        action: 'feed', initData: tg && tg.initData || '',
+        server: filterServer || '', offset: from, limit: PAGE
+      })
+    }), 10000);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.ok) throw new Error(payload.error || 'Не удалось загрузить объявления');
     topProg(false);
-    if (r.error) throw r.error;
-    const na = r.data || [];
+    const na = payload.data || [];
     const va = na.filter(a => !a.expires_at || new Date(a.expires_at) > new Date());
     homeAds = reset ? va : homeAds.concat(va);
     if (na.length < PAGE) hasMore = false;

@@ -26,7 +26,7 @@ async function verifyInitData(initData: string, botToken: string) {
   const params = new URLSearchParams(initData);
   const receivedHash = params.get("hash");
   const authDate = Number(params.get("auth_date") || 0);
-  if (!receivedHash || !authDate || Math.abs(Date.now() / 1000 - authDate) > 600) {
+  if (!receivedHash || !authDate || Math.abs(Date.now() / 1000 - authDate) > 86400) {
     throw new Error("Сессия Telegram устарела. Закройте и снова откройте Mini App.");
   }
   params.delete("hash");

@@ -91,7 +91,20 @@ async function handleCallback(q:any) {
  if(data.startsWith("delete:")){const id=data.slice(7);const u=(await db(`app_users?telegram_id=eq.${uid}&select=id`))?.[0];const ad=(await db(`ads?id=eq.${encodeURIComponent(id)}&select=author_id`))?.[0];if(u&&ad?.author_id===u.id){await db(`ads?id=eq.${encodeURIComponent(id)}`,"PATCH",{status:"deleted",hidden:true});return send(chat,"Объявление удалено.");}}
 }
 Deno.serve(async(req:Request)=>{
- if(req.method==="GET")return reply({ok:true,service:"ARZstore Telegram bot",status:"active"});
+ if(req.method==="GET"){
+  const url=new URL(req.url);
+  if(url.searchParams.get("setup")==="webhook"){
+   if(!BOT_TOKEN)return reply({ok:false,error:"TELEGRAM_BOT_TOKEN is missing"},503);
+   const webhookUrl=`${SUPABASE_URL}/functions/v1/telegram-bot`;
+   const response=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`,{method:"POST",headers:HEAD,body:JSON.stringify({url:webhookUrl,allowed_updates:["message","callback_query"],drop_pending_updates:false})});
+   const result=await response.json();
+   if(!response.ok||!result.ok)return reply({ok:false,error:result.description||"Telegram setWebhook failed"},502);
+   const info=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo`);
+   const status=await info.json();
+   return reply({ok:true,webhook_set:true,webhook_url:webhookUrl,pending_update_count:status.result?.pending_update_count||0});
+  }
+  return reply({ok:true,service:"ARZstore Telegram bot",status:"active"});
+ }
  if(req.method!=="POST")return reply({ok:false,error:"Method not allowed"},405);
  if(!BOT_TOKEN||!SERVICE||!SUPABASE_URL)return reply({ok:false,error:"Missing Supabase/Telegram secrets"},503);
  try{
@@ -100,5 +113,5 @@ Deno.serve(async(req:Request)=>{
   if(update.message)await handleMessage(update.message);
   if(update.callback_query)await handleCallback(update.callback_query);
   return reply({ok:true});
- }catch(e){console.error(e);return reply({ok:false,error:e instanceof Error?e.message:"Internal error"},200);}
+ }catch(e){console.error(e);return reply({ok:false,error:e instanceof Error?e.message:"Internal error"},500);}
 });

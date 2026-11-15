@@ -3370,8 +3370,13 @@ function initSb() {
 }
 async function testConnection() {
   try {
-    const r = await timeout(sb.from('app_users').select('id').limit(1), 8000);
-    if (r.error) return { ok: false, error: r.error };
+    const response = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ action: 'health' })
+    }), 10000);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) return { ok: false, error: new Error(data.error || 'API ARZstore недоступен') };
     return { ok: true };
   } catch (e) { return { ok: false, error: e }; }
 }

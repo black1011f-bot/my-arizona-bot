@@ -21,6 +21,7 @@ const send=(chat_id:number,text:string,reply_markup?:unknown)=>tg("sendMessage",
 const kb=(rows:string[][])=>({keyboard:rows.map(row=>row.map(text=>({text}))),resize_keyboard:true});
 const inline=(rows:Record<string,unknown>[][])=>({inline_keyboard:rows.map(row=>row.map(x=>x))});
 const mainKb=kb([["🌐 Сменить игровой сервер"],["💍 Аксессуары и вещи","🚗 Транспорт и тюнинг"],["👕 Скины и охранники","🏠 Недвижимость и бизнесы"],["📦 Ресурсы и материалы"],["📤 Продать товар","📥 Скупить товар"],["🔄 Бартер / Обмен","🏛 Аукционы"],["👥 Рефералы и Бонусы"],["💱 Курс VC и калькулятор"],["🔍 Найти товар в базе"],["❤️ Сохраненные","📋 Мои публикации"],["📊 Анализ цен на сервере"],["💎 VIP-статус","💬 Связаться с менеджером"],["👑 Админ-панель"]]);
+const mainKbWithApp={...mainKb,keyboard:[[{text:"🚀 Открыть ARZstore",web_app:{url:"https://black1011f-bot.github.io/my-arizona-bot/"}}],...mainKb.keyboard]};
 async function state(uid:number) { const a=await db(`bot_user_states?telegram_user_id=eq.${uid}&select=state`); return a?.[0]?.state||{}; }
 async function setState(uid:number,s:Record<string,unknown>) { await db("bot_user_states?on_conflict=telegram_user_id","POST",{telegram_user_id:uid,state:s,updated_at:new Date().toISOString()},"resolution=merge-duplicates,return=minimal"); }
 async function clearState(uid:number){await setState(uid,{});}
@@ -59,7 +60,7 @@ async function handleMessage(m:any) {
   const ref=text.split(/\s+/)[1]||"";
   if(ref.startsWith("ref_")){const refTg=Number(ref.slice(4));if(refTg&&refTg!==uid){const rr=await db("app_users?telegram_id=eq."+refTg+"&select=id&limit=1");if(rr?.[0]&&rr[0].id!==u.id){const exists=await db("referrals?referrer_id=eq."+rr[0].id+"&referred_id=eq."+u.id+"&select=id");if(!exists?.length){await db("referrals","POST",{referrer_id:rr[0].id,referred_id:u.id,last_active_date:new Date().toISOString().slice(0,10)});await awardVip(rr[0].id,10);await awardVip(u.id,10);await send(refTg,"🎉 Друг зарегистрировался по вашей ссылке! Вам начислено 10 дней VIP.");}}}}
   if(chat!==uid){await db("admin_chats?on_conflict=chat_id","POST",{chat_id:chat},"resolution=merge-duplicates,return=minimal").catch(()=>{});}
-  return send(chat,"👋 <b>Привет, "+esc(from.first_name||"игрок")+"!</b>\n🤖 Бот объявлений Arizona RP.\n🌐 Сервер: "+esc(u.server||SERVERS[0])+"\n⚠️ Все сделки на ваш риск.\nВыберите раздел:",mainKb);
+  return send(chat,"👋 <b>Привет, "+esc(from.first_name||"игрок")+"!</b>\n🤖 Бот объявлений Arizona RP.\n🌐 Сервер: "+esc(u.server||SERVERS[0])+"\n⚠️ Все сделки на ваш риск.\nОткройте Mini App или выберите раздел:",mainKbWithApp);
  }
  if(text==="/help"||text==="❓ Помощь")return send(chat,"❓ <b>FAQ</b>\n1. Бот неофициальный.\n2. Продажа/скупка — в меню.\n3. Объявления проходят модерацию.\n4. VIP уменьшает кулдаун до 60 секунд.\n5. Рефералы дают VIP.\n6. Бонусы доступны раз в сутки.\nПо вопросам: @bounqy31",mainKb);
  if(text==="/admin"||text==="👑 Админ-панель"){if(!(await isAdmin(from)))return send(chat,"⛔ Нет прав.");if(m.chat.type!=="private")await db("admin_chats?on_conflict=chat_id","POST",{chat_id:chat},"resolution=merge-duplicates,return=minimal").catch(()=>{});return send(chat,"👑 <b>Админ-панель</b>",kb([["модерация продажи","модерация скупки"],["📊 Статистика","📋 Логи чатов"],["🔨 Забанить игрока","🔓 Разбанить игрока"],["👑 Добавить адм","🚫 Снять с адм"],["рассылка","⬅️ Назад"]]));}

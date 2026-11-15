@@ -8292,44 +8292,45 @@ async function boot() {
       }
     });
 
-    setTimeout(async () => {
-      try {
-        hideSplash();
-        checkURL();
-        const saved = lsGet(sKey(LS.user));
-        if (!saved) { showAuth(tgUser || ''); return; }
-        try {
-          currentUser = JSON.parse(saved);
-          if (!tg || !tg.initData || !currentUser.id) {
-            lsDel(sKey(LS.user));
-            currentUser = null;
-            showAuth(tgUser || '');
-            return;
-          }
-          const sessionResponse = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
-            body: JSON.stringify({ action: 'session', initData: tg.initData, user_id: currentUser.id })
-          }), 15000);
-          const sessionData = await sessionResponse.json().catch(() => ({}));
-          if (!sessionResponse.ok || !sessionData.ok || !sessionData.user) {
-            if (sessionResponse.status === 403) { showBanScreen(); return; }
-            lsDel(sKey(LS.user));
-            currentUser = null;
-            showAuth(tgUser || '');
-            return;
-          }
-          currentUser = sessionData.user;
-          addAccount(currentUser);
-          showApp();
-          try { initApp(); } catch (e) { console.error('[ARZ] initApp:', e); }
-        } catch (e) {
-          lsDel(sKey(LS.user));
-          currentUser = null;
-          showAuth(tgUser || '');
-        }
-      } catch (e) { showBootError('boot/timeout', e); }
-    }, SPLASH_MS);
+    // Сразу убираем заставку и показываем экран входа. Не откладываем переход
+    // через setTimeout: в Telegram WebView таймер загрузки мог не отрабатывать.
+    hideSplash();
+    checkURL();
+    const saved = lsGet(sKey(LS.user));
+    if (!saved) {
+      showAuth(tgUser || '');
+      return;
+    }
+    try {
+      currentUser = JSON.parse(saved);
+      if (!tg || !tg.initData || !currentUser.id) {
+        lsDel(sKey(LS.user));
+        currentUser = null;
+        showAuth(tgUser || '');
+        return;
+      }
+      const sessionResponse = await timeout(fetch(REGISTRATION_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+        body: JSON.stringify({ action: 'session', initData: tg.initData, user_id: currentUser.id })
+      }), 15000);
+      const sessionData = await sessionResponse.json().catch(() => ({}));
+      if (!sessionResponse.ok || !sessionData.ok || !sessionData.user) {
+        if (sessionResponse.status === 403) { showBanScreen(); return; }
+        lsDel(sKey(LS.user));
+        currentUser = null;
+        showAuth(tgUser || '');
+        return;
+      }
+      currentUser = sessionData.user;
+      addAccount(currentUser);
+      showApp();
+      try { initApp(); } catch (e) { console.error('[ARZ] initApp:', e); }
+    } catch (e) {
+      lsDel(sKey(LS.user));
+      currentUser = null;
+      showAuth(tgUser || '');
+    }
   } catch (e) { showBootError('boot', e); }
 }
 

@@ -33,9 +33,9 @@ from flask import Flask
 # =========================================================
 # 1. КОНФИГУРАЦИЯ (секреты только через переменные окружения)
 # =========================================================
-TELEGRAM_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN", "")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 SUPABASE_URL = "https://sbtitlayqkpllnaiyeld.supabase.co"
-SUPABASE_SERVICE_KEY = "sb_publishable_bVZYBWwjdsPMfbbRglAFbw_fP-8ClPO"
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 if not all([TELEGRAM_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY]):
     print("❌ Не заданы BOT_TOKEN, SUPABASE_URL или SUPABASE_SERVICE_KEY в окружении.")
